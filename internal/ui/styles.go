@@ -211,15 +211,8 @@ func initials(owner string) string {
 	return b.String()
 }
 
-func modSymbol(mod string) string {
-	switch mod {
-	case "alt":
-		return "⌥"
-	case "ctrl":
-		return "⌃"
-	case "shift":
-		return "⇧"
-	default:
-		return mod
-	}
+// gestureLabel renders a config gesture for humans: "cmd+right" → "⌘ right-click".
+func gestureLabel(g string) string {
+	r := strings.NewReplacer("cmd+", "⌘ ", "shift+", "⇧ ", "ctrl+", "⌃ ", "right", "right-click")
+	return r.Replace(g)
 }

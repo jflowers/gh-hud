@@ -48,6 +48,10 @@ type Model struct {
 
 // New builds the dashboard model.
 func New(cfg *config.Config, client *gh.Client) *Model {
+	// No OSC-8 links in the TUI: iTerm2 would open ⌘-clicked links itself
+	// *and* report the click to us (double tab), and it swallows ⌘-right-click
+	// on links. The app handles every click itself; --once keeps links.
+	hyperlinks = false
 	return &Model{
 		cfg:    cfg,
 		client: client,
@@ -206,6 +210,9 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handleMouse(e tea.MouseEvent) (tea.Model, tea.Cmd) {
+	if logMouse(e) {
+		return m, nil
+	}
 	if m.help || m.fetchErr != "" {
 		return m, nil
 	}
@@ -231,30 +238,39 @@ func (m *Model) handleMouse(e tea.MouseEvent) (tea.Model, tea.Cmd) {
 		m.cursor = idx
 		m.ensureVisible()
 		it := m.visible()[idx]
-		switch {
-		case e.Button == tea.MouseButtonRight:
-			m.copyRef(it)
-		case e.Button == tea.MouseButtonLeft && modifierOn(e, m.cfg.URLModifier):
+		switch g := gestureOf(e); {
+		case g == m.cfg.URLClick:
 			m.copyURL(it)
-		case e.Button == tea.MouseButtonLeft && modifierOn(e, m.cfg.NumberModifier):
+		case g == m.cfg.RefClick:
 			m.copyRef(it)
 		case e.Button == tea.MouseButtonLeft:
 			m.open(it)
+		case e.Button == tea.MouseButtonRight:
+			m.copyRef(it)
 		}
 	}
 	return m, nil
 }
 
-func modifierOn(e tea.MouseEvent, mod string) bool {
-	switch mod {
-	case "alt":
-		return e.Alt
-	case "ctrl":
-		return e.Ctrl
-	case "shift":
-		return e.Shift
+// gestureOf names a press the way config gestures are spelled. iTerm2
+// reports ⌘ as the meta (alt) bit, since real ⌥-clicks never reach the app.
+func gestureOf(e tea.MouseEvent) string {
+	g := ""
+	switch {
+	case e.Alt:
+		g = "cmd+"
+	case e.Shift:
+		g = "shift+"
+	case e.Ctrl:
+		g = "ctrl+"
 	}
-	return false
+	switch e.Button {
+	case tea.MouseButtonLeft:
+		return g + "click"
+	case tea.MouseButtonRight:
+		return g + "right"
+	}
+	return g + "other"
 }
 
 // rowAt maps a screen row to an index into the visible items (-1 if none).

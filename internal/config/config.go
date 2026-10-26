@@ -19,11 +19,10 @@ type Config struct {
 	WatchRepos      []string `toml:"watch_repos"`
 	// KnownBots are login prefixes considered bots for review/actor logic.
 	KnownBots []string `toml:"known_bots"`
-	// URLModifier / NumberModifier select the mouse modifier used for
-	// copy-on-click: one of "alt", "ctrl", "shift". Right-click always
-	// copies the item reference as well.
-	URLModifier    string `toml:"url_modifier"`
-	NumberModifier string `toml:"number_modifier"`
+	// URLClick / RefClick pick the mouse gesture that copies the item URL /
+	// its owner/repo#N reference. One of Gestures; a plain click always opens.
+	URLClick string `toml:"url_click"`
+	RefClick string `toml:"ref_click"`
 	// FetchTimeoutSecs bounds each individual API call.
 	FetchTimeoutSecs int `toml:"fetch_timeout_secs"`
 }
@@ -40,8 +39,8 @@ func Default() *Config {
 			"fullsend-ai-", "codecov", "github-actions", "qodo-code-",
 			"dependabot", "renovate", "greenkeeper",
 		},
-		URLModifier:      "alt",
-		NumberModifier:   "ctrl",
+		URLClick:         "cmd+right",
+		RefClick:         "shift+click",
 		FetchTimeoutSecs: 45,
 	}
 }
@@ -81,15 +80,26 @@ func Load(path string) (*Config, error) {
 	if len(cfg.KnownBots) == 0 {
 		cfg.KnownBots = Default().KnownBots
 	}
-	switch cfg.URLModifier {
-	case "alt", "ctrl", "shift":
-	default:
-		cfg.URLModifier = "alt"
+	if !validGesture(cfg.URLClick) {
+		cfg.URLClick = Default().URLClick
 	}
-	switch cfg.NumberModifier {
-	case "alt", "ctrl", "shift":
-	default:
-		cfg.NumberModifier = "ctrl"
+	if !validGesture(cfg.RefClick) {
+		cfg.RefClick = Default().RefClick
 	}
 	return cfg, nil
+}
+
+// Gestures are the modified clicks iTerm2 actually forwards to a
+// mouse-reporting app (measured on iTerm2 3.7): ⌥-click is kept for text
+// selection, ⌃-click and plain right-click open macOS/iTerm context menus.
+// iTerm2 reports ⌘ as the meta bit.
+var Gestures = []string{"cmd+right", "shift+click", "shift+right", "ctrl+right", "cmd+click"}
+
+func validGesture(g string) bool {
+	for _, v := range Gestures {
+		if v == g {
+			return true
+		}
+	}
+	return false
 }

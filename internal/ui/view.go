@@ -409,8 +409,8 @@ func (m *Model) footer() string {
 	}
 	return chips(m.width,
 		"click", "open",
-		modSymbol(m.cfg.URLModifier)+"click", "copy url",
-		modSymbol(m.cfg.NumberModifier)+"click", "copy ref",
+		gestureLabel(m.cfg.URLClick), "copy url",
+		gestureLabel(m.cfg.RefClick), "copy ref",
 		"y/Y", "ref/url",
 		"r", "refresh",
 		"0-5", "filter",
@@ -424,7 +424,7 @@ func (m *Model) footer() string {
 // help
 
 func (m *Model) helpView() string {
-	k := lipgloss.NewStyle().Foreground(cBlue).Width(14)
+	k := lipgloss.NewStyle().Foreground(cBlue).Width(18)
 	d := lipgloss.NewStyle().Foreground(cFg)
 	h := lipgloss.NewStyle().Foreground(cMagenta).Bold(true)
 	g := func(glyph string, c lipgloss.Color, desc string) string {
@@ -435,10 +435,8 @@ func (m *Model) helpView() string {
 	left := []string{
 		h.Render("Mouse"),
 		line("click", "open in browser"),
-		line(modSymbol(m.cfg.URLModifier)+" click", "copy URL"),
-		line(modSymbol(m.cfg.NumberModifier)+" click", "copy owner/repo#N"),
-		line("right click", "copy owner/repo#N"),
-		line("⌘ click #N", "open (iTerm2 native link)"),
+		line(gestureLabel(m.cfg.URLClick), "copy URL"),
+		line(gestureLabel(m.cfg.RefClick), "copy owner/repo#N"),
 		line("wheel", "scroll"),
 		"",
 		h.Render("Keys"),
