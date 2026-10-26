@@ -145,7 +145,7 @@ func FetchAll(ctx context.Context, c *gh.Client, cfg *config.Config) *FetchResul
 	prSection("review-requested", orgs+"review-requested:@me", CatRQ)
 	prSection("assigned-prs", orgs+"assignee:@me", CatRQ)
 	prSection("my-prs", orgs+"author:@me", CatMy)
-	if cfg.MyPRsEverywhere {
+	if cfg.MyPRsEverywhere && len(cfg.Orgs) > 0 { // with no orgs, my-prs already is everywhere
 		prSection("my-prs-everywhere", "author:@me", CatMy)
 	}
 	issueSection("assigned-issues", orgs+"assignee:@me")

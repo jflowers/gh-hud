@@ -1,0 +1,6 @@
+gh-hud
+Copyright 2026 Jay Flowers
+
+The pull request enrichment logic (CI rollup, review state, review threads,
+last actor, bot masking, row colors) is a Go port of pr-list.sh by Ralph Bean,
+shared via Adam Scerra's pr-term package.

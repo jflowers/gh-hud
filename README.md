@@ -4,16 +4,20 @@ A terminal HUD for GitHub things that need your attention: PRs awaiting your
 review, your own PRs, issues, failed Actions runs, and unread notifications —
 merged into one attention-ranked list. Built for iTerm2.
 
-## Quick start
+## Install
+
+Requirements: macOS (clipboard and browser go through `pbcopy` / `open`),
+Go 1.26+, and the [GitHub CLI](https://cli.github.com) logged in with
+`gh auth login`. gh-hud talks to GitHub only through `gh`, reusing its auth;
+it stores no tokens.
 
 ```
-go build -o gh-hud ./cmd/gh-hud
-./gh-hud            # interactive dashboard
-./gh-hud --once     # one-shot table (like pr-list.sh), then exit
+go install github.com/jflowers/gh-hud/cmd/gh-hud@latest
+gh-hud            # interactive dashboard
+gh-hud --once     # one-shot table with hyperlinks, then exit
 ```
 
-Requires `gh` (authenticated) and `jq`-free operation — everything talks to
-GitHub through the `gh` CLI, reusing its auth.
+From a checkout: `go install ./cmd/gh-hud` (or `go build -o gh-hud ./cmd/gh-hud`).
 
 ## Interactions (iTerm2)
 
@@ -51,8 +55,7 @@ nothing pinging you are badged `later` and sink below the rest.
 ## Columns
 
 `kind` badge · `◆` waiting on you · `state` = CI / review / merge glyphs ·
-`#N` (the only hyperlinked cell, so ⌘-click works without underlining the
-whole row) · `repo` (long owners abbreviated, e.g. `uf/`) · `title` + reason
+`#N` · `repo` (long owners abbreviated, e.g. `uf/`) · `title` + reason
 tags · `✎` unresolved threads (yellow = human, dim = bot-only) · `who` last
 actor (`you` or a name) · `age`.
 
@@ -62,14 +65,15 @@ the app for the full legend.
 
 ## Config
 
-`~/.config/gh-hud/config.toml` (all optional):
+`~/.config/gh-hud/config.toml` (all optional; `--config` picks another path).
+With no `orgs`, searches cover all of GitHub.
 
 ```toml
-orgs = ["fullsend-ai", "unbound-force", "zero-dot-force"]
+orgs = ["my-org", "another-org"]  # limit PR/issue searches to these orgs
 refresh_secs = 120         # auto-refresh interval
 limit = 30                 # max items per search
-my_prs_everywhere = false  # "MY" section covers all of GitHub
-watch_repos = []           # e.g. ["nikitabobko/aerospace"] — failed run watching
+my_prs_everywhere = false  # "Mine" ignores `orgs` and covers all of GitHub
+watch_repos = []           # e.g. ["owner/repo"]: show failed Actions runs
 known_bots = ["fullsend-ai-", "codecov", "github-actions", "qodo-code-", "dependabot", "renovate", "greenkeeper"]
 url_click = "cmd+right"    # gesture → copy URL
 ref_click = "shift+click"  # gesture → copy owner/repo#N
@@ -79,5 +83,9 @@ fetch_timeout_secs = 45    # per-section timeout
 ## Attribution
 
 The PR enrichment logic (CI/review/thread/last-actor rules, bot masking, row
-colors) is a Go port of Ralph Bean's `pr-list.sh` as shared by a teammate in
-the `pr-term` package (no license found — keep this repo private).
+colors) is a Go port of Ralph Bean's `pr-list.sh`, shared with me by Adam
+Scerra as part of his `pr-term` package. Thanks to both.
+
+## License
+
+[Apache License 2.0](LICENSE). See [NOTICE](NOTICE).

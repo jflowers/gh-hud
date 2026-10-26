@@ -12,6 +12,7 @@ import (
 // Config is the full gh-hud configuration. Fields left unset in the TOML
 // file fall back to the defaults in Default().
 type Config struct {
+	// Orgs limits PR/issue searches to these orgs; empty searches all of GitHub.
 	Orgs            []string `toml:"orgs"`
 	RefreshSecs     int      `toml:"refresh_secs"`
 	Limit           int      `toml:"limit"`
@@ -30,7 +31,7 @@ type Config struct {
 // Default returns the built-in defaults.
 func Default() *Config {
 	return &Config{
-		Orgs:            []string{"fullsend-ai", "unbound-force", "zero-dot-force"},
+		Orgs:            []string{},
 		RefreshSecs:     120,
 		Limit:           30,
 		MyPRsEverywhere: false,

@@ -7,14 +7,14 @@ modifier+click-to-copy.
 Decisions (approved by Jay):
 
 - **Approach**: Go TUI (Bubble Tea + Lipgloss), single binary, no tmux.
-- **Scope**: orgs configurable, starting with `fullsend-ai`, `unbound-force`,
-  `zero-dot-force`; "my PRs" optionally everywhere.
+- **Scope**: orgs configurable (empty = all of GitHub); "my PRs" optionally
+  everywhere.
 - **Sections**: PRs needing my review, my PRs, my issues/mentions, Actions
   runs, comments/notifications — unified into one attention-ranked list.
-- **Copy formats**: Alt+click → URL; Ctrl+click → `owner/repo#N`;
-  right-click → `owner/repo#N`; Cmd+click → iTerm native OSC-8 open.
+- **Copy formats**: ⌘-right-click → URL; ⇧-click → `owner/repo#N`
+  (originally ⌥/⌃-click, but iTerm2 never forwards those to apps).
 - **Location**: `~/Projects/github/jflowers/gh-hud`, module
-  `github.com/jflowers/gh-hud`, kept private (pr-list.sh has no license).
+  `github.com/jflowers/gh-hud`, Apache-2.0.
 
 Architecture:
 
@@ -22,16 +22,15 @@ Architecture:
 - `internal/model` — fetchers per section → unified `Item`; enrichment is a
   Go port of pr-list.sh jq logic (CI rollup, review emojis, bot masking,
   last actor, waiting-on, threads, merge state, colors as row styles).
-  Notifications merge into matching rows by URL (`‹reason›` badges).
-- `internal/ui` — custom table (not bubbles/table) for row hit-testing,
-  hover, per-cell OSC-8 links; adaptive columns by terminal width
-  (≥110 full, ≥90 drop CC/BOT, <90 drop MG/LAST/AUTHOR too).
+  Notifications merge into matching rows by URL (reason tags).
+- `internal/ui` — custom table (not bubbles/table) for row hit-testing and
+  hover; adaptive columns by terminal width; Tokyo Night palette.
 - `internal/clipboard` — pbcopy + `open`.
 - `cmd/gh-hud` — TUI (`--config`, `--version`) and `--once` plain table.
 
 Verification: `go build ./...`, `go vet ./...`, `gofmt -l .`, `go test ./...`,
 `gh-hud --once` smoke test, manual iTerm2 click checklist
-(plain/alt/ctrl/cmd/right-click).
+(click, ⌘-click, ⌘-right-click, ⇧-click).
 
 Phases:
 1. Core: PRs + review queue, table, mouse/keyboard, auto-refresh. (done)
