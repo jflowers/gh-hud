@@ -124,8 +124,9 @@ type Item struct {
 
 	Reasons []string // notification reasons (mention, review, ...)
 
-	RunBranch string // workflow run details
-	RunEvent  string
+	HeadBranch string // PR head ref name
+	RunBranch  string // workflow run details
+	RunEvent   string
 }
 
 // Ref returns the pasteable item reference, e.g. "owner/repo#123".

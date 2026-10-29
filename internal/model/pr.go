@@ -22,6 +22,7 @@ query($searchQuery: String!, $limit: Int!) {
         createdAt
         isDraft
         mergeable
+        headRefName
         repository { name nameWithOwner }
         commits(last: 1) {
           nodes {
@@ -74,15 +75,16 @@ type prSearchResult struct {
 }
 
 type prNode struct {
-	Number    int    `json:"number"`
-	Title     string `json:"title"`
-	URL       string `json:"url"`
-	Author    author `json:"author"`
-	UpdatedAt time.Time
-	CreatedAt time.Time
-	IsDraft   bool   `json:"isDraft"`
-	Mergeable string `json:"mergeable"`
-	Repo      struct {
+	Number      int    `json:"number"`
+	Title       string `json:"title"`
+	URL         string `json:"url"`
+	Author      author `json:"author"`
+	UpdatedAt   time.Time
+	CreatedAt   time.Time
+	IsDraft     bool   `json:"isDraft"`
+	Mergeable   string `json:"mergeable"`
+	HeadRefName string `json:"headRefName"`
+	Repo        struct {
 		Name          string `json:"name"`
 		NameWithOwner string `json:"nameWithOwner"`
 	} `json:"repository"`
@@ -172,16 +174,17 @@ func FetchPRSearch(ctx context.Context, c *gh.Client, search string, limit int) 
 // rules ported from pr-list.sh.
 func BuildPRItem(n prNode, me string, bots *BotFilter) Item {
 	it := Item{
-		Kind:      KindPR,
-		URL:       n.URL,
-		Repo:      n.Repo.NameWithOwner,
-		Num:       n.Number,
-		Title:     n.Title,
-		Author:    n.Author.Login,
-		Draft:     n.IsDraft,
-		CreatedAt: n.CreatedAt,
-		UpdatedAt: n.UpdatedAt,
-		Merge:     " ",
+		Kind:       KindPR,
+		URL:        n.URL,
+		Repo:       n.Repo.NameWithOwner,
+		Num:        n.Number,
+		Title:      n.Title,
+		Author:     n.Author.Login,
+		Draft:      n.IsDraft,
+		CreatedAt:  n.CreatedAt,
+		UpdatedAt:  n.UpdatedAt,
+		HeadBranch: n.HeadRefName,
+		Merge:      " ",
 	}
 
 	// CI rollup (ci_emoji in pr-list).

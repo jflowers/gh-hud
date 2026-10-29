@@ -11,7 +11,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/jflowers/gh-hud/internal/config"
+	"github.com/jflowers/gh-hud/internal/dispatch"
 	"github.com/jflowers/gh-hud/internal/gh"
+	"github.com/jflowers/gh-hud/internal/ghws"
 	"github.com/jflowers/gh-hud/internal/model"
 	"github.com/jflowers/gh-hud/internal/ui"
 )
@@ -41,6 +43,33 @@ func main() {
 
 	client := gh.New()
 
+	idx, idxErr := ghws.Discover(cfg.GhwsRoot)
+	if idxErr != nil {
+		idx = nil
+	}
+	var wsDirs []string
+	if idx != nil {
+		for _, co := range idx.Checkouts() {
+			wsDirs = append(wsDirs, co.Dir)
+		}
+	}
+	dispOpts := dispatch.Options{
+		Root:          cfg.GhwsRoot,
+		Agent:         cfg.Agent,
+		MaxConcurrent: cfg.MaxConcurrent,
+		BusyWindow:    time.Duration(cfg.BusyWindowSecs) * time.Second,
+		Dirty:         cfg.Dirty,
+		Tasks:         cfg.Dispatch,
+		WatchCmd:      cfg.AgentWatchCmd,
+		Runner:        cfg.Runner,
+		HerdrWatchCmd: cfg.HerdrWatchCmd,
+		Dirs:          wsDirs,
+	}
+	disp, dispErr := dispatch.New(dispOpts)
+	if dispErr != nil {
+		disp = nil
+	}
+
 	if *snapshot != "" {
 		var w, h int
 		if _, err := fmt.Sscanf(*snapshot, "%dx%d", &w, &h); err != nil || w < 20 || h < 5 {
@@ -57,7 +86,7 @@ func main() {
 		return
 	}
 
-	p := tea.NewProgram(ui.New(cfg, client),
+	p := tea.NewProgram(ui.New(cfg, client, disp, idx),
 		tea.WithAltScreen(),
 		tea.WithMouseAllMotion(),
 	)

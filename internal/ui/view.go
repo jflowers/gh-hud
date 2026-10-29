@@ -64,10 +64,18 @@ func layoutFor(termW int) layout {
 // ---------------------------------------------------------------------------
 // rows
 
+// agentMark is the per-repo agent state for the attention slot.
+type agentMark struct {
+	running bool
+	blocked bool
+	failed  bool
+}
+
 type rowCtx struct {
-	me   string
-	bots *model.BotFilter
-	now  time.Time
+	me     string
+	bots   *model.BotFilter
+	now    time.Time
+	agents map[string]agentMark
 }
 
 func renderRepo(p paint, repo string, w int) string {
@@ -162,8 +170,14 @@ func renderRow(it model.Item, l layout, rc rowCtx, selected, hover bool) string 
 	b.WriteString(p.fg(color).Bold(selected).Render(padPlain(label, kindW, false)))
 	b.WriteString(sp)
 
-	// attention marker
-	if it.WaitingOn == "me" {
+	// attention marker: agent state outranks waiting-on-you
+	if mark := rc.agents[it.Repo]; mark.blocked {
+		b.WriteString(p.text(cOrange, "◆"))
+	} else if mark.running {
+		b.WriteString(p.text(cTeal, "●"))
+	} else if mark.failed {
+		b.WriteString(p.text(cRed, "◆"))
+	} else if it.WaitingOn == "me" {
 		b.WriteString(p.text(cYellow, "◆"))
 	} else {
 		b.WriteString(sp)
@@ -413,6 +427,8 @@ func (m *Model) footer() string {
 		gestureLabel(m.cfg.RefClick), "copy ref",
 		"y/Y", "ref/url",
 		"r", "refresh",
+		"a", "agent",
+		"6", "agents",
 		"0-5", "filter",
 		"/", "find",
 		"?", "help",
@@ -447,11 +463,16 @@ func (m *Model) helpView() string {
 		line("0-5", "All Review Mine Issues CI Inbox"),
 		line("/", "find (esc clears)"),
 		line("r", "refresh now"),
+		line("a", "agent actions for row"),
+		line("6", "agent sessions"),
 		line("q", "quit"),
 	}
 	right := []string{
 		h.Render("Glyphs"),
 		g("◆", cYellow, "waiting on you"),
+		g("●", cTeal, "agent active on repo"),
+		g("◆", cRed, "agent dispatch failed"),
+		g("◆", cOrange, "agent blocked (needs input)"),
 		g("✓", cGreen, "CI passing / approved"),
 		g("✗", cRed, "CI failing / changes requested"),
 		g("●", cYellow, "CI running / mixed reviews"),
@@ -490,6 +511,103 @@ func (m *Model) helpView() string {
 }
 
 // ---------------------------------------------------------------------------
+// agent modals
+
+func (m *Model) actionView() string {
+	title := lipgloss.NewStyle().Foreground(cMagenta).Bold(true)
+	key := lipgloss.NewStyle().Foreground(cBlue).Width(10)
+	sel := lipgloss.NewStyle().Foreground(cFg).Bold(true)
+	comment := lipgloss.NewStyle().Foreground(cComment)
+
+	ref := m.actionItem.Ref()
+	if ref == "" {
+		ref = m.actionItem.URL
+	}
+	lines := []string{
+		title.Render(" dispatch agent ") + comment.Render(ref+" · "+truncatePlain(m.actionItem.Title, 48)),
+		"",
+	}
+	for i, a := range m.actions {
+		marker := "  "
+		task := key.Render(string(a.task))
+		if i == m.actionSel {
+			marker = sel.Render("▶ ")
+			task = sel.Render(string(a.task))
+		}
+		lines = append(lines, marker+task+comment.Render(" "+a.cmd+"  ·  "+a.co.Workspace))
+	}
+	lines = append(lines, "", comment.Render("enter dispatch · j/k move · esc cancel"))
+
+	box := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(cBlue).
+		Padding(1, 3).
+		Render(strings.Join(lines, "\n"))
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
+}
+
+func (m *Model) agentsView() string {
+	title := lipgloss.NewStyle().Foreground(cMagenta).Bold(true)
+	sel := lipgloss.NewStyle().Foreground(cFg).Bold(true)
+	fg := lipgloss.NewStyle().Foreground(cFg)
+	comment := lipgloss.NewStyle().Foreground(cComment)
+
+	lines := []string{
+		title.Render(" agent sessions ") + comment.Render("opencode sessions in ghws workspaces"),
+		"",
+	}
+	if len(m.agents) == 0 {
+		lines = append(lines, comment.Render("no agent sessions"))
+	}
+	for i, s := range m.agents {
+		glyph, color := "○", cDim
+		task := s.Task
+		switch {
+		case s.Running:
+			glyph, color = "●", cTeal
+		case s.Blocked:
+			glyph, color = "◆", cOrange
+		case s.Failed:
+			glyph, color = "◆", cRed
+		case task != "":
+			glyph, color = "✓", cGreen
+		}
+		if task == "" {
+			task = "—"
+		}
+		name := s.Ref
+		if name == "" {
+			name = truncatePlain(s.Title, 32)
+		}
+		ws := s.Workspace
+		if ws == "" {
+			ws = "—"
+		}
+		age := model.RelativeTime(s.UpdatedAt, time.Now())
+		marker := "  "
+		if i == m.agentsSel {
+			marker = sel.Render("▶ ")
+		}
+		g := lipgloss.NewStyle().Foreground(color).Render(glyph)
+		info := ws
+		if s.State != "" {
+			info += "  ·  " + s.State
+		}
+		info += "  ·  " + age
+		lines = append(lines, marker+g+" "+comment.Render(padPlain(string(task), 9, false))+" "+fg.Render(name)+
+			comment.Render("  ·  "+info))
+	}
+	lines = append(lines, "", comment.Render("enter watch · y copy id · r refresh · esc close"))
+
+	box := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(cBlue).
+		Padding(1, 3).
+		Render(strings.Join(lines, "\n"))
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
+}
+
+// ---------------------------------------------------------------------------
 // View
 
 func (m *Model) View() string {
@@ -504,6 +622,12 @@ func (m *Model) View() string {
 	}
 	if m.help {
 		return m.helpView()
+	}
+	if m.actionMode {
+		return m.actionView()
+	}
+	if m.agentsMode {
+		return m.agentsView()
 	}
 
 	l := layoutFor(m.width)
@@ -522,7 +646,7 @@ func (m *Model) View() string {
 			}
 			lines = append(lines, "", lipgloss.NewStyle().Foreground(cGreen).Render("   "+msg))
 		}
-		rc := rowCtx{me: m.me(), bots: m.bots, now: time.Now()}
+		rc := rowCtx{me: m.me(), bots: m.bots, now: time.Now(), agents: m.agentMarks()}
 		end := m.offset + maxRows
 		if end > len(vis) {
 			end = len(vis)

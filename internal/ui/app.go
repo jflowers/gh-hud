@@ -3,13 +3,16 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/jflowers/gh-hud/internal/clipboard"
 	"github.com/jflowers/gh-hud/internal/config"
+	"github.com/jflowers/gh-hud/internal/dispatch"
 	"github.com/jflowers/gh-hud/internal/gh"
+	"github.com/jflowers/gh-hud/internal/ghws"
 	"github.com/jflowers/gh-hud/internal/model"
 )
 
@@ -19,11 +22,35 @@ type fetchedMsg struct {
 	res *model.FetchResult
 }
 
+type agentsMsg struct {
+	sessions []dispatch.Session
+	err      error
+}
+
+type dispatchDoneMsg struct {
+	task   string
+	ref    string
+	ws     string
+	runner string
+	err    error
+}
+
+type autoDoneMsg []string
+
+// actionChoice is one dispatchable task for the row under the cursor.
+type actionChoice struct {
+	task dispatch.Task
+	cmd  string
+	co   ghws.Checkout
+}
+
 // Model is the bubbletea model for the dashboard.
 type Model struct {
 	cfg    *config.Config
 	client *gh.Client
 	bots   *model.BotFilter
+	disp   *dispatch.Dispatcher
+	idx    *ghws.Index
 
 	res       *model.FetchResult
 	fetching  bool
@@ -40,14 +67,24 @@ type Model struct {
 	searchText string
 	help       bool
 
+	actionMode bool
+	actionSel  int
+	actionItem model.Item
+	actions    []actionChoice
+
+	agentsMode bool
+	agents     []dispatch.Session
+	agentsSel  int
+	lastAgents time.Time
+
 	statusMsg string
 	statusAt  time.Time
 
 	width, height int
 }
 
-// New builds the dashboard model.
-func New(cfg *config.Config, client *gh.Client) *Model {
+// New builds the dashboard model. disp and idx may be nil (dispatch off).
+func New(cfg *config.Config, client *gh.Client, disp *dispatch.Dispatcher, idx *ghws.Index) *Model {
 	// No OSC-8 links in the TUI: iTerm2 would open ⌘-clicked links itself
 	// *and* report the click to us (double tab), and it swallows ⌘-right-click
 	// on links. The app handles every click itself; --once keeps links.
@@ -56,13 +93,19 @@ func New(cfg *config.Config, client *gh.Client) *Model {
 		cfg:    cfg,
 		client: client,
 		bots:   model.NewBotFilter(cfg.KnownBots),
+		disp:   disp,
+		idx:    idx,
 		hover:  -1,
 	}
 }
 
 // Init starts the first fetch and the clock.
 func (m *Model) Init() tea.Cmd {
-	return tea.Batch(fetchCmd(m.cfg, m.client), tick())
+	cmds := []tea.Cmd{fetchCmd(m.cfg, m.client), tick()}
+	if m.disp != nil {
+		cmds = append(cmds, m.fetchAgents())
+	}
+	return tea.Batch(cmds...)
 }
 
 func fetchCmd(cfg *config.Config, c *gh.Client) tea.Cmd {
@@ -79,13 +122,18 @@ func tick() tea.Cmd {
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tickMsg:
+		cmds := []tea.Cmd{tick()}
 		if !m.fetching && m.res != nil &&
 			time.Since(m.lastFetch) >= time.Duration(m.cfg.RefreshSecs)*time.Second {
 			m.fetching = true
 			m.prevCursorURL = m.cursorURL()
-			return m, tea.Batch(fetchCmd(m.cfg, m.client), tick())
+			cmds = append(cmds, fetchCmd(m.cfg, m.client))
 		}
-		return m, tick()
+		if m.disp != nil && time.Since(m.lastAgents) >= 30*time.Second {
+			m.lastAgents = time.Now()
+			cmds = append(cmds, m.fetchAgents())
+		}
+		return m, tea.Batch(cmds...)
 
 	case fetchedMsg:
 		m.fetching = false
@@ -100,6 +148,40 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.fetchErr = ""
 			m.restoreCursor()
+		}
+		if m.disp != nil && msg.res.User != "" {
+			return m, tea.Batch(autoCmd(m, msg.res.Items), m.fetchAgents())
+		}
+		return m, nil
+
+	case agentsMsg:
+		if msg.err == nil {
+			m.agents = msg.sessions
+			if m.agentsSel >= len(m.agents) {
+				m.agentsSel = len(m.agents) - 1
+			}
+			if m.agentsSel < 0 {
+				m.agentsSel = 0
+			}
+		}
+		return m, nil
+
+	case dispatchDoneMsg:
+		if msg.err != nil {
+			m.flash(fmt.Sprintf("dispatch %s %s failed: %s", msg.task, msg.ref, msg.err))
+		} else {
+			flash := fmt.Sprintf("dispatched %s %s in %s", msg.task, msg.ref, msg.ws)
+			if msg.runner != "" {
+				flash += " via " + msg.runner
+			}
+			m.flash(flash)
+		}
+		return m, m.fetchAgents()
+
+	case autoDoneMsg:
+		if len(msg) > 0 {
+			m.flash(strings.Join(msg, " · "))
+			return m, m.fetchAgents()
 		}
 		return m, nil
 
@@ -123,6 +205,12 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		return m, nil
+	}
+	if m.actionMode {
+		return m.handleActionKey(msg)
+	}
+	if m.agentsMode {
+		return m.handleAgentsKey(msg)
 	}
 	if m.help {
 		m.help = false
@@ -189,6 +277,14 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.prevCursorURL = m.cursorURL()
 			return m, fetchCmd(m.cfg, m.client)
 		}
+	case "a":
+		m.openAction()
+	case "6":
+		if m.disp != nil {
+			m.agentsMode = true
+			m.agentsSel = 0
+			return m, m.fetchAgents()
+		}
 	case "1":
 		m.setFilter(model.CatRQ)
 	case "2":
@@ -213,7 +309,7 @@ func (m *Model) handleMouse(e tea.MouseEvent) (tea.Model, tea.Cmd) {
 	if logMouse(e) {
 		return m, nil
 	}
-	if m.help || m.fetchErr != "" {
+	if m.help || m.actionMode || m.agentsMode || m.fetchErr != "" {
 		return m, nil
 	}
 	if e.IsWheel() {
@@ -439,4 +535,172 @@ func (m *Model) copyRef(it model.Item) {
 		return
 	}
 	m.flash("copied " + ref)
+}
+
+// fetchAgents polls agent session status (nil cmd when dispatch is off).
+func (m *Model) fetchAgents() tea.Cmd {
+	d := m.disp
+	if d == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		sessions, err := d.Sessions(ctx)
+		return agentsMsg{sessions: sessions, err: err}
+	}
+}
+
+// autoCmd runs allowlisted auto-dispatch for the freshly fetched items.
+func autoCmd(m *Model, items []model.Item) tea.Cmd {
+	d := m.disp
+	if d == nil {
+		return nil
+	}
+	ix := m.idx
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+		return autoDoneMsg(d.AutoDispatch(ctx, items, ix))
+	}
+}
+
+func (m *Model) handleActionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc", "q":
+		m.actionMode = false
+	case "ctrl+c":
+		return m, tea.Quit
+	case "j", "down":
+		if m.actionSel < len(m.actions)-1 {
+			m.actionSel++
+		}
+	case "k", "up":
+		if m.actionSel > 0 {
+			m.actionSel--
+		}
+	case "enter", "o":
+		m.actionMode = false
+		if m.actionSel < len(m.actions) {
+			choice := m.actions[m.actionSel]
+			m.flash("dispatching " + string(choice.task) + " " + m.actionItem.Ref() + "…")
+			return m, m.dispatchCmd(choice)
+		}
+	}
+	return m, nil
+}
+
+func (m *Model) handleAgentsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc", "q", "6":
+		m.agentsMode = false
+	case "ctrl+c":
+		return m, tea.Quit
+	case "j", "down":
+		if m.agentsSel < len(m.agents)-1 {
+			m.agentsSel++
+		}
+	case "k", "up":
+		if m.agentsSel > 0 {
+			m.agentsSel--
+		}
+	case "y":
+		if m.agentsSel < len(m.agents) {
+			id := m.agents[m.agentsSel].ID
+			if err := clipboard.Copy(id); err != nil {
+				m.flash("copy failed: " + err.Error())
+			} else {
+				m.flash("copied " + id)
+			}
+		}
+	case "enter", "o":
+		if m.agentsSel < len(m.agents) {
+			s := m.agents[m.agentsSel]
+			if err := m.disp.Watch(s); err != nil {
+				m.flash("watch failed: " + err.Error())
+			} else {
+				m.flash("watching " + s.Title)
+			}
+		}
+	case "r":
+		return m, m.fetchAgents()
+	}
+	return m, nil
+}
+
+// openAction builds the dispatch menu for the selected row.
+func (m *Model) openAction() {
+	if m.disp == nil || m.idx == nil {
+		m.flash("dispatch unavailable")
+		return
+	}
+	it, ok := m.selected()
+	if !ok {
+		return
+	}
+	tasks := dispatch.InferTasks(it)
+	m.actionItem = it
+	m.actions = nil
+	m.actionSel = 0
+	for _, task := range tasks {
+		cmd, ok := m.disp.Configured(task)
+		if !ok {
+			continue
+		}
+		cos := m.idx.Resolve(it.Repo, it.HeadBranch)
+		if len(cos) == 0 {
+			continue
+		}
+		m.actions = append(m.actions, actionChoice{task: task, cmd: cmd, co: cos[0]})
+		if len(m.actions) >= 8 {
+			break
+		}
+	}
+	if len(m.actions) == 0 {
+		if len(tasks) == 0 {
+			m.flash("no agent actions for this row")
+		} else {
+			m.flash("no ghws checkout for " + it.Repo)
+		}
+		return
+	}
+	m.actionMode = true
+}
+
+func (m *Model) dispatchCmd(c actionChoice) tea.Cmd {
+	d := m.disp
+	it := m.actionItem
+	co := c.co
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		rec, err := d.Dispatch(ctx, c.task, it, co)
+		return dispatchDoneMsg{task: string(c.task), ref: it.Ref(), ws: co.Workspace, runner: rec.Runner, err: err}
+	}
+}
+
+// agentMarks maps repo → agent state for the per-row attention markers.
+func (m *Model) agentMarks() map[string]agentMark {
+	if m.idx == nil || len(m.agents) == 0 {
+		return nil
+	}
+	marks := make(map[string]agentMark)
+	for _, s := range m.agents {
+		repo := m.idx.RepoFor(s.Directory)
+		if repo == "" {
+			continue
+		}
+		mk := marks[repo]
+		if s.Running {
+			mk.running = true
+		}
+		if s.Blocked {
+			mk.blocked = true
+		}
+		if s.Failed {
+			mk.failed = true
+		}
+		marks[repo] = mk
+	}
+	return marks
 }

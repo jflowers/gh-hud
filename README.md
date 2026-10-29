@@ -36,7 +36,8 @@ never reach gh-hud. iTerm2 reports ⌘ as the meta bit, which is how
 sends (clicks do nothing in that mode).
 
 Keys: `j/k` move · `enter/o` open · `y` copy `owner/repo#N` · `Y` copy URL ·
-`r` refresh · `1-5` filter section · `0` all · `/` search · `?` help · `q` quit.
+`r` refresh · `a` agent actions · `6` agent sessions · `1-5` filter section ·
+`0` all · `/` search · `?` help · `q` quit.
 
 ## Sections (header tabs, keys 1-5)
 
@@ -63,6 +64,34 @@ Glyphs: `✓` passing/approved · `✗` failing/changes requested · `●` runni
 · `!` you requested changes · `○` no checks · `⊘` merge conflict. Press `?` in
 the app for the full legend.
 
+## Agent dispatch
+
+`a` on a row proposes dispatching an autonomous opencode session against a
+ghws checkout of that repo (workspace root: `$GHWS_ROOT`, default
+`~/Projects/github`; instance whose branch matches the PR's head branch is
+preferred). The offered task follows the row's signals: merge conflict →
+rebase, failing CI → fix, changes requested on your PR → address feedback,
+review requested → review, issue → implement. The dispatcher never assumes
+workspace state: it refuses busy checkouts (a live herdr agent or a foreign
+opencode session updated within `busy_window_secs`), applies your `dirty`
+policy to uncommitted files, and fast-forward syncs the default branch to
+`upstream` before launching.
+
+By default (`runner = "herdr"`) dispatch goes through a local herdr
+server: one herdr workspace per ghws workspace (created lazily, reused,
+never closed), one tab per dispatch labeled `<task> <repo>#<num>`, agent
+run in that tab's pane. If the server can't be reached, dispatch falls
+back to a detached local `opencode run --command …` with the configured
+agent. Set `runner = "local"` to skip herdr entirely.
+
+`6` lists opencode sessions across workspaces: `enter` watches one (herdr
+sessions focus the workspace and attach the herdr TUI in a Ghostty window
+via `herdr_watch_cmd`; local ones tail the session log via
+`agent_watch_cmd`), `y` copies the session id. Live agent state shows in
+the attention slot: `●` teal = running, `◆` orange = blocked on a
+question or approval, `◆` red = dispatch failed. Tasks with `auto = true`
+dispatch themselves on refresh without a keypress.
+
 ## Config
 
 `~/.config/gh-hud/config.toml` (all optional; `--config` picks another path).
@@ -78,6 +107,22 @@ known_bots = ["fullsend-ai-", "codecov", "github-actions", "qodo-code-", "depend
 url_click = "cmd+right"    # gesture → copy URL
 ref_click = "shift+click"  # gesture → copy owner/repo#N
 fetch_timeout_secs = 45    # per-section timeout
+
+# agent dispatch (see "Agent dispatch" above)
+ghws_root = "~/Projects/github"  # ghws workspace root ($GHWS_ROOT default)
+agent = "build"            # opencode agent for headless dispatch
+runner = "herdr"           # dispatch runner: herdr (default) | local
+max_concurrent = 2         # max simultaneously dispatched agents
+busy_window_secs = 900     # foreign session newer than this blocks dispatch
+dirty = "refuse"           # dirty checkout policy: refuse | stash | stash-tracked
+agent_watch_cmd = "/Applications/Ghostty.app/Contents/MacOS/ghostty -e tail -n 200 -f {log}"
+herdr_watch_cmd = "/Applications/Ghostty.app/Contents/MacOS/ghostty -e herdr"  # {workspace} {pane}
+
+# dispatchable tasks: command is a slash-command template ({num} = PR/issue
+# number). Tasks: rebase, feedback, review, ci, issue.
+[dispatch.rebase]
+command = "/uf.rebase-pr {num}"
+auto = false               # true = auto-dispatch on refresh, no keypress
 ```
 
 ## Attribution

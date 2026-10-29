@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/jflowers/gh-hud/internal/ghws"
 )
 
 // Config is the full gh-hud configuration. Fields left unset in the TOML
@@ -26,6 +28,22 @@ type Config struct {
 	RefClick string `toml:"ref_click"`
 	// FetchTimeoutSecs bounds each individual API call.
 	FetchTimeoutSecs int `toml:"fetch_timeout_secs"`
+
+	// Agent dispatch launches autonomous opencode/uf sessions from the
+	// dashboard against ghws checkouts.
+	GhwsRoot       string `toml:"ghws_root"`
+	Agent          string `toml:"agent"`
+	MaxConcurrent  int    `toml:"max_concurrent"`
+	BusyWindowSecs int    `toml:"busy_window_secs"`
+	// Dirty is the policy for checkouts with uncommitted files: refuse
+	// (default), stash, or stash-tracked.
+	Dirty         string `toml:"dirty"`
+	AgentWatchCmd string `toml:"agent_watch_cmd"`
+	// Runner selects the dispatch runner: herdr (default) or local
+	// (detached process with a log file).
+	Runner        string                `toml:"runner"`
+	HerdrWatchCmd string                `toml:"herdr_watch_cmd"`
+	Dispatch      map[string]TaskConfig `toml:"dispatch"`
 }
 
 // Default returns the built-in defaults.
@@ -43,8 +61,38 @@ func Default() *Config {
 		URLClick:         "cmd+right",
 		RefClick:         "shift+click",
 		FetchTimeoutSecs: 45,
+		GhwsRoot:         ghws.DefaultRoot(),
+		Agent:            "build",
+		MaxConcurrent:    2,
+		BusyWindowSecs:   900,
+		Dirty:            "refuse",
+		AgentWatchCmd:    defaultWatchCmd,
+		Runner:           "herdr",
+		HerdrWatchCmd:    defaultHerdrWatchCmd,
+		Dispatch:         DefaultDispatch(),
 	}
 }
+
+// TaskConfig is one dispatchable agent task.
+type TaskConfig struct {
+	Command string `toml:"command"` // slash command template, {num} = PR/issue number
+	Auto    bool   `toml:"auto"`    // auto-dispatch on refresh without confirmation
+}
+
+// DefaultDispatch returns the built-in task → command map.
+func DefaultDispatch() map[string]TaskConfig {
+	return map[string]TaskConfig{
+		"rebase":   {Command: "/uf.rebase-pr {num}"},
+		"feedback": {Command: "/uf.address-feedback {num}"},
+		"review":   {Command: "/uf.review-pr {num}"},
+		"ci":       {Command: "/uf.fix-ci {num}"},
+		"issue":    {Command: "/uf.run-pipeline-plan #{num}"},
+	}
+}
+
+const defaultWatchCmd = "/Applications/Ghostty.app/Contents/MacOS/ghostty -e tail -n 200 -f {log}"
+
+const defaultHerdrWatchCmd = "/Applications/Ghostty.app/Contents/MacOS/ghostty -e herdr"
 
 // DefaultPath returns ~/.config/gh-hud/config.toml.
 func DefaultPath() string {
@@ -86,6 +134,41 @@ func Load(path string) (*Config, error) {
 	}
 	if !validGesture(cfg.RefClick) {
 		cfg.RefClick = Default().RefClick
+	}
+	if cfg.GhwsRoot == "" {
+		cfg.GhwsRoot = ghws.DefaultRoot()
+	}
+	if cfg.Agent == "" {
+		cfg.Agent = "build"
+	}
+	if cfg.MaxConcurrent < 1 {
+		cfg.MaxConcurrent = 2
+	}
+	if cfg.BusyWindowSecs < 60 {
+		cfg.BusyWindowSecs = 900
+	}
+	switch cfg.Dirty {
+	case "stash", "stash-tracked":
+	default:
+		cfg.Dirty = "refuse"
+	}
+	if cfg.AgentWatchCmd == "" {
+		cfg.AgentWatchCmd = defaultWatchCmd
+	}
+	if cfg.Runner != "local" {
+		cfg.Runner = "herdr"
+	}
+	if cfg.HerdrWatchCmd == "" {
+		cfg.HerdrWatchCmd = defaultHerdrWatchCmd
+	}
+	if cfg.Dispatch == nil {
+		cfg.Dispatch = DefaultDispatch()
+	} else {
+		for k, v := range DefaultDispatch() {
+			if _, ok := cfg.Dispatch[k]; !ok {
+				cfg.Dispatch[k] = v
+			}
+		}
 	}
 	return cfg, nil
 }
