@@ -52,7 +52,7 @@ func InferTasks(it model.Item) []Task {
 		if it.Cats&model.CatMy != 0 && (it.Review == "❌" || it.Thread > 0) {
 			tasks = append(tasks, TaskFeedback)
 		}
-		if it.Cats&model.CatRQ != 0 {
+		if it.Cats&model.CatQueue != 0 {
 			tasks = append(tasks, TaskReview)
 		}
 	}
@@ -187,7 +187,9 @@ func (d *Dispatcher) Configured(task Task) (string, bool) {
 
 // Dispatch preflights the checkout and launches an agent session for task.
 // The opencode process is detached: it keeps running after gh-hud exits.
-func (d *Dispatcher) Dispatch(ctx context.Context, task Task, it model.Item, co ghws.Checkout) (Record, error) {
+// auto records whether this dispatch came from the auto-drain queue rather
+// than a keypress.
+func (d *Dispatcher) Dispatch(ctx context.Context, task Task, it model.Item, co ghws.Checkout, auto bool) (Record, error) {
 	tc, ok := d.opts.Tasks[string(task)]
 	if !ok || tc.Command == "" {
 		return Record{}, fmt.Errorf("no command configured for task %q", task)
@@ -248,7 +250,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, task Task, it model.Item, co 
 
 	title := fmt.Sprintf("gh-hud ▸ %s %s", task, ref)
 	if d.opts.Runner == "herdr" {
-		rec, err := d.dispatchHerdr(ctx, task, it, co, name, args, title, stash)
+		rec, err := d.dispatchHerdr(ctx, task, it, co, name, args, title, stash, auto)
 		if !errors.Is(err, errHerdrDown) {
 			return rec, err
 		}
@@ -284,6 +286,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, task Task, it model.Item, co 
 		StartedAt:   time.Now().UTC(),
 		Stash:       stash,
 		Fingerprint: fingerprint(task, it),
+		Auto:        auto,
 	}
 	d.mu.Lock()
 	d.records = append(d.records, rec)
@@ -336,7 +339,7 @@ func recordLive(r Record, agents []herdrAgent) bool {
 // dispatchHerdr launches the agent inside a herdr-managed terminal: one
 // stable workspace per ghws workspace (created on first use, never closed)
 // and one tab per dispatch whose root pane hosts the headless agent run.
-func (d *Dispatcher) dispatchHerdr(ctx context.Context, task Task, it model.Item, co ghws.Checkout, name string, args []string, title, stash string) (Record, error) {
+func (d *Dispatcher) dispatchHerdr(ctx context.Context, task Task, it model.Item, co ghws.Checkout, name string, args []string, title, stash string, auto bool) (Record, error) {
 	if err := ensureHerdrServer(ctx); err != nil {
 		return Record{}, fmt.Errorf("%w (%v)", errHerdrDown, err)
 	}
@@ -380,6 +383,7 @@ func (d *Dispatcher) dispatchHerdr(ctx context.Context, task Task, it model.Item
 		StartedAt:   time.Now().UTC(),
 		Stash:       stash,
 		Fingerprint: fingerprint(task, it),
+		Auto:        auto,
 		Runner:      "herdr",
 		WSID:        wsID,
 		PaneID:      paneID,
@@ -427,7 +431,7 @@ func (d *Dispatcher) AutoDispatch(ctx context.Context, items []model.Item, ix *g
 			if len(cos) == 0 {
 				continue
 			}
-			if _, err := d.Dispatch(ctx, task, it, cos[0]); err != nil {
+			if _, err := d.Dispatch(ctx, task, it, cos[0], true); err != nil {
 				continue
 			}
 			msgs = append(msgs, fmt.Sprintf("auto %s %s → %s", task, ref, cos[0].Workspace))

@@ -61,7 +61,7 @@ func TestHerdrSmoke(t *testing.T) {
 
 	co := ghws.Checkout{Workspace: "smoke-test@gh", Repo: "acme/widget", Dir: work, Branch: "main"}
 	it := model.Item{Kind: model.KindPR, Repo: "acme/widget", Num: 4242, HeadBranch: "main", UpdatedAt: time.Now().UTC()}
-	rec, err := d.Dispatch(ctx, TaskCI, it, co)
+	rec, err := d.Dispatch(ctx, TaskCI, it, co, false)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestHerdrSmoke(t *testing.T) {
 	// A second dispatch to the same workspace must reuse it, not duplicate it.
 	it2 := it
 	it2.Num = 4243
-	rec2, err := d.Dispatch(ctx, TaskCI, it2, co)
+	rec2, err := d.Dispatch(ctx, TaskCI, it2, co, false)
 	if err != nil {
 		t.Fatalf("Dispatch #2: %v", err)
 	}

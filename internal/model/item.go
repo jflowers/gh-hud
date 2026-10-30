@@ -36,11 +36,13 @@ func (k Kind) String() string {
 type Cats uint8
 
 const (
-	CatRQ  Cats = 1 << iota // PRs needing my review (review-requested/assigned)
-	CatMy                   // PRs I authored
-	CatISS                  // issues assigned to / mentioning me
-	CatCI                   // actions: failing runs, failing checks
-	CatNT                   // notifications: mentions, comments, activity
+	CatRQ    Cats = 1 << iota // PRs needing my review (review-requested/assigned)
+	CatMy                     // PRs I authored
+	CatISS                    // issues assigned to / mentioning me
+	CatCI                     // actions: failing runs, failing checks
+	CatNT                     // notifications: mentions, comments, activity
+	CatReady                  // my PRs ready for a human maintainer review
+	CatQueue                  // others' PRs ready for an agent review
 )
 
 func (c Cats) String() string {
@@ -62,6 +64,12 @@ func (c Cats) String() string {
 	}
 	if c&CatNT != 0 {
 		parts = append(parts, "NT")
+	}
+	if c&CatReady != 0 {
+		parts = append(parts, "RDY")
+	}
+	if c&CatQueue != 0 {
+		parts = append(parts, "QU")
 	}
 	return strings.Join(parts, "+")
 }
@@ -138,6 +146,40 @@ func (i Item) Ref() string {
 	return fmt.Sprintf("%s#%d", i.Repo, i.Num)
 }
 
+// ciSettled reports whether checks are green or absent; pending or failing
+// checks mean the PR is not ready for review yet.
+func ciSettled(ci CIState) bool { return ci == CIOK || ci == CINone }
+
+// MyMaintainerReady reports whether one of my PRs is done on my side — not
+// draft, checks green or absent, no merge conflict, no unresolved human
+// review threads, I acted last — and the only thing left is a human approval.
+func (i Item) MyMaintainerReady() bool {
+	return i.Kind == KindPR &&
+		i.Cats&CatMy != 0 &&
+		!i.Draft &&
+		ciSettled(i.CI) &&
+		i.Merge != "⚠️" &&
+		i.Thread == 0 &&
+		i.Review != "✅" &&
+		i.WaitingOn == "them"
+}
+
+// ReviewQueueReady reports whether someone else's PR is ready for an agent
+// review: not draft, checks green or absent, no conflict, the author acted
+// last (so I have not reviewed since their latest activity), not written by
+// me or a bot, and updated within window.
+func (i Item) ReviewQueueReady(me string, window time.Duration, bots *BotFilter) bool {
+	return i.Kind == KindPR &&
+		me != "" &&
+		i.Author != me &&
+		!bots.IsBot(i.Author) &&
+		!i.Draft &&
+		ciSettled(i.CI) &&
+		i.Merge != "⚠️" &&
+		i.WaitingOn == "them" &&
+		time.Since(i.UpdatedAt) <= window
+}
+
 // Score ranks attention-worthiness (higher first).
 func (i Item) Score() int {
 	s := 0
@@ -150,6 +192,12 @@ func (i Item) Score() int {
 		s += 1
 	case i.Cats&CatISS != 0:
 		s += 1
+	}
+	if i.Cats&CatReady != 0 {
+		s += 4
+	}
+	if i.Cats&CatQueue != 0 {
+		s++
 	}
 	if i.Kind == KindRun {
 		s += 3

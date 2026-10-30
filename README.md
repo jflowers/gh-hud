@@ -36,16 +36,26 @@ never reach gh-hud. iTerm2 reports ⌘ as the meta bit, which is how
 sends (clicks do nothing in that mode).
 
 Keys: `j/k` move · `enter/o` open · `y` copy `owner/repo#N` · `Y` copy URL ·
-`r` refresh · `a` agent actions · `6` agent sessions · `1-5` filter section ·
+`r` refresh · `a` agent actions · `6` agent sessions · `1-8` filter section ·
 `0` all · `/` search · `?` help · `q` quit.
 
-## Sections (header tabs, keys 1-5)
+## Sections (header tabs, keys 1-8)
 
 - **Review** — open PRs in your orgs where your review is requested or you're assigned
 - **Mine** — your open PRs in your orgs (set `my_prs_everywhere = true` for all of GitHub)
 - **Issues** — open issues assigned to you or mentioning you
 - **CI** — failing checks on open PRs, plus failed runs on `watch_repos`
 - **Inbox** — unread notifications (mentions, comments, review requests, CI activity)
+- **Ready** (7) — your PRs that are done on your side and wait only on a human
+  maintainer: not draft, checks green or absent, no conflicts, no unresolved
+  threads, not yet approved, you acted last. Marked `◆` green; a macOS desktop
+  notification fires when a PR newly enters this state (`notify = true`).
+- **Queue** (8) — other humans' PRs ready for an agent review: updated within
+  `queue_window_hours`, checks settled, no conflicts, author acted last
+  (requires `orgs`; the sweep is disabled without them). With
+  `[dispatch.review] auto = true` these drain automatically: the dispatcher
+  reviews queued PRs as agent slots free up, retrying on later refreshes when
+  busy, and skips a PR until it changes (fingerprint dedupe).
 
 Notifications merge into matching PR/issue rows as a colored reason tag
 (`mention`, `review`, ...) instead of duplicating them. Rows are ranked by an
@@ -84,13 +94,16 @@ run in that tab's pane. If the server can't be reached, dispatch falls
 back to a detached local `opencode run --command …` with the configured
 agent. Set `runner = "local"` to skip herdr entirely.
 
-`6` lists opencode sessions across workspaces: `enter` watches one (herdr
+`6` lists agent sessions across workspaces — by default only ones gh-hud
+dispatched, live/blocked/failed ones, and anything touched in the last 24h
+(`a` toggles the stale rest; the list scrolls to fit the terminal): `enter` watches one (herdr
 sessions focus the workspace and attach the herdr TUI in a Ghostty window
 via `herdr_watch_cmd`; local ones tail the session log via
 `agent_watch_cmd`), `y` copies the session id. Live agent state shows in
 the attention slot: `●` teal = running, `◆` orange = blocked on a
 question or approval, `◆` red = dispatch failed. Tasks with `auto = true`
-dispatch themselves on refresh without a keypress.
+dispatch themselves on refresh without a keypress; the review queue
+(`8`) drains itself this way up to `max_concurrent` agents.
 
 ## Config
 
@@ -107,6 +120,8 @@ known_bots = ["fullsend-ai-", "codecov", "github-actions", "qodo-code-", "depend
 url_click = "cmd+right"    # gesture → copy URL
 ref_click = "shift+click"  # gesture → copy owner/repo#N
 fetch_timeout_secs = 45    # per-section timeout
+notify = true              # desktop notification when my PR becomes maintainer-ready
+queue_window_hours = 48    # review queue sweep: others' PRs updated within this window
 
 # agent dispatch (see "Agent dispatch" above)
 ghws_root = "~/Projects/github"  # ghws workspace root ($GHWS_ROOT default)

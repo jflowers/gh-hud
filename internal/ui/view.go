@@ -170,13 +170,15 @@ func renderRow(it model.Item, l layout, rc rowCtx, selected, hover bool) string 
 	b.WriteString(p.fg(color).Bold(selected).Render(padPlain(label, kindW, false)))
 	b.WriteString(sp)
 
-	// attention marker: agent state outranks waiting-on-you
+	// attention marker: agent state outranks ready and waiting-on-you
 	if mark := rc.agents[it.Repo]; mark.blocked {
 		b.WriteString(p.text(cOrange, "◆"))
 	} else if mark.running {
 		b.WriteString(p.text(cTeal, "●"))
 	} else if mark.failed {
 		b.WriteString(p.text(cRed, "◆"))
+	} else if it.Cats&model.CatReady != 0 {
+		b.WriteString(p.text(cGreen, "◆"))
 	} else if it.WaitingOn == "me" {
 		b.WriteString(p.text(cYellow, "◆"))
 	} else {
@@ -301,6 +303,8 @@ var tabs = []tab{
 	{"Issues", model.CatISS, cGreen, "3"},
 	{"CI", model.CatCI, cRed, "4"},
 	{"Inbox", model.CatNT, cMagenta, "5"},
+	{"Ready", model.CatReady, cGreen, "7"},
+	{"Queue", model.CatQueue, cCyan, "8"},
 }
 
 func shortDur(d time.Duration) string {
@@ -429,7 +433,7 @@ func (m *Model) footer() string {
 		"r", "refresh",
 		"a", "agent",
 		"6", "agents",
-		"0-5", "filter",
+		"0-8", "filter",
 		"/", "find",
 		"?", "help",
 		"q", "quit",
@@ -460,7 +464,7 @@ func (m *Model) helpView() string {
 		line("g G", "top / bottom"),
 		line("enter o", "open"),
 		line("y  Y", "copy ref / URL"),
-		line("0-5", "All Review Mine Issues CI Inbox"),
+		line("0-8", "All Review Mine Issues CI Inbox Ready Queue"),
 		line("/", "find (esc clears)"),
 		line("r", "refresh now"),
 		line("a", "agent actions for row"),
@@ -470,6 +474,8 @@ func (m *Model) helpView() string {
 	right := []string{
 		h.Render("Glyphs"),
 		g("◆", cYellow, "waiting on you"),
+		g("◆", cGreen, "your PR ready for maintainer review"),
+		g("◆", cCyan, "queued for agent review"),
 		g("●", cTeal, "agent active on repo"),
 		g("◆", cRed, "agent dispatch failed"),
 		g("◆", cOrange, "agent blocked (needs input)"),
@@ -552,14 +558,40 @@ func (m *Model) agentsView() string {
 	fg := lipgloss.NewStyle().Foreground(cFg)
 	comment := lipgloss.NewStyle().Foreground(cComment)
 
+	list := m.visibleAgents()
+	hidden := len(m.agents) - len(list)
+	sub := "dispatched, live, and recent sessions"
+	if m.agentsAll {
+		sub = "all opencode sessions in ghws workspaces"
+	}
 	lines := []string{
-		title.Render(" agent sessions ") + comment.Render("opencode sessions in ghws workspaces"),
+		title.Render(" agent sessions ") + comment.Render(sub),
 		"",
 	}
-	if len(m.agents) == 0 {
+	if len(list) == 0 {
 		lines = append(lines, comment.Render("no agent sessions"))
 	}
-	for i, s := range m.agents {
+	// viewport: border(2) + padding(2) + header(2) + footer(2) + scroll hints(2)
+	maxRows := m.height - 10
+	if maxRows < 3 {
+		maxRows = 3
+	}
+	start, end := 0, len(list)
+	if len(list) > maxRows {
+		start = m.agentsSel - maxRows/2
+		if start < 0 {
+			start = 0
+		}
+		if start > len(list)-maxRows {
+			start = len(list) - maxRows
+		}
+		end = start + maxRows
+	}
+	if start > 0 {
+		lines = append(lines, comment.Render(fmt.Sprintf("  ↑ %d more", start)))
+	}
+	for i := start; i < end; i++ {
+		s := list[i]
 		glyph, color := "○", cDim
 		task := s.Task
 		switch {
@@ -597,7 +629,16 @@ func (m *Model) agentsView() string {
 		lines = append(lines, marker+g+" "+comment.Render(padPlain(string(task), 9, false))+" "+fg.Render(name)+
 			comment.Render("  ·  "+info))
 	}
-	lines = append(lines, "", comment.Render("enter watch · y copy id · r refresh · esc close"))
+	if end < len(list) {
+		lines = append(lines, comment.Render(fmt.Sprintf("  ↓ %d more", len(list)-end)))
+	}
+	toggle := "a show all"
+	if m.agentsAll {
+		toggle = "a hide stale"
+	} else if hidden > 0 {
+		toggle = fmt.Sprintf("a show %d stale", hidden)
+	}
+	lines = append(lines, "", comment.Render("enter watch · y copy id · r refresh · "+toggle+" · esc close"))
 
 	box := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).

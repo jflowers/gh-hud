@@ -148,6 +148,14 @@ func FetchAll(ctx context.Context, c *gh.Client, cfg *config.Config) *FetchResul
 	if cfg.MyPRsEverywhere && len(cfg.Orgs) > 0 { // with no orgs, my-prs already is everywhere
 		prSection("my-prs-everywhere", "author:@me", CatMy)
 	}
+	// Review-queue sweep: recently updated PRs by others in my orgs —
+	// candidates for agent review. Requires orgs; without them the sweep
+	// would cover all of GitHub. The search date is day-granular, so
+	// ReviewQueueReady re-checks the window against UpdatedAt exactly.
+	if len(cfg.Orgs) > 0 {
+		cutoff := start.Add(-time.Duration(cfg.QueueWindowHours) * time.Hour)
+		prSection("queue-sweep", orgs+"-author:@me updated:>"+cutoff.Format("2006-01-02"), 0)
+	}
 	issueSection("assigned-issues", orgs+"assignee:@me")
 	issueSection("mentioned-issues", orgs+"mentions:@me")
 
@@ -210,8 +218,23 @@ func FetchAll(ctx context.Context, c *gh.Client, cfg *config.Config) *FetchResul
 		}
 	}
 
+	markReady(items, me, time.Duration(cfg.QueueWindowHours)*time.Hour, bots)
+
 	SortItems(items)
 	res.Items = items
 	res.Took = time.Since(start)
 	return res
+}
+
+// markReady sets the derived section bits: CatReady for my PRs waiting only
+// on a human maintainer, CatQueue for others' PRs ready for an agent review.
+func markReady(items []Item, me string, window time.Duration, bots *BotFilter) {
+	for i := range items {
+		if items[i].MyMaintainerReady() {
+			items[i].Cats |= CatReady
+		}
+		if items[i].ReviewQueueReady(me, window, bots) {
+			items[i].Cats |= CatQueue
+		}
+	}
 }

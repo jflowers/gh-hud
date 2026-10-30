@@ -4,7 +4,9 @@ package ui
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -75,7 +77,12 @@ type Model struct {
 	agentsMode bool
 	agents     []dispatch.Session
 	agentsSel  int
+	agentsAll  bool // show stale sessions too (default: only relevant ones)
 	lastAgents time.Time
+
+	// readySeen dedupes maintainer-ready notifications: keyed by ref,
+	// rebuilt each fetch; the first fetch only seeds it.
+	readySeen map[string]bool
 
 	statusMsg string
 	statusAt  time.Time
@@ -149,6 +156,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.fetchErr = ""
 			m.restoreCursor()
 		}
+		m.notifyReady(msg.res)
 		if m.disp != nil && msg.res.User != "" {
 			return m, tea.Batch(autoCmd(m, msg.res.Items), m.fetchAgents())
 		}
@@ -157,8 +165,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case agentsMsg:
 		if msg.err == nil {
 			m.agents = msg.sessions
-			if m.agentsSel >= len(m.agents) {
-				m.agentsSel = len(m.agents) - 1
+			if n := len(m.visibleAgents()); m.agentsSel >= n {
+				m.agentsSel = n - 1
 			}
 			if m.agentsSel < 0 {
 				m.agentsSel = 0
@@ -295,6 +303,10 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.setFilter(model.CatCI)
 	case "5":
 		m.setFilter(model.CatNT)
+	case "7":
+		m.setFilter(model.CatReady)
+	case "8":
+		m.setFilter(model.CatQueue)
 	case "0":
 		m.setFilter(0)
 	case "/":
@@ -590,23 +602,53 @@ func (m *Model) handleActionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// agentRecentWindow is how long an idle, undispatched session stays in the
+// agents panel before it is hidden as stale.
+const agentRecentWindow = 24 * time.Hour
+
+// visibleAgents is the agents panel list: by default only sessions gh-hud
+// dispatched, live/blocked/failed ones, and anything touched recently.
+func (m *Model) visibleAgents() []dispatch.Session {
+	if m.agentsAll {
+		return m.agents
+	}
+	cutoff := time.Now().Add(-agentRecentWindow)
+	var out []dispatch.Session
+	for _, s := range m.agents {
+		if s.Task != "" || s.Running || s.Blocked || s.Failed || s.UpdatedAt.After(cutoff) {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
 func (m *Model) handleAgentsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	list := m.visibleAgents()
 	switch msg.String() {
 	case "esc", "q", "6":
 		m.agentsMode = false
 	case "ctrl+c":
 		return m, tea.Quit
+	case "a":
+		m.agentsAll = !m.agentsAll
+		m.agentsSel = 0
 	case "j", "down":
-		if m.agentsSel < len(m.agents)-1 {
+		if m.agentsSel < len(list)-1 {
 			m.agentsSel++
 		}
 	case "k", "up":
 		if m.agentsSel > 0 {
 			m.agentsSel--
 		}
+	case "g", "home":
+		m.agentsSel = 0
+	case "G", "end":
+		if len(list) > 0 {
+			m.agentsSel = len(list) - 1
+		}
 	case "y":
-		if m.agentsSel < len(m.agents) {
-			id := m.agents[m.agentsSel].ID
+		if m.agentsSel < len(list) {
+			id := list[m.agentsSel].ID
 			if err := clipboard.Copy(id); err != nil {
 				m.flash("copy failed: " + err.Error())
 			} else {
@@ -614,8 +656,8 @@ func (m *Model) handleAgentsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case "enter", "o":
-		if m.agentsSel < len(m.agents) {
-			s := m.agents[m.agentsSel]
+		if m.agentsSel < len(list) {
+			s := list[m.agentsSel]
 			if err := m.disp.Watch(s); err != nil {
 				m.flash("watch failed: " + err.Error())
 			} else {
@@ -674,9 +716,47 @@ func (m *Model) dispatchCmd(c actionChoice) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
-		rec, err := d.Dispatch(ctx, c.task, it, co)
+		rec, err := d.Dispatch(ctx, c.task, it, co, false)
 		return dispatchDoneMsg{task: string(c.task), ref: it.Ref(), ws: co.Workspace, runner: rec.Runner, err: err}
 	}
+}
+
+// notifyReady sends a macOS desktop notification for each of my PRs that
+// just became ready for a human maintainer review. The first fetch after
+// startup only seeds the seen-set so pre-existing ready PRs stay quiet.
+func (m *Model) notifyReady(res *model.FetchResult) {
+	if !m.cfg.Notify || res.User == "" {
+		return
+	}
+	ready := map[string]bool{}
+	for _, it := range res.Items {
+		if it.Cats&model.CatReady != 0 {
+			if ref := it.Ref(); ref != "" {
+				ready[ref] = true
+			}
+		}
+	}
+	if m.readySeen == nil {
+		m.readySeen = ready
+		return
+	}
+	for ref := range ready {
+		if !m.readySeen[ref] {
+			desktopNotify(fmt.Sprintf("%s ready for maintainer review", ref))
+		}
+	}
+	m.readySeen = ready
+}
+
+// desktopNotify posts a macOS notification via osascript, fire-and-forget.
+func desktopNotify(text string) {
+	script := fmt.Sprintf("display notification %q with title \"gh-hud\"", text)
+	cmd := exec.Command("osascript", "-e", script)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if err := cmd.Start(); err != nil {
+		return
+	}
+	go func() { _ = cmd.Wait() }()
 }
 
 // agentMarks maps repo → agent state for the per-row attention markers.

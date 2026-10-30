@@ -27,10 +27,11 @@ func TestInferTasks(t *testing.T) {
 		{"threads on my pr", model.Item{Kind: model.KindPR, Cats: model.CatMy, Thread: 2}, []Task{TaskFeedback}},
 		{"clean my pr", model.Item{Kind: model.KindPR, Cats: model.CatMy, Review: "✅"}, nil},
 		{"changes on someone elses pr", model.Item{Kind: model.KindPR, Review: "❌"}, nil},
-		{"review requested", model.Item{Kind: model.KindPR, Cats: model.CatRQ}, []Task{TaskReview}},
+		{"review requested alone no longer queues", model.Item{Kind: model.KindPR, Cats: model.CatRQ}, nil},
+		{"queued review", model.Item{Kind: model.KindPR, Cats: model.CatRQ | model.CatQueue}, []Task{TaskReview}},
 		{"issue", model.Item{Kind: model.KindIssue}, []Task{TaskIssue}},
 		{"run has no tasks", model.Item{Kind: model.KindRun, CI: model.CIFail}, nil},
-		{"combined pr", model.Item{Kind: model.KindPR, Merge: "⚠️", CI: model.CIFail, Cats: model.CatMy | model.CatRQ, Review: "❌", Thread: 1}, []Task{TaskRebase, TaskCI, TaskFeedback, TaskReview}},
+		{"combined pr", model.Item{Kind: model.KindPR, Merge: "⚠️", CI: model.CIFail, Cats: model.CatMy | model.CatRQ, Review: "❌", Thread: 1}, []Task{TaskRebase, TaskCI, TaskFeedback}},
 	}
 	for _, tc := range cases {
 		got := InferTasks(tc.it)

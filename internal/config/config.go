@@ -29,6 +29,13 @@ type Config struct {
 	// FetchTimeoutSecs bounds each individual API call.
 	FetchTimeoutSecs int `toml:"fetch_timeout_secs"`
 
+	// Notify sends a macOS desktop notification when one of my PRs becomes
+	// ready for a human maintainer review.
+	Notify bool `toml:"notify"`
+	// QueueWindowHours bounds how old a PR may be and still enter the
+	// review queue sweep (others' recently updated PRs).
+	QueueWindowHours int `toml:"queue_window_hours"`
+
 	// Agent dispatch launches autonomous opencode/uf sessions from the
 	// dashboard against ghws checkouts.
 	GhwsRoot       string `toml:"ghws_root"`
@@ -61,6 +68,8 @@ func Default() *Config {
 		URLClick:         "cmd+right",
 		RefClick:         "shift+click",
 		FetchTimeoutSecs: 45,
+		Notify:           true,
+		QueueWindowHours: 48,
 		GhwsRoot:         ghws.DefaultRoot(),
 		Agent:            "build",
 		MaxConcurrent:    2,
@@ -125,6 +134,9 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.FetchTimeoutSecs < 5 {
 		cfg.FetchTimeoutSecs = 5
+	}
+	if cfg.QueueWindowHours < 1 {
+		cfg.QueueWindowHours = 48
 	}
 	if len(cfg.KnownBots) == 0 {
 		cfg.KnownBots = Default().KnownBots

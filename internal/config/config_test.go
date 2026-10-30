@@ -35,6 +35,12 @@ func TestDefaults(t *testing.T) {
 	if !strings.Contains(c.HerdrWatchCmd, "herdr") {
 		t.Errorf("HerdrWatchCmd: got %q want a herdr attach command", c.HerdrWatchCmd)
 	}
+	if !c.Notify {
+		t.Error("Notify: got false want true by default")
+	}
+	if c.QueueWindowHours != 48 {
+		t.Errorf("QueueWindowHours: got %d want 48", c.QueueWindowHours)
+	}
 	want := map[string]string{
 		"rebase":   "/uf.rebase-pr {num}",
 		"feedback": "/uf.address-feedback {num}",
@@ -69,6 +75,8 @@ max_concurrent = 0
 busy_window_secs = 10
 dirty = "bogus"
 runner = "bogus"
+queue_window_hours = 0
+notify = false
 
 [dispatch.review]
 command = "/my-review {num}"
@@ -95,6 +103,12 @@ auto = true
 	}
 	if c.Runner != "herdr" {
 		t.Errorf("Runner: got %q want herdr (invalid clamped)", c.Runner)
+	}
+	if c.QueueWindowHours != 48 {
+		t.Errorf("QueueWindowHours: got %d want 48 (clamped)", c.QueueWindowHours)
+	}
+	if c.Notify {
+		t.Error("Notify: got true want false (explicit value kept)")
 	}
 	if c.Dispatch["review"].Command != "/my-review {num}" || !c.Dispatch["review"].Auto {
 		t.Errorf("Dispatch[review]: got %+v want explicit override kept", c.Dispatch["review"])
