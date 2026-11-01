@@ -3,6 +3,7 @@ package dispatch
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -10,6 +11,9 @@ import (
 )
 
 // Fixtures below are captured from real herdr 0.9.5 CLI output.
+
+// testLocalMachine is the hub machine for package-level calls in tests.
+var testLocalMachine = Machine{Name: "local", Max: 2, Enabled: true, Local: true}
 
 func TestHerdrParseWorkspaceList(t *testing.T) {
 	raw, err := herdrOutput(`{"id":"cli:workspace:list","result":{"type":"workspace_list","workspaces":[{"active_tab_id":"w5:t1","agent_status":"unknown","focused":true,"label":"~","number":1,"pane_count":1,"tab_count":1,"workspace_id":"w5"},{"active_tab_id":"w9:t1","agent_status":"working","focused":false,"label":"fullsend-ai@cats","number":2,"pane_count":3,"tab_count":2,"workspace_id":"w9"}]}}`)
@@ -182,10 +186,72 @@ func TestHerdrAgentStartArgv(t *testing.T) {
 	}
 }
 
+func TestHerdrArgvMachine(t *testing.T) {
+	// Local calls run unchanged; remote calls are prefixed with the
+	// machine selector. herdrArgv is the single --machine choke point.
+	if got := herdrArgv(testLocalMachine, []string{"agent", "list"}); strings.Join(got, " ") != "agent list" {
+		t.Errorf("local argv = %v, want unchanged", got)
+	}
+	lap := Machine{Name: "lap1", SSH: "lap1", Max: 2, Enabled: true}
+	got := herdrArgv(lap, []string{"agent", "list"})
+	if want := "--machine lap1 agent list"; strings.Join(got, " ") != want {
+		t.Errorf("remote argv = %v, want %q", got, want)
+	}
+}
+
 func TestHerdrAgentsContextCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, _, err := herdrAgents(ctx); err == nil {
+	if _, _, err := herdrAgents(ctx, testLocalMachine); err == nil {
 		t.Skip("herdr server running locally; skipped")
+	}
+}
+
+func TestStateRoundtripMachine(t *testing.T) {
+	dir := t.TempDir()
+	d1, err := New(Options{Root: "/tmp/ghws", StateDir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d1.records = append(d1.records, Record{
+		Task: TaskReview, Ref: "acme/r#30", Repo: "acme/r", Num: 30,
+		Dir: "/home/me/Projects/github/acme@dev/r", Workspace: "acme@dev", Machine: "lap1",
+		Title: "gh-hud ▸ review acme/r#30", StartedAt: time.Now().UTC(),
+		Runner: "herdr", WSID: "w2", PaneID: "w2:p1", AgentName: "gh-review-30",
+	})
+	d1.mu.Lock()
+	d1.saveStateLocked()
+	d1.mu.Unlock()
+
+	d2, err := New(Options{Root: "/tmp/ghws", StateDir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(d2.records) != 1 {
+		t.Fatalf("records = %d, want 1", len(d2.records))
+	}
+	got := d2.records[0]
+	if got.Machine != "lap1" {
+		t.Errorf("roundtripped Machine = %q, want lap1", got.Machine)
+	}
+}
+
+func TestStateLoadsLegacyJSON(t *testing.T) {
+	// state.json written before the Machine field existed must load with
+	// Machine = "" (local hub).
+	dir := t.TempDir()
+	legacy := `[{"Task":"ci","Ref":"acme/r#9","Repo":"acme/r","Num":9,"Dir":"/tmp/w","Workspace":"acme","PID":4242,"Log":"/tmp/l.log","Title":"gh-hud ▸ ci acme/r#9","StartedAt":"2026-01-02T15:04:05Z","ExitCode":null}]`
+	if err := os.WriteFile(filepath.Join(dir, "state.json"), []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	d, err := New(Options{Root: "/tmp/ghws", StateDir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(d.records) != 1 {
+		t.Fatalf("records = %d, want 1", len(d.records))
+	}
+	if d.records[0].Machine != "" || d.records[0].PID != 4242 {
+		t.Errorf("legacy record = %+v, want Machine %q PID 4242", d.records[0], "")
 	}
 }

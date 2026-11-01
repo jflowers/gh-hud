@@ -94,14 +94,31 @@ run in that tab's pane. If the server can't be reached, dispatch falls
 back to a detached local `opencode run --command …` with the configured
 agent. Set `runner = "local"` to skip herdr entirely.
 
-`6` lists agent sessions across workspaces — by default only ones gh-hud
-dispatched, live/blocked/failed ones, and anything touched in the last 24h
-(`a` toggles the stale rest; the list scrolls to fit the terminal): `enter` watches one (herdr
+Dispatch only targets ghws `@` instance workspaces (never the base
+human-owned clones); set `dispatch_instances_only = false` to also allow
+base workspaces. With `[[machines]]` configured, placement spreads across
+the hub and the workers: a machine qualifies when it is enabled and
+reachable (`herdr machine status`), allows the task (per-machine `tasks`
+allowlist), has a free slot (`max_concurrent`), and has a matching idle
+checkout under its `ghws_root`. Machines are ranked by free-slot fraction
+(ties: local first, then config order) and busy or unreachable candidates
+are skipped in favor of the next one. A PR/issue is never live on two
+machines at once. Workers are herdr-managed machines saved with
+`herdr machine add` and reached over ssh (key auth); gh-hud never starts a
+remote herdr server itself.
+
+`6` lists agent sessions across workspaces and machines — by default only
+ones gh-hud dispatched, live/blocked/failed ones, and anything touched in
+the last 24h (`a` toggles the stale rest; the list scrolls to fit the
+terminal): `enter` watches one (herdr
 sessions focus the workspace and attach the herdr TUI in a Ghostty window
-via `herdr_watch_cmd`; local ones tail the session log via
+via `herdr_watch_cmd`; remote ones attach with `herdr --machine <label>`;
+local runner sessions tail the session log via
 `agent_watch_cmd`), `y` copies the session id. Live agent state shows in
 the attention slot: `●` teal = running, `◆` orange = blocked on a
-question or approval, `◆` red = dispatch failed. Tasks with `auto = true`
+question or approval, `◆` red = dispatch failed. The header shows
+per-machine slot usage (`local 1/2 · lap1 0/2 · lap2 —`, `—` =
+unreachable or disabled). Tasks with `auto = true`
 dispatch themselves on refresh without a keypress; the review queue
 (`8`) drains itself this way up to `max_concurrent` agents.
 
@@ -127,11 +144,26 @@ queue_window_hours = 48    # review queue sweep: others' PRs updated within this
 ghws_root = "~/Projects/github"  # ghws workspace root ($GHWS_ROOT default)
 agent = "build"            # opencode agent for headless dispatch
 runner = "herdr"           # dispatch runner: herdr (default) | local
-max_concurrent = 2         # max simultaneously dispatched agents
+max_concurrent = 2         # max simultaneously dispatched agents (hub)
 busy_window_secs = 900     # foreign session newer than this blocks dispatch
 dirty = "refuse"           # dirty checkout policy: refuse | stash | stash-tracked
+dispatch_instances_only = true  # only @ instance workspaces are targets
 agent_watch_cmd = "/Applications/Ghostty.app/Contents/MacOS/ghostty -e tail -n 200 -f {log}"
-herdr_watch_cmd = "/Applications/Ghostty.app/Contents/MacOS/ghostty -e herdr"  # {workspace} {pane}
+herdr_watch_cmd = "/Applications/Ghostty.app/Contents/MacOS/ghostty -e herdr"  # {workspace} {pane} {machine}
+
+# remote dispatch workers (herdr machine labels; ssh defaults to the name,
+# key auth required). tasks is an optional allowlist; enabled defaults true.
+[[machines]]
+name = "lap1"
+max_concurrent = 2         # ghws_root defaults to ~/Projects/github
+
+[[machines]]
+name = "lap2"
+max_concurrent = 2
+# ssh = "jflowers@lap2.example"     # ssh target when it differs from name
+# ghws_root = "~/Projects/github"   # remote ghws root
+# tasks = ["review", "ci"]          # task allowlist (empty = all tasks)
+# enabled = true
 
 # dispatchable tasks: command is a slash-command template ({num} = PR/issue
 # number). Tasks: rebase, feedback, review, ci, issue.

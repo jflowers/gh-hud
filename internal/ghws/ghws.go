@@ -35,15 +35,52 @@ type Checkout struct {
 	Instance  bool   // true for org@label instances
 }
 
-// wsMeta is the subset of .ghws.toml gh-hud cares about. Instances carry
+// Meta is the dispatch-relevant subset of .ghws.toml. Instances carry
 // org/label/target/branch; canonical org workspaces carry stree and setup
 // tables that we ignore.
-type wsMeta struct {
+type Meta struct {
+	Org     string
+	Label   string
+	Target  string
+	Branch  string
+	Enabled bool
+}
+
+type metaToml struct {
 	Org     string `toml:"org"`
 	Label   string `toml:"label"`
 	Target  string `toml:"target"`
 	Branch  string `toml:"branch"`
 	Enabled *bool  `toml:"enabled"`
+}
+
+// ParseMeta decodes a workspace's .ghws.toml into its Meta.
+func ParseMeta(data []byte) (Meta, error) {
+	var raw metaToml
+	if err := toml.Unmarshal(data, &raw); err != nil {
+		return Meta{}, err
+	}
+	return Meta{
+		Org:     raw.Org,
+		Label:   raw.Label,
+		Target:  raw.Target,
+		Branch:  raw.Branch,
+		Enabled: raw.Enabled == nil || *raw.Enabled,
+	}, nil
+}
+
+// Owner derives the repo owner prefix for a workspace directory name and
+// its meta: the manifest org, the name before "@" when the org is unset,
+// or the whole name.
+func Owner(name string, m Meta) string {
+	owner := m.Org
+	if owner == "" {
+		owner, _, _ = strings.Cut(name, "@")
+	}
+	if owner == "" {
+		owner = name
+	}
+	return owner
 }
 
 // Index maps repositories to their ghws checkouts.
@@ -118,7 +155,7 @@ func Discover(root string) (*Index, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ghws root: %w", err)
 	}
-	ix := &Index{byRepo: map[string][]Checkout{}, byDir: map[string]string{}}
+	var cos []Checkout
 	for _, e := range entries {
 		name := e.Name()
 		if strings.HasPrefix(name, ".") {
@@ -128,20 +165,18 @@ func Discover(root string) (*Index, error) {
 		if !isDir(wsDir) {
 			continue
 		}
-		var meta wsMeta
-		if _, err := toml.DecodeFile(filepath.Join(wsDir, ".ghws.toml"), &meta); err != nil {
+		data, err := os.ReadFile(filepath.Join(wsDir, ".ghws.toml"))
+		if err != nil {
 			continue // not a ghws workspace
 		}
-		if meta.Enabled != nil && !*meta.Enabled {
+		meta, err := ParseMeta(data)
+		if err != nil {
+			continue // malformed manifest
+		}
+		if !meta.Enabled {
 			continue
 		}
-		owner := meta.Org
-		if owner == "" {
-			owner, _, _ = strings.Cut(name, "@")
-		}
-		if owner == "" {
-			owner = name
-		}
+		owner := Owner(name, meta)
 		instance := strings.Contains(name, "@")
 		repos, err := os.ReadDir(wsDir)
 		if err != nil {
@@ -156,19 +191,27 @@ func Discover(root string) (*Index, error) {
 			if !isDir(dir) || !exists(filepath.Join(dir, ".git")) {
 				continue
 			}
-			co := Checkout{
+			cos = append(cos, Checkout{
 				Workspace: name,
 				Repo:      owner + "/" + sub,
 				Dir:       dir,
 				Branch:    meta.Branch,
 				Instance:  instance,
-			}
-			ix.checkouts = append(ix.checkouts, co)
-			ix.byRepo[co.Repo] = append(ix.byRepo[co.Repo], co)
-			ix.byDir[co.Dir] = co.Repo
+			})
 		}
 	}
-	return ix, nil
+	return NewIndex(cos), nil
+}
+
+// NewIndex assembles an Index over checkouts. Resolve re-ranks per repo,
+// so input order only matters as a tiebreak; byDir maps exact dirs.
+func NewIndex(cos []Checkout) *Index {
+	ix := &Index{checkouts: cos, byRepo: map[string][]Checkout{}, byDir: map[string]string{}}
+	for _, co := range cos {
+		ix.byRepo[co.Repo] = append(ix.byRepo[co.Repo], co)
+		ix.byDir[co.Dir] = co.Repo
+	}
+	return ix
 }
 
 func isDir(path string) bool {

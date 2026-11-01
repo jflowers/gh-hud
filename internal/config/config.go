@@ -36,6 +36,15 @@ type Config struct {
 	// review queue sweep (others' recently updated PRs).
 	QueueWindowHours int `toml:"queue_window_hours"`
 
+	// DispatchInstancesOnly restricts dispatch (auto and manual, on every
+	// machine) to ghws @ instance workspaces; base workspaces stay
+	// human-only.
+	DispatchInstancesOnly bool `toml:"dispatch_instances_only"`
+	// Machines are remote dispatch workers: herdr-managed machines saved
+	// with `herdr machine add`, reached over ssh. Empty keeps the historic
+	// hub-only behavior.
+	Machines []Machine `toml:"machines"`
+
 	// Agent dispatch launches autonomous opencode/uf sessions from the
 	// dashboard against ghws checkouts.
 	GhwsRoot       string `toml:"ghws_root"`
@@ -70,15 +79,19 @@ func Default() *Config {
 		FetchTimeoutSecs: 45,
 		Notify:           true,
 		QueueWindowHours: 48,
-		GhwsRoot:         ghws.DefaultRoot(),
-		Agent:            "build",
-		MaxConcurrent:    2,
-		BusyWindowSecs:   900,
-		Dirty:            "refuse",
-		AgentWatchCmd:    defaultWatchCmd,
-		Runner:           "herdr",
-		HerdrWatchCmd:    defaultHerdrWatchCmd,
-		Dispatch:         DefaultDispatch(),
+
+		DispatchInstancesOnly: true,
+		Machines:              []Machine{},
+
+		GhwsRoot:       ghws.DefaultRoot(),
+		Agent:          "build",
+		MaxConcurrent:  2,
+		BusyWindowSecs: 900,
+		Dirty:          "refuse",
+		AgentWatchCmd:  defaultWatchCmd,
+		Runner:         "herdr",
+		HerdrWatchCmd:  defaultHerdrWatchCmd,
+		Dispatch:       DefaultDispatch(),
 	}
 }
 
@@ -86,6 +99,23 @@ func Default() *Config {
 type TaskConfig struct {
 	Command string `toml:"command"` // slash command template, {num} = PR/issue number
 	Auto    bool   `toml:"auto"`    // auto-dispatch on refresh without confirmation
+}
+
+// Machine is a remote dispatch worker: a herdr-managed machine (saved via
+// `herdr machine add`, same label) reached over ssh. The hub itself is the
+// implicit machine named "local" and cannot be configured.
+type Machine struct {
+	Name          string   `toml:"name"`           // herdr machine label; required, "local" reserved
+	SSH           string   `toml:"ssh"`            // ssh target; defaults to name
+	MaxConcurrent int      `toml:"max_concurrent"` // live gh-hud dispatches allowed; defaults to 2
+	GhwsRoot      string   `toml:"ghws_root"`      // remote ghws root; defaults to ~/Projects/github
+	Tasks         []string `toml:"tasks"`          // task allowlist; empty allows every task
+	Enabled       *bool    `toml:"enabled"`        // defaults to true
+}
+
+// IsEnabled reports whether the machine participates in dispatch.
+func (m Machine) IsEnabled() bool {
+	return m.Enabled == nil || *m.Enabled
 }
 
 // DefaultDispatch returns the built-in task → command map.
@@ -138,6 +168,21 @@ func Load(path string) (*Config, error) {
 	if cfg.QueueWindowHours < 1 {
 		cfg.QueueWindowHours = 48
 	}
+	if err := validateMachines(cfg.Machines); err != nil {
+		return nil, err
+	}
+	for i := range cfg.Machines {
+		mc := &cfg.Machines[i]
+		if mc.SSH == "" {
+			mc.SSH = mc.Name
+		}
+		if mc.MaxConcurrent < 1 {
+			mc.MaxConcurrent = 2
+		}
+		if mc.GhwsRoot == "" {
+			mc.GhwsRoot = "~/Projects/github"
+		}
+	}
 	if len(cfg.KnownBots) == 0 {
 		cfg.KnownBots = Default().KnownBots
 	}
@@ -183,6 +228,25 @@ func Load(path string) (*Config, error) {
 		}
 	}
 	return cfg, nil
+}
+
+// validateMachines checks [[machines]] entries before defaults are filled.
+func validateMachines(ms []Machine) error {
+	seen := map[string]bool{}
+	for i := range ms {
+		m := &ms[i]
+		if m.Name == "" {
+			return fmt.Errorf("machines[%d]: name is required", i)
+		}
+		if m.Name == "local" {
+			return fmt.Errorf("machines[%d]: name %q is reserved for the hub", i, m.Name)
+		}
+		if seen[m.Name] {
+			return fmt.Errorf("machines[%d]: duplicate name %q", i, m.Name)
+		}
+		seen[m.Name] = true
+	}
+	return nil
 }
 
 // Gestures are the modified clicks iTerm2 actually forwards to a

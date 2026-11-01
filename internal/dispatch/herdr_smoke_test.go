@@ -21,8 +21,8 @@ func TestHerdrSmoke(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 
-	if !herdrServerUp(ctx) {
-		if err := ensureHerdrServer(ctx); err != nil {
+	if !herdrServerUp(ctx, testLocalMachine) {
+		if err := ensureHerdrServer(ctx, testLocalMachine); err != nil {
 			t.Fatalf("herdr server: %v", err)
 		}
 	}
@@ -61,7 +61,7 @@ func TestHerdrSmoke(t *testing.T) {
 
 	co := ghws.Checkout{Workspace: "smoke-test@gh", Repo: "acme/widget", Dir: work, Branch: "main"}
 	it := model.Item{Kind: model.KindPR, Repo: "acme/widget", Num: 4242, HeadBranch: "main", UpdatedAt: time.Now().UTC()}
-	rec, err := d.Dispatch(ctx, TaskCI, it, co, false)
+	rec, err := d.DispatchIn(ctx, TaskCI, it, d.localMachine(), co, false)
 	if err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestHerdrSmoke(t *testing.T) {
 	// Wait for the first agent to finish before re-dispatching into the same dir.
 	deadline = time.Now().Add(90 * time.Second)
 	for time.Now().Before(deadline) {
-		agents, _, err := herdrAgents(ctx)
+		agents, _, err := herdrAgents(ctx, d.localMachine())
 		if err != nil {
 			t.Fatalf("herdrAgents: %v", err)
 		}
@@ -127,7 +127,7 @@ func TestHerdrSmoke(t *testing.T) {
 	// A second dispatch to the same workspace must reuse it, not duplicate it.
 	it2 := it
 	it2.Num = 4243
-	rec2, err := d.Dispatch(ctx, TaskCI, it2, co, false)
+	rec2, err := d.DispatchIn(ctx, TaskCI, it2, d.localMachine(), co, false)
 	if err != nil {
 		t.Fatalf("Dispatch #2: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestHerdrSmoke(t *testing.T) {
 	}
 
 	// gh-hud never closes herdr workspaces; clean up after ourselves.
-	if _, err := herdrRun(ctx, "workspace", "close", rec.WSID); err != nil {
+	if _, err := herdrRun(ctx, d.localMachine(), "workspace", "close", rec.WSID); err != nil {
 		t.Logf("cleanup workspace close: %v", err)
 	} else {
 		t.Logf("closed smoke workspace %s", rec.WSID)

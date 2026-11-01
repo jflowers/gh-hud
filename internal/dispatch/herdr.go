@@ -18,7 +18,8 @@ import (
 // herdr runner: dispatches agents into herdr-managed terminal workspaces so
 // they stay visible and attachable. Workspaces mirror ghws workspaces (stable,
 // reused, never closed by gh-hud); each dispatch opens one tab in the target
-// workspace whose root pane hosts the agent process.
+// workspace whose root pane hosts the agent process. Remote machines run
+// their own herdr server; every CLI call targets it with --machine <label>.
 
 var (
 	herdrOnce       sync.Once
@@ -118,11 +119,24 @@ func herdrErrorIn(s string) *herdrError {
 	return nil
 }
 
-// herdrRun invokes the herdr CLI and returns the parsed result payload.
-// herdr prints JSON error envelopes sometimes on stdout (exit 0) and
-// sometimes on stderr (non-zero exit); both are accepted.
-func herdrRun(ctx context.Context, args ...string) (json.RawMessage, error) {
-	cmd := exec.CommandContext(ctx, herdrBinary(), args...)
+// herdrArgv prepends the machine selector for remote machines; local
+// calls run unchanged. This is the single place --machine is injected.
+func herdrArgv(m Machine, args []string) []string {
+	if m.Local {
+		return args
+	}
+	out := make([]string, 0, len(args)+2)
+	out = append(out, "--machine", m.Name)
+	out = append(out, args...)
+	return out
+}
+
+// herdrRun invokes the herdr CLI against m's server and returns the parsed
+// result payload. herdr prints JSON error envelopes sometimes on stdout
+// (exit 0) and sometimes on stderr (non-zero exit); both are accepted.
+func herdrRun(ctx context.Context, m Machine, args ...string) (json.RawMessage, error) {
+	argv := herdrArgv(m, args)
+	cmd := exec.CommandContext(ctx, herdrBinary(), argv...)
 	var out, errb bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errb
@@ -147,17 +161,38 @@ func herdrRun(ctx context.Context, args ...string) (json.RawMessage, error) {
 	if detail == "" {
 		detail = "unparseable response"
 	}
-	return nil, fmt.Errorf("herdr %s: %s", strings.Join(args, " "), detail)
+	return nil, fmt.Errorf("herdr %s: %s", strings.Join(argv, " "), detail)
 }
 
-func herdrServerUp(ctx context.Context) bool {
-	_, err := herdrRun(ctx, "workspace", "list")
+func herdrServerUp(ctx context.Context, m Machine) bool {
+	_, err := herdrRun(ctx, m, "workspace", "list")
 	return err == nil
 }
 
-// ensureHerdrServer starts the herdr server if it is not already running.
-func ensureHerdrServer(ctx context.Context) error {
-	if herdrServerUp(ctx) {
+// herdrStatusServer probes m's herdr server via `status server` (plain
+// text; exit 0 with "running" only when the server answers).
+func herdrStatusServer(ctx context.Context, m Machine) error {
+	out, err := herdrRunText(ctx, m, "status", "server")
+	if err != nil {
+		return err
+	}
+	if !strings.Contains(out, "running") {
+		return fmt.Errorf("herdr server not running on %s", m.Name)
+	}
+	return nil
+}
+
+// ensureHerdrServer starts the local herdr server if it is not already
+// running. Remote servers are managed on their machines: gh-hud only
+// probes them and reports unreachable machines, never starts one.
+func ensureHerdrServer(ctx context.Context, m Machine) error {
+	if !m.Local {
+		if err := herdrStatusServer(ctx, m); err != nil {
+			return fmt.Errorf("%w: %v", errMachineUnreachable, err)
+		}
+		return nil
+	}
+	if herdrServerUp(ctx, m) {
 		return nil
 	}
 	cmd := exec.Command(herdrBinary(), "server")
@@ -173,7 +208,7 @@ func ensureHerdrServer(ctx context.Context) error {
 	go func() { _ = cmd.Wait() }()
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
-		if herdrServerUp(ctx) {
+		if herdrServerUp(ctx, m) {
 			return nil
 		}
 		time.Sleep(250 * time.Millisecond)
@@ -183,8 +218,8 @@ func ensureHerdrServer(ctx context.Context) error {
 
 // herdrWorkspaceFor returns the workspace id for a stable ghws-mirrored
 // workspace, creating it on first use. Workspaces are never closed.
-func herdrWorkspaceFor(ctx context.Context, name, dir string) (string, error) {
-	raw, err := herdrRun(ctx, "workspace", "list")
+func herdrWorkspaceFor(ctx context.Context, m Machine, name, dir string) (string, error) {
+	raw, err := herdrRun(ctx, m, "workspace", "list")
 	if err != nil {
 		return "", err
 	}
@@ -197,7 +232,7 @@ func herdrWorkspaceFor(ctx context.Context, name, dir string) (string, error) {
 			return ws.WorkspaceID, nil
 		}
 	}
-	raw, err = herdrRun(ctx, "workspace", "create", "--cwd", dir, "--label", name, "--no-focus")
+	raw, err = herdrRun(ctx, m, "workspace", "create", "--cwd", dir, "--label", name, "--no-focus")
 	if err != nil {
 		return "", err
 	}
@@ -212,8 +247,8 @@ func herdrWorkspaceFor(ctx context.Context, name, dir string) (string, error) {
 }
 
 // herdrNewTab opens one tab per dispatch; its root pane hosts the agent.
-func herdrNewTab(ctx context.Context, wsID, dir, label string) (string, error) {
-	raw, err := herdrRun(ctx, "tab", "create", "--workspace", wsID, "--cwd", dir, "--label", label, "--no-focus")
+func herdrNewTab(ctx context.Context, m Machine, wsID, dir, label string) (string, error) {
+	raw, err := herdrRun(ctx, m, "tab", "create", "--workspace", wsID, "--cwd", dir, "--label", label, "--no-focus")
 	if err != nil {
 		return "", err
 	}
@@ -230,24 +265,26 @@ func herdrNewTab(ctx context.Context, wsID, dir, label string) (string, error) {
 // herdrAgentStart launches a named agent in a pane. The command after "--"
 // is passed verbatim to the pane's shell; for opencode it is a headless
 // `run --agent <agent> --command ...` invocation.
-func herdrAgentStart(ctx context.Context, name, paneID, agent, title, command string, args []string) error {
+func herdrAgentStart(ctx context.Context, m Machine, name, paneID, agent, title, command string, args []string) error {
 	argv := append([]string{
 		"agent", "start", name, "--kind", "opencode", "--pane", paneID, "--timeout", "8000",
 		"--", "run", "--agent", agent, "--title", title, "--command", command,
 	}, args...)
-	_, err := herdrRun(ctx, argv...)
+	_, err := herdrRun(ctx, m, argv...)
 	return err
 }
 
 // herdrRunText invokes the herdr CLI expecting plain-text output (e.g.
-// `pane read`), which does not use the JSON envelope protocol.
-func herdrRunText(ctx context.Context, args ...string) (string, error) {
-	cmd := exec.CommandContext(ctx, herdrBinary(), args...)
+// `status server`, `pane read`), which does not use the JSON envelope
+// protocol.
+func herdrRunText(ctx context.Context, m Machine, args ...string) (string, error) {
+	argv := herdrArgv(m, args)
+	cmd := exec.CommandContext(ctx, herdrBinary(), argv...)
 	var out, errb bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errb
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("herdr %s: %s", strings.Join(args, " "), strings.TrimSpace(errb.String()))
+		return "", fmt.Errorf("herdr %s: %s", strings.Join(argv, " "), strings.TrimSpace(errb.String()))
 	}
 	return out.String(), nil
 }
@@ -257,15 +294,15 @@ func herdrRunText(ctx context.Context, args ...string) (string, error) {
 // shell-ready, so dispatch probes the shell before starting the agent.
 // The literal $RANDOM is typed into the pane and only the shell-evaluated
 // output can match the wait regex.
-func herdrPaneReady(ctx context.Context, paneID string) error {
-	_, _ = herdrRun(ctx, "pane", "run", paneID, "echo", "ghhud-$RANDOM-ready")
-	_, err := herdrRun(ctx, "pane", "wait-output", paneID, "--regex", "ghhud-[0-9]+-ready", "--timeout", "15000")
+func herdrPaneReady(ctx context.Context, m Machine, paneID string) error {
+	_, _ = herdrRun(ctx, m, "pane", "run", paneID, "echo", "ghhud-$RANDOM-ready")
+	_, err := herdrRun(ctx, m, "pane", "wait-output", paneID, "--regex", "ghhud-[0-9]+-ready", "--timeout", "15000")
 	return err
 }
 
 // herdrPaneText reads the tail of a pane's transcript (plain text).
-func herdrPaneText(ctx context.Context, paneID string, lines int) (string, error) {
-	return herdrRunText(ctx, "pane", "read", paneID, "--lines", strconv.Itoa(lines))
+func herdrPaneText(ctx context.Context, m Machine, paneID string, lines int) (string, error) {
+	return herdrRunText(ctx, m, "pane", "read", paneID, "--lines", strconv.Itoa(lines))
 }
 
 // herdrAgentLaunched reports whether an agent is actually running (or at
@@ -273,25 +310,25 @@ func herdrPaneText(ctx context.Context, paneID string, lines int) (string, error
 // recover from herdr agent-start registration timeouts: herdr's name
 // registration races its process detection and can time out even though
 // the dispatched command runs fine.
-func herdrAgentLaunched(ctx context.Context, paneID string) bool {
-	if agents, _, err := herdrAgents(ctx); err == nil {
+func herdrAgentLaunched(ctx context.Context, m Machine, paneID string) bool {
+	if agents, _, err := herdrAgents(ctx, m); err == nil {
 		for _, a := range agents {
 			if a.PaneID == paneID {
 				return true
 			}
 		}
 	}
-	text, err := herdrPaneText(ctx, paneID, 100)
+	text, err := herdrPaneText(ctx, m, paneID, 100)
 	if err != nil {
 		return false
 	}
 	return strings.Contains(text, "opencode run")
 }
 
-// herdrAgents lists live agents plus a workspace-id → label map (labels are
-// best effort; an empty map is fine).
-func herdrAgents(ctx context.Context) ([]herdrAgent, map[string]string, error) {
-	raw, err := herdrRun(ctx, "agent", "list")
+// herdrAgents lists live agents on m's server plus a workspace-id → label
+// map (labels are best effort; an empty map is fine).
+func herdrAgents(ctx context.Context, m Machine) ([]herdrAgent, map[string]string, error) {
+	raw, err := herdrRun(ctx, m, "agent", "list")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -300,7 +337,7 @@ func herdrAgents(ctx context.Context) ([]herdrAgent, map[string]string, error) {
 		return nil, nil, err
 	}
 	labels := map[string]string{}
-	if raw, err := herdrRun(ctx, "workspace", "list"); err == nil {
+	if raw, err := herdrRun(ctx, m, "workspace", "list"); err == nil {
 		var wl herdrWorkspaceList
 		if json.Unmarshal(raw, &wl) == nil {
 			for _, ws := range wl.Workspaces {
@@ -323,6 +360,8 @@ func shortRepo(repo string) string {
 }
 
 // normPath canonicalizes a path for comparison (macOS /var vs /private/var).
+// Remote paths simply survive unchanged: EvalSymlinks fails locally and
+// the cleaned path is returned.
 func normPath(p string) string {
 	p = filepath.Clean(p)
 	if r, err := filepath.EvalSymlinks(p); err == nil {

@@ -157,7 +157,7 @@ func newTestDispatcher(t *testing.T, dirty string) *Dispatcher {
 func TestPreflightClean(t *testing.T) {
 	_, work := setupClone(t)
 	d := newTestDispatcher(t, "refuse")
-	stash, err := d.preflight(context.Background(), work, TaskRebase, "acme/r#1")
+	stash, err := d.preflight(context.Background(), d.localMachine(), work, TaskRebase, "acme/r#1")
 	if err != nil {
 		t.Fatalf("preflight: %v", err)
 	}
@@ -173,7 +173,7 @@ func TestPreflightOtherBranch(t *testing.T) {
 	_, work := setupClone(t)
 	gitRun(t, work, "checkout", "-b", "feat/x")
 	d := newTestDispatcher(t, "refuse")
-	if _, err := d.preflight(context.Background(), work, TaskFeedback, "acme/r#5"); err != nil {
+	if _, err := d.preflight(context.Background(), d.localMachine(), work, TaskFeedback, "acme/r#5"); err != nil {
 		t.Fatalf("preflight: %v", err)
 	}
 	if got := strings.TrimSpace(gitRun(t, work, "rev-parse", "--abbrev-ref", "HEAD")); got != "main" {
@@ -185,7 +185,7 @@ func TestPreflightDirtyRefuse(t *testing.T) {
 	_, work := setupClone(t)
 	writeFile(t, filepath.Join(work, "wip.txt"), "wip\n")
 	d := newTestDispatcher(t, "refuse")
-	_, err := d.preflight(context.Background(), work, TaskRebase, "acme/r#2")
+	_, err := d.preflight(context.Background(), d.localMachine(), work, TaskRebase, "acme/r#2")
 	if err == nil || !strings.Contains(err.Error(), "dirty checkout") {
 		t.Fatalf("want dirty refusal, got %v", err)
 	}
@@ -195,7 +195,7 @@ func TestPreflightStash(t *testing.T) {
 	_, work := setupClone(t)
 	writeFile(t, filepath.Join(work, "wip.txt"), "wip\n")
 	d := newTestDispatcher(t, "stash")
-	stash, err := d.preflight(context.Background(), work, TaskRebase, "acme/r#3")
+	stash, err := d.preflight(context.Background(), d.localMachine(), work, TaskRebase, "acme/r#3")
 	if err != nil {
 		t.Fatalf("preflight: %v", err)
 	}
@@ -214,7 +214,7 @@ func TestPreflightStashTracked(t *testing.T) {
 	_, work := setupClone(t)
 	writeFile(t, filepath.Join(work, "a.txt"), "modified\n")
 	d := newTestDispatcher(t, "stash-tracked")
-	stash, err := d.preflight(context.Background(), work, TaskCI, "acme/r#4")
+	stash, err := d.preflight(context.Background(), d.localMachine(), work, TaskCI, "acme/r#4")
 	if err != nil {
 		t.Fatalf("preflight: %v", err)
 	}
@@ -235,7 +235,7 @@ func TestPreflightDiverged(t *testing.T) {
 	gitRun(t, work, "add", ".")
 	gitRun(t, work, "commit", "-m", "loc2")
 	d := newTestDispatcher(t, "refuse")
-	_, err := d.preflight(context.Background(), work, TaskRebase, "acme/r#6")
+	_, err := d.preflight(context.Background(), d.localMachine(), work, TaskRebase, "acme/r#6")
 	if err == nil || !strings.Contains(err.Error(), "failed") {
 		t.Fatalf("want sync failure for diverged main, got %v", err)
 	}
@@ -248,7 +248,7 @@ func TestPreflightNoUpstream(t *testing.T) {
 	}
 	gitRun(t, solo, "init", "-b", "main")
 	d := newTestDispatcher(t, "refuse")
-	_, err := d.preflight(context.Background(), solo, TaskCI, "acme/r#7")
+	_, err := d.preflight(context.Background(), d.localMachine(), solo, TaskCI, "acme/r#7")
 	if err == nil || !strings.Contains(err.Error(), "no upstream remote") {
 		t.Fatalf("want no-upstream refusal, got %v", err)
 	}
@@ -290,9 +290,9 @@ func TestAutoDispatchSkips(t *testing.T) {
 	}
 	it := model.Item{Kind: model.KindPR, Merge: "⚠️", Repo: "acme/r", Num: 7, UpdatedAt: time.Now()}
 
-	// nil index: nothing happens.
-	if got := d.AutoDispatch(context.Background(), []model.Item{it}, nil); got != nil {
-		t.Errorf("nil index: got %v", got)
+	// No local index and no machines: nothing happens.
+	if got := d.AutoDispatch(context.Background(), []model.Item{it}); got != nil {
+		t.Errorf("no index: got %v", got)
 	}
 
 	// Empty (non-nil) index: no checkout to dispatch into.
@@ -300,26 +300,27 @@ func TestAutoDispatchSkips(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	d.opts.LocalIndex = ix
 
 	// Fingerprint match for the same item state: skipped, no dispatch attempted.
 	d.records = append(d.records, Record{
 		Task: TaskRebase, Ref: "acme/r#7", StartedAt: time.Now().Add(-time.Hour),
 		Fingerprint: fingerprint(TaskRebase, it),
 	})
-	if got := d.AutoDispatch(context.Background(), []model.Item{it}, ix); len(got) != 0 {
+	if got := d.AutoDispatch(context.Background(), []model.Item{it}); len(got) != 0 {
 		t.Errorf("fingerprint skip: got %v", got)
 	}
 
 	// Same task+ref started recently: skipped even with a stale fingerprint.
 	d.records = []Record{{Task: TaskRebase, Ref: "acme/r#7", StartedAt: time.Now(), Fingerprint: "stale"}}
-	if got := d.AutoDispatch(context.Background(), []model.Item{it}, ix); len(got) != 0 {
+	if got := d.AutoDispatch(context.Background(), []model.Item{it}); len(got) != 0 {
 		t.Errorf("recent-start skip: got %v", got)
 	}
 
 	// Task not marked auto: skipped.
 	d.records = nil
 	d.opts.Tasks["rebase"] = config.TaskConfig{Command: "/uf.rebase-pr {num}"}
-	if got := d.AutoDispatch(context.Background(), []model.Item{it}, ix); len(got) != 0 {
+	if got := d.AutoDispatch(context.Background(), []model.Item{it}); len(got) != 0 {
 		t.Errorf("non-auto skip: got %v", got)
 	}
 }

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -49,5 +50,37 @@ func TestAgentsViewFitsHeight(t *testing.T) {
 	}
 	if !strings.Contains(out, "↑") || !strings.Contains(out, "↓") {
 		t.Error("expected scroll hints above and below")
+	}
+}
+
+func TestAgentsViewMachineColumn(t *testing.T) {
+	m := &Model{width: 120, height: 30, agentsAll: true}
+	m.agents = []dispatch.Session{
+		{ID: "s1", Title: "local one", Machine: ""},
+		{ID: "s2", Title: "remote one", Machine: "lap1"},
+	}
+	out := m.agentsView()
+	if !strings.Contains(out, "local") {
+		t.Error("empty Machine should render as local")
+	}
+	if !strings.Contains(out, "lap1") {
+		t.Error("remote Machine should render its label")
+	}
+}
+
+var ansiRe = regexp.MustCompile("\x1b\\[[0-9;]*m")
+
+func TestMachineUsageText(t *testing.T) {
+	p := paint{}
+	usage := []dispatch.MachineUsage{
+		{Name: "local", Used: 1, Max: 2, OK: true},
+		{Name: "lap1", Used: 0, Max: 2, OK: true},
+		{Name: "lap2", Max: 2, OK: false},
+	}
+	out := machineUsageText(p, usage)
+	plain := ansiRe.ReplaceAllString(out, "")
+	want := "local 1/2 · lap1 0/2 · lap2 —"
+	if plain != want {
+		t.Errorf("usage text = %q, want %q", plain, want)
 	}
 }

@@ -26,24 +26,26 @@ type fetchedMsg struct {
 
 type agentsMsg struct {
 	sessions []dispatch.Session
+	usage    []dispatch.MachineUsage
 	err      error
 }
 
 type dispatchDoneMsg struct {
-	task   string
-	ref    string
-	ws     string
-	runner string
-	err    error
+	task    string
+	ref     string
+	ws      string
+	machine string
+	runner  string
+	err     error
 }
 
 type autoDoneMsg []string
 
 // actionChoice is one dispatchable task for the row under the cursor.
 type actionChoice struct {
-	task dispatch.Task
-	cmd  string
-	co   ghws.Checkout
+	task   dispatch.Task
+	cmd    string
+	target string // "workspace" locally, "machine:workspace" remotely
 }
 
 // Model is the bubbletea model for the dashboard.
@@ -79,6 +81,9 @@ type Model struct {
 	agentsSel  int
 	agentsAll  bool // show stale sessions too (default: only relevant ones)
 	lastAgents time.Time
+
+	// machineUsage is the per-machine slot line for the status area.
+	machineUsage []dispatch.MachineUsage
 
 	// readySeen dedupes maintainer-ready notifications: keyed by ref,
 	// rebuilt each fetch; the first fetch only seeds it.
@@ -165,6 +170,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case agentsMsg:
 		if msg.err == nil {
 			m.agents = msg.sessions
+			m.machineUsage = msg.usage
 			if n := len(m.visibleAgents()); m.agentsSel >= n {
 				m.agentsSel = n - 1
 			}
@@ -179,6 +185,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.flash(fmt.Sprintf("dispatch %s %s failed: %s", msg.task, msg.ref, msg.err))
 		} else {
 			flash := fmt.Sprintf("dispatched %s %s in %s", msg.task, msg.ref, msg.ws)
+			if msg.machine != "" {
+				flash += " on " + msg.machine
+			}
 			if msg.runner != "" {
 				flash += " via " + msg.runner
 			}
@@ -549,17 +558,19 @@ func (m *Model) copyRef(it model.Item) {
 	m.flash("copied " + ref)
 }
 
-// fetchAgents polls agent session status (nil cmd when dispatch is off).
+// fetchAgents polls agent session status and machine slot usage (nil cmd
+// when dispatch is off).
 func (m *Model) fetchAgents() tea.Cmd {
 	d := m.disp
 	if d == nil {
 		return nil
 	}
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		sessions, err := d.Sessions(ctx)
-		return agentsMsg{sessions: sessions, err: err}
+		usage := d.MachineUsage(ctx)
+		return agentsMsg{sessions: sessions, usage: usage, err: err}
 	}
 }
 
@@ -569,11 +580,10 @@ func autoCmd(m *Model, items []model.Item) tea.Cmd {
 	if d == nil {
 		return nil
 	}
-	ix := m.idx
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 		defer cancel()
-		return autoDoneMsg(d.AutoDispatch(ctx, items, ix))
+		return autoDoneMsg(d.AutoDispatch(ctx, items))
 	}
 }
 
@@ -672,7 +682,7 @@ func (m *Model) handleAgentsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // openAction builds the dispatch menu for the selected row.
 func (m *Model) openAction() {
-	if m.disp == nil || m.idx == nil {
+	if m.disp == nil {
 		m.flash("dispatch unavailable")
 		return
 	}
@@ -684,16 +694,8 @@ func (m *Model) openAction() {
 	m.actionItem = it
 	m.actions = nil
 	m.actionSel = 0
-	for _, task := range tasks {
-		cmd, ok := m.disp.Configured(task)
-		if !ok {
-			continue
-		}
-		cos := m.idx.Resolve(it.Repo, it.HeadBranch)
-		if len(cos) == 0 {
-			continue
-		}
-		m.actions = append(m.actions, actionChoice{task: task, cmd: cmd, co: cos[0]})
+	for _, choice := range m.disp.MenuChoices(it) {
+		m.actions = append(m.actions, actionChoice{task: choice.Task, cmd: choice.Cmd, target: choice.Target})
 		if len(m.actions) >= 8 {
 			break
 		}
@@ -702,7 +704,7 @@ func (m *Model) openAction() {
 		if len(tasks) == 0 {
 			m.flash("no agent actions for this row")
 		} else {
-			m.flash("no ghws checkout for " + it.Repo)
+			m.flash("no idle ghws checkout for " + it.Repo)
 		}
 		return
 	}
@@ -712,12 +714,11 @@ func (m *Model) openAction() {
 func (m *Model) dispatchCmd(c actionChoice) tea.Cmd {
 	d := m.disp
 	it := m.actionItem
-	co := c.co
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		defer cancel()
-		rec, err := d.Dispatch(ctx, c.task, it, co, false)
-		return dispatchDoneMsg{task: string(c.task), ref: it.Ref(), ws: co.Workspace, runner: rec.Runner, err: err}
+		rec, err := d.Dispatch(ctx, c.task, it, false)
+		return dispatchDoneMsg{task: string(c.task), ref: it.Ref(), ws: rec.Workspace, machine: rec.Machine, runner: rec.Runner, err: err}
 	}
 }
 

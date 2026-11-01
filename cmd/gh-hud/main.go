@@ -53,6 +53,18 @@ func main() {
 			wsDirs = append(wsDirs, co.Dir)
 		}
 	}
+	machines := make([]dispatch.Machine, 0, len(cfg.Machines))
+	for _, mc := range cfg.Machines {
+		machines = append(machines, dispatch.Machine{
+			Name:     mc.Name,
+			SSH:      mc.SSH,
+			Max:      mc.MaxConcurrent,
+			GhwsRoot: mc.GhwsRoot,
+			Tasks:    mc.Tasks,
+			Enabled:  mc.IsEnabled(),
+			Local:    false,
+		})
+	}
 	dispOpts := dispatch.Options{
 		Root:          cfg.GhwsRoot,
 		Agent:         cfg.Agent,
@@ -64,6 +76,9 @@ func main() {
 		Runner:        cfg.Runner,
 		HerdrWatchCmd: cfg.HerdrWatchCmd,
 		Dirs:          wsDirs,
+		Machines:      machines,
+		LocalIndex:    idx,
+		InstancesOnly: cfg.DispatchInstancesOnly,
 	}
 	disp, dispErr := dispatch.New(dispOpts)
 	if dispErr != nil {

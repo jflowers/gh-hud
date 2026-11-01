@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/jflowers/gh-hud/internal/config"
+	"github.com/jflowers/gh-hud/internal/dispatch"
 	"github.com/jflowers/gh-hud/internal/model"
 )
 
@@ -319,6 +320,20 @@ func shortDur(d time.Duration) string {
 	}
 }
 
+// machineUsageText renders the per-machine slot line:
+// "local 1/2 · lap1 0/2 · lap2 —" (— = unreachable or disabled).
+func machineUsageText(p paint, usage []dispatch.MachineUsage) string {
+	parts := make([]string, 0, len(usage))
+	for _, u := range usage {
+		if !u.OK {
+			parts = append(parts, p.text(cDim, u.Name+" —"))
+			continue
+		}
+		parts = append(parts, p.text(cDim, u.Name+" ")+p.text(cSubtle, fmt.Sprintf("%d/%d", u.Used, u.Max)))
+	}
+	return strings.Join(parts, p.text(cDim, " · "))
+}
+
 func (m *Model) headerBar() string {
 	p := paint{bg: cSurface}
 	sp := p.space(1)
@@ -369,6 +384,9 @@ func (m *Model) headerBar() string {
 	}
 	if m.res != nil && len(m.res.Errors) > 0 {
 		right = append(right, p.text(cRed, fmt.Sprintf("⚠ %d failed", len(m.res.Errors))))
+	}
+	if len(m.machineUsage) > 0 {
+		right = append(right, machineUsageText(p, m.machineUsage))
 	}
 	every := shortDur(time.Duration(m.cfg.RefreshSecs) * time.Second)
 	switch {
@@ -540,7 +558,7 @@ func (m *Model) actionView() string {
 			marker = sel.Render("▶ ")
 			task = sel.Render(string(a.task))
 		}
-		lines = append(lines, marker+task+comment.Render(" "+a.cmd+"  ·  "+a.co.Workspace))
+		lines = append(lines, marker+task+comment.Render(" "+a.cmd+"  ·  "+a.target))
 	}
 	lines = append(lines, "", comment.Render("enter dispatch · j/k move · esc cancel"))
 
@@ -615,13 +633,17 @@ func (m *Model) agentsView() string {
 		if ws == "" {
 			ws = "—"
 		}
+		mach := s.Machine
+		if mach == "" {
+			mach = "local"
+		}
 		age := model.RelativeTime(s.UpdatedAt, time.Now())
 		marker := "  "
 		if i == m.agentsSel {
 			marker = sel.Render("▶ ")
 		}
 		g := lipgloss.NewStyle().Foreground(color).Render(glyph)
-		info := ws
+		info := mach + " · " + ws
 		if s.State != "" {
 			info += "  ·  " + s.State
 		}
