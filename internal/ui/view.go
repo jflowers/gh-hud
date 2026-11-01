@@ -9,6 +9,7 @@ import (
 
 	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/dispatch"
+	"github.com/jflowers/gh-hud/internal/fleet"
 	"github.com/jflowers/gh-hud/internal/model"
 )
 
@@ -334,6 +335,30 @@ func machineUsageText(p paint, usage []dispatch.MachineUsage) string {
 	return strings.Join(parts, p.text(cDim, " · "))
 }
 
+// fleetIndicatorText is the compact header chip: shown only while a rollout
+// is active or a machine has failed.
+func fleetIndicatorText(p paint, snap fleet.Snapshot) string {
+	if !snap.Active && snap.Failed == "" {
+		return ""
+	}
+	done := 0
+	for _, ms := range snap.Machines {
+		if ms.State == fleet.StateCurrent {
+			done++
+		}
+	}
+	switch {
+	case snap.Failed != "":
+		return p.text(cRed, "fleet ✗ "+snap.Failed)
+	case snap.Paused:
+		return p.text(cYellow, "fleet ⏸ "+snap.TargetShort)
+	case snap.Blocked:
+		return p.text(cOrange, "fleet ⊘ "+snap.TargetShort)
+	default:
+		return p.text(cTeal, fmt.Sprintf("fleet ● %s %d/%d", snap.TargetShort, done, len(snap.Machines)))
+	}
+}
+
 func (m *Model) headerBar() string {
 	p := paint{bg: cSurface}
 	sp := p.space(1)
@@ -384,6 +409,9 @@ func (m *Model) headerBar() string {
 	}
 	if m.res != nil && len(m.res.Errors) > 0 {
 		right = append(right, p.text(cRed, fmt.Sprintf("⚠ %d failed", len(m.res.Errors))))
+	}
+	if s := fleetIndicatorText(p, m.fleetSnap); s != "" {
+		right = append(right, s)
 	}
 	if len(m.machineUsage) > 0 {
 		right = append(right, machineUsageText(p, m.machineUsage))
@@ -443,7 +471,7 @@ func (m *Model) footer() string {
 		}
 		return lipgloss.NewStyle().Foreground(cGreen).Render(" ✓ " + m.statusMsg)
 	}
-	return chips(m.width,
+	pairs := []string{
 		"click", "open",
 		gestureLabel(m.cfg.URLClick), "copy url",
 		gestureLabel(m.cfg.RefClick), "copy ref",
@@ -451,11 +479,17 @@ func (m *Model) footer() string {
 		"r", "refresh",
 		"a", "agent",
 		"6", "agents",
+	}
+	if m.fleet != nil {
+		pairs = append(pairs, "F", "fleet")
+	}
+	pairs = append(pairs,
 		"0-8", "filter",
 		"/", "find",
 		"?", "help",
 		"q", "quit",
 	)
+	return chips(m.width, pairs...)
 }
 
 // ---------------------------------------------------------------------------
@@ -487,8 +521,11 @@ func (m *Model) helpView() string {
 		line("r", "refresh now"),
 		line("a", "agent actions for row"),
 		line("6", "agent sessions"),
-		line("q", "quit"),
 	}
+	if m.fleet != nil {
+		left = append(left, line("F", "fleet rollout (GitOps)"))
+	}
+	left = append(left, line("q", "quit"))
 	right := []string{
 		h.Render("Glyphs"),
 		g("◆", cYellow, "waiting on you"),
@@ -671,6 +708,175 @@ func (m *Model) agentsView() string {
 }
 
 // ---------------------------------------------------------------------------
+// fleet modal
+
+// fleetCIGlyph maps the target's CI verdict to a glyph.
+func fleetCIGlyph(s fleet.CIStatus) (string, lipgloss.Color) {
+	switch s {
+	case fleet.CIGreen:
+		return "✓", cGreen
+	case fleet.CIPending:
+		return "●", cYellow
+	case fleet.CIFailed:
+		return "✗", cRed
+	case fleet.CINoChecks:
+		return "○", cOrange
+	default:
+		return "?", cDim
+	}
+}
+
+// fleetStateGlyph maps a rollout state to a glyph and color.
+func fleetStateGlyph(s fleet.State) (string, lipgloss.Color) {
+	switch s {
+	case fleet.StateCurrent:
+		return "✓", cGreen
+	case fleet.StatePending:
+		return "·", cDim
+	case fleet.StateDraining:
+		return "◍", cYellow
+	case fleet.StateApplying, fleet.StateVerifying:
+		return "●", cCyan
+	case fleet.StateFailed:
+		return "✗", cRed
+	default: // unreachable, skipped
+		return "⊘", cOrange
+	}
+}
+
+// fleetSlotsText renders "used/max" from the dispatch machine usage line.
+func fleetSlotsText(name string, usage []dispatch.MachineUsage) string {
+	for _, u := range usage {
+		if u.Name != name {
+			continue
+		}
+		if !u.OK {
+			return "—"
+		}
+		return fmt.Sprintf("%d/%d", u.Used, u.Max)
+	}
+	return ""
+}
+
+// fleetAppliedText renders "applied → target" (just applied when current).
+func fleetAppliedText(ms fleet.MachineStatus, target string) string {
+	applied := ms.AppliedShort
+	if applied == "" {
+		applied = "—"
+	}
+	if ms.State == fleet.StateCurrent || target == "" || ms.AppliedShort == target {
+		return applied
+	}
+	return applied + " → " + target
+}
+
+func (m *Model) fleetView() string {
+	title := lipgloss.NewStyle().Foreground(cMagenta).Bold(true)
+	comment := lipgloss.NewStyle().Foreground(cComment)
+	dim := lipgloss.NewStyle().Foreground(cDim)
+	fg := lipgloss.NewStyle().Foreground(cFg)
+	bad := lipgloss.NewStyle().Foreground(cRed)
+
+	snap := m.fleetSnap
+	lines := []string{
+		title.Render(" fleet rollout ") + comment.Render(m.cfg.Fleet.Repo+"@"+m.cfg.Fleet.Branch),
+		"",
+	}
+
+	// Target line: sha, CI verdict, paused/blocked flags.
+	var target strings.Builder
+	if snap.TargetShort == "" {
+		target.WriteString(dim.Render("no target yet"))
+	} else {
+		target.WriteString(comment.Render("target "))
+		target.WriteString(fg.Render(snap.TargetShort))
+	}
+	g, c := fleetCIGlyph(snap.CI)
+	target.WriteString(comment.Render("  ·  CI "))
+	target.WriteString(lipgloss.NewStyle().Foreground(c).Render(g))
+	if snap.CIDetail != "" {
+		target.WriteString(comment.Render(" " + truncatePlain(snap.CIDetail, 40)))
+	}
+	if snap.Paused {
+		target.WriteString(lipgloss.NewStyle().Foreground(cYellow).Render("  ·  paused"))
+	}
+	if snap.Blocked {
+		target.WriteString(lipgloss.NewStyle().Foreground(cOrange).Render("  ·  blocked"))
+	}
+	lines = append(lines, target.String())
+	if snap.Banner != "" {
+		lines = append(lines, lipgloss.NewStyle().Foreground(cYellow).Render("⚠ "+snap.Banner))
+	}
+	if snap.LastError != "" {
+		lines = append(lines, bad.Render("⚠ "+truncatePlain(snap.LastError, 64)))
+	}
+	lines = append(lines, "")
+
+	// Table: machine, reachable, slots, applied vs target, state, waited, error.
+	nameW, okW, slotsW, shaW, stateW, waitW := 10, 3, 5, 17, 11, 6
+	head := "  " + padPlain("machine", nameW, false) + " " + padPlain("ok", okW, false) + " " +
+		padPlain("slots", slotsW, false) + " " + padPlain("applied", shaW, false) + " " +
+		padPlain("state", stateW, false) + " " + padPlain("waited", waitW, true) + " last error"
+	lines = append(lines, dim.Render(head))
+	for _, ms := range snap.Machines {
+		g, c := fleetStateGlyph(ms.State)
+		slots := fleetSlotsText(ms.Name, m.machineUsage)
+		if slots == "" {
+			slots = "—"
+		}
+		waited := ""
+		if ms.State == fleet.StateDraining && ms.Waited > 0 {
+			waited = shortDur(ms.Waited)
+		}
+		row := " " +
+			padPlain(ms.Name, nameW, false) + " " +
+			padPlain(fleetReachGlyph(ms), okW, false) + " " +
+			padPlain(slots, slotsW, false) + " " +
+			padPlain(fleetAppliedText(ms, snap.TargetShort), shaW, false) + " " +
+			padPlain(string(ms.State), stateW, false) + " " +
+			padPlain(waited, waitW, true)
+		line := lipgloss.NewStyle().Foreground(c).Render(g) + fg.Render(row)
+		if ms.LastErr != "" {
+			line += " " + bad.Render(truncatePlain(strings.ReplaceAll(ms.LastErr, "\n", " "), 40))
+		}
+		lines = append(lines, line)
+	}
+
+	lines = append(lines, "")
+	if m.statusMsg != "" && time.Since(m.statusAt) < 4*time.Second {
+		lines = append(lines, comment.Render(" "+m.statusMsg))
+	}
+	hint := "s skip wait"
+	if m.skipWaitArmed && time.Since(m.skipWaitAt) < skipWaitWindow {
+		hint = "s again! skipping drain wait"
+	}
+	lines = append(lines, comment.Render("p pause/resume · a apply now · "+hint+" · r retry · F/esc close"))
+
+	box := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(cBlue).
+		Padding(1, 3).
+		Render(strings.Join(lines, "\n"))
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
+}
+
+// fleetReachGlyph renders the machine's reachability column.
+func fleetReachGlyph(ms fleet.MachineStatus) string {
+	switch ms.State {
+	case fleet.StateUnreachable, fleet.StateSkipped:
+		return "✗"
+	case fleet.StatePending:
+		if !ms.Reachable {
+			return "·"
+		}
+	}
+	if ms.Reachable {
+		return "✓"
+	}
+	return "·"
+}
+
+// ---------------------------------------------------------------------------
 // View
 
 func (m *Model) View() string {
@@ -691,6 +897,9 @@ func (m *Model) View() string {
 	}
 	if m.agentsMode {
 		return m.agentsView()
+	}
+	if m.fleetMode {
+		return m.fleetView()
 	}
 
 	l := layoutFor(m.width)

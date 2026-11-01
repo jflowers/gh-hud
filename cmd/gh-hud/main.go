@@ -12,6 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/dispatch"
+	"github.com/jflowers/gh-hud/internal/fleet"
 	"github.com/jflowers/gh-hud/internal/gh"
 	"github.com/jflowers/gh-hud/internal/ghws"
 	"github.com/jflowers/gh-hud/internal/model"
@@ -85,6 +86,41 @@ func main() {
 		disp = nil
 	}
 
+	var fleetCoord *fleet.Coordinator
+	if cfg.Fleet.Enabled {
+		fleetMachines := make([]dispatch.Machine, 0, len(cfg.Fleet.Order))
+		for _, name := range cfg.Fleet.Order {
+			if name == "local" {
+				fleetMachines = append(fleetMachines, dispatch.Machine{
+					Name: "local", Max: cfg.MaxConcurrent, GhwsRoot: cfg.GhwsRoot, Enabled: true, Local: true,
+				})
+				continue
+			}
+			for _, mc := range cfg.Machines {
+				if mc.Name != name {
+					continue
+				}
+				fleetMachines = append(fleetMachines, dispatch.Machine{
+					Name: mc.Name, SSH: mc.SSH, Max: mc.MaxConcurrent, GhwsRoot: mc.GhwsRoot, Tasks: mc.Tasks, Enabled: true,
+				})
+				break
+			}
+		}
+		var sched fleet.Scheduler
+		if disp != nil {
+			sched = disp
+		}
+		c, err := fleet.New(fleet.Options{Config: cfg.Fleet, Machines: fleetMachines, Scheduler: sched})
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "fleet:", err)
+		} else {
+			fleetCoord = c
+			fleetCtx, fleetCancel := context.WithCancel(context.Background())
+			defer fleetCancel()
+			go c.Run(fleetCtx)
+		}
+	}
+
 	if *snapshot != "" {
 		var w, h int
 		if _, err := fmt.Sscanf(*snapshot, "%dx%d", &w, &h); err != nil || w < 20 || h < 5 {
@@ -101,7 +137,7 @@ func main() {
 		return
 	}
 
-	p := tea.NewProgram(ui.New(cfg, client, disp, idx),
+	p := tea.NewProgram(ui.New(cfg, client, disp, idx, fleetCoord),
 		tea.WithAltScreen(),
 		tea.WithMouseAllMotion(),
 	)

@@ -58,6 +58,35 @@ func (m Machine) Run(ctx context.Context, dir string, argv ...string) (string, e
 	return m.runScript(ctx, machineScript(dir, argv))
 }
 
+// RunFull is Run but returns stdout and stderr regardless of exit status,
+// so callers can parse failure detail a command prints before exiting
+// non-zero (e.g. fleet-apply's FAIL line).
+func (m Machine) RunFull(ctx context.Context, dir string, argv ...string) (string, string, error) {
+	if m.Local {
+		if len(argv) == 0 {
+			return "", "", fmt.Errorf("machine %s: empty command", m.Name)
+		}
+		cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
+		if dir != "" {
+			cmd.Dir = dir
+		}
+		var out, errb strings.Builder
+		cmd.Stdout = &out
+		cmd.Stderr = &errb
+		err := cmd.Run()
+		return out.String(), errb.String(), err
+	}
+	if len(argv) == 0 {
+		return "", "", fmt.Errorf("machine %s: empty command", m.Name)
+	}
+	cmd := exec.CommandContext(ctx, "ssh", "-o", "BatchMode=yes", m.SSH, "bash -lc "+shellQuote(machineScript(dir, argv)))
+	var out, errb strings.Builder
+	cmd.Stdout = &out
+	cmd.Stderr = &errb
+	err := cmd.Run()
+	return out.String(), errb.String(), err
+}
+
 // machineScript builds the POSIX script that runs argv in dir: a cd into
 // dir (remote ~ paths expand) followed by an exec of the quoted argv.
 func machineScript(dir string, argv []string) string {

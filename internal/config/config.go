@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/BurntSushi/toml"
 
@@ -60,6 +61,8 @@ type Config struct {
 	Runner        string                `toml:"runner"`
 	HerdrWatchCmd string                `toml:"herdr_watch_cmd"`
 	Dispatch      map[string]TaskConfig `toml:"dispatch"`
+	// Fleet is the GitOps rollout coordinator ([fleet]).
+	Fleet FleetConfig `toml:"fleet"`
 }
 
 // Default returns the built-in defaults.
@@ -92,6 +95,7 @@ func Default() *Config {
 		Runner:         "herdr",
 		HerdrWatchCmd:  defaultHerdrWatchCmd,
 		Dispatch:       DefaultDispatch(),
+		Fleet:          DefaultFleet(),
 	}
 }
 
@@ -116,6 +120,33 @@ type Machine struct {
 // IsEnabled reports whether the machine participates in dispatch.
 func (m Machine) IsEnabled() bool {
 	return m.Enabled == nil || *m.Enabled
+}
+
+// FleetConfig is the [fleet] GitOps rollout coordinator: it watches a
+// dotfiles repo branch and rolls each configured machine (plus the hub,
+// always last) forward to green commits via each machine's fleet-apply.
+type FleetConfig struct {
+	Enabled   bool     `toml:"enabled"`    // run the coordinator at all
+	Repo      string   `toml:"repo"`       // owner/name of the dotfiles repo
+	Branch    string   `toml:"branch"`     // branch whose head is the target
+	Poll      string   `toml:"poll"`       // target poll interval (duration string)
+	RequireCI bool     `toml:"require_ci"` // only roll out green commits
+	Order     []string `toml:"order"`      // rollout order; default = machines then "local"
+	MaxWait   string   `toml:"max_wait"`   // drain grace before notifying (duration string)
+	Notify    bool     `toml:"notify"`     // herdr push notifications
+}
+
+// DefaultFleet returns the built-in fleet defaults.
+func DefaultFleet() FleetConfig {
+	return FleetConfig{
+		Enabled:   false,
+		Repo:      "jflowers/dotfiles",
+		Branch:    "main",
+		Poll:      "5m",
+		RequireCI: true,
+		MaxWait:   "4h",
+		Notify:    true,
+	}
 }
 
 // DefaultDispatch returns the built-in task → command map.
@@ -149,6 +180,9 @@ func Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
+			if ferr := fillFleet(&cfg.Fleet, cfg.Machines); ferr != nil {
+				return nil, ferr
+			}
 			return cfg, nil
 		}
 		return nil, fmt.Errorf("read %s: %w", path, err)
@@ -227,7 +261,66 @@ func Load(path string) (*Config, error) {
 			}
 		}
 	}
+	if err := fillFleet(&cfg.Fleet, cfg.Machines); err != nil {
+		return nil, err
+	}
 	return cfg, nil
+}
+
+// fillFleet applies fleet defaults and validates the [fleet] table against
+// the configured machines: durations must parse, order names must exist
+// ("local" or a [[machines]] name), and no name may repeat.
+func fillFleet(f *FleetConfig, machines []Machine) error {
+	def := DefaultFleet()
+	if f.Repo == "" {
+		f.Repo = def.Repo
+	}
+	if f.Branch == "" {
+		f.Branch = def.Branch
+	}
+	if f.Poll == "" {
+		f.Poll = def.Poll
+	}
+	if f.MaxWait == "" {
+		f.MaxWait = def.MaxWait
+	}
+	for _, d := range []struct{ name, val string }{
+		{"poll", f.Poll},
+		{"max_wait", f.MaxWait},
+	} {
+		v, err := time.ParseDuration(d.val)
+		if err != nil || v <= 0 {
+			return fmt.Errorf("fleet: %s = %q: invalid duration", d.name, d.val)
+		}
+	}
+	if len(f.Order) == 0 {
+		f.Order = defaultFleetOrder(machines)
+		return nil
+	}
+	names := map[string]bool{"local": true}
+	for _, m := range machines {
+		names[m.Name] = true
+	}
+	seen := map[string]bool{}
+	for _, name := range f.Order {
+		if !names[name] {
+			return fmt.Errorf("fleet: order entry %q is not a configured machine (or \"local\")", name)
+		}
+		if seen[name] {
+			return fmt.Errorf("fleet: order entry %q appears twice", name)
+		}
+		seen[name] = true
+	}
+	return nil
+}
+
+// defaultFleetOrder rolls machines out in config order, hub last.
+func defaultFleetOrder(machines []Machine) []string {
+	out := make([]string, 0, len(machines)+1)
+	for _, m := range machines {
+		out = append(out, m.Name)
+	}
+	return append(out, "local")
 }
 
 // validateMachines checks [[machines]] entries before defaults are filled.

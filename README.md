@@ -36,8 +36,8 @@ never reach gh-hud. iTerm2 reports ⌘ as the meta bit, which is how
 sends (clicks do nothing in that mode).
 
 Keys: `j/k` move · `enter/o` open · `y` copy `owner/repo#N` · `Y` copy URL ·
-`r` refresh · `a` agent actions · `6` agent sessions · `1-8` filter section ·
-`0` all · `/` search · `?` help · `q` quit.
+`r` refresh · `a` agent actions · `6` agent sessions · `F` fleet rollout ·
+`1-8` filter section · `0` all · `/` search · `?` help · `q` quit.
 
 ## Sections (header tabs, keys 1-8)
 
@@ -117,19 +117,53 @@ author's fleet setup (provisioning, toolchain pins, secrets, runbooks) lives
 in their private dotfiles repo under `docs/fleet.md`.
 
 `6` lists agent sessions across workspaces and machines — by default only
-ones gh-hud dispatched, live/blocked/failed ones, and anything touched in
-the last 24h (`a` toggles the stale rest; the list scrolls to fit the
+ones gh-hud dispatched, live/blocked/failed ones, and anything touched in the
+last 24h (`a` toggles the stale rest; the list scrolls to fit the
 terminal): `enter` watches one (herdr
 sessions focus the workspace and attach the herdr TUI in a Ghostty window
 via `herdr_watch_cmd`; remote ones attach with `herdr --machine <label>`;
 local runner sessions tail the session log via
-`agent_watch_cmd`), `y` copies the session id. Live agent state shows in
-the attention slot: `●` teal = running, `◆` orange = blocked on a
+`agent_watch_cmd`), `y` copies the session id. Live agent state shows in the
+attention slot: `●` teal = running, `◆` orange = blocked on a
 question or approval, `◆` red = dispatch failed. The header shows
 per-machine slot usage (`local 1/2 · lap1 0/2 · lap2 —`, `—` =
 unreachable or disabled). Tasks with `auto = true`
 dispatch themselves on refresh without a keypress; the review queue
 (`8`) drains itself this way up to `max_concurrent` agents.
+
+## Fleet rollout (GitOps)
+
+`[fleet]` turns gh-hud into a GitOps coordinator for the machines it
+dispatches on: it polls `repo`'s `branch` head, and when a new commit is
+green it rolls every machine forward one at a time (config order, hub
+always last) using each machine's `fleet-apply` script (fetch, ff-only,
+`chezmoi apply --force`, health check). State lives in
+`~/.local/state/gh-hud/fleet.json`, so a gh-hud restart resumes where it
+left off; machines already at the target are simply current.
+
+The CI gate (`require_ci = true`): the target commit must have at least one
+check run, all completed, every conclusion green (`success`, `skipped`,
+`neutral`). Pending checks wait; a failure (or zero checks) blocks the
+target — shown in the view and notified once per sha.
+
+Per machine the rollout walks: `current` → `draining` (marked so the
+dispatch scheduler places no new agents there; waits for live gh-hud
+records and working/blocked herdr agents to hit zero, notifying once after
+`max_wait` but never forcing) → `applying` (`fleet-apply <sha>`, 30m
+timeout, cancellable) → `verifying` (`fleet-apply --check` plus `--status`
+== target) → `current`, undrain, next machine. A failure records the last
+~20 output lines, **pauses** the rollout, notifies, and leaves the machine
+drained; an unreachable machine is skipped for the round and retried on the
+next poll. After the local apply succeeds a banner reminds you to restart
+gh-hud so the new binaries load.
+
+`F` opens the fleet view: per-machine table (name, reachable, slots,
+applied vs target sha, state, drain wait, last error) with target/CI/pause
+status in the header. Keys: `p` pause/resume · `a` apply now (force a
+poll) · `s` skip the drain wait (press twice — it applies with live agents
+still running) · `r` retry the failed machine and resume · `F`/`esc`
+close. The main header carries a compact fleet chip while a rollout is
+active or failed.
 
 ## Config
 
@@ -179,6 +213,18 @@ max_concurrent = 2
 [dispatch.rebase]
 command = "/uf.rebase-pr {num}"
 auto = false               # true = auto-dispatch on refresh, no keypress
+
+# GitOps fleet rollout (see "Fleet rollout (GitOps)" above). Machines need
+# a fleet-apply script on PATH (chezmoi dotfiles checkout).
+[fleet]
+enabled = false            # run the coordinator at all
+repo = "jflowers/dotfiles" # dotfiles repo whose branch head is the target
+branch = "main"
+poll = "5m"                # target poll interval
+require_ci = true          # only roll out commits with green check runs
+# order = ["lap1", "lap2", "local"]  # default: [[machines]] order, local last
+max_wait = "4h"            # drain grace before notifying (never forces)
+notify = true              # herdr push notifications (phone via Ovis)
 ```
 
 ## Attribution

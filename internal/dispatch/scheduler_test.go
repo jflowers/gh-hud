@@ -133,6 +133,20 @@ func TestPickMachinesRefDedupe(t *testing.T) {
 	}
 }
 
+func TestPickMachinesDraining(t *testing.T) {
+	v := testView()
+	// The fleet rollout drains lap1 and the hub: neither gets placements.
+	v.draining = map[string]bool{"lap1": true, "": true}
+	if got := machineNames(pickMachines(v, TaskReview, "acme/r#1")); !equalNames(got, "lap2") {
+		t.Errorf("draining lap1+local = %v, want lap2 only", got)
+	}
+	// Draining only a remote keeps local eligible.
+	v.draining = map[string]bool{"lap1": true}
+	if got := machineNames(pickMachines(v, TaskReview, "acme/r#1")); !equalNames(got, "local", "lap2") {
+		t.Errorf("draining lap1 = %v, want local lap2", got)
+	}
+}
+
 // testIndex builds an index with a base and an instance checkout for one
 // repo, plus an instance of another repo.
 func testIndex(root string) *ghws.Index {

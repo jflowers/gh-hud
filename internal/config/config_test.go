@@ -227,3 +227,108 @@ func TestLoadMachinesValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestFleetDefaults(t *testing.T) {
+	c := Default()
+	f := c.Fleet
+	if f.Enabled {
+		t.Error("Fleet.Enabled: got true want false by default")
+	}
+	if f.Repo != "jflowers/dotfiles" || f.Branch != "main" {
+		t.Errorf("Fleet repo/branch: got %q@%q want jflowers/dotfiles@main", f.Repo, f.Branch)
+	}
+	if f.Poll != "5m" || f.MaxWait != "4h" {
+		t.Errorf("Fleet poll/max_wait: got %q/%q want 5m/4h", f.Poll, f.MaxWait)
+	}
+	if !f.RequireCI || !f.Notify {
+		t.Error("Fleet require_ci/notify: want true by default")
+	}
+	// Order is derived at Load time (it depends on [[machines]]).
+	c, err := Load(filepath.Join(t.TempDir(), "absent.toml"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(c.Fleet.Order) != 1 || c.Fleet.Order[0] != "local" {
+		t.Errorf("Fleet order with no machines: got %v want [local]", c.Fleet.Order)
+	}
+}
+
+func TestLoadFleetOrderDefault(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	toml := `
+[fleet]
+enabled = true
+
+[[machines]]
+name = "lap1"
+
+[[machines]]
+name = "lap2"
+`
+	if err := os.WriteFile(path, []byte(toml), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	want := []string{"lap1", "lap2", "local"}
+	if len(c.Fleet.Order) != len(want) {
+		t.Fatalf("order = %v want %v", c.Fleet.Order, want)
+	}
+	for i := range want {
+		if c.Fleet.Order[i] != want[i] {
+			t.Errorf("order[%d] = %q want %q (machines in config order, local last)", i, c.Fleet.Order[i], want[i])
+		}
+	}
+}
+
+func TestLoadFleetExplicitOrder(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	toml := `
+[[machines]]
+name = "lap1"
+
+[[machines]]
+name = "lap2"
+
+[fleet]
+enabled = true
+order = ["lap2", "local", "lap1"]
+poll = "30s"
+max_wait = "1h"
+`
+	if err := os.WriteFile(path, []byte(toml), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.Fleet.Order[0] != "lap2" || c.Fleet.Order[1] != "local" || c.Fleet.Order[2] != "lap1" {
+		t.Errorf("order = %v want explicit order kept", c.Fleet.Order)
+	}
+	if c.Fleet.Poll != "30s" || c.Fleet.MaxWait != "1h" {
+		t.Errorf("poll/max_wait = %q/%q want explicit values kept", c.Fleet.Poll, c.Fleet.MaxWait)
+	}
+}
+
+func TestLoadFleetValidation(t *testing.T) {
+	cases := []struct{ name, toml, wantErr string }{
+		{"bad poll", "[fleet]\npoll = \"5x\"\n", "poll"},
+		{"zero poll", "[fleet]\npoll = \"0s\"\n", "poll"},
+		{"bad max_wait", "[fleet]\nmax_wait = \"long\"\n", "max_wait"},
+		{"unknown order name", "[fleet]\norder = [\"ghost\"]\n", "not a configured machine"},
+		{"duplicate order", "[fleet]\norder = [\"local\", \"local\"]\n", "twice"},
+	}
+	for _, tc := range cases {
+		path := filepath.Join(t.TempDir(), "config.toml")
+		if err := os.WriteFile(path, []byte(tc.toml), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		_, err := Load(path)
+		if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+			t.Errorf("%s: err = %v, want it to mention %q", tc.name, err, tc.wantErr)
+		}
+	}
+}

@@ -1,9 +1,10 @@
 package dispatch
 
 // Placement: which machine runs a task. Candidates are machines that are
-// enabled, reachable, allow the task, have a free slot, and don't conflict
-// with a live record for the same ref on another machine — ranked by free
-// slot fraction, ties keeping local first and then config order.
+// enabled, reachable, allow the task, have a free slot, are not draining
+// (fleet rollout), and don't conflict with a live record for the same ref on
+// another machine — ranked by free slot fraction, ties keeping local first
+// and then config order.
 
 import (
 	"sort"
@@ -20,6 +21,7 @@ type machineView struct {
 	live            map[string]int             // record machine key → live count
 	liveRefMachines map[string]map[string]bool // ref → machine keys running it
 	liveDirs        map[string]map[string]bool // machine key → dirs with a live record
+	draining        map[string]bool            // machine key → drained for fleet rollout
 	index           map[string]*ghws.Index     // machine key → checkout index
 }
 
@@ -30,9 +32,10 @@ type placement struct {
 }
 
 // pickMachines returns the machines that may take task for ref, best
-// first: enabled and reachable, task allowed, a free slot, and no other
-// machine already running the ref (cross-machine ref dedupe). Ranking is
-// by free slot fraction; ties keep local first, then config order.
+// first: enabled and reachable, task allowed, a free slot, not draining,
+// and no other machine already running the ref (cross-machine ref dedupe).
+// Ranking is by free slot fraction; ties keep local first, then config
+// order.
 func pickMachines(v machineView, task Task, ref string) []Machine {
 	qualified := []Machine{v.local}
 	qualified = append(qualified, v.remotes...)
@@ -45,6 +48,9 @@ func pickMachines(v machineView, task Task, ref string) []Machine {
 			continue
 		}
 		if !m.AllowsTask(task) {
+			continue
+		}
+		if v.draining[m.key()] {
 			continue
 		}
 		if v.live[m.key()] >= m.Max {

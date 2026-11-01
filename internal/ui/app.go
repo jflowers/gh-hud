@@ -13,6 +13,7 @@ import (
 	"github.com/jflowers/gh-hud/internal/clipboard"
 	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/dispatch"
+	"github.com/jflowers/gh-hud/internal/fleet"
 	"github.com/jflowers/gh-hud/internal/gh"
 	"github.com/jflowers/gh-hud/internal/ghws"
 	"github.com/jflowers/gh-hud/internal/model"
@@ -82,6 +83,14 @@ type Model struct {
 	agentsAll  bool // show stale sessions too (default: only relevant ones)
 	lastAgents time.Time
 
+	// fleetMode is the GitOps rollout view (F); fleet is nil when [fleet]
+	// is disabled. fleetSnap is refreshed from the coordinator on tick.
+	fleetMode     bool
+	fleet         *fleet.Coordinator
+	fleetSnap     fleet.Snapshot
+	skipWaitArmed bool
+	skipWaitAt    time.Time
+
 	// machineUsage is the per-machine slot line for the status area.
 	machineUsage []dispatch.MachineUsage
 
@@ -95,19 +104,30 @@ type Model struct {
 	width, height int
 }
 
-// New builds the dashboard model. disp and idx may be nil (dispatch off).
-func New(cfg *config.Config, client *gh.Client, disp *dispatch.Dispatcher, idx *ghws.Index) *Model {
+// New builds the dashboard model. disp, idx, and fleetCoord may be nil
+// (dispatch / fleet off).
+func New(cfg *config.Config, client *gh.Client, disp *dispatch.Dispatcher, idx *ghws.Index, fleetCoord *fleet.Coordinator) *Model {
 	// No OSC-8 links in the TUI: iTerm2 would open ⌘-clicked links itself
 	// *and* report the click to us (double tab), and it swallows ⌘-right-click
 	// on links. The app handles every click itself; --once keeps links.
 	hyperlinks = false
-	return &Model{
+	m := &Model{
 		cfg:    cfg,
 		client: client,
 		bots:   model.NewBotFilter(cfg.KnownBots),
 		disp:   disp,
 		idx:    idx,
+		fleet:  fleetCoord,
 		hover:  -1,
+	}
+	m.refreshFleetSnap()
+	return m
+}
+
+// refreshFleetSnap copies the coordinator's state for rendering.
+func (m *Model) refreshFleetSnap() {
+	if m.fleet != nil {
+		m.fleetSnap = m.fleet.Snapshot()
 	}
 }
 
@@ -144,6 +164,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.disp != nil && time.Since(m.lastAgents) >= 30*time.Second {
 			m.lastAgents = time.Now()
 			cmds = append(cmds, m.fetchAgents())
+		}
+		if m.fleet != nil {
+			m.refreshFleetSnap()
 		}
 		return m, tea.Batch(cmds...)
 
@@ -229,6 +252,9 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.agentsMode {
 		return m.handleAgentsKey(msg)
 	}
+	if m.fleetMode {
+		return m.handleFleetKey(msg)
+	}
 	if m.help {
 		m.help = false
 		return m, nil
@@ -296,6 +322,12 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "a":
 		m.openAction()
+	case "F":
+		if m.fleet != nil {
+			m.fleetMode = true
+			m.skipWaitArmed = false
+			m.refreshFleetSnap()
+		}
 	case "6":
 		if m.disp != nil {
 			m.agentsMode = true
@@ -330,7 +362,7 @@ func (m *Model) handleMouse(e tea.MouseEvent) (tea.Model, tea.Cmd) {
 	if logMouse(e) {
 		return m, nil
 	}
-	if m.help || m.actionMode || m.agentsMode || m.fetchErr != "" {
+	if m.help || m.actionMode || m.agentsMode || m.fleetMode || m.fetchErr != "" {
 		return m, nil
 	}
 	if e.IsWheel() {
@@ -677,6 +709,56 @@ func (m *Model) handleAgentsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "r":
 		return m, m.fetchAgents()
 	}
+	return m, nil
+}
+
+// handleFleetKey drives the fleet rollout view. `s` (skip the drain wait)
+// needs a second press within skipWaitWindow — there is no confirm-modal
+// pattern in the codebase, so the double press is the confirmation.
+const skipWaitWindow = 5 * time.Second
+
+func (m *Model) handleFleetKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc", "q", "F":
+		m.fleetMode = false
+		m.skipWaitArmed = false
+	case "ctrl+c":
+		return m, tea.Quit
+	case "p":
+		if m.fleet != nil {
+			paused := !m.fleetSnap.Paused
+			m.fleet.SetPaused(paused)
+			if paused {
+				m.flash("fleet rollout paused")
+			} else {
+				m.flash("fleet rollout resumed")
+			}
+		}
+	case "a":
+		if m.fleet != nil {
+			m.fleet.ApplyNow()
+			m.flash("fleet poll forced")
+		}
+	case "s":
+		if m.fleet == nil {
+			return m, nil
+		}
+		if m.skipWaitArmed && time.Since(m.skipWaitAt) < skipWaitWindow {
+			m.skipWaitArmed = false
+			m.fleet.SkipWait()
+			m.flash("skipping drain wait — applying with live agents")
+		} else {
+			m.skipWaitArmed = true
+			m.skipWaitAt = time.Now()
+			m.flash("press s again to skip the drain wait")
+		}
+	case "r":
+		if m.fleet != nil {
+			m.fleet.Retry()
+			m.flash("fleet retrying failed machine")
+		}
+	}
+	m.refreshFleetSnap()
 	return m, nil
 }
 

@@ -143,10 +143,13 @@ type Dispatcher struct {
 	cacheMu      sync.Mutex
 	agentsCache  map[string]agentSnapshot // machine key → live agents
 	agentsAt     time.Time
-	reachCache   map[string]bool // machine label → reachable
+	reachCache   map[string]bool // machine label → herdr-reachable
 	reachAt      time.Time
 	indexCache   map[string]indexEntry // machine label → ghws index
 	indexLoading map[string]bool
+
+	drainMu  sync.RWMutex
+	drainSet map[string]bool // machine keys receiving no new placements
 }
 
 // agentSnapshot is one machine's live herdr agent list.
@@ -689,6 +692,7 @@ func (d *Dispatcher) cachedViewBase(snaps map[string]agentSnapshot, reach map[st
 		live:            map[string]int{},
 		liveRefMachines: map[string]map[string]bool{},
 		liveDirs:        map[string]map[string]bool{},
+		draining:        d.drainSnapshot(),
 		index:           map[string]*ghws.Index{"": d.opts.LocalIndex},
 	}
 	if d.opts.Runner != "herdr" {
