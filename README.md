@@ -107,6 +107,15 @@ machines at once. Workers are herdr-managed machines saved with
 `herdr machine add` and reached over ssh (key auth); gh-hud never starts a
 remote herdr server itself.
 
+Each worker needs, before gh-hud can place work on it: a running herdr
+server (e.g. a systemd user unit), the same opencode/uf toolchain and
+provider credentials as the hub, `gh` auth for pushes, and ghws `@`
+instances under its `ghws_root` (`ghws` runs headless on Linux). Instance
+names must be unique across machines so sessions and records never collide;
+ghws's per-machine name themes (`GHWS_NAME_THEME`) handle that. The
+author's fleet setup (provisioning, toolchain pins, secrets, runbooks) lives
+in their private dotfiles repo under `docs/fleet.md`.
+
 `6` lists agent sessions across workspaces and machines — by default only
 ones gh-hud dispatched, live/blocked/failed ones, and anything touched in
 the last 24h (`a` toggles the stale rest; the list scrolls to fit the
