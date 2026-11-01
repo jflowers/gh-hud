@@ -45,7 +45,15 @@ func TestFleetSmoke(t *testing.T) {
 		t.Logf("fleet-apply --check failed (machine may be unhealthy): %v\n%s", checkErr, strings.TrimSpace(checkOut))
 		return
 	}
-	if sha == "" || !applyOKLine(checkOut, sha) {
+	// A machine never rolled out via fleet-apply has no applied sha, so
+	// --check prints a bare "fleet-apply: ok".
+	if sha == "" {
+		if !strings.Contains(checkOut, "fleet-apply: ok") {
+			t.Errorf("--check output = %q, want a fleet-apply ok line", strings.TrimSpace(checkOut))
+		}
+		return
+	}
+	if !applyOKLine(checkOut, sha) {
 		t.Errorf("--check output = %q, want ok line for %q", strings.TrimSpace(checkOut), sha)
 	}
 }
