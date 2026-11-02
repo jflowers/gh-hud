@@ -113,6 +113,9 @@ func (d *Dispatcher) reachability(ctx context.Context) map[string]bool {
 // synchronously (single flight).
 func (d *Dispatcher) remoteIndex(ctx context.Context, m Machine) *ghws.Index {
 	d.cacheMu.Lock()
+	if d.indexLoading == nil {
+		d.indexLoading = map[string]bool{}
+	}
 	e, have := d.indexCache[m.Name]
 	if have && time.Since(e.at) < remoteIndexTTL {
 		d.cacheMu.Unlock()

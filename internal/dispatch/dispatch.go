@@ -221,7 +221,11 @@ func New(opts Options) (*Dispatcher, error) {
 		dirs = append(dirs, dir)
 	}
 	opts.Dirs = dirs
-	d := &Dispatcher{opts: opts}
+	d := &Dispatcher{
+		opts:         opts,
+		indexCache:   map[string]indexEntry{},
+		indexLoading: map[string]bool{},
+	}
 	d.loadState()
 	return d, nil
 }
