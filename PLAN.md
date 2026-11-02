@@ -36,3 +36,6 @@ Phases:
 1. Core: PRs + review queue, table, mouse/keyboard, auto-refresh. (done)
 2. Feeds: issues, notifications dedupe, watch-repo runs. (done)
 3. Later ideas: hide-until-changed state, mark-read on GitHub, detail pane.
+4. Multi-machine dispatch (`[[machines]]`) and the Fleet coordinator (`[fleet]`, `F` view). (done)
+   Plan of record for the fleet (roadmap, runbooks, decision log) lives in the
+   author's dotfiles repo: `docs/fleet.md` (private).
