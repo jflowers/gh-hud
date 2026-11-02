@@ -64,6 +64,7 @@ func main() {
 			Tasks:    mc.Tasks,
 			Enabled:  mc.IsEnabled(),
 			Local:    false,
+			Mode:     mc.DispatchMode,
 		})
 	}
 	dispOpts := dispatch.Options{
@@ -75,6 +76,7 @@ func main() {
 		Tasks:         cfg.Dispatch,
 		WatchCmd:      cfg.AgentWatchCmd,
 		Runner:        cfg.Runner,
+		Mode:          cfg.DispatchMode,
 		HerdrWatchCmd: cfg.HerdrWatchCmd,
 		Dirs:          wsDirs,
 		Machines:      machines,

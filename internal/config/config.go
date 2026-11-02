@@ -58,9 +58,18 @@ type Config struct {
 	AgentWatchCmd string `toml:"agent_watch_cmd"`
 	// Runner selects the dispatch runner: herdr (default) or local
 	// (detached process with a log file).
-	Runner        string                `toml:"runner"`
-	HerdrWatchCmd string                `toml:"herdr_watch_cmd"`
-	Dispatch      map[string]TaskConfig `toml:"dispatch"`
+	Runner        string `toml:"runner"`
+	HerdrWatchCmd string `toml:"herdr_watch_cmd"`
+	// DispatchMode is how agents run under the herdr runner: "run"
+	// (headless opencode run, default) or "tui" (interactive TUI, so
+	// agents can ask questions and auto-question can answer them).
+	// [[machines]] dispatch_mode overrides it per machine.
+	DispatchMode string `toml:"dispatch_mode"`
+	// BlockedNotifySecs sends a desktop notification when a dispatched
+	// agent stays blocked this long (shorter blocks are auto-question
+	// deciding); 0 disables it. Requires notify.
+	BlockedNotifySecs int                   `toml:"blocked_notify_secs"`
+	Dispatch          map[string]TaskConfig `toml:"dispatch"`
 	// Fleet is the GitOps rollout coordinator ([fleet]).
 	Fleet FleetConfig `toml:"fleet"`
 }
@@ -94,8 +103,11 @@ func Default() *Config {
 		AgentWatchCmd:  defaultWatchCmd,
 		Runner:         "herdr",
 		HerdrWatchCmd:  defaultHerdrWatchCmd,
+		DispatchMode:   "run",
 		Dispatch:       DefaultDispatch(),
 		Fleet:          DefaultFleet(),
+
+		BlockedNotifySecs: 120,
 	}
 }
 
@@ -115,6 +127,7 @@ type Machine struct {
 	GhwsRoot      string   `toml:"ghws_root"`      // remote ghws root; defaults to ~/Projects/github
 	Tasks         []string `toml:"tasks"`          // task allowlist; empty allows every task
 	Enabled       *bool    `toml:"enabled"`        // defaults to true
+	DispatchMode  string   `toml:"dispatch_mode"`  // "run" | "tui"; empty uses the top-level dispatch_mode
 }
 
 // IsEnabled reports whether the machine participates in dispatch.
@@ -216,6 +229,9 @@ func Load(path string) (*Config, error) {
 		if mc.GhwsRoot == "" {
 			mc.GhwsRoot = "~/Projects/github"
 		}
+		if mc.DispatchMode != "run" && mc.DispatchMode != "tui" {
+			mc.DispatchMode = ""
+		}
 	}
 	if len(cfg.KnownBots) == 0 {
 		cfg.KnownBots = Default().KnownBots
@@ -251,6 +267,12 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.HerdrWatchCmd == "" {
 		cfg.HerdrWatchCmd = defaultHerdrWatchCmd
+	}
+	if cfg.DispatchMode != "tui" {
+		cfg.DispatchMode = "run"
+	}
+	if cfg.BlockedNotifySecs < 0 {
+		cfg.BlockedNotifySecs = 0
 	}
 	if cfg.Dispatch == nil {
 		cfg.Dispatch = DefaultDispatch()

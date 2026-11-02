@@ -97,6 +97,9 @@ type Model struct {
 	// readySeen dedupes maintainer-ready notifications: keyed by ref,
 	// rebuilt each fetch; the first fetch only seeds it.
 	readySeen map[string]bool
+	// blockedSeen dedupes long-blocked agent notifications: keyed by
+	// session ID, dropped once the agent is no longer blocked.
+	blockedSeen map[string]bool
 
 	statusMsg string
 	statusAt  time.Time
@@ -194,6 +197,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err == nil {
 			m.agents = msg.sessions
 			m.machineUsage = msg.usage
+			m.notifyBlocked(msg.sessions)
 			if n := len(m.visibleAgents()); m.agentsSel >= n {
 				m.agentsSel = n - 1
 			}
@@ -829,6 +833,35 @@ func (m *Model) notifyReady(res *model.FetchResult) {
 		}
 	}
 	m.readySeen = ready
+}
+
+// notifyBlocked sends a desktop notification once per block when a
+// gh-hud-dispatched agent has been blocked longer than
+// blocked_notify_secs. Shorter blocks are the auto-question plugin
+// deciding; a long one means the question went to a human.
+func (m *Model) notifyBlocked(sessions []dispatch.Session) {
+	if !m.cfg.Notify || m.cfg.BlockedNotifySecs <= 0 {
+		return
+	}
+	limit := time.Duration(m.cfg.BlockedNotifySecs) * time.Second
+	still := map[string]bool{}
+	for _, s := range sessions {
+		if !s.Blocked || s.Task == "" || s.BlockedSince.IsZero() {
+			continue
+		}
+		still[s.ID] = m.blockedSeen[s.ID]
+		if still[s.ID] || time.Since(s.BlockedSince) < limit {
+			continue
+		}
+		still[s.ID] = true
+		where := "local"
+		if s.Machine != "" {
+			where = s.Machine
+		}
+		desktopNotify(fmt.Sprintf("%s %s needs input (blocked %s on %s, pane %s)",
+			s.Task, s.Ref, time.Since(s.BlockedSince).Round(time.Minute), where, s.PaneID))
+	}
+	m.blockedSeen = still
 }
 
 // desktopNotify posts a macOS notification via osascript, fire-and-forget.

@@ -262,14 +262,13 @@ func herdrNewTab(ctx context.Context, m Machine, wsID, dir, label string) (strin
 	return tab.RootPane.PaneID, nil
 }
 
-// herdrAgentStart launches a named agent in a pane. The command after "--"
-// is passed verbatim to the pane's shell; for opencode it is a headless
-// `run --agent <agent> --command ...` invocation.
-func herdrAgentStart(ctx context.Context, m Machine, name, paneID, agent, title, command string, args []string) error {
+// herdrAgentStart launches a named agent in a pane. tail is the opencode
+// argv after "--" (see agentArgs), passed verbatim to the pane's shell:
+// a headless `run` invocation, or TUI flags.
+func herdrAgentStart(ctx context.Context, m Machine, name, paneID string, tail []string) error {
 	argv := append([]string{
-		"agent", "start", name, "--kind", "opencode", "--pane", paneID, "--timeout", "8000",
-		"--", "run", "--agent", agent, "--title", title, "--command", command,
-	}, args...)
+		"agent", "start", name, "--kind", "opencode", "--pane", paneID, "--timeout", "8000", "--",
+	}, tail...)
 	_, err := herdrRun(ctx, m, argv...)
 	return err
 }
@@ -306,11 +305,11 @@ func herdrPaneText(ctx context.Context, m Machine, paneID string, lines int) (st
 }
 
 // herdrAgentLaunched reports whether an agent is actually running (or at
-// least its command was typed and executed) in the given pane. Used to
-// recover from herdr agent-start registration timeouts: herdr's name
-// registration races its process detection and can time out even though
-// the dispatched command runs fine.
-func herdrAgentLaunched(ctx context.Context, m Machine, paneID string) bool {
+// least its command, recognized by marker, was typed) in the given pane.
+// Used to recover from herdr agent-start registration timeouts: herdr's
+// name registration races its process detection and can time out even
+// though the dispatched command runs fine.
+func herdrAgentLaunched(ctx context.Context, m Machine, paneID, marker string) bool {
 	if agents, _, err := herdrAgents(ctx, m); err == nil {
 		for _, a := range agents {
 			if a.PaneID == paneID {
@@ -322,7 +321,7 @@ func herdrAgentLaunched(ctx context.Context, m Machine, paneID string) bool {
 	if err != nil {
 		return false
 	}
-	return strings.Contains(text, "opencode run")
+	return strings.Contains(text, marker)
 }
 
 // herdrAgents lists live agents on m's server plus a workspace-id → label

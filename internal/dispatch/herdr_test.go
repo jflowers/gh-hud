@@ -172,20 +172,6 @@ func TestStateRoundtripHerdr(t *testing.T) {
 	}
 }
 
-func TestHerdrAgentStartArgv(t *testing.T) {
-	// The argv must pass the command and its args after --command; the
-	// Go 1.26 spread rule means args... must be the sole variadic filler.
-	// Smoke-test the builder shape via a dry command construction.
-	argv := append([]string{
-		"agent", "start", "gh-rebase-846", "--kind", "opencode", "--pane", "w3:p2", "--timeout", "45000",
-		"--", "run", "--agent", "build", "--title", "t", "--command", "/uf.rebase-pr",
-	}, "846")
-	want := "agent start gh-rebase-846 --kind opencode --pane w3:p2 --timeout 45000 -- run --agent build --title t --command /uf.rebase-pr 846"
-	if got := strings.Join(argv, " "); got != want {
-		t.Errorf("argv =\n%q\nwant\n%q", got, want)
-	}
-}
-
 func TestHerdrArgvMachine(t *testing.T) {
 	// Local calls run unchanged; remote calls are prefixed with the
 	// machine selector. herdrArgv is the single --machine choke point.

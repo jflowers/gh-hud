@@ -22,6 +22,7 @@ type Machine struct {
 	Tasks    []string // optional task allowlist; empty allows every task
 	Enabled  bool     // participates in placement and polling
 	Local    bool     // true for the hub machine
+	Mode     string   // dispatch mode override: "run" | "tui" | "" (top-level default)
 }
 
 // AllowsTask reports whether task may run on the machine.

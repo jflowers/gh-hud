@@ -59,6 +59,7 @@ func (d *Dispatcher) agentsSnapshot(ctx context.Context) map[string]agentSnapsho
 	d.cacheMu.Lock()
 	d.agentsCache, d.agentsAt = out, time.Now()
 	d.cacheMu.Unlock()
+	d.observeAgents(out)
 	return out
 }
 

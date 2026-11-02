@@ -100,6 +100,22 @@ must not depend on a human: under `opencode run` a permission `ask` is
 auto-rejected and ends the run, while `deny` returns an error the agent can
 work around. The `build` agent inherits interactive `ask` rules.
 
+`opencode run` also can't ask questions: it denies the question tool, so a
+headless agent that needs a decision guesses or fails. `dispatch_mode =
+"tui"` (herdr runner only; per machine with `[[machines]] dispatch_mode`)
+runs the agent as an interactive opencode TUI in its herdr pane instead,
+started with `--prompt "/<command> <args>"`, so it can ask and the
+auto-question plugin can answer. The TUI never exits on its own, so gh-hud
+reads completion from herdr's agent state: live while working or blocked,
+finished on `done` (or idle after working). On finish it links the opencode
+session, marks the dispatch failed when the transcript doesn't end in a
+clean assistant reply, and closes the pane (the transcript stays in
+opencode: `opencode -s <id>`). Task commands need an argument in TUI mode
+(a bare slash command stops in the command picker). A short block is
+auto-question deciding; when a dispatched agent stays blocked longer than
+`blocked_notify_secs` (default 120, needs `notify`), gh-hud sends a desktop
+notification naming the machine and pane to attach to.
+
 Dispatch only targets ghws `@` instance workspaces (never the base
 human-owned clones); set `dispatch_instances_only = false` to also allow
 base workspaces. With `[[machines]]` configured, placement spreads across
@@ -193,6 +209,8 @@ queue_window_hours = 48    # review queue sweep: others' PRs updated within this
 ghws_root = "~/Projects/github"  # ghws workspace root ($GHWS_ROOT default)
 agent = "autonomy"         # opencode agent for headless dispatch (unattended: asks auto-reject)
 runner = "herdr"           # dispatch runner: herdr (default) | local
+dispatch_mode = "run"      # herdr runner: run (headless, default) | tui (agents can ask questions)
+blocked_notify_secs = 120  # notify when a dispatched agent stays blocked this long (0 = off)
 max_concurrent = 2         # max simultaneously dispatched agents (hub)
 busy_window_secs = 900     # foreign session newer than this blocks dispatch
 dirty = "refuse"           # dirty checkout policy: refuse | stash | stash-tracked
@@ -213,6 +231,7 @@ max_concurrent = 2
 # ghws_root = "~/Projects/github"   # remote ghws root
 # tasks = ["review", "ci"]          # task allowlist (empty = all tasks)
 # enabled = true
+# dispatch_mode = "tui"             # override the top-level dispatch_mode
 
 # dispatchable tasks: command is a slash-command template ({num} = PR/issue
 # number). Tasks: rebase, feedback, review, ci, issue.

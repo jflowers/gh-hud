@@ -1,7 +1,8 @@
 // Package dispatch launches autonomous opencode (uf) agent sessions against
 // ghws checkouts: it infers the task a dashboard row implies, preflights the
 // workspace (busy session, dirty tree, upstream sync), starts a detached
-// `opencode run` with the autonomy agent, and tracks outcome in a state file.
+// `opencode run` (or, in TUI mode, an interactive opencode TUI; see tui.go)
+// with the autonomy agent, and tracks outcome in a state file.
 // Dispatch targets live on the hub or on configured remote machines (herdr
 // workers reached over ssh); placement is capacity-based across machines.
 package dispatch
@@ -85,6 +86,12 @@ type Record struct {
 	WSID        string // herdr workspace id (herdr runner)
 	PaneID      string // herdr pane id (herdr runner)
 	AgentName   string // herdr agent name (herdr runner)
+	// TUI mode (see tui.go): the agent runs as an interactive TUI and
+	// completion comes from herdr state instead of a process exit.
+	Mode       string     `json:"mode,omitempty"`        // "tui"; "" = headless run
+	Worked     bool       `json:"worked,omitempty"`      // TUI seen working or blocked
+	SessionID  string     `json:"session_id,omitempty"`  // opencode session (TUI mode)
+	FinishedAt *time.Time `json:"finished_at,omitempty"` // TUI finished (outcome may be unknown)
 }
 
 // Session is an opencode session running under the ghws root, joined with
@@ -105,6 +112,9 @@ type Session struct {
 	PaneID    string // herdr pane hosting the agent
 	WSID      string // herdr workspace
 	Blocked   bool   // herdr agent is waiting for input (approval/question)
+	// BlockedSince is when gh-hud first saw the agent blocked (zero when
+	// not blocked or not yet observed).
+	BlockedSince time.Time
 }
 
 // Options configures a Dispatcher.
@@ -122,7 +132,11 @@ type Options struct {
 	// itself. Empty means only the current directory's project is visible.
 	Dirs []string
 	// Runner selects the dispatch runner: "herdr" (default) or "local".
-	Runner        string
+	Runner string
+	// Mode is the default dispatch mode on every machine: "run" (headless
+	// opencode run, default) or "tui" (interactive TUI in the herdr pane,
+	// herdr runner only). Machine.Mode overrides it per machine.
+	Mode          string
 	HerdrWatchCmd string // template with {workspace} {pane} {machine}
 	// Machines are remote dispatch workers (herdr-managed). Empty keeps
 	// the historic hub-only behavior.
@@ -150,6 +164,10 @@ type Dispatcher struct {
 
 	drainMu  sync.RWMutex
 	drainSet map[string]bool // machine keys receiving no new placements
+
+	// Guarded by mu (see tui.go).
+	blockedSince map[string]time.Time // machine|pane → first seen blocked
+	tuiBusy      map[string]bool      // machine|pane → TUI goroutine in flight
 }
 
 // agentSnapshot is one machine's live herdr agent list.
@@ -196,6 +214,9 @@ func New(opts Options) (*Dispatcher, error) {
 	if opts.Runner != "local" {
 		opts.Runner = "herdr"
 	}
+	if opts.Mode != modeTUI {
+		opts.Mode = modeRun
+	}
 	if opts.HerdrWatchCmd == "" {
 		opts.HerdrWatchCmd = "/Applications/Ghostty.app/Contents/MacOS/ghostty -e herdr"
 	}
@@ -209,6 +230,9 @@ func New(opts Options) (*Dispatcher, error) {
 		}
 		if m.GhwsRoot == "" {
 			m.GhwsRoot = "~/Projects/github"
+		}
+		if m.Mode != modeRun && m.Mode != modeTUI {
+			m.Mode = ""
 		}
 	}
 	dirs := make([]string, 0, len(opts.Dirs))
@@ -298,10 +322,14 @@ var errMachineUnreachable = errors.New("machine unreachable")
 
 // recordLive reports whether a dispatched agent is still running. Local
 // records are tracked by PID; herdr records by the pane's live agent entry
-// on the record's machine (entries clear when the process exits).
+// on the record's machine (entries clear when the process exits); TUI
+// records by the agent's herdr state, since the TUI never exits.
 func recordLive(r Record, agents []herdrAgent) bool {
-	if r.ExitCode != nil {
+	if r.ExitCode != nil || r.FinishedAt != nil {
 		return false
+	}
+	if r.Runner == "herdr" && r.Mode == modeTUI {
+		return tuiPhaseOf(r, agents, time.Now()) == tuiLive
 	}
 	if r.Runner == "herdr" {
 		for _, a := range agents {
@@ -370,6 +398,12 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 			if r.Directory == co.Dir && !ours[r.Title] && time.Since(time.UnixMilli(r.Updated)) < d.opts.BusyWindow {
 				return Record{}, fmt.Errorf("busy: opencode session active in %s", co.Workspace)
 			}
+		}
+	}
+
+	if d.opts.Runner == "herdr" {
+		if _, err := agentArgs(d.modeFor(m), d.opts.Agent, title, name, args); err != nil {
+			return Record{}, err
 		}
 	}
 
@@ -486,11 +520,16 @@ func (d *Dispatcher) dispatchHerdr(ctx context.Context, task Task, it model.Item
 	if err := herdrPaneReady(ctx, m, paneID); err != nil {
 		return Record{}, fmt.Errorf("herdr pane ready: %w", err)
 	}
+	mode := d.modeFor(m)
+	tail, err := agentArgs(mode, d.opts.Agent, title, name, args)
+	if err != nil {
+		return Record{}, err
+	}
 	agentName := herdrAgentName(task, it.Num)
-	if err := herdrAgentStart(ctx, m, agentName, paneID, d.opts.Agent, title, name, args); err != nil {
+	if err := herdrAgentStart(ctx, m, agentName, paneID, tail); err != nil {
 		// Registration can time out even though the command was typed and
 		// ran; keep the dispatch when the agent is verifiably in the pane.
-		if !herdrAgentLaunched(ctx, m, paneID) {
+		if !herdrAgentLaunched(ctx, m, paneID, launchMarker(mode)) {
 			return Record{}, fmt.Errorf("herdr agent start: %w", err)
 		}
 	}
@@ -511,6 +550,9 @@ func (d *Dispatcher) dispatchHerdr(ctx context.Context, task Task, it model.Item
 		WSID:        wsID,
 		PaneID:      paneID,
 		AgentName:   agentName,
+	}
+	if mode == modeTUI {
+		rec.Mode = modeTUI
 	}
 	d.mu.Lock()
 	d.records = append(d.records, rec)
@@ -748,6 +790,7 @@ type rawSession struct {
 	ID        string `json:"id"`
 	Title     string `json:"title"`
 	Updated   int64  `json:"updated"`
+	Created   int64  `json:"created"`
 	Directory string `json:"directory"`
 }
 
@@ -861,7 +904,11 @@ func (d *Dispatcher) Sessions(ctx context.Context) ([]Session, error) {
 			if rec.Machine != "" {
 				continue // remote records are synthesized below
 			}
-			if rec.Title != r.Title || !samePath(rec.Dir, r.Directory) {
+			if rec.SessionID != "" {
+				if rec.SessionID != r.ID {
+					continue
+				}
+			} else if rec.Title != r.Title || !samePath(rec.Dir, r.Directory) {
 				continue
 			}
 			s.Task = rec.Task
@@ -871,6 +918,8 @@ func (d *Dispatcher) Sessions(ctx context.Context) ([]Session, error) {
 			switch {
 			case rec.ExitCode != nil:
 				s.Failed = *rec.ExitCode != 0
+			case rec.FinishedAt != nil:
+				// finished TUI, outcome unknown
 			case rec.Runner == "herdr":
 				s.PaneID, s.WSID = rec.PaneID, rec.WSID
 				// Presence in the agent list means an agent process is live
@@ -878,7 +927,7 @@ func (d *Dispatcher) Sessions(ctx context.Context) ([]Session, error) {
 				// idle/unknown rather than working, so presence — not the
 				// status word — is the running signal. Blocked is TUI-state
 				// derived and only set for screen-recognized agents.
-				if a, ok := agentByPane[rec.PaneID]; ok {
+				if a, ok := agentByPane[rec.PaneID]; ok && recordLive(*rec, localAgents) {
 					s.State = a.Status
 					s.Running = true
 					s.Blocked = a.Status == "blocked"
@@ -939,12 +988,15 @@ func (d *Dispatcher) Sessions(ctx context.Context) ([]Session, error) {
 				PaneID:    rec.PaneID,
 				WSID:      rec.WSID,
 			}
-			if a, ok := agentByPane[rec.PaneID]; ok {
+			if a, ok := agentByPane[rec.PaneID]; ok && live {
 				used[a.PaneID] = true
 				s.State = a.Status
 				s.Running = true
 				s.Blocked = a.Status == "blocked"
-			} else if rec.ExitCode != nil {
+			} else if ok {
+				used[a.PaneID] = true // finished TUI still closing
+			}
+			if !live && rec.ExitCode != nil {
 				s.Failed = *rec.ExitCode != 0
 			}
 			sessions = append(sessions, s)
@@ -969,6 +1021,12 @@ func (d *Dispatcher) Sessions(ctx context.Context) ([]Session, error) {
 				WSID:      a.WorkspaceID,
 				Workspace: snap.labels[a.WorkspaceID],
 			})
+		}
+	}
+
+	for i := range sessions {
+		if sessions[i].Blocked {
+			sessions[i].BlockedSince = d.blockedAt(sessions[i].Machine, sessions[i].PaneID)
 		}
 	}
 

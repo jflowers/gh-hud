@@ -142,6 +142,46 @@ func TestLoadRunnerLocal(t *testing.T) {
 	}
 }
 
+func TestLoadDispatchMode(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.toml")
+	body := `dispatch_mode = "tui"
+blocked_notify_secs = 0
+
+[[machines]]
+name = "lap1"
+dispatch_mode = "run"
+
+[[machines]]
+name = "lap2"
+dispatch_mode = "bogus"
+`
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.DispatchMode != "tui" {
+		t.Errorf("DispatchMode: got %q want tui", c.DispatchMode)
+	}
+	if c.BlockedNotifySecs != 0 {
+		t.Errorf("BlockedNotifySecs: got %d want 0 (explicit disable kept)", c.BlockedNotifySecs)
+	}
+	if got := c.Machines[0].DispatchMode; got != "run" {
+		t.Errorf("lap1 DispatchMode: got %q want run", got)
+	}
+	if got := c.Machines[1].DispatchMode; got != "" {
+		t.Errorf("lap2 DispatchMode: got %q want empty (invalid falls back to top level)", got)
+	}
+
+	d := Default()
+	if d.DispatchMode != "run" || d.BlockedNotifySecs != 120 {
+		t.Errorf("defaults: dispatch_mode %q blocked_notify_secs %d, want run/120", d.DispatchMode, d.BlockedNotifySecs)
+	}
+}
+
 func TestLoadMissing(t *testing.T) {
 	c, err := Load(filepath.Join(t.TempDir(), "absent.toml"))
 	if err != nil {
