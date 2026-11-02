@@ -87,7 +87,7 @@ func Default() *Config {
 		Machines:              []Machine{},
 
 		GhwsRoot:       ghws.DefaultRoot(),
-		Agent:          "build",
+		Agent:          "autonomy",
 		MaxConcurrent:  2,
 		BusyWindowSecs: 900,
 		Dirty:          "refuse",
@@ -230,7 +230,7 @@ func Load(path string) (*Config, error) {
 		cfg.GhwsRoot = ghws.DefaultRoot()
 	}
 	if cfg.Agent == "" {
-		cfg.Agent = "build"
+		cfg.Agent = "autonomy"
 	}
 	if cfg.MaxConcurrent < 1 {
 		cfg.MaxConcurrent = 2

@@ -94,6 +94,12 @@ run in that tab's pane. If the server can't be reached, dispatch falls
 back to a detached local `opencode run --command …` with the configured
 agent. Set `runner = "local"` to skip herdr entirely.
 
+Sessions run headless, so the configured `agent` (default `autonomy`, from
+[opencode-auto-question](https://github.com/jflowers/opencode-auto-question))
+must not depend on a human: under `opencode run` a permission `ask` is
+auto-rejected and ends the run, while `deny` returns an error the agent can
+work around. The `build` agent inherits interactive `ask` rules.
+
 Dispatch only targets ghws `@` instance workspaces (never the base
 human-owned clones); set `dispatch_instances_only = false` to also allow
 base workspaces. With `[[machines]]` configured, placement spreads across
@@ -185,7 +191,7 @@ queue_window_hours = 48    # review queue sweep: others' PRs updated within this
 
 # agent dispatch (see "Agent dispatch" above)
 ghws_root = "~/Projects/github"  # ghws workspace root ($GHWS_ROOT default)
-agent = "build"            # opencode agent for headless dispatch
+agent = "autonomy"         # opencode agent for headless dispatch (unattended: asks auto-reject)
 runner = "herdr"           # dispatch runner: herdr (default) | local
 max_concurrent = 2         # max simultaneously dispatched agents (hub)
 busy_window_secs = 900     # foreign session newer than this blocks dispatch

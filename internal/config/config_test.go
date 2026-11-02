@@ -11,8 +11,8 @@ import (
 
 func TestDefaults(t *testing.T) {
 	c := Default()
-	if c.Agent != "build" {
-		t.Errorf("Agent: got %q want build", c.Agent)
+	if c.Agent != "autonomy" {
+		t.Errorf("Agent: got %q want autonomy", c.Agent)
 	}
 	if c.MaxConcurrent != 2 {
 		t.Errorf("MaxConcurrent: got %d want 2", c.MaxConcurrent)
@@ -147,8 +147,8 @@ func TestLoadMissing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load missing file: %v", err)
 	}
-	if c.Agent != "build" {
-		t.Errorf("Agent: got %q want build (defaults)", c.Agent)
+	if c.Agent != "autonomy" {
+		t.Errorf("Agent: got %q want autonomy (defaults)", c.Agent)
 	}
 	if c.MaxConcurrent != 2 {
 		t.Errorf("MaxConcurrent: got %d want 2 (defaults)", c.MaxConcurrent)

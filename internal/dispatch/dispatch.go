@@ -110,7 +110,7 @@ type Session struct {
 // Options configures a Dispatcher.
 type Options struct {
 	Root          string // ghws root; sessions outside it are ignored
-	Agent         string // opencode agent for headless runs (default "build")
+	Agent         string // opencode agent for headless runs (default "autonomy")
 	MaxConcurrent int
 	BusyWindow    time.Duration // a foreign session newer than this blocks dispatch
 	Dirty         string        // refuse | stash | stash-tracked
@@ -167,7 +167,7 @@ type indexEntry struct {
 // New builds a Dispatcher, defaulting unset options and loading state.
 func New(opts Options) (*Dispatcher, error) {
 	if opts.Agent == "" {
-		opts.Agent = "build"
+		opts.Agent = "autonomy"
 	}
 	if opts.MaxConcurrent < 1 {
 		opts.MaxConcurrent = 2
