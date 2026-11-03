@@ -177,8 +177,8 @@ dispatch_mode = "bogus"
 	}
 
 	d := Default()
-	if d.DispatchMode != "run" || d.BlockedNotifySecs != 120 {
-		t.Errorf("defaults: dispatch_mode %q blocked_notify_secs %d, want run/120", d.DispatchMode, d.BlockedNotifySecs)
+	if d.DispatchMode != "run" || d.BlockedNotifySecs != 180 {
+		t.Errorf("defaults: dispatch_mode %q blocked_notify_secs %d, want run/180", d.DispatchMode, d.BlockedNotifySecs)
 	}
 }
 

@@ -110,11 +110,11 @@ reads completion from herdr's agent state: live while working or blocked,
 finished on `done` (or idle after working). On finish it links the opencode
 session, marks the dispatch failed when the transcript doesn't end in a
 clean assistant reply, and closes the pane (the transcript stays in
-opencode: `opencode -s <id>`). Task commands need an argument in TUI mode
-(a bare slash command stops in the command picker). A short block is
-auto-question deciding; when a dispatched agent stays blocked longer than
-`blocked_notify_secs` (default 120, needs `notify`), gh-hud sends a desktop
-notification naming the machine and pane to attach to.
+opencode: `opencode -s <id>`). A short block is auto-question deciding
+(up to its 120s handler timeout); when a dispatched agent stays blocked
+longer than `blocked_notify_secs` (default 180, needs `notify`), the
+question went to a human and gh-hud sends a desktop notification naming the
+machine and pane to attach to.
 
 Dispatch only targets ghws `@` instance workspaces (never the base
 human-owned clones); set `dispatch_instances_only = false` to also allow
@@ -210,7 +210,7 @@ ghws_root = "~/Projects/github"  # ghws workspace root ($GHWS_ROOT default)
 agent = "autonomy"         # opencode agent for headless dispatch (unattended: asks auto-reject)
 runner = "herdr"           # dispatch runner: herdr (default) | local
 dispatch_mode = "run"      # herdr runner: run (headless, default) | tui (agents can ask questions)
-blocked_notify_secs = 120  # notify when a dispatched agent stays blocked this long (0 = off)
+blocked_notify_secs = 180  # notify when a dispatched agent stays blocked this long (0 = off)
 max_concurrent = 2         # max simultaneously dispatched agents (hub)
 busy_window_secs = 900     # foreign session newer than this blocks dispatch
 dirty = "refuse"           # dirty checkout policy: refuse | stash | stash-tracked

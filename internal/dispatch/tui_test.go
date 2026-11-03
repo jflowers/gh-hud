@@ -7,25 +7,22 @@ import (
 )
 
 func TestAgentArgs(t *testing.T) {
-	got, err := agentArgs(modeRun, "autonomy", "t", "uf.rebase-pr", []string{"846"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	got := agentArgs(modeRun, "autonomy", "t", "uf.rebase-pr", []string{"846"})
 	if want := "run --agent autonomy --title t --command uf.rebase-pr 846"; strings.Join(got, " ") != want {
 		t.Errorf("run argv = %q, want %q", strings.Join(got, " "), want)
 	}
 
-	got, err = agentArgs(modeTUI, "autonomy", "t", "uf.run-pipeline-plan", []string{"#12", "x"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	got = agentArgs(modeTUI, "autonomy", "t", "uf.run-pipeline-plan", []string{"#12", "x"})
 	want := []string{"--agent", "autonomy", "--prompt", "/uf.run-pipeline-plan #12 x"}
 	if strings.Join(got, "\x00") != strings.Join(want, "\x00") {
 		t.Errorf("tui argv = %q, want %q", got, want)
 	}
 
-	if _, err := agentArgs(modeTUI, "autonomy", "t", "uf.review-pr", nil); err == nil {
-		t.Error("tui argv without args: want error (bare slash command stalls in the picker)")
+	// No args: the trailing space keeps the prompt out of the command
+	// picker (verified on lap1: runs with empty $ARGUMENTS).
+	got = agentArgs(modeTUI, "autonomy", "t", "uf.sync", nil)
+	if p := got[len(got)-1]; p != "/uf.sync " {
+		t.Errorf("tui prompt without args = %q, want %q", p, "/uf.sync ")
 	}
 }
 

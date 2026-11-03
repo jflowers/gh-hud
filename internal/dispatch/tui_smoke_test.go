@@ -13,7 +13,8 @@ import (
 
 // TestTUISmoke dispatches a real TUI-mode agent on a herdr-managed machine:
 // a temporary global command makes the agent ask a question through the
-// question tool, the auto-question plugin answers it, and gh-hud must see
+// question tool (dispatched without arguments, which must still run), the
+// auto-question plugin answers it, and gh-hud must see
 // working → blocked → done, record a clean outcome, link the session, and
 // close the pane. It is skipped unless GHHUD_TUI_SMOKE holds the machine's
 // herdr label and GHHUD_TUI_SMOKE_DIR a checkout on it, e.g.
@@ -50,7 +51,7 @@ func TestTUISmoke(t *testing.T) {
 	}
 	co := ghws.Checkout{Workspace: "ghhud-tui-smoke", Dir: dir}
 	it := model.Item{Kind: model.KindPR, Repo: "acme/smoke", Num: 7}
-	rec, err := d.dispatchHerdr(ctx, TaskReview, it, d.opts.Machines[0], co, "ghhud-smoke-ask", []string{"now"}, "smoke", "", false)
+	rec, err := d.dispatchHerdr(ctx, TaskReview, it, d.opts.Machines[0], co, "ghhud-smoke-ask", nil, "smoke", "", false)
 	if err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
@@ -107,5 +108,7 @@ func TestTUISmoke(t *testing.T) {
 			t.Errorf("pane %s still hosts an agent (%s); want it closed", a.PaneID, a.Status)
 		}
 	}
-	t.Logf("finished: session %s exit %v", got.SessionID, got.ExitCode)
+	if got.ExitCode != nil {
+		t.Logf("finished: session %s exit %d", got.SessionID, *got.ExitCode)
+	}
 }

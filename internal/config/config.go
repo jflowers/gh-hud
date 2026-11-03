@@ -66,8 +66,9 @@ type Config struct {
 	// [[machines]] dispatch_mode overrides it per machine.
 	DispatchMode string `toml:"dispatch_mode"`
 	// BlockedNotifySecs sends a desktop notification when a dispatched
-	// agent stays blocked this long (shorter blocks are auto-question
-	// deciding); 0 disables it. Requires notify.
+	// agent stays blocked this long; 0 disables it. Requires notify. The
+	// default sits past auto-question's 120s handler timeout so a slow
+	// decision is not reported as needing a human.
 	BlockedNotifySecs int                   `toml:"blocked_notify_secs"`
 	Dispatch          map[string]TaskConfig `toml:"dispatch"`
 	// Fleet is the GitOps rollout coordinator ([fleet]).
@@ -107,7 +108,7 @@ func Default() *Config {
 		Dispatch:       DefaultDispatch(),
 		Fleet:          DefaultFleet(),
 
-		BlockedNotifySecs: 120,
+		BlockedNotifySecs: 180,
 	}
 }
 

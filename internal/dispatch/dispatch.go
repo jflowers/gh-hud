@@ -401,12 +401,6 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 		}
 	}
 
-	if d.opts.Runner == "herdr" {
-		if _, err := agentArgs(d.modeFor(m), d.opts.Agent, title, name, args); err != nil {
-			return Record{}, err
-		}
-	}
-
 	stash, err := d.preflight(ctx, m, co.Dir, task, ref)
 	if err != nil {
 		return Record{}, err
@@ -521,10 +515,7 @@ func (d *Dispatcher) dispatchHerdr(ctx context.Context, task Task, it model.Item
 		return Record{}, fmt.Errorf("herdr pane ready: %w", err)
 	}
 	mode := d.modeFor(m)
-	tail, err := agentArgs(mode, d.opts.Agent, title, name, args)
-	if err != nil {
-		return Record{}, err
-	}
+	tail := agentArgs(mode, d.opts.Agent, title, name, args)
 	agentName := herdrAgentName(task, it.Num)
 	if err := herdrAgentStart(ctx, m, agentName, paneID, tail); err != nil {
 		// Registration can time out even though the command was typed and

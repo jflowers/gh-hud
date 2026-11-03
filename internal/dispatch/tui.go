@@ -43,16 +43,14 @@ func (d *Dispatcher) modeFor(m Machine) string {
 }
 
 // agentArgs builds the opencode argv passed after herdr's "--". A TUI
-// prompt that is a bare slash command stops in the command picker and
-// never runs, so TUI mode requires at least one argument.
-func agentArgs(mode, agent, title, command string, args []string) ([]string, error) {
+// prompt that ends at the command name stops in the command picker and
+// never runs; the space after it is always sent, so argument-less
+// commands run with empty $ARGUMENTS.
+func agentArgs(mode, agent, title, command string, args []string) []string {
 	if mode != modeTUI {
-		return append([]string{"run", "--agent", agent, "--title", title, "--command", command}, args...), nil
+		return append([]string{"run", "--agent", agent, "--title", title, "--command", command}, args...)
 	}
-	if len(args) == 0 {
-		return nil, fmt.Errorf("tui dispatch: command %q needs an argument (a bare slash command stops in the TUI command picker)", command)
-	}
-	return []string{"--agent", agent, "--prompt", "/" + command + " " + strings.Join(args, " ")}, nil
+	return []string{"--agent", agent, "--prompt", "/" + command + " " + strings.Join(args, " ")}
 }
 
 // launchMarker is the pane text proving the agent command was typed.
