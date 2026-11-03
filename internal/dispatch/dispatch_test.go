@@ -241,6 +241,36 @@ func TestPreflightDiverged(t *testing.T) {
 	}
 }
 
+func TestPreflightUnfetchedUpstream(t *testing.T) {
+	// ghws instances start with only origin fetched: the upstream remote
+	// exists but has no refs. Preflight must ask the remote for its
+	// default branch, fetch it, and sync.
+	upstream, _ := setupClone(t)
+	inst := filepath.Join(t.TempDir(), "inst")
+	gitRun(t, filepath.Dir(inst), "clone", upstream, inst)
+	gitRun(t, inst, "remote", "add", "upstream", upstream)
+	writeFile(t, filepath.Join(upstream, "a.txt"), "two\n")
+	gitRun(t, upstream, "commit", "-am", "c2")
+
+	d := newTestDispatcher(t, "refuse")
+	if _, err := d.preflight(context.Background(), d.localMachine(), inst, TaskCI, "acme/r#7"); err != nil {
+		t.Fatalf("preflight with unfetched upstream: %v", err)
+	}
+	if got := strings.TrimSpace(gitRun(t, inst, "rev-parse", "HEAD")); got != strings.TrimSpace(gitRun(t, upstream, "rev-parse", "HEAD")) {
+		t.Error("instance not fast-forwarded to upstream/main")
+	}
+}
+
+func TestSymrefBranch(t *testing.T) {
+	out := "ref: refs/heads/trunk\tHEAD\n0123abcd\tHEAD\n"
+	if got := symrefBranch(out); got != "trunk" {
+		t.Errorf("symrefBranch = %q, want trunk", got)
+	}
+	if got := symrefBranch("0123abcd\tHEAD\n"); got != "" {
+		t.Errorf("no symref: got %q, want empty", got)
+	}
+}
+
 func TestPreflightNoUpstream(t *testing.T) {
 	solo := filepath.Join(t.TempDir(), "solo")
 	if err := os.MkdirAll(solo, 0o755); err != nil {

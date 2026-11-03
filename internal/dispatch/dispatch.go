@@ -274,15 +274,18 @@ func (d *Dispatcher) Dispatch(ctx context.Context, task Task, it model.Item, aut
 	if len(cands) == 0 {
 		return Record{}, fmt.Errorf("no dispatch target for %s (machines busy or full, or no idle checkout)", it.Ref())
 	}
-	var lastErr error
+	var refusals []string
 	for _, c := range cands {
 		rec, err := d.dispatchCore(ctx, task, it, c.machine, c.checkout, name, args, title, auto)
 		if err == nil {
 			return rec, nil
 		}
-		lastErr = err
+		if len(cands) == 1 {
+			return Record{}, err
+		}
+		refusals = append(refusals, placementLabel(c)+": "+err.Error())
 	}
-	return Record{}, lastErr
+	return Record{}, fmt.Errorf("no candidate took %s — %s", it.Ref(), strings.Join(refusals, " · "))
 }
 
 // DispatchIn launches the task at one exact placement (machine +
@@ -384,6 +387,16 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 	for _, a := range agents {
 		if samePath(a.Cwd, co.Dir) {
 			return Record{}, fmt.Errorf("busy: herdr agent active in %s", co.Workspace)
+		}
+	}
+
+	// Refuse a dirty checkout before anything starts opencode in it: the
+	// session scan below bootstraps opencode in the checkout, and a first
+	// bootstrap installs .opencode plugin deps, which can rewrite tracked
+	// files (package-lock.json) and make the checkout look dirty.
+	if d.opts.Dirty == "refuse" {
+		if err := d.refuseDirty(ctx, m, co.Dir); err != nil {
+			return Record{}, err
 		}
 	}
 
@@ -1114,6 +1127,9 @@ func (d *Dispatcher) preflight(ctx context.Context, m Machine, dir string, task 
 	}
 	stash := ""
 	if n := len(nonEmptyLines(out)); n > 0 {
+		// With dirty = refuse, dispatchCore already checked before the
+		// session scan; anything here appeared since (e.g. a lockfile the
+		// scan's opencode bootstrap rewrote) and still refuses.
 		switch d.opts.Dirty {
 		case "stash", "stash-tracked":
 			stash = fmt.Sprintf("gh-hud/%s/%s/%d", task, sanitize(ref), time.Now().Unix())
@@ -1129,19 +1145,10 @@ func (d *Dispatcher) preflight(ctx context.Context, m Machine, dir string, task 
 		}
 	}
 
-	def := strings.TrimSpace(orEmpty(git("symbolic-ref", "--short", "refs/remotes/upstream/HEAD")))
-	if def == "" {
-		for _, cand := range []string{"upstream/main", "upstream/master"} {
-			if _, err := git("rev-parse", "--verify", "--quiet", cand); err == nil {
-				def = cand
-				break
-			}
-		}
+	short, err := upstreamDefault(git)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", filepath.Base(dir), err)
 	}
-	if def == "" {
-		return "", fmt.Errorf("no upstream remote in %s", filepath.Base(dir))
-	}
-	short := strings.TrimPrefix(def, "upstream/")
 	if _, err := git("fetch", "upstream", short); err != nil {
 		return "", err
 	}
@@ -1187,6 +1194,61 @@ func (d *Dispatcher) saveStateLocked() {
 		return
 	}
 	_ = os.WriteFile(filepath.Join(d.opts.StateDir, "state.json"), data, 0o644)
+}
+
+// refuseDirty reports a dirty checkout as an error (read-only).
+func (d *Dispatcher) refuseDirty(ctx context.Context, m Machine, dir string) error {
+	out, err := m.Run(ctx, dir, "git", "status", "--porcelain")
+	if err != nil {
+		if !m.Local {
+			return fmt.Errorf("%w: %v", errMachineUnreachable, err)
+		}
+		return err
+	}
+	if n := len(nonEmptyLines(out)); n > 0 {
+		return fmt.Errorf("dirty checkout: %d uncommitted file(s) in %s (set dirty = \"stash\" to auto-stash)", n, filepath.Base(dir))
+	}
+	return nil
+}
+
+// upstreamDefault returns the upstream remote's default branch name. It
+// prefers the local upstream/HEAD and upstream/{main,master} refs; when
+// the remote exists but was never fetched (ghws instances start with only
+// origin fetched), it asks the remote itself. The caller fetches the
+// branch, which creates the missing ref.
+func upstreamDefault(git func(args ...string) (string, error)) (string, error) {
+	if def := strings.TrimSpace(orEmpty(git("symbolic-ref", "--short", "refs/remotes/upstream/HEAD"))); def != "" {
+		return strings.TrimPrefix(def, "upstream/"), nil
+	}
+	for _, cand := range []string{"main", "master"} {
+		if _, err := git("rev-parse", "--verify", "--quiet", "upstream/"+cand); err == nil {
+			return cand, nil
+		}
+	}
+	if _, err := git("remote", "get-url", "upstream"); err != nil {
+		return "", fmt.Errorf("no upstream remote")
+	}
+	out, err := git("ls-remote", "--symref", "upstream", "HEAD")
+	if err != nil {
+		return "", fmt.Errorf("upstream default branch: %w", err)
+	}
+	if b := symrefBranch(out); b != "" {
+		return b, nil
+	}
+	return "", fmt.Errorf("upstream default branch: no HEAD symref in ls-remote output")
+}
+
+// symrefBranch parses `git ls-remote --symref <remote> HEAD` output
+// ("ref: refs/heads/main\tHEAD") into the branch name.
+func symrefBranch(out string) string {
+	for _, line := range nonEmptyLines(out) {
+		if rest, ok := strings.CutPrefix(line, "ref: refs/heads/"); ok {
+			if i := strings.IndexAny(rest, "\t "); i > 0 {
+				return rest[:i]
+			}
+		}
+	}
+	return ""
 }
 
 func fingerprint(task Task, it model.Item) string {
