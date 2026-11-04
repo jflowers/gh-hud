@@ -27,6 +27,7 @@ type fetchedMsg struct {
 
 type agentsMsg struct {
 	sessions []dispatch.Session
+	runs     []dispatch.Run
 	usage    []dispatch.MachineUsage
 	err      error
 }
@@ -100,6 +101,14 @@ type Model struct {
 	// blockedSeen dedupes long-blocked agent notifications: keyed by
 	// session ID, dropped once the agent is no longer blocked.
 	blockedSeen map[string]bool
+
+	// runs are the dispatch runs, newest first (see runs.go); runView is
+	// the open run detail view. finishedSeen dedupes finish notifications
+	// (nil until the first agents refresh seeds it).
+	runs         []dispatch.Run
+	runView      *dispatch.Run
+	runScroll    int
+	finishedSeen map[string]bool
 
 	statusMsg string
 	statusAt  time.Time
@@ -196,8 +205,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case agentsMsg:
 		if msg.err == nil {
 			m.agents = msg.sessions
+			m.runs = msg.runs
 			m.machineUsage = msg.usage
 			m.notifyBlocked(msg.sessions)
+			m.notifyFinished(msg.runs)
+			m.refreshRunView()
 			if n := len(m.visibleAgents()); m.agentsSel >= n {
 				m.agentsSel = n - 1
 			}
@@ -219,6 +231,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				flash += " via " + msg.runner
 			}
 			m.flash(flash)
+		}
+		return m, m.fetchAgents()
+
+	case reinspectMsg:
+		if msg.err != nil {
+			m.flash("re-check failed: " + msg.err.Error())
+			return m, nil
+		}
+		if len(msg.run.Left) == 0 {
+			m.flash("re-check: nothing left behind in " + runAt(msg.run))
+		} else {
+			m.flash(fmt.Sprintf("re-check: %d item(s) still left in %s", len(msg.run.Left), runAt(msg.run)))
 		}
 		return m, m.fetchAgents()
 
@@ -249,6 +273,9 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		return m, nil
+	}
+	if m.runView != nil {
+		return m.handleRunKey(msg)
 	}
 	if m.actionMode {
 		return m.handleActionKey(msg)
@@ -326,6 +353,10 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "a":
 		m.openAction()
+	case "i":
+		if m.disp != nil {
+			m.openRowRun()
+		}
 	case "F":
 		if m.fleet != nil {
 			m.fleetMode = true
@@ -606,7 +637,7 @@ func (m *Model) fetchAgents() tea.Cmd {
 		defer cancel()
 		sessions, err := d.Sessions(ctx)
 		usage := d.MachineUsage(ctx)
-		return agentsMsg{sessions: sessions, usage: usage, err: err}
+		return agentsMsg{sessions: sessions, runs: d.Runs(ctx), usage: usage, err: err}
 	}
 }
 
@@ -708,6 +739,12 @@ func (m *Model) handleAgentsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.flash("watch failed: " + err.Error())
 			} else {
 				m.flash("watching " + s.Title)
+			}
+		}
+	case "i":
+		if m.agentsSel < len(list) {
+			if id := list[m.agentsSel].RunID; id == "" || !m.openRun(id) {
+				m.flash("not a gh-hud dispatch")
 			}
 		}
 	case "r":
@@ -864,8 +901,9 @@ func (m *Model) notifyBlocked(sessions []dispatch.Session) {
 	m.blockedSeen = still
 }
 
-// desktopNotify posts a macOS notification via osascript, fire-and-forget.
-func desktopNotify(text string) {
+// desktopNotify posts a macOS notification via osascript, fire-and-forget
+// (a variable so tests can capture notifications).
+var desktopNotify = func(text string) {
 	script := fmt.Sprintf("display notification %q with title \"gh-hud\"", text)
 	cmd := exec.Command("osascript", "-e", script)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}

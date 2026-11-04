@@ -394,14 +394,14 @@ func TestCheckoutPR(t *testing.T) {
 
 	d := newTestDispatcher(t, "refuse")
 	it := model.Item{Kind: model.KindPR, Repo: "acme/r", Num: 949}
-	if err := checkoutPR(context.Background(), d.localMachine(), work, it); err != nil {
+	if err := d.checkoutPR(context.Background(), d.localMachine(), work, it); err != nil {
 		t.Fatalf("checkoutPR: %v", err)
 	}
 	data, err := os.ReadFile(argv)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := strings.TrimSpace(string(data)), "pr checkout 949 --repo acme/r"; got != want {
+	if got, want := strings.TrimSpace(string(data)), "pr checkout 949 --repo acme/r --force"; got != want {
 		t.Errorf("gh argv = %q, want %q", got, want)
 	}
 	if got := strings.TrimSpace(gitRun(t, work, "rev-parse", "--abbrev-ref", "HEAD")); got != "pr-head" {

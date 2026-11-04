@@ -78,6 +78,7 @@ type rowCtx struct {
 	bots   *model.BotFilter
 	now    time.Time
 	agents map[string]agentMark
+	runs   map[string]dispatch.Run // ref → latest run
 }
 
 func renderRepo(p paint, repo string, w int) string {
@@ -95,9 +96,13 @@ func renderRepo(p paint, repo string, w int) string {
 	return p.text(cDim, owner) + p.text(cDim, "/") + p.text(cSubtle, name) + p.space(w-used)
 }
 
-func renderTitle(p paint, it model.Item, w int) string {
+func renderTitle(p paint, it model.Item, w int, runTag string, runColor lipgloss.Color) string {
 	var tags []string
 	tagW := 0
+	if runTag != "" {
+		tags = append(tags, p.text(runColor, runTag))
+		tagW += width(runTag) + 1
+	}
 	for _, r := range visibleReasons(it) {
 		tags = append(tags, p.text(reasonColor(r), r))
 		tagW += width(r) + 1
@@ -172,8 +177,14 @@ func renderRow(it model.Item, l layout, rc rowCtx, selected, hover bool) string 
 	b.WriteString(p.fg(color).Bold(selected).Render(padPlain(label, kindW, false)))
 	b.WriteString(sp)
 
-	// attention marker: agent state outranks ready and waiting-on-you
-	if mark := rc.agents[it.Repo]; mark.blocked {
+	// attention marker: the row's own run outranks repo-wide agent state,
+	// which outranks ready and waiting-on-you
+	run, hasRun := rc.runs[it.Ref()]
+	if hasRun && showRunTag(run, rc.now) && (run.Status == dispatch.RunBlocked || run.Status == dispatch.RunRunning ||
+		run.Status == dispatch.RunFailed || run.Status == dispatch.RunLeftWork) {
+		g, c := runGlyph(run.Status)
+		b.WriteString(p.text(c, g))
+	} else if mark := rc.agents[it.Repo]; mark.blocked {
 		b.WriteString(p.text(cOrange, "◆"))
 	} else if mark.running {
 		b.WriteString(p.text(cTeal, "●"))
@@ -218,7 +229,11 @@ func renderRow(it model.Item, l layout, rc rowCtx, selected, hover bool) string 
 
 	b.WriteString(renderRepo(p, it.Repo, l.repoW))
 	b.WriteString(sp)
-	b.WriteString(renderTitle(p, it, l.titleW))
+	tag, tagColor := "", cDim
+	if hasRun && showRunTag(run, rc.now) {
+		tag, tagColor = runTag(run, rc.now)
+	}
+	b.WriteString(renderTitle(p, it, l.titleW, tag, tagColor))
 
 	if l.threads {
 		b.WriteString(sp)
@@ -478,6 +493,7 @@ func (m *Model) footer() string {
 		"y/Y", "ref/url",
 		"r", "refresh",
 		"a", "agent",
+		"i", "run",
 		"6", "agents",
 	}
 	if m.fleet != nil {
@@ -520,6 +536,7 @@ func (m *Model) helpView() string {
 		line("/", "find (esc clears)"),
 		line("r", "refresh now"),
 		line("a", "agent actions for row"),
+		line("i", "last agent run for row"),
 		line("6", "agent sessions"),
 	}
 	if m.fleet != nil {
@@ -534,6 +551,8 @@ func (m *Model) helpView() string {
 		g("●", cTeal, "agent active on repo"),
 		g("◆", cRed, "agent dispatch failed"),
 		g("◆", cOrange, "agent blocked (needs input)"),
+		g("✗", cRed, "row's agent run failed (i for detail)"),
+		g("!", cOrange, "row's agent run left work behind"),
 		g("✓", cGreen, "CI passing / approved"),
 		g("✗", cRed, "CI failing / changes requested"),
 		g("●", cYellow, "CI running / mixed reviews"),
@@ -705,7 +724,7 @@ func (m *Model) agentsView() string {
 	} else if hidden > 0 {
 		toggle = fmt.Sprintf("a show %d stale", hidden)
 	}
-	lines = append(lines, "", comment.Render("enter watch · y copy id · r refresh · "+toggle+" · esc close"))
+	lines = append(lines, "", comment.Render("enter watch · i run detail · y copy id · r refresh · "+toggle+" · esc close"))
 
 	box := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
@@ -900,6 +919,9 @@ func (m *Model) View() string {
 	if m.help {
 		return m.helpView()
 	}
+	if m.runView != nil {
+		return m.runViewText()
+	}
 	if m.actionMode {
 		return m.actionView()
 	}
@@ -926,7 +948,7 @@ func (m *Model) View() string {
 			}
 			lines = append(lines, "", lipgloss.NewStyle().Foreground(cGreen).Render("   "+msg))
 		}
-		rc := rowCtx{me: m.me(), bots: m.bots, now: time.Now(), agents: m.agentMarks()}
+		rc := rowCtx{me: m.me(), bots: m.bots, now: time.Now(), agents: m.agentMarks(), runs: latestRuns(m.runs)}
 		end := m.offset + maxRows
 		if end > len(vis) {
 			end = len(vis)

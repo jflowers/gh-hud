@@ -88,10 +88,31 @@ dispatcher never assumes
 workspace state: it refuses busy checkouts (a live herdr agent or a foreign
 opencode session updated within `busy_window_secs`), applies your `dirty`
 policy to uncommitted files, and fast-forward syncs the default branch to
-`upstream` before launching. PR tasks (rebase, ci, feedback) then check
-the PR head out with `gh pr checkout`, so the agent starts on the branch
-it pushes to; the next dispatch's sync returns the checkout to the
-default branch.
+`upstream` before launching. It also fast-forwards every stealth overlay
+the checkout links into (the `.uf/<repo>` clones behind `.opencode`,
+`openspec`, …) onto its upstream; it never pushes one, and an overlay
+with uncommitted changes or unpushed commits refuses the dispatch. PR
+tasks (rebase, ci, feedback) then check the PR head out with
+`gh pr checkout --force`, so the agent starts on the PR exactly as it is
+on GitHub; a local PR branch holding commits no remote has is refused
+rather than reset.
+
+When a run ends, gh-hud reads its outcome and the agent's final message
+from the opencode transcript and inspects the checkout and its overlays.
+A run that left nothing behind is returned to the default branch. One
+that left uncommitted files or unpushed commits is marked `!` (left work)
+and kept as it is: nothing is stashed, reset or backed up silently, and
+the next dispatch into that checkout is refused naming the run that left
+it. Each PR/issue row shows its latest run as a tag (`feedback ✓ 12m`;
+`✗` failed, `!` left work, `?` outcome unknown, `●` running, `◆` blocked;
+failures and leftovers also take the attention slot), and with `notify`
+every finished run posts a desktop notification. `i` opens the row's
+latest run: where it ran, how long it took, the outcome and failure
+reason, what it pushed, what it left behind, and the agent's final
+message; there `w` watches a live run, `t` opens the transcript
+(`opencode -s <id>` on its machine), `y` copies the session id, and `r`
+re-checks the checkout after you've committed, pushed or discarded the
+leftovers.
 
 By default (`runner = "herdr"`) dispatch goes through a local herdr
 server: one herdr workspace per ghws workspace (created lazily, reused,
@@ -157,7 +178,8 @@ terminal): `enter` watches one (herdr
 sessions focus the workspace and attach the herdr TUI in a Ghostty window
 via `herdr_watch_cmd`; remote ones attach with `herdr --machine <label>`;
 local runner sessions tail the session log via
-`agent_watch_cmd`), `y` copies the session id. Live agent state shows in the
+`agent_watch_cmd`), `i` opens a dispatched session's run detail, `y`
+copies the session id. Live agent state shows in the
 attention slot: `●` teal = running, `◆` orange = blocked on a
 question or approval, `◆` red = dispatch failed. The header shows
 per-machine slot usage (`local 1/2 · lap1 0/2 · lap2 —`, `—` =

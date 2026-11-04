@@ -113,6 +113,16 @@ type Record struct {
 	// FinishError is why a finished TUI's outcome could not be read
 	// (ExitCode stays nil).
 	FinishError string `json:"finish_error,omitempty"`
+	// Outcome detail and after-run inspection (see finish.go).
+	FailReason   string     `json:"fail_reason,omitempty"`   // why the run failed
+	Summary      string     `json:"summary,omitempty"`       // the agent's final message
+	StartHead    string     `json:"start_head,omitempty"`    // HEAD when the agent started
+	Branch       string     `json:"branch,omitempty"`        // branch left checked out
+	Left         []string   `json:"left,omitempty"`          // leftovers: uncommitted/unpushed work
+	Pushed       []string   `json:"pushed,omitempty"`        // commits pushed during the run
+	Cleaned      bool       `json:"cleaned,omitempty"`       // returned to the default branch
+	InspectError string     `json:"inspect_error,omitempty"` // inspection could not run
+	InspectedAt  *time.Time `json:"inspected_at,omitempty"`
 }
 
 // Session is an opencode session running under the ghws root, joined with
@@ -138,6 +148,7 @@ type Session struct {
 	// BlockedSince is when gh-hud first saw the agent blocked (zero when
 	// not blocked or not yet observed).
 	BlockedSince time.Time
+	RunID        string // the dispatch record behind the session (see Runs)
 }
 
 // Options configures a Dispatcher.
@@ -445,15 +456,22 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 	if err != nil {
 		return Record{}, err
 	}
+	if err := d.syncOverlays(ctx, m, co.Dir); err != nil {
+		return Record{}, err
+	}
 	if task.onPRHead() && it.Kind == model.KindPR {
-		if err := checkoutPR(ctx, m, co.Dir, it); err != nil {
+		if err := d.checkoutPR(ctx, m, co.Dir, it); err != nil {
 			return Record{}, err
 		}
 	}
+	startHead := strings.TrimSpace(orEmpty(m.Run(ctx, co.Dir, "git", "rev-parse", "HEAD")))
 
 	if d.opts.Runner == "herdr" {
 		rec, err := d.dispatchHerdr(ctx, task, it, m, co, name, args, title, stash, auto)
 		if !errors.Is(err, errHerdrDown) {
+			if err == nil {
+				rec = d.setStartHead(rec, startHead)
+			}
 			return rec, err
 		}
 		if !m.Local {
@@ -462,7 +480,26 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 		}
 		// Local herdr server unreachable: fall through to the local runner.
 	}
-	return d.dispatchLocal(ctx, task, it, co, name, args, title, stash, auto)
+	rec, err := d.dispatchLocal(ctx, task, it, co, name, args, title, stash, auto)
+	if err == nil {
+		rec = d.setStartHead(rec, startHead)
+	}
+	return rec, err
+}
+
+// setStartHead stores the commit the agent started from, so the after-run
+// inspection can list what the run pushed.
+func (d *Dispatcher) setStartHead(rec Record, head string) Record {
+	rec.StartHead = head
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for i := range d.records {
+		if sameRecord(d.records[i], rec) && d.records[i].StartHead == "" {
+			d.records[i].StartHead = head
+			d.saveStateLocked()
+		}
+	}
+	return rec
 }
 
 // dispatchLocal launches a detached local opencode run (the fallback
@@ -514,16 +551,9 @@ func (d *Dispatcher) dispatchLocal(ctx context.Context, task Task, it model.Item
 				code = ee.ExitCode()
 			}
 		}
-		d.mu.Lock()
-		for i := range d.records {
-			if d.records[i].PID == rec.PID && d.records[i].StartedAt.Equal(rec.StartedAt) {
-				d.records[i].ExitCode = &code
-				break
-			}
-		}
-		d.saveStateLocked()
-		d.mu.Unlock()
+		d.finishRecord(rec, &code, false)
 	}()
+
 	return rec, nil
 }
 
@@ -948,6 +978,7 @@ func (d *Dispatcher) Sessions(ctx context.Context) ([]Session, error) {
 				continue
 			}
 			s.Task = rec.Task
+			s.RunID = runID(*rec)
 			s.Log = rec.Log
 			s.Workspace = rec.Workspace
 			s.Ref = rec.Ref
@@ -1023,6 +1054,7 @@ func (d *Dispatcher) Sessions(ctx context.Context) ([]Session, error) {
 				Machine:   rec.Machine,
 				PaneID:    rec.PaneID,
 				WSID:      rec.WSID,
+				RunID:     runID(rec),
 			}
 			if a, ok := agentByPane[rec.PaneID]; ok && live {
 				used[a.PaneID] = true
@@ -1175,7 +1207,7 @@ func (d *Dispatcher) preflight(ctx context.Context, m Machine, dir string, task 
 				return "", err
 			}
 		default:
-			return "", fmt.Errorf("dirty checkout: %d uncommitted file(s) in %s (set dirty = \"stash\" to auto-stash)", n, filepath.Base(dir))
+			return "", fmt.Errorf("%s", d.leftNote(m, dir, fmt.Sprintf("dirty checkout: %d uncommitted file(s) in %s (set dirty = \"stash\" to auto-stash)", n, filepath.Base(dir))))
 		}
 	}
 
@@ -1195,7 +1227,7 @@ func (d *Dispatcher) preflight(ctx context.Context, m Machine, dir string, task 
 		}
 	}
 	if _, err := git("merge", "--ff-only", "upstream/"+short); err != nil {
-		return "", fmt.Errorf("sync %s with upstream/%s failed (local branch diverged?): %w", short, short, err)
+		return "", fmt.Errorf("%s: %w", d.leftNote(m, dir, fmt.Sprintf("sync %s with upstream/%s failed (local branch diverged?)", short, short)), err)
 	}
 	return stash, nil
 }
@@ -1232,10 +1264,23 @@ func (d *Dispatcher) saveStateLocked() {
 
 // checkoutPR checks the PR head out in the preflighted checkout with
 // `gh pr checkout`, which tracks the head repo's branch (fork heads
-// included) so the agent can push to it. The next preflight returns the
-// checkout to the default branch.
-func checkoutPR(ctx context.Context, m Machine, dir string, it model.Item) error {
-	if _, err := m.Run(ctx, dir, "gh", "pr", "checkout", strconv.Itoa(it.Num), "--repo", it.Repo); err != nil {
+// included) so the agent can push to it. A local branch left by an
+// earlier run is reset to the PR head (--force) only when every commit on
+// it is on a remote; one holding unpushed commits is refused, naming the
+// run that left it, so no work is dropped.
+func (d *Dispatcher) checkoutPR(ctx context.Context, m Machine, dir string, it model.Item) error {
+	if b := it.HeadBranch; b != "" {
+		if _, err := m.Run(ctx, dir, "git", "rev-parse", "--verify", "--quiet", "refs/heads/"+b); err == nil {
+			out, err := m.Run(ctx, dir, "git", "rev-list", "--count", "refs/heads/"+b, "--not", "--remotes")
+			if err != nil {
+				return fmt.Errorf("check out %s in %s: %w", it.Ref(), filepath.Base(dir), err)
+			}
+			if n := strings.TrimSpace(out); n != "0" {
+				return fmt.Errorf("%s", d.leftNote(m, dir, fmt.Sprintf("local branch %s in %s has %s unpushed commit(s)", b, filepath.Base(dir), n)))
+			}
+		}
+	}
+	if _, err := m.Run(ctx, dir, "gh", "pr", "checkout", strconv.Itoa(it.Num), "--repo", it.Repo, "--force"); err != nil {
 		return fmt.Errorf("check out %s in %s: %w", it.Ref(), filepath.Base(dir), err)
 	}
 	return nil
@@ -1251,7 +1296,7 @@ func (d *Dispatcher) refuseDirty(ctx context.Context, m Machine, dir string) err
 		return err
 	}
 	if n := len(nonEmptyLines(out)); n > 0 {
-		return fmt.Errorf("dirty checkout: %d uncommitted file(s) in %s (set dirty = \"stash\" to auto-stash)", n, filepath.Base(dir))
+		return fmt.Errorf("%s", d.leftNote(m, dir, fmt.Sprintf("dirty checkout: %d uncommitted file(s) in %s (set dirty = \"stash\" to auto-stash)", n, filepath.Base(dir))))
 	}
 	return nil
 }

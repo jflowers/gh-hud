@@ -184,7 +184,7 @@ func TestFinishTUIOutcome(t *testing.T) {
 				return tc.out, tc.err
 			}
 			d.records = []Record{rec}
-			d.finishTUI(rec, false)
+			d.finishRecord(rec, nil, false)
 			got := d.records[0]
 			if got.FinishedAt == nil {
 				t.Fatal("FinishedAt not set")
