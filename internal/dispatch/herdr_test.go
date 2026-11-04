@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -239,5 +240,24 @@ func TestStateLoadsLegacyJSON(t *testing.T) {
 	}
 	if d.records[0].Machine != "" || d.records[0].PID != 4242 {
 		t.Errorf("legacy record = %+v, want Machine %q PID 4242", d.records[0], "")
+	}
+}
+
+func TestPaneSetup(t *testing.T) {
+	var perm map[string]map[string]string
+	if err := json.Unmarshal([]byte(dispatchPermission), &perm); err != nil {
+		t.Fatalf("dispatchPermission is not JSON: %v", err)
+	}
+	if got := perm["external_directory"]["*"]; got != "deny" {
+		t.Errorf(`external_directory "*" = %q, want deny`, got)
+	}
+	// The line must set the variable to exactly the JSON in a POSIX shell
+	// and then print the probe.
+	out, err := exec.Command("sh", "-c", strings.Replace(paneSetup(), "echo ghhud-$RANDOM-ready", `printf %s "$OPENCODE_PERMISSION"`, 1)).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(out) != dispatchPermission {
+		t.Errorf("exported %q, want %q", out, dispatchPermission)
 	}
 }

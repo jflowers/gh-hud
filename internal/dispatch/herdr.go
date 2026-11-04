@@ -288,15 +288,29 @@ func herdrRunText(ctx context.Context, m Machine, args ...string) (string, error
 	return out.String(), nil
 }
 
+// dispatchPermission is exported as OPENCODE_PERMISSION in every dispatch
+// pane. opencode merges it over the config files, so dispatched agents and
+// the subagents they start (e.g. review-council reviewers, which do not
+// inherit the autonomy agent's rules) get an error for paths outside the
+// checkout instead of a prompt no one answers (a headless run rejects the
+// prompt and ends). Sessions started by hand keep the config's "ask".
+const dispatchPermission = `{"external_directory":{"*":"deny","/tmp/**":"allow","/private/tmp/**":"allow","/var/tmp/**":"allow","/private/var/tmp/**":"allow","/var/folders/**":"allow","/private/var/folders/**":"allow"}}`
+
 // herdrPaneReady waits until a fresh tab's shell executes commands end to
-// end. herdr rejects `agent start` against a pane it considers not yet
-// shell-ready, so dispatch probes the shell before starting the agent.
-// The literal $RANDOM is typed into the pane and only the shell-evaluated
-// output can match the wait regex.
+// end, and exports dispatchPermission there. herdr rejects `agent start`
+// against a pane it considers not yet shell-ready, so dispatch probes the
+// shell before starting the agent. The literal $RANDOM is typed into the
+// pane and only the shell-evaluated output can match the wait regex; the
+// probe runs only after the export succeeded.
 func herdrPaneReady(ctx context.Context, m Machine, paneID string) error {
-	_, _ = herdrRun(ctx, m, "pane", "run", paneID, "echo", "ghhud-$RANDOM-ready")
+	_, _ = herdrRun(ctx, m, "pane", "run", paneID, paneSetup())
 	_, err := herdrRun(ctx, m, "pane", "wait-output", paneID, "--regex", "ghhud-[0-9]+-ready", "--timeout", "15000")
 	return err
+}
+
+// paneSetup is the shell line typed into a fresh dispatch pane.
+func paneSetup() string {
+	return "export OPENCODE_PERMISSION=" + shellQuote(dispatchPermission) + " && echo ghhud-$RANDOM-ready"
 }
 
 // herdrPaneText reads the tail of a pane's transcript (plain text).

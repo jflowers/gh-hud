@@ -102,6 +102,11 @@ Sessions run headless, so the configured `agent` (default `autonomy`, from
 must not depend on a human: under `opencode run` a permission `ask` is
 auto-rejected and ends the run, while `deny` returns an error the agent can
 work around. The `build` agent inherits interactive `ask` rules.
+Dispatch panes also export `OPENCODE_PERMISSION` with `external_directory`
+denied outside the temp dirs. opencode merges it over the config files, so
+it reaches subagents the dispatched agent starts (review-council reviewers
+don't inherit the autonomy agent's rules) and an outside path is an error
+rather than a prompt; sessions you start yourself keep the config's `ask`.
 
 `opencode run` also can't ask questions: it denies the question tool, so a
 headless agent that needs a decision guesses or fails. `dispatch_mode =
