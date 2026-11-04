@@ -81,7 +81,10 @@ ghws checkout of that repo (workspace root: `$GHWS_ROOT`, default
 `~/Projects/github`; instance whose branch matches the PR's head branch is
 preferred). The offered task follows the row's signals: merge conflict →
 rebase, failing CI → fix, changes requested on your PR → address feedback,
-review requested → review, issue → implement. The dispatcher never assumes
+review requested → review, issue → implement. Your own PRs also offer
+review on request (never auto-dispatched; `/uf.review-pr` posts the
+verdict as a comment, since GitHub rejects approving your own PR). The
+dispatcher never assumes
 workspace state: it refuses busy checkouts (a live herdr agent or a foreign
 opencode session updated within `busy_window_secs`), applies your `dirty`
 policy to uncommitted files, and fast-forward syncs the default branch to

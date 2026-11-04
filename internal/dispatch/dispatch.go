@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -67,6 +68,17 @@ func InferTasks(it model.Item) []Task {
 	}
 	if it.Kind == model.KindIssue {
 		tasks = append(tasks, TaskIssue)
+	}
+	return tasks
+}
+
+// MenuTasks is InferTasks plus tasks offered only on request: a review of
+// my own PRs (never auto-dispatched; /uf.review-pr posts a self-review as
+// a COMMENT, since GitHub rejects approving your own PR).
+func MenuTasks(it model.Item) []Task {
+	tasks := InferTasks(it)
+	if it.Kind == model.KindPR && it.Cats&model.CatMy != 0 && !slices.Contains(tasks, TaskReview) {
+		tasks = append(tasks, TaskReview)
 	}
 	return tasks
 }
@@ -641,7 +653,7 @@ type MenuChoice struct {
 func (d *Dispatcher) MenuChoices(it model.Item) []MenuChoice {
 	v := d.cachedView()
 	var out []MenuChoice
-	for _, task := range InferTasks(it) {
+	for _, task := range MenuTasks(it) {
 		tc, ok := d.opts.Tasks[string(task)]
 		if !ok || tc.Command == "" {
 			continue

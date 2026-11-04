@@ -776,7 +776,7 @@ func (m *Model) openAction() {
 	if !ok {
 		return
 	}
-	tasks := dispatch.InferTasks(it)
+	tasks := dispatch.MenuTasks(it)
 	m.actionItem = it
 	m.actions = nil
 	m.actionSel = 0

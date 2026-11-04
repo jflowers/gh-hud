@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -45,6 +46,30 @@ func TestInferTasks(t *testing.T) {
 				break
 			}
 		}
+	}
+}
+
+func TestMenuTasks(t *testing.T) {
+	cases := []struct {
+		name string
+		it   model.Item
+		want []Task
+	}{
+		{"my clean pr offers a review", model.Item{Kind: model.KindPR, Cats: model.CatMy}, []Task{TaskReview}},
+		{"my pr with feedback", model.Item{Kind: model.KindPR, Cats: model.CatMy, Thread: 1}, []Task{TaskFeedback, TaskReview}},
+		{"others' pr not queued", model.Item{Kind: model.KindPR, Cats: model.CatRQ}, nil},
+		{"queued review not doubled", model.Item{Kind: model.KindPR, Cats: model.CatMy | model.CatQueue}, []Task{TaskReview}},
+		{"issue", model.Item{Kind: model.KindIssue, Cats: model.CatMy}, []Task{TaskIssue}},
+	}
+	for _, tc := range cases {
+		if got := MenuTasks(tc.it); !slices.Equal(got, tc.want) {
+			t.Errorf("%s: got %v want %v", tc.name, got, tc.want)
+		}
+	}
+	// Auto-dispatch keeps using InferTasks: my own PRs are never reviewed
+	// unasked.
+	if got := InferTasks(model.Item{Kind: model.KindPR, Cats: model.CatMy}); len(got) != 0 {
+		t.Errorf("InferTasks(my clean pr) = %v, want none", got)
 	}
 }
 
