@@ -656,6 +656,8 @@ func (m *Model) agentsView() string {
 			glyph, color = "◆", cOrange
 		case s.Failed:
 			glyph, color = "◆", cRed
+		case s.Unknown:
+			glyph, color = "?", cYellow
 		case task != "":
 			glyph, color = "✓", cGreen
 		}
@@ -685,6 +687,12 @@ func (m *Model) agentsView() string {
 			info += "  ·  " + s.State
 		}
 		info += "  ·  " + age
+		if s.Unknown {
+			info += "  ·  outcome unknown"
+			if s.Note != "" && i == m.agentsSel {
+				info += ": " + truncatePlain(s.Note, 60)
+			}
+		}
 		lines = append(lines, marker+g+" "+comment.Render(padPlain(string(task), 9, false))+" "+fg.Render(name)+
 			comment.Render("  ·  "+info))
 	}

@@ -14,6 +14,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -253,34 +255,81 @@ func sessionFailed(out string) (bool, error) {
 	return e != "" && e != "null", nil
 }
 
+// exportSession returns `opencode export <id>` run in dir on m. opencode
+// exits before a piped stdout drains, so piped output stops at the pipe
+// buffer (64 KiB remote, 128 KiB local) and never parses; the export is
+// written to a temp file and read back instead.
+func exportSession(ctx context.Context, m Machine, dir, id string) (string, error) {
+	if !m.Local {
+		script := "cd -- " + shellQuoteTilde(dir) + " || exit 1\n" +
+			"t=$(mktemp) || exit 1\n" +
+			"opencode export " + shellQuote(id) + " >\"$t\"; rc=$?\n" +
+			"cat \"$t\"; rm -f \"$t\"; exit $rc"
+		return m.runScript(ctx, script)
+	}
+	f, err := os.CreateTemp("", "gh-hud-export-*.json")
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(f.Name())
+	defer f.Close()
+	cmd := exec.CommandContext(ctx, opencodeBinary(), "export", id)
+	cmd.Dir = dir
+	cmd.Stdout = f
+	var errb strings.Builder
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
+		msg := strings.TrimSpace(errb.String())
+		if msg == "" {
+			msg = err.Error()
+		}
+		return "", fmt.Errorf("opencode export: %s", msg)
+	}
+	data, err := os.ReadFile(f.Name())
+	return string(data), err
+}
+
+// tuiOutcome reads a finished TUI session's outcome: ExitCode 0 ok / 1
+// failed, or nil plus the reason when it cannot be read. A failed export
+// or parse is retried once.
+func (d *Dispatcher) tuiOutcome(ctx context.Context, m Machine, r Record, id string) (*int, string) {
+	if id == "" {
+		return nil, "no opencode session found for the dispatch"
+	}
+	var last error
+	for attempt := 0; attempt < 2; attempt++ {
+		out, err := d.export(ctx, m, r.Dir, id)
+		if err == nil {
+			var failed bool
+			if failed, err = sessionFailed(out); err == nil {
+				c := 0
+				if failed {
+					c = 1
+				}
+				return &c, ""
+			}
+		}
+		last = err
+		if ctx.Err() != nil {
+			break
+		}
+	}
+	return nil, last.Error()
+}
+
 // finishTUI records a finished TUI dispatch: it links the session, reads
 // the outcome from the exported transcript (ExitCode 0 ok / 1 failed; left
-// unset when unknown), and closes the pane (which closes its tab) when the
-// TUI is still up.
+// unset with FinishError when unknown), and closes the pane (which closes
+// its tab) when the TUI is still up.
 func (d *Dispatcher) finishTUI(r Record, closePane bool) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	m := d.machineFor(r.Machine)
 	id := r.SessionID
 	if id == "" {
 		id = findTUISession(ctx, m, r)
 	}
-	var code *int
-	if id != "" {
-		bin := "opencode"
-		if m.Local {
-			bin = opencodeBinary()
-		}
-		if out, err := m.Run(ctx, r.Dir, bin, "export", id); err == nil {
-			if failed, err := sessionFailed(out); err == nil {
-				c := 0
-				if failed {
-					c = 1
-				}
-				code = &c
-			}
-		}
-	}
+	code, why := d.tuiOutcome(ctx, m, r, id)
 	if closePane {
 		_, _ = herdrRun(ctx, m, "pane", "close", r.PaneID)
 	}
@@ -291,6 +340,7 @@ func (d *Dispatcher) finishTUI(r Record, closePane bool) {
 			d.records[i].FinishedAt = &now
 			d.records[i].SessionID = id
 			d.records[i].ExitCode = code
+			d.records[i].FinishError = why
 		}
 	}
 	d.saveStateLocked()

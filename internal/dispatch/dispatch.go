@@ -38,6 +38,12 @@ const (
 	TaskIssue    Task = "issue"    // implement an issue
 )
 
+// onPRHead reports whether the task works on the PR's own branch, so the
+// agent starts with the PR head checked out rather than the default branch.
+func (t Task) onPRHead() bool {
+	return t == TaskRebase || t == TaskCI || t == TaskFeedback
+}
+
 // TaskOrder is the priority order tasks are offered/dispatched in.
 var TaskOrder = []Task{TaskRebase, TaskCI, TaskFeedback, TaskReview, TaskIssue}
 
@@ -92,6 +98,9 @@ type Record struct {
 	Worked     bool       `json:"worked,omitempty"`      // TUI seen working or blocked
 	SessionID  string     `json:"session_id,omitempty"`  // opencode session (TUI mode)
 	FinishedAt *time.Time `json:"finished_at,omitempty"` // TUI finished (outcome may be unknown)
+	// FinishError is why a finished TUI's outcome could not be read
+	// (ExitCode stays nil).
+	FinishError string `json:"finish_error,omitempty"`
 }
 
 // Session is an opencode session running under the ghws root, joined with
@@ -101,8 +110,10 @@ type Session struct {
 	Title     string
 	Directory string
 	UpdatedAt time.Time
-	Running   bool // dispatched by gh-hud, process still alive
-	Failed    bool // dispatched by gh-hud, exited non-zero
+	Running   bool   // dispatched by gh-hud, process still alive
+	Failed    bool   // dispatched by gh-hud, exited non-zero
+	Unknown   bool   // dispatched TUI finished but its outcome could not be read
+	Note      string // why the outcome is unknown
 	Task      Task
 	Log       string
 	Workspace string
@@ -168,6 +179,9 @@ type Dispatcher struct {
 	// Guarded by mu (see tui.go).
 	blockedSince map[string]time.Time // machine|pane → first seen blocked
 	tuiBusy      map[string]bool      // machine|pane → TUI goroutine in flight
+
+	// export runs `opencode export` (exportSession; stubbed in tests).
+	export func(ctx context.Context, m Machine, dir, id string) (string, error)
 }
 
 // agentSnapshot is one machine's live herdr agent list.
@@ -249,6 +263,7 @@ func New(opts Options) (*Dispatcher, error) {
 		opts:         opts,
 		indexCache:   map[string]indexEntry{},
 		indexLoading: map[string]bool{},
+		export:       exportSession,
 	}
 	d.loadState()
 	return d, nil
@@ -417,6 +432,11 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 	stash, err := d.preflight(ctx, m, co.Dir, task, ref)
 	if err != nil {
 		return Record{}, err
+	}
+	if task.onPRHead() && it.Kind == model.KindPR {
+		if err := checkoutPR(ctx, m, co.Dir, it); err != nil {
+			return Record{}, err
+		}
 	}
 
 	if d.opts.Runner == "herdr" {
@@ -923,7 +943,7 @@ func (d *Dispatcher) Sessions(ctx context.Context) ([]Session, error) {
 			case rec.ExitCode != nil:
 				s.Failed = *rec.ExitCode != 0
 			case rec.FinishedAt != nil:
-				// finished TUI, outcome unknown
+				s.Unknown, s.Note = true, rec.FinishError
 			case rec.Runner == "herdr":
 				s.PaneID, s.WSID = rec.PaneID, rec.WSID
 				// Presence in the agent list means an agent process is live
@@ -1002,6 +1022,8 @@ func (d *Dispatcher) Sessions(ctx context.Context) ([]Session, error) {
 			}
 			if !live && rec.ExitCode != nil {
 				s.Failed = *rec.ExitCode != 0
+			} else if rec.FinishedAt != nil {
+				s.Unknown, s.Note = true, rec.FinishError
 			}
 			sessions = append(sessions, s)
 		}
@@ -1194,6 +1216,17 @@ func (d *Dispatcher) saveStateLocked() {
 		return
 	}
 	_ = os.WriteFile(filepath.Join(d.opts.StateDir, "state.json"), data, 0o644)
+}
+
+// checkoutPR checks the PR head out in the preflighted checkout with
+// `gh pr checkout`, which tracks the head repo's branch (fork heads
+// included) so the agent can push to it. The next preflight returns the
+// checkout to the default branch.
+func checkoutPR(ctx context.Context, m Machine, dir string, it model.Item) error {
+	if _, err := m.Run(ctx, dir, "gh", "pr", "checkout", strconv.Itoa(it.Num), "--repo", it.Repo); err != nil {
+		return fmt.Errorf("check out %s in %s: %w", it.Ref(), filepath.Base(dir), err)
+	}
+	return nil
 }
 
 // refuseDirty reports a dirty checkout as an error (read-only).

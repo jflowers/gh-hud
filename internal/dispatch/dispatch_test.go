@@ -354,3 +354,48 @@ func TestAutoDispatchSkips(t *testing.T) {
 		t.Errorf("non-auto skip: got %v", got)
 	}
 }
+
+func TestCheckoutPR(t *testing.T) {
+	// A fake gh records its argv and checks out a branch the way
+	// `gh pr checkout` would.
+	_, work := setupClone(t)
+	bin := t.TempDir()
+	argv := filepath.Join(bin, "argv")
+	writeFile(t, filepath.Join(bin, "gh"), "#!/bin/sh\necho \"$@\" >"+argv+"\nexec git checkout -q -b pr-head\n")
+	if err := os.Chmod(filepath.Join(bin, "gh"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	d := newTestDispatcher(t, "refuse")
+	it := model.Item{Kind: model.KindPR, Repo: "acme/r", Num: 949}
+	if err := checkoutPR(context.Background(), d.localMachine(), work, it); err != nil {
+		t.Fatalf("checkoutPR: %v", err)
+	}
+	data, err := os.ReadFile(argv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := strings.TrimSpace(string(data)), "pr checkout 949 --repo acme/r"; got != want {
+		t.Errorf("gh argv = %q, want %q", got, want)
+	}
+	if got := strings.TrimSpace(gitRun(t, work, "rev-parse", "--abbrev-ref", "HEAD")); got != "pr-head" {
+		t.Errorf("branch = %q, want pr-head", got)
+	}
+
+	// The next dispatch's preflight returns the checkout to main.
+	if _, err := d.preflight(context.Background(), d.localMachine(), work, TaskReview, "acme/r#950"); err != nil {
+		t.Fatalf("preflight: %v", err)
+	}
+	if got := strings.TrimSpace(gitRun(t, work, "rev-parse", "--abbrev-ref", "HEAD")); got != "main" {
+		t.Errorf("branch after preflight = %q, want main", got)
+	}
+}
+
+func TestTaskOnPRHead(t *testing.T) {
+	for task, want := range map[Task]bool{TaskRebase: true, TaskCI: true, TaskFeedback: true, TaskReview: false, TaskIssue: false} {
+		if got := task.onPRHead(); got != want {
+			t.Errorf("%s.onPRHead() = %v, want %v", task, got, want)
+		}
+	}
+}

@@ -1,6 +1,8 @@
 package dispatch
 
 import (
+	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -151,3 +153,59 @@ func TestObserveAgents(t *testing.T) {
 		t.Error("unblocked: blockedSince must clear")
 	}
 }
+
+func TestFinishTUIOutcome(t *testing.T) {
+	start := time.Now().UTC()
+	rec := Record{Runner: "herdr", Mode: modeTUI, PaneID: "w1:p2", StartedAt: start, SessionID: "ses_1", Worked: true}
+	cases := []struct {
+		name     string
+		out      string
+		err      error
+		wantCode *int
+		wantWhy  string
+		calls    int
+	}{
+		{name: "export fails", err: errors.New("ssh lap1: boom"), wantWhy: "ssh lap1: boom", calls: 2},
+		// A truncated export (opencode's piped stdout stops at the pipe
+		// buffer) must not read as an outcome either.
+		{name: "truncated", out: `{"messages":[{"info":{"role":"assist`, wantWhy: "opencode export", calls: 2},
+		{name: "failed", out: `{"messages":[{"info":{"role":"assistant","error":{"name":"UnknownError"}}}]}`, wantCode: intPtr(1), calls: 1},
+		{name: "ok", out: `{"messages":[{"info":{"role":"assistant","error":null,"finish":"stop"}}]}`, wantCode: intPtr(0), calls: 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			d, err := New(Options{Root: "/tmp/ghws", StateDir: t.TempDir()})
+			if err != nil {
+				t.Fatal(err)
+			}
+			calls := 0
+			d.export = func(context.Context, Machine, string, string) (string, error) {
+				calls++
+				return tc.out, tc.err
+			}
+			d.records = []Record{rec}
+			d.finishTUI(rec, false)
+			got := d.records[0]
+			if got.FinishedAt == nil {
+				t.Fatal("FinishedAt not set")
+			}
+			if calls != tc.calls {
+				t.Errorf("export calls = %d, want %d", calls, tc.calls)
+			}
+			switch {
+			case tc.wantCode == nil && got.ExitCode != nil:
+				t.Errorf("ExitCode = %d, want unknown", *got.ExitCode)
+			case tc.wantCode != nil && (got.ExitCode == nil || *got.ExitCode != *tc.wantCode):
+				t.Errorf("ExitCode = %v, want %d", got.ExitCode, *tc.wantCode)
+			}
+			if tc.wantWhy == "" && got.FinishError != "" {
+				t.Errorf("FinishError = %q, want none", got.FinishError)
+			}
+			if tc.wantWhy != "" && !strings.Contains(got.FinishError, tc.wantWhy) {
+				t.Errorf("FinishError = %q, want it to mention %q", got.FinishError, tc.wantWhy)
+			}
+		})
+	}
+}
+
+func intPtr(n int) *int { return &n }

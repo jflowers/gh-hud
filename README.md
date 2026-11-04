@@ -85,7 +85,10 @@ review requested → review, issue → implement. The dispatcher never assumes
 workspace state: it refuses busy checkouts (a live herdr agent or a foreign
 opencode session updated within `busy_window_secs`), applies your `dirty`
 policy to uncommitted files, and fast-forward syncs the default branch to
-`upstream` before launching.
+`upstream` before launching. PR tasks (rebase, ci, feedback) then check
+the PR head out with `gh pr checkout`, so the agent starts on the branch
+it pushes to; the next dispatch's sync returns the checkout to the
+default branch.
 
 By default (`runner = "herdr"`) dispatch goes through a local herdr
 server: one herdr workspace per ghws workspace (created lazily, reused,
@@ -109,7 +112,8 @@ auto-question plugin can answer. The TUI never exits on its own, so gh-hud
 reads completion from herdr's agent state: live while working or blocked,
 finished on `done` (or idle after working). On finish it links the opencode
 session, marks the dispatch failed when the transcript doesn't end in a
-clean assistant reply, and closes the pane (the transcript stays in
+clean assistant reply (a `?` yellow marks a dispatch whose transcript
+couldn't be read, with the reason on the selected row), and closes the pane (the transcript stays in
 opencode: `opencode -s <id>`). A short block is auto-question deciding
 (up to its 120s handler timeout); when a dispatched agent stays blocked
 longer than `blocked_notify_secs` (default 180, needs `notify`), the
