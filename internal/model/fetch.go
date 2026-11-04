@@ -218,6 +218,18 @@ func FetchAll(ctx context.Context, c *gh.Client, cfg *config.Config) *FetchResul
 		}
 	}
 
+	// Notification-only PR/issue rows may be merged or closed; hide those.
+	// On a failed lookup they stay (and the section error shows).
+	if urls := noteOnlySubjects(items); len(urls) > 0 {
+		sctx, cancel := context.WithTimeout(ctx, time.Duration(cfg.FetchTimeoutSecs)*time.Second)
+		closed, err := closedSubjects(sctx, c, urls)
+		cancel()
+		if err != nil {
+			res.Errors = append(res.Errors, SectionError{"notification-states", err})
+		}
+		items = dropClosed(items, closed)
+	}
+
 	markReady(items, me, time.Duration(cfg.QueueWindowHours)*time.Hour, bots)
 
 	SortItems(items)

@@ -120,3 +120,67 @@ func NoteToItem(n Notification) (Item, string) {
 	}
 	return it, url
 }
+
+// closedSubjects reports which of the given PR/issue html URLs are merged
+// or closed, in one GraphQL query: the notifications API carries no
+// subject state, so a merged PR's unread notification would otherwise
+// stay on the dashboard.
+func closedSubjects(ctx context.Context, c *gh.Client, urls []string) (map[string]bool, error) {
+	if len(urls) == 0 {
+		return nil, nil
+	}
+	query, vars := subjectStateQuery(urls)
+	var data map[string]*struct {
+		State string `json:"state"`
+	}
+	if err := c.Graphql(ctx, query, vars, &data); err != nil {
+		return nil, err
+	}
+	closed := map[string]bool{}
+	for i, u := range urls {
+		if n := data["n"+strconv.Itoa(i)]; n != nil && (n.State == "MERGED" || n.State == "CLOSED") {
+			closed[u] = true
+		}
+	}
+	return closed, nil
+}
+
+// subjectStateQuery builds one aliased resource(url:) lookup per URL.
+func subjectStateQuery(urls []string) (string, map[string]any) {
+	var params, fields []string
+	vars := make(map[string]any, len(urls))
+	for i, u := range urls {
+		n := strconv.Itoa(i)
+		params = append(params, "$u"+n+": URI!")
+		fields = append(fields, "n"+n+": resource(url: $u"+n+") { ... on PullRequest { state } ... on Issue { state } }")
+		vars["u"+n] = u
+	}
+	return "query(" + strings.Join(params, ", ") + ") { " + strings.Join(fields, " ") + " }", vars
+}
+
+// noteOnlySubjects lists the PR/issue URLs of rows that came only from
+// notifications (search rows are open by construction).
+func noteOnlySubjects(items []Item) []string {
+	var urls []string
+	for _, it := range items {
+		if it.Cats == CatNT && (it.Kind == KindPR || it.Kind == KindIssue) && it.URL != "" {
+			urls = append(urls, it.URL)
+		}
+	}
+	return urls
+}
+
+// dropClosed removes notification-only rows whose subject is closed.
+func dropClosed(items []Item, closed map[string]bool) []Item {
+	if len(closed) == 0 {
+		return items
+	}
+	out := items[:0]
+	for _, it := range items {
+		if it.Cats == CatNT && closed[it.URL] {
+			continue
+		}
+		out = append(out, it)
+	}
+	return out
+}
