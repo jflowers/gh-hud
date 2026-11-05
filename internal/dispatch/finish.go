@@ -368,13 +368,13 @@ done | sort -u`
 func inspectScript(dir, start string) string {
 	s := "cd -- " + shellQuoteTilde(dir) + " || exit 1\n" +
 		"printf 'branch\\t%s\\n' \"$(git rev-parse --abbrev-ref HEAD)\"\n" +
-		"git status --porcelain | sed 's/^/dirty\\t/'\n" +
+		"git status --porcelain --untracked-files=all | " + learningsGrep + " | sed 's/^/dirty\\t/'\n" +
 		"git log HEAD --not --remotes --format='unpushed%x09%h %s' | head -20\n"
 	if start != "" {
 		s += "git rev-parse -q --verify '@{u}' >/dev/null && git log --format='pushed%x09%h %s' " + shellQuote(start) + "..'@{u}' | head -20\n"
 	}
 	s += "for o in $(" + overlayScan + "); do\n" +
-		"  git -C \"$o\" status --porcelain | sed \"s|^|odirty\\t$o\\t|\"\n" +
+		"  git -C \"$o\" status --porcelain --untracked-files=all | " + learningsGrep + " | sed \"s|^|odirty\\t$o\\t|\"\n" +
 		"  git -C \"$o\" log HEAD --not --remotes --format=\"ounpushed%x09$o%x09%h %s\" | head -10\n" +
 		"done\n"
 	return s
@@ -421,7 +421,8 @@ func overlayName(path string) string {
 }
 
 // inspect reads the checkout after a run and, when nothing was left
-// behind, returns it to the upstream default branch (local refs only).
+// behind, returns it to the upstream default branch (local refs only) and
+// moves its untracked learnings into a chore PR (learnings.go).
 func (d *Dispatcher) inspect(ctx context.Context, m Machine, r Record) inspection {
 	if d.busyElsewhere(ctx, r) {
 		return inspection{err: "skipped: another agent is active in the checkout"}
@@ -447,15 +448,21 @@ func (d *Dispatcher) inspect(ctx context.Context, m Machine, r Record) inspectio
 			def = cand
 		}
 	}
-	if def == "" || in.branch == def {
-		in.cleaned = in.branch == def
+	if def == "" {
 		return in
 	}
-	if _, err := git("checkout", "-q", def); err != nil {
-		in.err = "return to " + def + ": " + err.Error()
-		return in
+	if in.branch != def {
+		if _, err := git("checkout", "-q", def); err != nil {
+			in.err = "return to " + def + ": " + err.Error()
+			return in
+		}
 	}
 	in.branch, in.cleaned = def, true
+	if line, err := d.learningsPR(ctx, m, r, def); err != nil {
+		in.err = "learnings PR: " + err.Error()
+	} else if line != "" {
+		in.pushed = append(in.pushed, line)
+	}
 	return in
 }
 
@@ -548,7 +555,7 @@ func (d *Dispatcher) leftNote(m Machine, dir, msg string) string {
 func overlaySyncScript(dir string) string {
 	return "cd -- " + shellQuoteTilde(dir) + " || exit 1\n" +
 		"for o in $(" + overlayScan + "); do\n" +
-		"  if [ -n \"$(git -C \"$o\" status --porcelain)\" ]; then printf 'refuse\\t%s\\tuncommitted changes\\n' \"$o\"; continue; fi\n" +
+		"  if [ -n \"$(git -C \"$o\" status --porcelain --untracked-files=all | " + learningsGrep + ")\" ]; then printf 'refuse\\t%s\\tuncommitted changes\\n' \"$o\"; continue; fi\n" +
 		"  u=$(git -C \"$o\" rev-parse --abbrev-ref '@{u}' 2>/dev/null) || { printf 'skip\\t%s\\tno upstream\\n' \"$o\"; continue; }\n" +
 		"  git -C \"$o\" fetch -q \"${u%%/*}\" 2>/dev/null || { printf 'refuse\\t%s\\tfetch %s failed\\n' \"$o\" \"${u%%/*}\"; continue; }\n" +
 		"  n=$(git -C \"$o\" rev-list --count '@{u}..HEAD')\n" +

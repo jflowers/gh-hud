@@ -82,6 +82,7 @@ func main() {
 		Machines:      machines,
 		LocalIndex:    idx,
 		InstancesOnly: cfg.DispatchInstancesOnly,
+		LearningsPR:   cfg.LearningsPR,
 	}
 	disp, dispErr := dispatch.New(dispOpts)
 	if dispErr != nil {

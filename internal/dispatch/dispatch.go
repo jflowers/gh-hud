@@ -180,6 +180,9 @@ type Options struct {
 	// InstancesOnly restricts dispatch targets to @ instance workspaces
 	// (base workspaces are human-only).
 	InstancesOnly bool
+	// LearningsPR opens a chore PR with a checkout's untracked dewey
+	// learnings after a clean run (learnings.go).
+	LearningsPR bool
 }
 
 // Dispatcher launches and tracks agent sessions.
@@ -1184,7 +1187,7 @@ func (d *Dispatcher) preflight(ctx context.Context, m Machine, dir string, task 
 		return m.Run(ctx, dir, argv...)
 	}
 
-	out, err := git("status", "--porcelain")
+	out, err := git("status", "--porcelain", "--untracked-files=all")
 	if err != nil {
 		if !m.Local {
 			return "", fmt.Errorf("%w: %v", errMachineUnreachable, err)
@@ -1192,7 +1195,7 @@ func (d *Dispatcher) preflight(ctx context.Context, m Machine, dir string, task 
 		return "", err
 	}
 	stash := ""
-	if n := len(nonEmptyLines(out)); n > 0 {
+	if n := len(dirtyLines(out)); n > 0 {
 		// With dirty = refuse, dispatchCore already checked before the
 		// session scan; anything here appeared since (e.g. a lockfile the
 		// scan's opencode bootstrap rewrote) and still refuses.
@@ -1288,14 +1291,14 @@ func (d *Dispatcher) checkoutPR(ctx context.Context, m Machine, dir string, it m
 
 // refuseDirty reports a dirty checkout as an error (read-only).
 func (d *Dispatcher) refuseDirty(ctx context.Context, m Machine, dir string) error {
-	out, err := m.Run(ctx, dir, "git", "status", "--porcelain")
+	out, err := m.Run(ctx, dir, "git", "status", "--porcelain", "--untracked-files=all")
 	if err != nil {
 		if !m.Local {
 			return fmt.Errorf("%w: %v", errMachineUnreachable, err)
 		}
 		return err
 	}
-	if n := len(nonEmptyLines(out)); n > 0 {
+	if n := len(dirtyLines(out)); n > 0 {
 		return fmt.Errorf("%s", d.leftNote(m, dir, fmt.Sprintf("dirty checkout: %d uncommitted file(s) in %s (set dirty = \"stash\" to auto-stash)", n, filepath.Base(dir))))
 	}
 	return nil

@@ -41,6 +41,10 @@ type Config struct {
 	// machine) to ghws @ instance workspaces; base workspaces stay
 	// human-only.
 	DispatchInstancesOnly bool `toml:"dispatch_instances_only"`
+	// LearningsPR opens a chore PR to upstream with a checkout's untracked
+	// .uf/dewey/learnings files after a clean agent run, at most once a
+	// day per checkout. Untracked learnings never block a dispatch.
+	LearningsPR bool `toml:"learnings_pr"`
 	// Machines are remote dispatch workers: herdr-managed machines saved
 	// with `herdr machine add`, reached over ssh. Empty keeps the historic
 	// hub-only behavior.
@@ -94,6 +98,7 @@ func Default() *Config {
 		QueueWindowHours: 48,
 
 		DispatchInstancesOnly: true,
+		LearningsPR:           true,
 		Machines:              []Machine{},
 
 		GhwsRoot:       ghws.DefaultRoot(),
