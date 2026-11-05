@@ -130,7 +130,9 @@ server: one herdr workspace per ghws workspace (created lazily, reused,
 never closed), one tab per dispatch labeled `<task> <repo>#<num>`, agent
 run in that tab's pane. If the server can't be reached, dispatch falls
 back to a detached local `opencode run --command …` with the configured
-agent. Set `runner = "local"` to skip herdr entirely.
+agent — except with `dispatch_mode = "tui"`, where the dispatch is
+refused instead, since `opencode run` has no question tool. Set
+`runner = "local"` to skip herdr entirely.
 
 Sessions run headless, so the configured `agent` (default `autonomy`, from
 [opencode-auto-question](https://github.com/jflowers/opencode-auto-question))

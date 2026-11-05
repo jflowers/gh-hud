@@ -481,6 +481,11 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 			// Remote herdr failure: never fall back to the local runner.
 			return Record{}, err
 		}
+		if d.modeFor(m) == modeTUI {
+			// The local runner is `opencode run`, which has no question
+			// tool: a TUI dispatch never degrades to it.
+			return Record{}, fmt.Errorf("%w; not falling back to a headless run (dispatch_mode = \"tui\")", err)
+		}
 		// Local herdr server unreachable: fall through to the local runner.
 	}
 	rec, err := d.dispatchLocal(ctx, task, it, co, name, args, title, stash, auto)
