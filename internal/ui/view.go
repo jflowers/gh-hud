@@ -66,19 +66,11 @@ func layoutFor(termW int) layout {
 // ---------------------------------------------------------------------------
 // rows
 
-// agentMark is the per-repo agent state for the attention slot.
-type agentMark struct {
-	running bool
-	blocked bool
-	failed  bool
-}
-
 type rowCtx struct {
-	me     string
-	bots   *model.BotFilter
-	now    time.Time
-	agents map[string]agentMark
-	runs   map[string]dispatch.Run // ref → latest run
+	me   string
+	bots *model.BotFilter
+	now  time.Time
+	runs map[string]dispatch.Run // ref → latest run
 }
 
 func renderRepo(p paint, repo string, w int) string {
@@ -177,19 +169,13 @@ func renderRow(it model.Item, l layout, rc rowCtx, selected, hover bool) string 
 	b.WriteString(p.fg(color).Bold(selected).Render(padPlain(label, kindW, false)))
 	b.WriteString(sp)
 
-	// attention marker: the row's own run outranks repo-wide agent state,
-	// which outranks ready and waiting-on-you
+	// attention marker: the row's own run outranks ready and
+	// waiting-on-you (agent state is per row, never per repo)
 	run, hasRun := rc.runs[it.Ref()]
 	if hasRun && showRunTag(run, rc.now) && (run.Status == dispatch.RunBlocked || run.Status == dispatch.RunRunning ||
 		run.Status == dispatch.RunFailed || run.Status == dispatch.RunLeftWork) {
 		g, c := runGlyph(run.Status)
 		b.WriteString(p.text(c, g))
-	} else if mark := rc.agents[it.Repo]; mark.blocked {
-		b.WriteString(p.text(cOrange, "◆"))
-	} else if mark.running {
-		b.WriteString(p.text(cTeal, "●"))
-	} else if mark.failed {
-		b.WriteString(p.text(cRed, "◆"))
 	} else if it.Cats&model.CatReady != 0 {
 		b.WriteString(p.text(cGreen, "◆"))
 	} else if it.WaitingOn == "me" {
@@ -548,9 +534,8 @@ func (m *Model) helpView() string {
 		g("◆", cYellow, "waiting on you"),
 		g("◆", cGreen, "your PR ready for maintainer review"),
 		g("◆", cCyan, "queued for agent review"),
-		g("●", cTeal, "agent active on repo"),
-		g("◆", cRed, "agent dispatch failed"),
-		g("◆", cOrange, "agent blocked (needs input)"),
+		g("●", cTeal, "row's agent running"),
+		g("◆", cOrange, "row's agent blocked (needs input)"),
 		g("✗", cRed, "row's agent run failed (i for detail)"),
 		g("!", cOrange, "row's agent run left work behind"),
 		g("✓", cGreen, "CI passing / approved"),
@@ -948,7 +933,7 @@ func (m *Model) View() string {
 			}
 			lines = append(lines, "", lipgloss.NewStyle().Foreground(cGreen).Render("   "+msg))
 		}
-		rc := rowCtx{me: m.me(), bots: m.bots, now: time.Now(), agents: m.agentMarks(), runs: latestRuns(m.runs)}
+		rc := rowCtx{me: m.me(), bots: m.bots, now: time.Now(), runs: latestRuns(m.runs)}
 		end := m.offset + maxRows
 		if end > len(vis) {
 			end = len(vis)

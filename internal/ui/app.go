@@ -912,29 +912,3 @@ var desktopNotify = func(text string) {
 	}
 	go func() { _ = cmd.Wait() }()
 }
-
-// agentMarks maps repo → agent state for the per-row attention markers.
-func (m *Model) agentMarks() map[string]agentMark {
-	if m.idx == nil || len(m.agents) == 0 {
-		return nil
-	}
-	marks := make(map[string]agentMark)
-	for _, s := range m.agents {
-		repo := m.idx.RepoFor(s.Directory)
-		if repo == "" {
-			continue
-		}
-		mk := marks[repo]
-		if s.Running {
-			mk.running = true
-		}
-		if s.Blocked {
-			mk.blocked = true
-		}
-		if s.Failed {
-			mk.failed = true
-		}
-		marks[repo] = mk
-	}
-	return marks
-}

@@ -34,6 +34,22 @@ func TestRowShowsRun(t *testing.T) {
 	}
 }
 
+func TestRunningDotIsPerRow(t *testing.T) {
+	now := time.Now()
+	l := layoutFor(160)
+	rc := rowCtx{now: now, runs: map[string]dispatch.Run{
+		"acme/r#950": {Ref: "acme/r#950", Task: dispatch.TaskFeedback, Status: dispatch.RunRunning, StartedAt: now},
+	}}
+	running := model.Item{Kind: model.KindPR, Repo: "acme/r", Num: 950, Title: "busy", URL: "u1"}
+	idle := model.Item{Kind: model.KindPR, Repo: "acme/r", Num: 948, Title: "idle", URL: "u2"}
+	if plain := ansiRe.ReplaceAllString(renderRow(running, l, rc, false, false), ""); !strings.Contains(plain, "●") {
+		t.Errorf("running row lacks ●:\n%s", plain)
+	}
+	if plain := ansiRe.ReplaceAllString(renderRow(idle, l, rc, false, false), ""); strings.Contains(plain, "●") {
+		t.Errorf("same-repo row without an agent shows ●:\n%s", plain)
+	}
+}
+
 func TestRunViewFitsAndShowsDetail(t *testing.T) {
 	done := time.Now().Add(-time.Minute)
 	r := dispatch.Run{
