@@ -36,7 +36,7 @@ never reach gh-hud. iTerm2 reports ⌘ as the meta bit, which is how
 sends (clicks do nothing in that mode).
 
 Keys: `j/k` move · `enter/o` open · `y` copy `owner/repo#N` · `Y` copy URL ·
-`r` refresh · `a` agent actions · `6` agent sessions · `F` fleet rollout ·
+`r` refresh · `a` agent actions · `6` Agents tab · `F` fleet rollout ·
 `1-8` filter section · `0` all · `/` search · `?` help · `q` quit.
 
 ## Sections (header tabs, keys 1-8)
@@ -184,17 +184,23 @@ ghws's per-machine name themes (`GHWS_NAME_THEME`) handle that. The
 author's fleet setup (provisioning, toolchain pins, secrets, runbooks) lives
 in their private dotfiles repo under `docs/fleet.md`.
 
-`6` lists agent sessions across workspaces and machines — by default only
-ones gh-hud dispatched, live/blocked/failed ones, and anything touched in the
-last 24h (`a` toggles the stale rest; the list scrolls to fit the
-terminal): `enter` watches one (herdr
+`6` opens the Agents tab (its count is the number of running agents): a
+full-width table of agent sessions across workspaces and machines — task,
+PR/issue with its title, machine, workspace, status, how long the run
+took, and age — with the selected session's detail below it (outcome and
+failure reason, what it left behind and pushed, the agent's final
+message). By default it lists sessions gh-hud dispatched, live/blocked/
+failed ones, and anything touched in the last 24h (`a` toggles the stale
+rest): `enter` watches one (herdr
 sessions focus the workspace and attach the herdr TUI in a Ghostty window
 via `herdr_watch_cmd`; remote ones attach with `herdr --machine <label>`;
 local runner sessions tail the session log via
-`agent_watch_cmd`), `i` opens a dispatched session's run detail, `y`
-copies the session id. Live agent state shows in the
-attention slot: `●` teal = running, `◆` orange = blocked on a
-question or approval, `◆` red = dispatch failed. The header shows
+`agent_watch_cmd`), `i` opens the full run view, `t` the transcript, `y`
+copies the session id, and the other tab keys switch back to the
+dashboard. opencode keys sessions by repo, so the hub lists each repo
+once (not once per checkout) and reuses a listing for two minutes. A row
+in the dashboard shows its own run in the attention slot: `●` teal =
+running, `◆` orange = blocked on a question or approval. The header shows
 per-machine slot usage (`local 1/2 · lap1 0/2 · lap2 —`, `—` =
 unreachable or disabled). Tasks with `auto = true`
 dispatch themselves on refresh without a keypress; the review queue

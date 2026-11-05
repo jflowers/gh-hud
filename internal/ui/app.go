@@ -274,6 +274,10 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
+	if m.help {
+		m.help = false
+		return m, nil
+	}
 	if m.runView != nil {
 		return m.handleRunKey(msg)
 	}
@@ -285,10 +289,6 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	if m.fleetMode {
 		return m.handleFleetKey(msg)
-	}
-	if m.help {
-		m.help = false
-		return m, nil
 	}
 	if m.searchMode {
 		switch msg.String() {
@@ -636,8 +636,12 @@ func (m *Model) fetchAgents() tea.Cmd {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		sessions, err := d.Sessions(ctx)
-		usage := d.MachineUsage(ctx)
-		return agentsMsg{sessions: sessions, runs: d.Runs(ctx), usage: usage, err: err}
+		// Runs and slot usage get their own deadline: a slow session scan
+		// must not expire the herdr calls that say which agents are live.
+		live, cancelLive := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancelLive()
+		usage := d.MachineUsage(live)
+		return agentsMsg{sessions: sessions, runs: d.Runs(live), usage: usage, err: err}
 	}
 }
 
@@ -704,6 +708,35 @@ func (m *Model) handleAgentsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc", "q", "6":
 		m.agentsMode = false
+	case "0", "1", "2", "3", "4", "5", "7", "8":
+		// another tab: leave the Agents tab and filter the dashboard
+		m.agentsMode = false
+		for _, t := range tabs {
+			if t.key == msg.String() {
+				m.filter = t.cat
+				m.clampCursor()
+			}
+		}
+	case "?":
+		m.help = true
+	case "F":
+		if m.fleet != nil {
+			m.agentsMode = false
+			m.fleetMode = true
+			m.skipWaitArmed = false
+			m.refreshFleetSnap()
+		}
+	case "t":
+		if m.agentsSel < len(list) {
+			r, ok := m.sessionRun(list[m.agentsSel])
+			if !ok {
+				m.flash("not a gh-hud dispatch")
+			} else if err := m.disp.OpenTranscript(r); err != nil {
+				m.flash("transcript failed: " + err.Error())
+			} else {
+				m.flash("opening transcript " + r.SessionID)
+			}
+		}
 	case "ctrl+c":
 		return m, tea.Quit
 	case "a":

@@ -326,6 +326,9 @@ func (d *Dispatcher) finishRecord(r Record, exitCode *int, closePane bool) {
 	delete(d.tuiBusy, paneKey(r.Machine, r.PaneID))
 	d.mu.Unlock()
 	d.invalidateAgents()
+	if r.Machine == "" {
+		d.invalidateScan(r.Dir)
+	}
 }
 
 // ---------------------------------------------------------------------------

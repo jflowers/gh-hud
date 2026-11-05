@@ -199,6 +199,10 @@ type Dispatcher struct {
 	indexCache   map[string]indexEntry // machine label → ghws index
 	indexLoading map[string]bool
 
+	scanMu   sync.Mutex
+	scans    map[string]sessionScan // checkout dir → last good session listing
+	scanning map[string]bool        // checkout dir → listing in flight
+
 	drainMu  sync.RWMutex
 	drainSet map[string]bool // machine keys receiving no new placements
 
@@ -208,6 +212,8 @@ type Dispatcher struct {
 
 	// export runs `opencode export` (exportSession; stubbed in tests).
 	export func(ctx context.Context, m Machine, dir, id string) (string, error)
+	// listSessions lists a checkout's opencode sessions (a hook for tests).
+	listSessions func(ctx context.Context, m Machine, dir string) ([]rawSession, error)
 }
 
 // agentSnapshot is one machine's live herdr agent list.
@@ -290,6 +296,7 @@ func New(opts Options) (*Dispatcher, error) {
 		indexCache:   map[string]indexEntry{},
 		indexLoading: map[string]bool{},
 		export:       exportSession,
+		listSessions: listSessions,
 	}
 	d.loadState()
 	return d, nil
@@ -474,6 +481,7 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 		if !errors.Is(err, errHerdrDown) {
 			if err == nil {
 				rec = d.setStartHead(rec, startHead)
+				d.invalidateScan(co.Dir)
 			}
 			return rec, err
 		}
@@ -491,6 +499,7 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 	rec, err := d.dispatchLocal(ctx, task, it, co, name, args, title, stash, auto)
 	if err == nil {
 		rec = d.setStartHead(rec, startHead)
+		d.invalidateScan(co.Dir)
 	}
 	return rec, err
 }
@@ -878,7 +887,7 @@ func listSessions(ctx context.Context, m Machine, dir string) ([]rawSession, err
 	if m.Local {
 		bin = opencodeBinary()
 	}
-	argv := []string{bin, "session", "list", "-n", "20", "--format", "json"}
+	argv := []string{bin, "session", "list", "-n", "60", "--format", "json"}
 	out, err := m.Run(ctx, dir, argv...)
 	if err != nil {
 		return nil, fmt.Errorf("opencode session list: %w", err)
@@ -888,6 +897,92 @@ func listSessions(ctx context.Context, m Machine, dir string) ([]rawSession, err
 		return nil, fmt.Errorf("opencode session list: %w", err)
 	}
 	return raw, nil
+}
+
+// sessionScanDirs is one checkout dir per repo: opencode keys sessions
+// by project (the repo), so a listing in any checkout returns the sessions
+// of every checkout of that repo (each carries its own directory). One
+// listing per checkout took over a minute on a hub with ~100 checkouts.
+func (d *Dispatcher) sessionScanDirs() []string {
+	ix := d.opts.LocalIndex
+	if ix == nil {
+		return d.opts.Dirs
+	}
+	seen := map[string]bool{}
+	var out []string
+	for _, dir := range d.opts.Dirs {
+		repo := ix.RepoFor(dir)
+		if repo != "" {
+			if seen[repo] {
+				continue
+			}
+			seen[repo] = true
+		}
+		out = append(out, dir)
+	}
+	return out
+}
+
+// sessionScanTTL is how long a checkout's session listing is reused. Each
+// listing starts opencode (seconds each), and a hub has dozens of repos.
+const sessionScanTTL = 2 * time.Minute
+
+type sessionScan struct {
+	at  time.Time
+	raw []rawSession
+}
+
+// scanDir lists dir's sessions through a per-dir cache: a fresh listing
+// is reused, a failed one falls back to the last good one, and a listing
+// already in flight (an overlapping refresh) is never started twice.
+func (d *Dispatcher) scanDir(ctx context.Context, m Machine, dir string) ([]rawSession, error) {
+	d.scanMu.Lock()
+	if d.scans == nil {
+		d.scans, d.scanning = map[string]sessionScan{}, map[string]bool{}
+	}
+	prev, ok := d.scans[dir]
+	if ok && time.Since(prev.at) < sessionScanTTL {
+		d.scanMu.Unlock()
+		return prev.raw, nil
+	}
+	if d.scanning[dir] {
+		d.scanMu.Unlock()
+		if ok {
+			return prev.raw, nil
+		}
+		return nil, fmt.Errorf("opencode session list: already running in %s", dir)
+	}
+	d.scanning[dir] = true
+	d.scanMu.Unlock()
+
+	rs, err := d.listSessions(ctx, m, dir)
+	d.scanMu.Lock()
+	defer d.scanMu.Unlock()
+	delete(d.scanning, dir)
+	if err != nil {
+		if ok {
+			return prev.raw, nil
+		}
+		return nil, err
+	}
+	d.scans[dir] = sessionScan{at: time.Now(), raw: rs}
+	return rs, nil
+}
+
+// invalidateScan drops the cached session listings of dir's repo (every
+// checkout that shares it), after a run started or finished there.
+func (d *Dispatcher) invalidateScan(dir string) {
+	repo := ""
+	if ix := d.opts.LocalIndex; ix != nil {
+		repo = ix.RepoFor(dir)
+	}
+	d.scanMu.Lock()
+	defer d.scanMu.Unlock()
+	for k := range d.scans {
+		if samePath(k, dir) || (repo != "" && d.opts.LocalIndex.RepoFor(k) == repo) {
+			delete(d.scans, k)
+		}
+	}
 }
 
 // remoteRecordWindow is how long a remote dispatch record stays in the
@@ -903,7 +998,12 @@ const remoteRecordWindow = 24 * time.Hour
 // listed. Remote machines contribute gh-hud's own records plus their live
 // herdr agents (best effort).
 func (d *Dispatcher) Sessions(ctx context.Context) ([]Session, error) {
-	dirs := d.opts.Dirs
+	// Live herdr agents enrich sessions with run state (working/blocked).
+	// Best effort: without a herdr server the plain session scan still
+	// works. Read first, while the deadline is fresh: the scan below can
+	// take most of it.
+	snaps := d.agentsSnapshot(ctx)
+	dirs := d.sessionScanDirs()
 	if len(dirs) == 0 {
 		dirs = []string{""}
 	}
@@ -922,7 +1022,7 @@ func (d *Dispatcher) Sessions(ctx context.Context) ([]Session, error) {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			rs, err := listSessions(ctx, local, dir)
+			rs, err := d.scanDir(ctx, local, dir)
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
@@ -948,17 +1048,30 @@ func (d *Dispatcher) Sessions(ctx context.Context) ([]Session, error) {
 	}
 	prefix += string(filepath.Separator)
 
-	// Live herdr agents enrich sessions with run state (working/blocked).
-	// Best effort: without a herdr server the plain session scan still works.
-	snaps := d.agentsSnapshot(ctx)
 	localAgents := snaps[""].agents
 	localLabels := snaps[""].labels
+	// A foreign session borrows the live state of a herdr agent in its
+	// directory only when no dispatch record owns that agent's pane, and
+	// only the directory's newest session does: one agent is one running
+	// session, never every session that shares its checkout.
+	owned := map[string]bool{}
+	for _, rec := range recs {
+		if rec.Machine == "" && rec.PaneID != "" && !finished(rec) {
+			owned[rec.PaneID] = true
+		}
+	}
 	agentByPane := map[string]herdrAgent{}
 	agentByDir := map[string]herdrAgent{}
 	for _, a := range localAgents {
 		agentByPane[a.PaneID] = a
-		if _, ok := agentByDir[normPath(a.Cwd)]; !ok {
+		if _, ok := agentByDir[normPath(a.Cwd)]; !ok && !owned[a.PaneID] {
 			agentByDir[normPath(a.Cwd)] = a
+		}
+	}
+	newestInDir := map[string]rawSession{}
+	for _, r := range raw {
+		if cur, ok := newestInDir[normPath(r.Directory)]; !ok || r.Updated > cur.Updated {
+			newestInDir[normPath(r.Directory)] = r
 		}
 	}
 
@@ -1014,7 +1127,7 @@ func (d *Dispatcher) Sessions(ctx context.Context) ([]Session, error) {
 		}
 		if s.Task == "" {
 			// Foreign session: still surface live herdr agent state for it.
-			if a, ok := agentByDir[normPath(r.Directory)]; ok {
+			if a, ok := agentByDir[normPath(r.Directory)]; ok && newestInDir[normPath(r.Directory)].ID == r.ID {
 				s.State = a.Status
 				s.Running = true
 				s.Blocked = a.Status == "blocked"

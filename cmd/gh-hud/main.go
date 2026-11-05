@@ -28,6 +28,7 @@ func main() {
 		widthFlag  = flag.Int("width", 120, "table width for --once")
 		showVer    = flag.Bool("version", false, "print version and exit")
 		snapshot   = flag.String("snapshot", "", "render one frame at WxH to stdout (for screenshots)")
+		stateDir   = flag.String("state-dir", "", "dispatch/fleet state directory (default ~/.local/state/gh-hud)")
 	)
 	flag.Parse()
 
@@ -82,6 +83,7 @@ func main() {
 		Machines:      machines,
 		LocalIndex:    idx,
 		InstancesOnly: cfg.DispatchInstancesOnly,
+		StateDir:      *stateDir,
 		LearningsPR:   cfg.LearningsPR,
 	}
 	disp, dispErr := dispatch.New(dispOpts)
@@ -113,7 +115,7 @@ func main() {
 		if disp != nil {
 			sched = disp
 		}
-		c, err := fleet.New(fleet.Options{Config: cfg.Fleet, Machines: fleetMachines, Scheduler: sched})
+		c, err := fleet.New(fleet.Options{Config: cfg.Fleet, Machines: fleetMachines, Scheduler: sched, StateDir: *stateDir})
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "fleet:", err)
 		} else {

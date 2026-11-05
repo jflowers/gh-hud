@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/dispatch"
 )
 
@@ -36,7 +37,7 @@ func TestVisibleAgentsHidesStale(t *testing.T) {
 }
 
 func TestAgentsViewFitsHeight(t *testing.T) {
-	m := &Model{width: 120, height: 30, agentsAll: true}
+	m := &Model{cfg: config.Default(), width: 120, height: 30, agentsAll: true}
 	for i := 0; i < 80; i++ {
 		m.agents = append(m.agents, dispatch.Session{ID: fmt.Sprint(i), Title: fmt.Sprintf("session %d", i)})
 	}
@@ -51,10 +52,55 @@ func TestAgentsViewFitsHeight(t *testing.T) {
 	if !strings.Contains(out, "↑") || !strings.Contains(out, "↓") {
 		t.Error("expected scroll hints above and below")
 	}
+	for _, l := range strings.Split(out, "\n") {
+		if w := width(l); w > m.width {
+			t.Errorf("line is %d columns, terminal is %d: %q", w, m.width, ansiRe.ReplaceAllString(l, ""))
+		}
+	}
+}
+
+func TestAgentsTabShowsRunDetail(t *testing.T) {
+	done := time.Now().Add(-time.Minute)
+	m := &Model{cfg: config.Default(), width: 160, height: 40, agentsMode: true}
+	m.runs = []dispatch.Run{{
+		ID: "run1", Task: dispatch.TaskFeedback, Ref: "acme/r#950", Machine: "lap1", Workspace: "r@cypress",
+		Status: dispatch.RunFailed, StartedAt: done.Add(-42 * time.Minute), FinishedAt: &done,
+		Reason: "APIError: rate limited", Summary: "Addressed 3 of 5 threads.",
+	}}
+	m.agents = []dispatch.Session{
+		{ID: "lap1/gh-feedback-950", Task: dispatch.TaskFeedback, Ref: "acme/r#950", Machine: "lap1",
+			Workspace: "r@cypress", Failed: true, UpdatedAt: done, RunID: "run1"},
+		{ID: "ses_x", Title: "my own long interactive session title that would not fit in the old box", UpdatedAt: time.Now()},
+	}
+	plain := ansiRe.ReplaceAllString(m.View(), "")
+	for _, want := range []string{"feedback", "acme/r#950", "lap1", "r@cypress", "failed", "42m",
+		"APIError: rate limited", "Addressed 3 of 5 threads.", "would not fit in the old box"} {
+		if !strings.Contains(plain, want) {
+			t.Errorf("agents tab missing %q:\n%s", want, plain)
+		}
+	}
+	if n := strings.Count(plain, "\n") + 1; n != m.height {
+		t.Errorf("agents tab is %d lines, terminal is %d", n, m.height)
+	}
+
+	// The foreign session's detail replaces the run's when selected.
+	m.agentsSel = 1
+	plain = ansiRe.ReplaceAllString(m.View(), "")
+	if !strings.Contains(plain, "ses_x") || strings.Contains(plain, "APIError") {
+		t.Errorf("detail should follow the selection:\n%s", plain)
+	}
+}
+
+func TestAgentsTabDigitsSwitchTabs(t *testing.T) {
+	m := &Model{cfg: config.Default(), width: 120, height: 30, agentsMode: true}
+	pressKey(t, m, "2")
+	if m.agentsMode || m.filter != tabs[2].cat {
+		t.Errorf("2 should open Mine: agentsMode %v filter %v", m.agentsMode, m.filter)
+	}
 }
 
 func TestAgentsViewMachineColumn(t *testing.T) {
-	m := &Model{width: 120, height: 30, agentsAll: true}
+	m := &Model{cfg: config.Default(), width: 120, height: 30, agentsAll: true}
 	m.agents = []dispatch.Session{
 		{ID: "s1", Title: "local one", Machine: ""},
 		{ID: "s2", Title: "remote one", Machine: "lap1"},

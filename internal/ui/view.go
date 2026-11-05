@@ -293,21 +293,23 @@ func headerRow(l layout) string {
 // header bar
 
 type tab struct {
-	label string
-	cat   model.Cats
-	color lipgloss.Color
-	key   string
+	label  string
+	cat    model.Cats
+	color  lipgloss.Color
+	key    string
+	agents bool // the Agents tab (counts running agents, not items)
 }
 
 var tabs = []tab{
-	{"All", 0, cFg, "0"},
-	{"Review", model.CatRQ, cYellow, "1"},
-	{"Mine", model.CatMy, cBlue, "2"},
-	{"Issues", model.CatISS, cGreen, "3"},
-	{"CI", model.CatCI, cRed, "4"},
-	{"Inbox", model.CatNT, cMagenta, "5"},
-	{"Ready", model.CatReady, cGreen, "7"},
-	{"Queue", model.CatQueue, cCyan, "8"},
+	{"All", 0, cFg, "0", false},
+	{"Review", model.CatRQ, cYellow, "1", false},
+	{"Mine", model.CatMy, cBlue, "2", false},
+	{"Issues", model.CatISS, cGreen, "3", false},
+	{"CI", model.CatCI, cRed, "4", false},
+	{"Inbox", model.CatNT, cMagenta, "5", false},
+	{"Agents", 0, cTeal, "6", true},
+	{"Ready", model.CatReady, cGreen, "7", false},
+	{"Queue", model.CatQueue, cCyan, "8", false},
 }
 
 func shortDur(d time.Duration) string {
@@ -377,13 +379,19 @@ func (m *Model) headerBar() string {
 		items = m.res.Items
 	}
 	for _, t := range tabs {
+		if t.agents && m.disp == nil {
+			continue
+		}
 		n := 0
 		for _, it := range items {
 			if t.cat == 0 || it.Cats&t.cat != 0 {
 				n++
 			}
 		}
-		active := m.filter == t.cat
+		active := !m.agentsMode && m.filter == t.cat
+		if t.agents {
+			n, active = m.runningAgents(), m.agentsMode
+		}
 		tp := p
 		if active {
 			tp = paint{bg: cTab}
@@ -518,7 +526,7 @@ func (m *Model) helpView() string {
 		line("g G", "top / bottom"),
 		line("enter o", "open"),
 		line("y  Y", "copy ref / URL"),
-		line("0-8", "All Review Mine Issues CI Inbox Ready Queue"),
+		line("0-8", "All Review Mine Issues CI Inbox Agents Ready Queue"),
 		line("/", "find (esc clears)"),
 		line("r", "refresh now"),
 		line("a", "agent actions for row"),
@@ -602,114 +610,6 @@ func (m *Model) actionView() string {
 		lines = append(lines, marker+task+comment.Render(" "+a.cmd+"  ·  "+a.target))
 	}
 	lines = append(lines, "", comment.Render("enter dispatch · j/k move · esc cancel"))
-
-	box := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(cBlue).
-		Padding(1, 3).
-		Render(strings.Join(lines, "\n"))
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
-}
-
-func (m *Model) agentsView() string {
-	title := lipgloss.NewStyle().Foreground(cMagenta).Bold(true)
-	sel := lipgloss.NewStyle().Foreground(cFg).Bold(true)
-	fg := lipgloss.NewStyle().Foreground(cFg)
-	comment := lipgloss.NewStyle().Foreground(cComment)
-
-	list := m.visibleAgents()
-	hidden := len(m.agents) - len(list)
-	sub := "dispatched, live, and recent sessions"
-	if m.agentsAll {
-		sub = "all opencode sessions in ghws workspaces"
-	}
-	lines := []string{
-		title.Render(" agent sessions ") + comment.Render(sub),
-		"",
-	}
-	if len(list) == 0 {
-		lines = append(lines, comment.Render("no agent sessions"))
-	}
-	// viewport: border(2) + padding(2) + header(2) + footer(2) + scroll hints(2)
-	maxRows := m.height - 10
-	if maxRows < 3 {
-		maxRows = 3
-	}
-	start, end := 0, len(list)
-	if len(list) > maxRows {
-		start = m.agentsSel - maxRows/2
-		if start < 0 {
-			start = 0
-		}
-		if start > len(list)-maxRows {
-			start = len(list) - maxRows
-		}
-		end = start + maxRows
-	}
-	if start > 0 {
-		lines = append(lines, comment.Render(fmt.Sprintf("  ↑ %d more", start)))
-	}
-	for i := start; i < end; i++ {
-		s := list[i]
-		glyph, color := "○", cDim
-		task := s.Task
-		switch {
-		case s.Running:
-			glyph, color = "●", cTeal
-		case s.Blocked:
-			glyph, color = "◆", cOrange
-		case s.Failed:
-			glyph, color = "◆", cRed
-		case s.Unknown:
-			glyph, color = "?", cYellow
-		case task != "":
-			glyph, color = "✓", cGreen
-		}
-		if task == "" {
-			task = "—"
-		}
-		name := s.Ref
-		if name == "" {
-			name = truncatePlain(s.Title, 32)
-		}
-		ws := s.Workspace
-		if ws == "" {
-			ws = "—"
-		}
-		mach := s.Machine
-		if mach == "" {
-			mach = "local"
-		}
-		age := model.RelativeTime(s.UpdatedAt, time.Now())
-		marker := "  "
-		if i == m.agentsSel {
-			marker = sel.Render("▶ ")
-		}
-		g := lipgloss.NewStyle().Foreground(color).Render(glyph)
-		info := mach + " · " + ws
-		if s.State != "" {
-			info += "  ·  " + s.State
-		}
-		info += "  ·  " + age
-		if s.Unknown {
-			info += "  ·  outcome unknown"
-			if s.Note != "" && i == m.agentsSel {
-				info += ": " + truncatePlain(s.Note, 60)
-			}
-		}
-		lines = append(lines, marker+g+" "+comment.Render(padPlain(string(task), 9, false))+" "+fg.Render(name)+
-			comment.Render("  ·  "+info))
-	}
-	if end < len(list) {
-		lines = append(lines, comment.Render(fmt.Sprintf("  ↓ %d more", len(list)-end)))
-	}
-	toggle := "a show all"
-	if m.agentsAll {
-		toggle = "a hide stale"
-	} else if hidden > 0 {
-		toggle = fmt.Sprintf("a show %d stale", hidden)
-	}
-	lines = append(lines, "", comment.Render("enter watch · i run detail · y copy id · r refresh · "+toggle+" · esc close"))
 
 	box := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).

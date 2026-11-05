@@ -55,6 +55,11 @@ func (d *Dispatcher) agentsSnapshot(ctx context.Context) map[string]agentSnapsho
 		}(m)
 	}
 	wg.Wait()
+	if ctx.Err() != nil {
+		// The caller's deadline cut the herdr calls short: the failures say
+		// nothing about the machines, so neither cache nor act on them.
+		return out
+	}
 
 	d.cacheMu.Lock()
 	d.agentsCache, d.agentsAt = out, time.Now()

@@ -2,6 +2,7 @@ package dispatch
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -422,5 +423,65 @@ func TestTaskOnPRHead(t *testing.T) {
 		if got := task.onPRHead(); got != want {
 			t.Errorf("%s.onPRHead() = %v, want %v", task, got, want)
 		}
+	}
+}
+
+func TestSessionScanDirsOnePerRepo(t *testing.T) {
+	ix := ghws.NewIndex([]ghws.Checkout{
+		{Workspace: "acme", Repo: "acme/r", Dir: "/g/acme/r"},
+		{Workspace: "acme@oak", Repo: "acme/r", Dir: "/g/acme@oak/r", Instance: true},
+		{Workspace: "acme@oak", Repo: "acme/s", Dir: "/g/acme@oak/s", Instance: true},
+	})
+	d := &Dispatcher{opts: Options{LocalIndex: ix, Dirs: []string{"/g/acme/r", "/g/acme@oak/r", "/g/acme@oak/s", "/g/other"}}}
+	got := strings.Join(d.sessionScanDirs(), " ")
+	if want := "/g/acme/r /g/acme@oak/s /g/other"; got != want {
+		t.Errorf("scan dirs = %q, want %q", got, want)
+	}
+}
+
+func TestAgentsSnapshotSkipsExpiredDeadline(t *testing.T) {
+	d := newTestDispatcher(t, "refuse")
+	d.opts.Runner = "herdr"
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	d.agentsSnapshot(ctx)
+	d.cacheMu.Lock()
+	cached := d.agentsCache
+	d.cacheMu.Unlock()
+	if cached != nil {
+		t.Errorf("snapshot taken past the deadline was cached: %+v", cached)
+	}
+}
+
+func TestScanDirCachesAndFallsBack(t *testing.T) {
+	d := newTestDispatcher(t, "refuse")
+	runs, fail := 0, false
+	d.listSessions = func(context.Context, Machine, string) ([]rawSession, error) {
+		runs++
+		if fail {
+			return nil, errors.New("boom")
+		}
+		return []rawSession{{ID: "ses_1"}}, nil
+	}
+	ctx, local, dir := context.Background(), d.localMachine(), "/g/acme/r"
+	if rs, err := d.scanDir(ctx, local, dir); err != nil || len(rs) != 1 {
+		t.Fatalf("first scan = %v, %v", rs, err)
+	}
+	if _, err := d.scanDir(ctx, local, dir); err != nil || runs != 1 {
+		t.Errorf("fresh listing should be reused: %d runs, err %v", runs, err)
+	}
+	// Expired and failing: the last good listing stands in.
+	d.scanMu.Lock()
+	e := d.scans[dir]
+	e.at = time.Now().Add(-2 * sessionScanTTL)
+	d.scans[dir] = e
+	d.scanMu.Unlock()
+	fail = true
+	if rs, err := d.scanDir(ctx, local, dir); err != nil || len(rs) != 1 || runs != 2 {
+		t.Errorf("failed rescan = %v, %v after %d runs; want the last good listing", rs, err, runs)
+	}
+	d.invalidateScan(dir)
+	if _, err := d.scanDir(ctx, local, dir); err == nil {
+		t.Error("after invalidation a failing listing should error")
 	}
 }
