@@ -127,6 +127,21 @@ auto = true
 	}
 }
 
+func TestLoadDispatchAutoOnlyKeepsCommand(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.toml")
+	if err := os.WriteFile(path, []byte("[dispatch.review]\nauto = true\n"), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got := c.Dispatch["review"]; got.Command != "/uf.review-pr {num}" || !got.Auto {
+		t.Errorf("Dispatch[review]: got %+v want default command with auto kept", got)
+	}
+}
+
 func TestLoadRunnerLocal(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.toml")

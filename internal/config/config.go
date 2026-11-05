@@ -278,9 +278,15 @@ func Load(path string) (*Config, error) {
 	if cfg.Dispatch == nil {
 		cfg.Dispatch = DefaultDispatch()
 	} else {
+		// A task table that sets only auto (e.g. [dispatch.review]
+		// auto = true) keeps the default command.
 		for k, v := range DefaultDispatch() {
-			if _, ok := cfg.Dispatch[k]; !ok {
+			tc, ok := cfg.Dispatch[k]
+			if !ok {
 				cfg.Dispatch[k] = v
+			} else if tc.Command == "" {
+				tc.Command = v.Command
+				cfg.Dispatch[k] = tc
 			}
 		}
 	}
