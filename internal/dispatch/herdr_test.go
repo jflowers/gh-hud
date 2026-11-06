@@ -253,7 +253,7 @@ func TestPaneSetup(t *testing.T) {
 	}
 	// The line must set the variable to exactly the JSON in a POSIX shell
 	// and then print the probe.
-	out, err := exec.Command("sh", "-c", strings.Replace(paneSetup(), "echo ghhud-$RANDOM-ready", `printf %s "$OPENCODE_PERMISSION"`, 1)).Output()
+	out, err := exec.Command("sh", "-c", strings.Replace(paneSetup(false), "echo ghhud-$RANDOM-ready", `printf %s "$OPENCODE_PERMISSION"`, 1)).Output()
 	if err != nil {
 		t.Fatal(err)
 	}
