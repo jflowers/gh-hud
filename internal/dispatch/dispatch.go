@@ -88,8 +88,9 @@ func mine(it model.Item) bool {
 }
 
 // MenuTasks is InferTasks plus tasks offered only on request: a review of
-// my own PRs (never auto-dispatched; /uf.review-pr posts a self-review as
-// a COMMENT, since GitHub rejects approving your own PR).
+// my own PRs (never auto-dispatched). /uf.review-pr posts a self-review as
+// a COMMENT, since GitHub rejects approving your own PR; in botOrg the
+// poster is the bot (see identity.go), so its real verdict is posted.
 func MenuTasks(it model.Item) []Task {
 	tasks := InferTasks(it)
 	if it.Kind == model.KindPR && it.Cats&model.CatMy != 0 && !slices.Contains(tasks, TaskReview) {
@@ -229,6 +230,8 @@ type Dispatcher struct {
 	export func(ctx context.Context, m Machine, dir, id string) (string, error)
 	// listSessions lists a checkout's opencode sessions (a hook for tests).
 	listSessions func(ctx context.Context, m Machine, dir string) ([]rawSession, error)
+
+	botWarned map[string]bool // refs already reported as missing the bot token
 }
 
 // agentSnapshot is one machine's live herdr agent list.
@@ -338,6 +341,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, task Task, it model.Item, aut
 		return Record{}, fmt.Errorf("no dispatch target for %s (machines busy or full, or no idle checkout)", it.Ref())
 	}
 	var refusals []string
+	noToken := false
 	for _, c := range cands {
 		rec, err := d.dispatchCore(ctx, task, it, c.machine, c.checkout, name, args, title, auto)
 		if err == nil {
@@ -346,9 +350,14 @@ func (d *Dispatcher) Dispatch(ctx context.Context, task Task, it model.Item, aut
 		if len(cands) == 1 {
 			return Record{}, err
 		}
+		noToken = noToken || errors.Is(err, errBotToken)
 		refusals = append(refusals, placementLabel(c)+": "+err.Error())
 	}
-	return Record{}, fmt.Errorf("no candidate took %s — %s", it.Ref(), strings.Join(refusals, " · "))
+	err = fmt.Errorf("no candidate took %s — %s", it.Ref(), strings.Join(refusals, " · "))
+	if noToken {
+		err = fmt.Errorf("%w (%w)", err, errBotToken)
+	}
+	return Record{}, err
 }
 
 // DispatchIn launches the task at one exact placement (machine +
@@ -416,6 +425,11 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 		return Record{}, fmt.Errorf("remote dispatch requires runner = %q", "herdr")
 	}
 	ref := it.Ref()
+	if runsAsBot(task, it.Repo) {
+		if err := prepareBot(ctx, m, ref); err != nil {
+			return Record{}, err
+		}
+	}
 	recs := d.snapshot()
 	snaps := d.agentsSnapshot(ctx)
 	// Busy checks against the target machine use a fresh agent list: the
@@ -544,6 +558,9 @@ func (d *Dispatcher) dispatchLocal(ctx context.Context, task Task, it model.Item
 	}
 	argv := append([]string{"run", "--agent", d.opts.Agent, "--title", title, "--command", name}, args...)
 	cmd := exec.Command(opencodeBinary(), argv...)
+	if runsAsBot(task, it.Repo) {
+		cmd = botCommand(opencodeBinary(), argv)
+	}
 	cmd.Dir = co.Dir
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Stdout = f
@@ -618,7 +635,12 @@ func (d *Dispatcher) dispatchHerdr(ctx context.Context, task Task, it model.Item
 	if err != nil {
 		return Record{}, fmt.Errorf("herdr tab: %w", err)
 	}
-	if err := herdrPaneReady(ctx, m, paneID); err != nil {
+	bot := runsAsBot(task, it.Repo)
+	if err := herdrPaneReady(ctx, m, paneID, bot); err != nil {
+		if errors.Is(err, errBotToken) {
+			_, _ = herdrRun(ctx, m, "pane", "close", paneID)
+			return Record{}, botTokenError(m, it.Ref())
+		}
 		return Record{}, fmt.Errorf("herdr pane ready: %w", err)
 	}
 	mode := d.modeFor(m)
@@ -692,6 +714,9 @@ func (d *Dispatcher) AutoDispatch(ctx context.Context, items []model.Item) []str
 				continue
 			}
 			rec, err := d.Dispatch(ctx, task, it, true)
+			if note, ok := d.autoFailNote(task, ref, err); ok {
+				msgs = append(msgs, note)
+			}
 			if err != nil {
 				continue
 			}

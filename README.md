@@ -87,7 +87,8 @@ preferred). The offered tasks follow the row's signals (see
 rebase, failing CI → fix, changes requested on your PR → address feedback,
 PR in the review queue → review, issue → implement. Your own PRs also offer
 review on request (never auto-dispatched; `/uf.review-pr` posts the
-verdict as a comment, since GitHub rejects approving your own PR). Tasks
+verdict as a comment, since GitHub rejects approving your own PR; see
+[Review identity](#review-identity) for `unbound-force`). Tasks
 can also start themselves with `auto` (see
 [Configuring dispatch](#configuring-dispatch)). The
 dispatcher never assumes
@@ -151,6 +152,38 @@ denied outside the temp dirs. opencode merges it over the config files, so
 it reaches subagents the dispatched agent starts (review-council reviewers
 don't inherit the autonomy agent's rules) and an outside path is an error
 rather than a prompt; sessions you start yourself keep the config's `ask`.
+
+### Review identity
+
+`review` tasks on `unbound-force` repos run as the `uf-divisor` machine
+account, on your PRs and other people's, auto or by hand with `a`. Everything
+else runs as your own `gh` login: `feedback`, `ci`, `rebase` and `issue` in
+any org, and `review` in any other org.
+
+| Task | `unbound-force` | any other org |
+| --- | --- | --- |
+| `review` | `uf-divisor` | you |
+| `feedback`, `ci`, `rebase`, `issue` | you | you |
+
+The dispatch shell exports `GH_TOKEN` from `UF_DIVISOR_GH_TOKEN`, looking in
+`~/.config/agent-env` when the shell doesn't already have it (a hub pane only
+has what the herdr server started with, so a new token needs no server
+restart). gh-hud only ever handles the variable's name: the value stays out
+of pane transcripts, argv and logs.
+
+A review never falls back to your account. A machine without the token
+refuses before touching the checkout and placement tries the next one. If none
+can take it, `a` shows the error and an auto dispatch flashes it once per PR,
+retrying as usual.
+
+The bot posts the council's real verdict, so its `APPROVE` counts toward
+required approvals, on your PRs too (GitHub only stops you approving your own
+PR, not `uf-divisor`). It never merges: a `gh` guard first on `PATH`
+(`~/.local/share/gh-hud/guard/gh`, rewritten on each such dispatch) refuses
+`gh pr merge`, the merge API and GraphQL merge mutations.
+
+This is a convention, not a security boundary: any agent can read the token
+from `agent-env`, and the guard only sees `gh`, so `curl` would get past it.
 
 `opencode run` also can't ask questions: it denies the question tool, so a
 headless agent that needs a decision guesses or fails. `dispatch_mode =
@@ -248,7 +281,7 @@ orgs a worker serves is also decided by which workspaces you create on it.
 | `rebase` | `/uf.rebase-pr {num}` | any listed PR with a merge conflict |
 | `ci` | `/uf.fix-ci {num}` | any listed PR with failing checks |
 | `feedback` | `/uf.address-feedback {num}` | your PRs with changes requested or unresolved review threads |
-| `review` | `/uf.review-pr {num}` | PRs in the Queue (`8`): others' PRs ready for review. Also offered on your own PRs, never auto-dispatched there |
+| `review` | `/uf.review-pr {num}` | PRs in the Queue (`8`): others' PRs ready for review. Also offered on your own PRs, never auto-dispatched there. Runs as `uf-divisor` in `unbound-force` (see [Review identity](#review-identity)) |
 | `issue` | `/uf.run-pipeline-plan #{num}` | issues assigned to you or mentioning you |
 
 "Any listed PR" includes other people's PRs in Review and CI, so `auto` on

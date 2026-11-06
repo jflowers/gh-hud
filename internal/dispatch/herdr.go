@@ -301,16 +301,41 @@ const dispatchPermission = `{"external_directory":{"*":"deny","/tmp/**":"allow",
 // against a pane it considers not yet shell-ready, so dispatch probes the
 // shell before starting the agent. The literal $RANDOM is typed into the
 // pane and only the shell-evaluated output can match the wait regex; the
-// probe runs only after the export succeeded.
-func herdrPaneReady(ctx context.Context, m Machine, paneID string) error {
-	_, _ = herdrRun(ctx, m, "pane", "run", paneID, paneSetup())
-	_, err := herdrRun(ctx, m, "pane", "wait-output", paneID, "--regex", "ghhud-[0-9]+-ready", "--timeout", "15000")
-	return err
+// probe runs only after the export succeeded. With bot set the pane also
+// switches to the bot account, and answers errBotToken when it can't.
+func herdrPaneReady(ctx context.Context, m Machine, paneID string, bot bool) error {
+	_, _ = herdrRun(ctx, m, "pane", "run", paneID, paneSetup(bot))
+	raw, err := herdrRun(ctx, m, "pane", "wait-output", paneID, "--regex", "ghhud-[0-9]+-(ready|notoken)", "--timeout", "15000")
+	if err != nil {
+		return err
+	}
+	return paneSetupResult(raw)
 }
 
-// paneSetup is the shell line typed into a fresh dispatch pane.
-func paneSetup() string {
-	return "export OPENCODE_PERMISSION=" + shellQuote(dispatchPermission) + " && echo ghhud-$RANDOM-ready"
+// paneSetupResult reads the wait-output result of the setup line.
+func paneSetupResult(raw json.RawMessage) error {
+	var res struct {
+		MatchedLine string `json:"matched_line"`
+	}
+	if err := json.Unmarshal(raw, &res); err != nil {
+		return err
+	}
+	if strings.HasSuffix(strings.TrimSpace(res.MatchedLine), "-notoken") {
+		return errBotToken
+	}
+	return nil
+}
+
+// paneSetup is the shell line typed into a fresh dispatch pane. A bot pane
+// prints -notoken instead of the ready probe when it can't switch account,
+// so the agent never starts as the operator. The line names the variable
+// and never holds its value, so the pane transcript stays clean.
+func paneSetup(bot bool) string {
+	line := "export OPENCODE_PERMISSION=" + shellQuote(dispatchPermission)
+	if !bot {
+		return line + " && echo ghhud-$RANDOM-ready"
+	}
+	return line + "; " + botLoad + `; if [ -n "$` + botTokenVar + `" ] && [ -x "` + botGuardDir + `/gh" ]; then ` + botExport + ` && echo ghhud-$RANDOM-ready; else echo ghhud-$RANDOM-notoken; fi`
 }
 
 // herdrPaneText reads the tail of a pane's transcript (plain text).
