@@ -381,6 +381,34 @@ func TestAutoDispatchSkips(t *testing.T) {
 	}
 }
 
+func TestAutoWantsMine(t *testing.T) {
+	tc := config.TaskConfig{Auto: true, Mine: true, Orgs: []string{"acme"}}
+	minePR := model.Item{Kind: model.KindPR, Repo: "acme/r", Cats: model.CatMy}
+	theirPR := model.Item{Kind: model.KindPR, Repo: "acme/r", Cats: model.CatRQ}
+	assigned := model.Item{Kind: model.KindIssue, Repo: "acme/r", Tagged: true}
+	mentioned := model.Item{Kind: model.KindIssue, Repo: "acme/r"}
+	otherOrg := model.Item{Kind: model.KindPR, Repo: "other/r", Cats: model.CatMy}
+	for _, c := range []struct {
+		name string
+		it   model.Item
+		want bool
+	}{
+		{"my PR", minePR, true},
+		{"their PR", theirPR, false},
+		{"issue assigned to me", assigned, true},
+		{"issue only mentioning me", mentioned, false},
+		{"my PR outside orgs", otherOrg, false},
+	} {
+		if got := autoWants(tc, c.it); got != c.want {
+			t.Errorf("%s: autoWants = %v, want %v", c.name, got, c.want)
+		}
+	}
+	tc.Mine = false
+	if !autoWants(tc, theirPR) {
+		t.Error("without mine, others' PRs in orgs are covered")
+	}
+}
+
 func TestCheckoutPR(t *testing.T) {
 	// A fake gh records its argv and checks out a branch the way
 	// `gh pr checkout` would.

@@ -231,11 +231,11 @@ Dispatch is configured in three layers, all in `config.toml`:
 
 | Layer | Where | Decides |
 |---|---|---|
-| Tasks | `[dispatch.<task>]` | what each task runs (`command`), whether it starts itself (`auto`), and for which orgs (`orgs`) |
+| Tasks | `[dispatch.<task>]` | what each task runs (`command`), whether it starts itself (`auto`), and for which orgs (`orgs`) and items (`mine`) |
 | Machines | top level (the hub) and `[[machines]]` (workers) | where agents may run, how many at once, which tasks each machine accepts, and how agents run there |
 | Checkouts | ghws `@` instances on each machine | which repos a machine can take work for at all |
 
-Task settings are global: one `command`, `auto` and `orgs` per task, used
+Task settings are global: one `command`, `auto`, `orgs` and `mine` per task, used
 on every machine. Per-machine control is the `[[machines]] tasks`
 allowlist; per-org control of auto-dispatch is the task's `orgs` list. A
 machine only takes work for repos it has a ghws instance of, so which
@@ -252,8 +252,8 @@ orgs a worker serves is also decided by which workspaces you create on it.
 | `issue` | `/uf.run-pipeline-plan #{num}` | issues assigned to you or mentioning you |
 
 "Any listed PR" includes other people's PRs in Review and CI, so `auto` on
-`rebase` or `ci` sends agents at PRs you don't own; scope it with `orgs`
-or leave it manual.
+`rebase` or `ci` sends agents at PRs you don't own; limit it with `mine`
+or `orgs`, or leave it manual.
 
 All five tasks exist without any config. A `[dispatch.<task>]` table only
 needs the keys it changes: `auto = true` alone keeps the default command.
@@ -268,8 +268,15 @@ changes (new commits, comments, checks), and never restarts a ref within
 30 minutes of its last start. For `review` this drains the Queue.
 
 `orgs` limits `auto` to repos owned by the listed orgs or users
-(case-insensitive). Empty or unset means every org. It never limits `a`:
-you can still dispatch any task by hand on any repo.
+(case-insensitive). Empty or unset means every org.
+
+`mine = true` limits `auto` to items that are yours: PRs you opened, and
+issues assigned to you (not ones that only mention you). `feedback` only
+ever triggers on your PRs, so it needs no `mine`; on `review` it means
+auto never fires, since auto-review covers only others' PRs.
+
+`orgs` and `mine` combine (both must match), and neither limits `a`: you
+can still dispatch any task by hand on any PR or issue.
 
 ### Machines
 
@@ -312,8 +319,29 @@ auto = true
 orgs = ["fullsend-ai"]
 ```
 
-**Different auto scopes per task.** Fix your own org's CI and conflicts
-automatically, auto-review two orgs, and implement issues only on `a`:
+**Fix your own PRs' conflicts and CI, never anyone else's.**
+
+```toml
+[dispatch.rebase]
+auto = true
+mine = true
+
+[dispatch.ci]
+auto = true
+mine = true
+```
+
+**Implement issues assigned to you in one org.**
+
+```toml
+[dispatch.issue]
+auto = true
+mine = true
+orgs = ["zero-dot-force"]
+```
+
+**Different auto scopes per task.** Fix CI and conflicts on every PR in one
+org automatically, auto-review two orgs, and implement issues only on `a`:
 
 ```toml
 orgs = ["fullsend-ai", "unbound-force", "zero-dot-force"]  # dashboard scope
@@ -492,11 +520,13 @@ max_concurrent = 2
 # All five are built in with these commands; a table only needs the keys
 # it changes. command: slash-command template ({num} = PR/issue number).
 # auto: dispatch on refresh, no keypress. orgs: limit auto to these repo
-# owners (empty = every org; never limits a keypress dispatch).
+# owners (empty = every org). mine: limit auto to your PRs and issues
+# assigned to you. Neither limits a keypress dispatch.
 [dispatch.rebase]          # any listed PR with a merge conflict
 command = "/uf.rebase-pr {num}"
 auto = false
 orgs = []
+mine = false
 
 [dispatch.ci]              # any listed PR with failing checks
 command = "/uf.fix-ci {num}"

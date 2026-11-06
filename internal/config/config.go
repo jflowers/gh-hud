@@ -123,6 +123,7 @@ type TaskConfig struct {
 	Command string   `toml:"command"` // slash command template, {num} = PR/issue number
 	Auto    bool     `toml:"auto"`    // auto-dispatch on refresh without confirmation
 	Orgs    []string `toml:"orgs"`    // limits auto to these repo owners; empty = every org
+	Mine    bool     `toml:"mine"`    // limits auto to your PRs and issues assigned to you
 }
 
 // AutoFor reports whether the task auto-dispatches for repo ("owner/name"):

@@ -72,6 +72,21 @@ func InferTasks(it model.Item) []Task {
 	return tasks
 }
 
+// autoWants reports whether a task's auto settings cover the item: auto
+// on, the repo owner in orgs, and the item yours when mine is set.
+func autoWants(tc config.TaskConfig, it model.Item) bool {
+	return tc.AutoFor(it.Repo) && (!tc.Mine || mine(it))
+}
+
+// mine reports whether the item is yours for a task's `mine` limit: a PR
+// you opened, or an issue assigned to you (not one that only mentions you).
+func mine(it model.Item) bool {
+	if it.Kind == model.KindIssue {
+		return it.Tagged
+	}
+	return it.Cats&model.CatMy != 0
+}
+
 // MenuTasks is InferTasks plus tasks offered only on request: a review of
 // my own PRs (never auto-dispatched; /uf.review-pr posts a self-review as
 // a COMMENT, since GitHub rejects approving your own PR).
@@ -656,7 +671,7 @@ func (d *Dispatcher) AutoDispatch(ctx context.Context, items []model.Item) []str
 	for _, it := range items {
 		for _, task := range InferTasks(it) {
 			tc, ok := d.opts.Tasks[string(task)]
-			if !ok || !tc.AutoFor(it.Repo) {
+			if !ok || !autoWants(tc, it) {
 				continue
 			}
 			ref := it.Ref()
