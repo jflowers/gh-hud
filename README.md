@@ -301,11 +301,31 @@ max_concurrent = 2
 # enabled = true
 # dispatch_mode = "tui"             # override the top-level dispatch_mode
 
-# dispatchable tasks: command is a slash-command template ({num} = PR/issue
-# number). Tasks: rebase, feedback, review, ci, issue.
-[dispatch.rebase]
+# dispatchable tasks, one table each (all five are built in with these
+# commands; a table only needs the keys it changes, so `auto = true` alone
+# keeps the default command). command is a slash-command template ({num} =
+# PR/issue number). auto = true dispatches on every refresh, no keypress,
+# for each row that triggers the task, at most once per item state (a
+# ref is retried 30 minutes after its last start, or when it changes).
+[dispatch.rebase]          # any listed PR with a merge conflict
 command = "/uf.rebase-pr {num}"
-auto = false               # true = auto-dispatch on refresh, no keypress
+auto = false
+
+[dispatch.ci]              # any listed PR with failing checks
+command = "/uf.fix-ci {num}"
+auto = false
+
+[dispatch.feedback]        # your PRs: changes requested or unresolved threads
+command = "/uf.address-feedback {num}"
+auto = false
+
+[dispatch.review]          # Queue (8): others' PRs ready for review; also
+command = "/uf.review-pr {num}"  # offered on your own PRs, never auto there
+auto = false
+
+[dispatch.issue]           # issues assigned to you or mentioning you; auto
+command = "/uf.run-pipeline-plan #{num}"  # here implements every listed issue
+auto = false
 
 # GitOps fleet rollout (see "Fleet rollout (GitOps)" above). Machines need
 # a fleet-apply script on PATH (chezmoi dotfiles checkout).
