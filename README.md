@@ -176,19 +176,11 @@ refuses before touching the checkout and placement tries the next one. If none
 can take it, `a` shows the error and an auto dispatch flashes it once per PR,
 retrying as usual.
 
-These reviews are `COMMENT` only and never merge, because `uf-divisor` has
-write access and its approval would count toward required approvals.
-`/uf.review-pr` picks the event from the council verdict and only downgrades
-it when the poster wrote the PR, which is never true for the bot, so gh-hud
-does two things:
-
-- It adds the rule to the command's arguments, so the agent posts a `COMMENT`
-  that opens with the verdict.
-- It puts a `gh` guard first on `PATH` (`~/.local/share/gh-hud/guard/gh`,
-  rewritten on each such dispatch). The guard refuses `gh pr merge`, `gh pr
-  review` without `--comment`, the merge API, GraphQL review and merge
-  mutations, and any review `POST` whose event isn't `COMMENT`. A refusal reads
-  as HTTP 422, which `/uf.review-pr` answers by reposting as `COMMENT`.
+The bot posts the council's real verdict, so its `APPROVE` counts toward
+required approvals, on your PRs too (GitHub only stops you approving your own
+PR, not `uf-divisor`). It never merges: a `gh` guard first on `PATH`
+(`~/.local/share/gh-hud/guard/gh`, rewritten on each such dispatch) refuses
+`gh pr merge`, the merge API and GraphQL merge mutations.
 
 This is a convention, not a security boundary: any agent can read the token
 from `agent-env`, and the guard only sees `gh`, so `curl` would get past it.

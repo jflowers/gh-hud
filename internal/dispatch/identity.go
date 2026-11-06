@@ -3,7 +3,8 @@ package dispatch
 // Which GitHub account a dispatched agent acts as. Everything runs as the
 // operator's own gh login except reviews in botOrg, which run as the
 // uf-divisor machine account: the pane exports GH_TOKEN from botTokenVar
-// and puts a gh guard first on PATH.
+// and puts a gh guard first on PATH. The bot posts the council's real
+// verdict, APPROVE included, and its approval counts; it never merges.
 //
 // The token lives in agent-env on every machine, so an agent could read it
 // whatever gh-hud does, and the guard only sees gh; both are conventions
@@ -36,15 +37,6 @@ const (
 
 	// botExport switches the shell to the bot account.
 	botExport = `export GH_TOKEN="$` + botTokenVar + `" PATH="` + botGuardDir + `:$PATH"`
-
-	// botReviewNote is appended to the review command's arguments. The
-	// command picks the review event from the council verdict and only
-	// downgrades it on the poster's own PR, which never matches here: the
-	// poster is the bot, so an APPROVE would be real and count toward
-	// required approvals. The guard backs this up. It reaches the pane's
-	// shell, so it holds no quotes or shell metacharacters.
-	botReviewNote = "Post this review with event COMMENT whatever the council verdict, and open the body with the verdict. " +
-		"Never post APPROVE or REQUEST_CHANGES and never merge: gh-hud runs this as the " + botLogin + " account, whose approval would count."
 )
 
 // errBotToken marks a dispatch refused because the bot token isn't on the
@@ -58,24 +50,16 @@ func runsAsBot(task Task, repo string) bool {
 	return ok && task == TaskReview && strings.EqualFold(owner, botOrg)
 }
 
-// botGuard is the gh first on PATH in a bot dispatch. It refuses merges and
-// any review event but COMMENT, then hands everything else to the real gh.
-// A refusal reads as an HTTP 422 because /uf.review-pr answers that by
-// reposting as COMMENT. Unknown payloads fail closed.
+// botGuard is the gh first on PATH in a bot dispatch. It refuses merges,
+// which the account's write access would otherwise allow, and hands
+// everything else to the real gh.
 const botGuard = `#!/bin/sh
 # gh-hud guard for uf-divisor dispatches. Written by gh-hud; do not edit.
 guard=${0%/*}
 
 refuse() {
-	echo "gh: HTTP 422: $1 [gh-hud guard: ` + botLogin + ` posts COMMENT reviews only and never merges; resend with event COMMENT]" >&2
+	echo "gh: $1 [gh-hud guard: ` + botLogin + ` never merges]" >&2
 	exit 1
-}
-
-# Every "event" key in a JSON file must be COMMENT, and there must be one.
-# Quotes inside JSON strings are escaped, so body text can't match.
-event_ok() {
-	events=$(tr -d ' \t\r\n' <"$1" | grep -o '"event":"[^"]*"') || return 1
-	[ "$(printf '%s\n' "$events" | sort -u)" = '"event":"COMMENT"' ]
 }
 
 check_pr() {
@@ -87,40 +71,21 @@ check_pr() {
 		*) break ;;
 		esac
 	done
-	case ${1:-} in
-	merge) refuse "gh pr merge is blocked" ;;
-	review) ;;
-	*) return 0 ;;
-	esac
-	comment=
-	for a in "$@"; do
-		case $a in
-		--approve | -a | --request-changes | -r) refuse "gh pr review $a is blocked" ;;
-		--comment | -c) comment=1 ;;
-		esac
-	done
-	[ -n "$comment" ] || refuse "gh pr review needs --comment"
+	[ "${1:-}" != merge ] || refuse "gh pr merge is blocked"
 }
 
 check_api() {
-	method= input= event= fields= prev=
+	method= input= fields= prev=
 	for a in "$@"; do
 		case $prev in
 		-X | --method) method=$a ;;
 		--input) input=$a ;;
-		-f | -F | --field | --raw-field)
-			fields=1
-			case $a in event=*) event=${a#event=} ;; esac
-			;;
+		-f | -F | --field | --raw-field) fields=1 ;;
 		esac
 		case $a in
 		--method=*) method=${a#--method=} ;;
 		--input=*) input=${a#--input=} ;;
-		--field=* | --raw-field=*)
-			fields=1
-			a=${a#*=}
-			case $a in event=*) event=${a#event=} ;; esac
-			;;
+		--field=* | --raw-field=*) fields=1 ;;
 		esac
 		prev=$a
 	done
@@ -139,20 +104,12 @@ check_api() {
 			text=$(cat "$input")
 		fi
 		case $text in
-		*addPullRequestReview* | *submitPullRequestReview* | *mergePullRequest* | *PullRequestAutoMerge* | *mergeBranch*)
-			refuse "graphql review and merge mutations are blocked"
+		*mergePullRequest* | *PullRequestAutoMerge* | *mergeBranch*)
+			refuse "graphql merge mutations are blocked"
 			;;
 		esac
 		;;
 	*/merge" "* | */merge\?* | */merges" "*) refuse "the merge API is blocked" ;;
-	*pulls/*/reviews" "* | *pulls/*/reviews\?* | *pulls/*/events" "*)
-		if [ -n "$input" ]; then
-			[ "$input" != - ] && [ -r "$input" ] || refuse "review payload must be a readable file"
-			event_ok "$input" || refuse "review event must be COMMENT"
-		elif [ "$event" != COMMENT ]; then
-			refuse "review event must be COMMENT"
-		fi
-		;;
 	esac
 }
 

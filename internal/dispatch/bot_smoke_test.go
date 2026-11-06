@@ -80,7 +80,7 @@ func TestBotPaneSmoke(t *testing.T) {
 	if !strings.Contains(text, "/gh-hud/guard/gh") {
 		t.Errorf("guard is not the gh in the bot pane:\n%s", text)
 	}
-	if !strings.Contains(text, "HTTP 422: gh pr merge is blocked") {
+	if !strings.Contains(text, "gh pr merge is blocked") {
 		t.Errorf("merge was not blocked:\n%s", text)
 	}
 	if text := probe(false); strings.Contains(text, "\nlogin="+botLogin) || !strings.Contains(text, "\nlogin=") {

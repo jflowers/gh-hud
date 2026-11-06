@@ -39,38 +39,6 @@ func TestRunsAsBotMatrix(t *testing.T) {
 	}
 }
 
-func TestTaskCommandBotNote(t *testing.T) {
-	d := newTestDispatcher(t, "refuse")
-	d.opts.Tasks = map[string]config.TaskConfig{
-		"review":   {Command: "/uf.review-pr {num}"},
-		"feedback": {Command: "/review-pr-comments {num}"},
-	}
-	cases := []struct {
-		task Task
-		repo string
-		note bool
-	}{
-		{TaskReview, "unbound-force/dewey", true},
-		{TaskReview, "fullsend-ai/agents", false},
-		{TaskFeedback, "unbound-force/dewey", false},
-	}
-	for _, c := range cases {
-		_, args, _, err := d.taskCommand(c.task, model.Item{Kind: model.KindPR, Repo: c.repo, Num: 7})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got := strings.Contains(strings.Join(args, " "), botReviewNote); got != c.note {
-			t.Errorf("%s %s: args = %q, note %v", c.task, c.repo, args, c.note)
-		}
-		if args[0] != "7" {
-			t.Errorf("%s %s: PR number must stay first, args = %q", c.task, c.repo, args)
-		}
-	}
-	if strings.ContainsAny(botReviewNote, "'\"`$;&|<>()*?#\n\\") {
-		t.Errorf("botReviewNote reaches the pane shell and must stay plain: %q", botReviewNote)
-	}
-}
-
 func TestPaneSetupOtherTasksStayOnOperator(t *testing.T) {
 	line := paneSetup(false)
 	for _, s := range []string{"GH_TOKEN", botGuardDir, "agent-env"} {
@@ -252,16 +220,10 @@ func TestBotGuard(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(realDir, "gh"), []byte("#!/bin/sh\necho \"REAL $*\"\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	payload := func(name, body string) string {
-		p := filepath.Join(dir, name)
-		writeFile(t, p, body)
-		return p
-	}
-	comment := payload("comment.json", `{"event": "COMMENT", "body": "looks good", "comments": []}`)
-	approve := payload("approve.json", `{"body":"x","event":"APPROVE"}`)
-	changes := payload("changes.json", "{\n  \"event\" : \"REQUEST_CHANGES\"\n}")
-	noEvent := payload("none.json", `{"body":"pending"}`)
-	sneaky := payload("sneaky.json", `{"event":"COMMENT","body":"the \"event\":\"APPROVE\" text is quoted"}`)
+	mergeQuery := filepath.Join(dir, "merge.json")
+	writeFile(t, mergeQuery, `{"query":"mutation { mergePullRequest(input:{}) { clientMutationId } }"}`)
+	review := filepath.Join(dir, "review.json")
+	writeFile(t, review, `{"event":"APPROVE","body":"ship it"}`)
 	const reviews = "repos/unbound-force/dewey/pulls/42/reviews"
 
 	cases := []struct {
@@ -269,38 +231,29 @@ func TestBotGuard(t *testing.T) {
 		args  []string
 		allow bool
 	}{
-		{"post COMMENT payload", []string{"api", reviews, "--method", "POST", "--input", comment}, true},
-		{"quoted APPROVE in body", []string{"api", reviews, "--method", "POST", "--input", sneaky}, true},
-		{"post APPROVE payload", []string{"api", reviews, "--method", "POST", "--input", approve}, false},
-		{"post APPROVE, flags first", []string{"api", "-X", "POST", "--input=" + approve, reviews}, false},
-		{"post APPROVE, lowercase method", []string{"api", reviews, "--method", "post", "--input", approve}, false},
-		{"post REQUEST_CHANGES payload", []string{"api", reviews, "--method", "POST", "--input", changes}, false},
-		{"post with no event", []string{"api", reviews, "--method", "POST", "--input", noEvent}, false},
-		{"post missing file", []string{"api", reviews, "--method", "POST", "--input", filepath.Join(dir, "gone.json")}, false},
-		{"post from stdin", []string{"api", reviews, "--input", "-"}, false},
-		{"implicit POST field APPROVE", []string{"api", reviews, "-f", "event=APPROVE"}, false},
-		{"implicit POST field COMMENT", []string{"api", reviews, "-f", "event=COMMENT", "-f", "body=x"}, true},
-		{"submit pending as APPROVE", []string{"api", reviews + "/9/events", "-f", "event=APPROVE"}, false},
+		{"post APPROVE", []string{"api", reviews, "--method", "POST", "--input", review}, true},
+		{"post REQUEST_CHANGES field", []string{"api", reviews, "-f", "event=REQUEST_CHANGES"}, true},
+		{"pr review approve", []string{"pr", "review", "42", "--approve"}, true},
+		{"pr review changes", []string{"pr", "review", "42", "--request-changes", "-b", "x"}, true},
 		{"read reviews", []string{"api", reviews, "--jq", ".[].state"}, true},
-		{"read reviews paged", []string{"api", reviews, "--method", "GET", "-f", "per_page=100"}, true},
 		{"read current user", []string{"api", "user", "--jq", ".login"}, true},
 		{"inline comments", []string{"api", "repos/o/r/pulls/42/comments", "-f", "body=x"}, true},
-		{"merge API", []string{"api", "repos/o/r/pulls/42/merge", "-X", "PUT"}, false},
-		{"merges API", []string{"api", "repos/o/r/merges", "-f", "base=main"}, false},
 		{"merge state read", []string{"api", "repos/o/r/pulls/42/merge"}, true},
-		{"graphql approve", []string{"api", "graphql", "-f", "query=mutation { addPullRequestReview(input:{}) { clientMutationId } }"}, false},
-		{"graphql merge", []string{"api", "graphql", "-f", "query=mutation { mergePullRequest(input:{}) { clientMutationId } }"}, false},
 		{"graphql query", []string{"api", "graphql", "-f", "query=query { viewer { login } }"}, true},
-		{"pr merge", []string{"pr", "merge", "42", "--squash"}, false},
-		{"pr merge with repo first", []string{"pr", "-R", "o/r", "merge", "42"}, false},
-		{"pr review approve", []string{"pr", "review", "42", "--approve"}, false},
-		{"pr review -a", []string{"pr", "review", "42", "-a"}, false},
-		{"pr review changes", []string{"pr", "review", "42", "--request-changes", "-b", "x"}, false},
-		{"pr review bare", []string{"pr", "review", "42"}, false},
-		{"pr review comment", []string{"pr", "review", "42", "--comment", "-b", "x"}, true},
+		{"graphql review", []string{"api", "graphql", "-f", "query=mutation { addPullRequestReview(input:{}) { clientMutationId } }"}, true},
 		{"pr view", []string{"pr", "view", "42", "--json", "title"}, true},
 		{"pr comment naming merge", []string{"pr", "comment", "42", "-b", "pr merge is blocked"}, true},
 		{"auth status", []string{"auth", "status"}, true},
+		{"pr merge", []string{"pr", "merge", "42", "--squash"}, false},
+		{"pr merge auto", []string{"pr", "merge", "42", "--auto"}, false},
+		{"pr merge with repo first", []string{"pr", "-R", "o/r", "merge", "42"}, false},
+		{"merge API", []string{"api", "repos/o/r/pulls/42/merge", "-X", "PUT"}, false},
+		{"merge API, lowercase method", []string{"api", "repos/o/r/pulls/42/merge", "--method", "put"}, false},
+		{"merges API", []string{"api", "repos/o/r/merges", "-f", "base=main"}, false},
+		{"graphql merge", []string{"api", "graphql", "-f", "query=mutation { mergePullRequest(input:{}) { clientMutationId } }"}, false},
+		{"graphql auto-merge", []string{"api", "graphql", "-f", "query=mutation { enablePullRequestAutoMerge(input:{}) { clientMutationId } }"}, false},
+		{"graphql merge from input", []string{"api", "graphql", "--input", mergeQuery}, false},
+		{"graphql from file", []string{"api", "graphql", "-F", "query=@q.graphql"}, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -317,8 +270,8 @@ func TestBotGuard(t *testing.T) {
 			if err == nil || strings.Contains(out, "REAL") {
 				t.Errorf("want refusal, err=%v out=%q", err, out)
 			}
-			if !strings.Contains(out, "HTTP 422") {
-				t.Errorf("refusal must read as a 422 for /uf.review-pr's fallback: %q", out)
+			if !strings.Contains(out, "never merges") {
+				t.Errorf("refusal must say why: %q", out)
 			}
 		})
 	}

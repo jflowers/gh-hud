@@ -90,8 +90,7 @@ func mine(it model.Item) bool {
 // MenuTasks is InferTasks plus tasks offered only on request: a review of
 // my own PRs (never auto-dispatched). /uf.review-pr posts a self-review as
 // a COMMENT, since GitHub rejects approving your own PR; in botOrg the
-// poster is the bot, so that rule doesn't apply and identity.go keeps the
-// review a COMMENT instead.
+// poster is the bot (see identity.go), so its real verdict is posted.
 func MenuTasks(it model.Item) []Task {
 	tasks := InferTasks(it)
 	if it.Kind == model.KindPR && it.Cats&model.CatMy != 0 && !slices.Contains(tasks, TaskReview) {
@@ -383,9 +382,6 @@ func (d *Dispatcher) taskCommand(task Task, it model.Item) (string, []string, st
 	}
 	if it.Ref() == "" {
 		return "", nil, "", fmt.Errorf("item has no PR/issue number")
-	}
-	if runsAsBot(task, it.Repo) {
-		args = append(args, botReviewNote)
 	}
 	return name, args, fmt.Sprintf("gh-hud ▸ %s %s", task, it.Ref()), nil
 }
