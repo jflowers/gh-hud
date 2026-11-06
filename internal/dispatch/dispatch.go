@@ -656,7 +656,7 @@ func (d *Dispatcher) AutoDispatch(ctx context.Context, items []model.Item) []str
 	for _, it := range items {
 		for _, task := range InferTasks(it) {
 			tc, ok := d.opts.Tasks[string(task)]
-			if !ok || !tc.Auto {
+			if !ok || !tc.AutoFor(it.Repo) {
 				continue
 			}
 			ref := it.Ref()

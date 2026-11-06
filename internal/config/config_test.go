@@ -142,6 +142,32 @@ func TestLoadDispatchAutoOnlyKeepsCommand(t *testing.T) {
 	}
 }
 
+func TestLoadDispatchOrgs(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.toml")
+	data := "[dispatch.review]\nauto = true\norgs = [\"Fullsend-AI\"]\n\n[dispatch.ci]\nauto = true\n"
+	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	review, ci, rebase := c.Dispatch["review"], c.Dispatch["ci"], c.Dispatch["rebase"]
+	if !review.AutoFor("fullsend-ai/agents") {
+		t.Error("review should auto-dispatch in a listed org (case-insensitive)")
+	}
+	if review.AutoFor("unbound-force/dewey") {
+		t.Error("review should not auto-dispatch outside its orgs")
+	}
+	if !ci.AutoFor("unbound-force/dewey") {
+		t.Error("ci with no orgs should auto-dispatch everywhere")
+	}
+	if rebase.AutoFor("fullsend-ai/agents") {
+		t.Error("rebase without auto should never auto-dispatch")
+	}
+}
+
 func TestLoadRunnerLocal(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.toml")

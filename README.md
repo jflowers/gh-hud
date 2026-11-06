@@ -36,10 +36,14 @@ never reach gh-hud. iTerm2 reports ⌘ as the meta bit, which is how
 sends (clicks do nothing in that mode).
 
 Keys: `j/k` move · `enter/o` open · `y` copy `owner/repo#N` · `Y` copy URL ·
-`r` refresh · `a` agent actions · `6` Agents tab · `9` Workspaces tab ·
-`F` fleet rollout · `1-8` filter section · `0` all · `/` search · `?` help · `q` quit.
+`r` refresh · `a` agent actions · `i` row's last run · `6` Agents tab ·
+`9` Workspaces tab · `F` fleet rollout · `1-5`/`7-8` filter section ·
+`0` all · `/` search · `?` help · `q` quit.
 
-## Sections (header tabs, keys 1-8)
+## Sections (header tabs, keys 0-9)
+
+Tabs `6` (Agents) and `9` (Workspaces) are views of their own, described
+under [Agent dispatch](#agent-dispatch); the rest filter the dashboard.
 
 - **Review** — open PRs in your orgs where your review is requested or you're assigned
 - **Mine** — your open PRs in your orgs (set `my_prs_everywhere = true` for all of GitHub)
@@ -53,9 +57,8 @@ Keys: `j/k` move · `enter/o` open · `y` copy `owner/repo#N` · `Y` copy URL ·
 - **Queue** (8) — other humans' PRs ready for an agent review: updated within
   `queue_window_hours`, checks settled, no conflicts, author acted last
   (requires `orgs`; the sweep is disabled without them). With
-  `[dispatch.review] auto = true` these drain automatically: the dispatcher
-  reviews queued PRs as agent slots free up, retrying on later refreshes when
-  busy, and skips a PR until it changes (fingerprint dedupe).
+  `[dispatch.review] auto = true` these drain automatically as agent slots
+  free up (see [Configuring dispatch](#configuring-dispatch)).
 
 Notifications merge into matching PR/issue rows as a colored reason tag
 (`mention`, `review`, ...) instead of duplicating them. Rows are ranked by an
@@ -79,11 +82,14 @@ the app for the full legend.
 `a` on a row proposes dispatching an autonomous opencode session against a
 ghws checkout of that repo (workspace root: `$GHWS_ROOT`, default
 `~/Projects/github`; instance whose branch matches the PR's head branch is
-preferred). The offered task follows the row's signals: merge conflict →
+preferred). The offered tasks follow the row's signals (see
+[Tasks](#tasks) for each one's trigger and command): merge conflict →
 rebase, failing CI → fix, changes requested on your PR → address feedback,
-review requested → review, issue → implement. Your own PRs also offer
+PR in the review queue → review, issue → implement. Your own PRs also offer
 review on request (never auto-dispatched; `/uf.review-pr` posts the
-verdict as a comment, since GitHub rejects approving your own PR). The
+verdict as a comment, since GitHub rejects approving your own PR). Tasks
+can also start themselves with `auto` (see
+[Configuring dispatch](#configuring-dispatch)). The
 dispatcher never assumes
 workspace state: it refuses busy checkouts (a live herdr agent or a foreign
 opencode session updated within `busy_window_secs`), applies your `dirty`
@@ -134,7 +140,8 @@ agent — except with `dispatch_mode = "tui"`, where the dispatch is
 refused instead, since `opencode run` has no question tool. Set
 `runner = "local"` to skip herdr entirely.
 
-Sessions run headless, so the configured `agent` (default `autonomy`, from
+With the default `dispatch_mode = "run"` sessions run headless, so the
+configured `agent` (default `autonomy`, from
 [opencode-auto-question](https://github.com/jflowers/opencode-auto-question))
 must not depend on a human: under `opencode run` a permission `ask` is
 auto-rejected and ends the run, while `deny` returns an error the agent can
@@ -202,9 +209,7 @@ once (not once per checkout) and reuses a listing for two minutes. A row
 in the dashboard shows its own run in the attention slot: `●` teal =
 running, `◆` orange = blocked on a question or approval. The header shows
 per-machine slot usage (`local 1/2 · lap1 0/2 · lap2 —`, `—` =
-unreachable or disabled). Tasks with `auto = true`
-dispatch themselves on refresh without a keypress; the review queue
-(`8`) drains itself this way up to `max_concurrent` agents.
+unreachable or disabled).
 
 `9` opens the Workspaces tab (its count is the number of ready
 checkouts): every checkout a dispatch could use (`@` instances only with
@@ -219,6 +224,188 @@ daily chore PR; the selected checkout's detail lists the files and
 branches. One script per machine reads every checkout (no fetch, so the
 upstream column is as of each checkout's last fetch), every 2 minutes and
 on `r`; `y` copies the checkout's dir.
+
+## Configuring dispatch
+
+Dispatch is configured in three layers, all in `config.toml`:
+
+| Layer | Where | Decides |
+|---|---|---|
+| Tasks | `[dispatch.<task>]` | what each task runs (`command`), whether it starts itself (`auto`), and for which orgs (`orgs`) |
+| Machines | top level (the hub) and `[[machines]]` (workers) | where agents may run, how many at once, which tasks each machine accepts, and how agents run there |
+| Checkouts | ghws `@` instances on each machine | which repos a machine can take work for at all |
+
+Task settings are global: one `command`, `auto` and `orgs` per task, used
+on every machine. Per-machine control is the `[[machines]] tasks`
+allowlist; per-org control of auto-dispatch is the task's `orgs` list. A
+machine only takes work for repos it has a ghws instance of, so which
+orgs a worker serves is also decided by which workspaces you create on it.
+
+### Tasks
+
+| Task | Default command | Offered on (`a`, and what `auto` dispatches for) |
+|---|---|---|
+| `rebase` | `/uf.rebase-pr {num}` | any listed PR with a merge conflict |
+| `ci` | `/uf.fix-ci {num}` | any listed PR with failing checks |
+| `feedback` | `/uf.address-feedback {num}` | your PRs with changes requested or unresolved review threads |
+| `review` | `/uf.review-pr {num}` | PRs in the Queue (`8`): others' PRs ready for review. Also offered on your own PRs, never auto-dispatched there |
+| `issue` | `/uf.run-pipeline-plan #{num}` | issues assigned to you or mentioning you |
+
+"Any listed PR" includes other people's PRs in Review and CI, so `auto` on
+`rebase` or `ci` sends agents at PRs you don't own; scope it with `orgs`
+or leave it manual.
+
+All five tasks exist without any config. A `[dispatch.<task>]` table only
+needs the keys it changes: `auto = true` alone keeps the default command.
+`command` is the slash command the agent starts with; `{num}` becomes the
+PR or issue number.
+
+`auto = true` makes the task start itself on every refresh, without a
+keypress, for each row that triggers it, as slots free up. A dispatch that
+finds no slot or checkout is retried on later refreshes. A task never
+starts twice for the same PR or issue state: it waits until the item
+changes (new commits, comments, checks), and never restarts a ref within
+30 minutes of its last start. For `review` this drains the Queue.
+
+`orgs` limits `auto` to repos owned by the listed orgs or users
+(case-insensitive). Empty or unset means every org. It never limits `a`:
+you can still dispatch any task by hand on any repo.
+
+### Machines
+
+The hub is configured at the top level: `max_concurrent` (default 2) is its
+slot count, and it accepts every task. Each `[[machines]]` entry adds a
+worker reached over ssh:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `name` | required | herdr machine label (`herdr machine add`); `local` is reserved for the hub |
+| `ssh` | `name` | ssh target, when it differs from the label |
+| `max_concurrent` | 2 | agents gh-hud runs there at once |
+| `ghws_root` | `~/Projects/github` | ghws root on that machine |
+| `tasks` | all | allowlist of tasks the machine accepts, e.g. `["review", "ci"]` |
+| `enabled` | true | `false` takes the machine out of placement and polling |
+| `dispatch_mode` | top-level | `run` (headless) or `tui` for agents on this machine |
+
+Placement ranks the machines that qualify for a dispatch (enabled,
+reachable, task allowed, a free slot, not draining for a fleet rollout, an
+idle checkout of the repo) by free-slot fraction, hub first on ties, then
+config order. A PR or issue never runs on two machines at once.
+
+### Examples
+
+**Manual only (the default).** No `[dispatch]` tables: `a` offers every
+task, nothing starts by itself.
+
+**Auto-review the whole queue.**
+
+```toml
+[dispatch.review]
+auto = true
+```
+
+**Auto-review one org's queue, review the rest by hand.**
+
+```toml
+[dispatch.review]
+auto = true
+orgs = ["fullsend-ai"]
+```
+
+**Different auto scopes per task.** Fix your own org's CI and conflicts
+automatically, auto-review two orgs, and implement issues only on `a`:
+
+```toml
+orgs = ["fullsend-ai", "unbound-force", "zero-dot-force"]  # dashboard scope
+
+[dispatch.ci]
+auto = true
+orgs = ["zero-dot-force"]
+
+[dispatch.rebase]
+auto = true
+orgs = ["zero-dot-force"]
+
+[dispatch.review]
+auto = true
+orgs = ["fullsend-ai", "unbound-force"]
+```
+
+**Address feedback on your PRs as soon as it arrives.** `feedback` only
+ever triggers on your own PRs, so it needs no `orgs`:
+
+```toml
+[dispatch.feedback]
+auto = true
+```
+
+**A different command.** Point a task at your own slash command
+(`{num}` is replaced; anything else is passed through as written):
+
+```toml
+[dispatch.issue]
+command = "/my-implement-issue #{num}"
+```
+
+**A hub that stays light, with workers doing the work.** The hub keeps
+one slot for what you start by hand; the workers take most of the load:
+
+```toml
+max_concurrent = 1           # hub
+
+[[machines]]
+name = "lap1"
+max_concurrent = 2
+
+[[machines]]
+name = "lap2"
+max_concurrent = 4
+```
+
+**Machines with roles.** lap1 only reviews; lap2 takes everything but
+issue implementation, which then lands on the hub or lap3:
+
+```toml
+[[machines]]
+name = "lap1"
+tasks = ["review"]
+
+[[machines]]
+name = "lap2"
+tasks = ["review", "ci", "rebase", "feedback"]
+
+[[machines]]
+name = "lap3"
+```
+
+**A worker for one org.** Give it ghws instances of only that org; tasks
+for other orgs' repos never go there because it has no checkout of them.
+
+**Take a worker out for a while.** Nothing new is placed there (let its
+running agents finish first):
+
+```toml
+[[machines]]
+name = "lap2"
+enabled = false
+```
+
+**Agents that can ask questions.** Run every agent in the opencode TUI so
+the question tool and auto-question work, or only on one machine:
+
+```toml
+dispatch_mode = "tui"        # every machine
+
+[[machines]]
+name = "lap1"
+dispatch_mode = "run"        # except lap1, headless
+```
+
+**Stash instead of refusing a dirty checkout.**
+
+```toml
+dirty = "stash"              # or "stash-tracked" to leave untracked files
+```
 
 ## Fleet rollout (GitOps)
 
@@ -301,15 +488,15 @@ max_concurrent = 2
 # enabled = true
 # dispatch_mode = "tui"             # override the top-level dispatch_mode
 
-# dispatchable tasks, one table each (all five are built in with these
-# commands; a table only needs the keys it changes, so `auto = true` alone
-# keeps the default command). command is a slash-command template ({num} =
-# PR/issue number). auto = true dispatches on every refresh, no keypress,
-# for each row that triggers the task, at most once per item state (a
-# ref is retried 30 minutes after its last start, or when it changes).
+# dispatchable tasks, one table each (see "Configuring dispatch" above).
+# All five are built in with these commands; a table only needs the keys
+# it changes. command: slash-command template ({num} = PR/issue number).
+# auto: dispatch on refresh, no keypress. orgs: limit auto to these repo
+# owners (empty = every org; never limits a keypress dispatch).
 [dispatch.rebase]          # any listed PR with a merge conflict
 command = "/uf.rebase-pr {num}"
 auto = false
+orgs = []
 
 [dispatch.ci]              # any listed PR with failing checks
 command = "/uf.fix-ci {num}"

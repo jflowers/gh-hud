@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -119,8 +120,28 @@ func Default() *Config {
 
 // TaskConfig is one dispatchable agent task.
 type TaskConfig struct {
-	Command string `toml:"command"` // slash command template, {num} = PR/issue number
-	Auto    bool   `toml:"auto"`    // auto-dispatch on refresh without confirmation
+	Command string   `toml:"command"` // slash command template, {num} = PR/issue number
+	Auto    bool     `toml:"auto"`    // auto-dispatch on refresh without confirmation
+	Orgs    []string `toml:"orgs"`    // limits auto to these repo owners; empty = every org
+}
+
+// AutoFor reports whether the task auto-dispatches for repo ("owner/name"):
+// auto is on and the owner is in orgs (any owner when orgs is empty). orgs
+// never limits a dispatch you start with a keypress.
+func (tc TaskConfig) AutoFor(repo string) bool {
+	if !tc.Auto {
+		return false
+	}
+	if len(tc.Orgs) == 0 {
+		return true
+	}
+	owner, _, _ := strings.Cut(repo, "/")
+	for _, o := range tc.Orgs {
+		if strings.EqualFold(o, owner) {
+			return true
+		}
+	}
+	return false
 }
 
 // Machine is a remote dispatch worker: a herdr-managed machine (saved via
