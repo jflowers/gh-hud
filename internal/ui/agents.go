@@ -270,5 +270,5 @@ func (m *Model) agentsFooter() string {
 		toggle = "hide stale"
 	}
 	return chips(m.width, "j/k", "move", "enter", "watch", "i", "run view", "t", "transcript", "y", "copy id",
-		"r", "refresh", "a", toggle, "0-8", "tabs", "esc", "dashboard")
+		"r", "refresh", "a", toggle, "0-9", "tabs", "esc", "dashboard")
 }

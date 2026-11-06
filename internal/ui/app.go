@@ -32,6 +32,8 @@ type agentsMsg struct {
 	err      error
 }
 
+type workspacesMsg []dispatch.CheckoutHealth
+
 type dispatchDoneMsg struct {
 	task    string
 	ref     string
@@ -83,6 +85,14 @@ type Model struct {
 	agentsSel  int
 	agentsAll  bool // show stale sessions too (default: only relevant ones)
 	lastAgents time.Time
+
+	// wsMode is the Workspaces tab (9): every dispatchable checkout's
+	// health, refreshed every wsRefresh (one ssh per worker) or on r.
+	wsMode    bool
+	ws        []dispatch.CheckoutHealth
+	wsSel     int
+	wsAt      time.Time
+	wsLoading bool
 
 	// fleetMode is the GitOps rollout view (F); fleet is nil when [fleet]
 	// is disabled. fleetSnap is refreshed from the coordinator on tick.
@@ -147,7 +157,7 @@ func (m *Model) refreshFleetSnap() {
 func (m *Model) Init() tea.Cmd {
 	cmds := []tea.Cmd{fetchCmd(m.cfg, m.client), tick()}
 	if m.disp != nil {
-		cmds = append(cmds, m.fetchAgents())
+		cmds = append(cmds, m.fetchAgents(), m.fetchWorkspaces())
 	}
 	return tea.Batch(cmds...)
 }
@@ -176,6 +186,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.disp != nil && time.Since(m.lastAgents) >= 30*time.Second {
 			m.lastAgents = time.Now()
 			cmds = append(cmds, m.fetchAgents())
+		}
+		if m.disp != nil && time.Since(m.wsAt) >= wsRefresh {
+			cmds = append(cmds, m.fetchWorkspaces())
 		}
 		if m.fleet != nil {
 			m.refreshFleetSnap()
@@ -216,6 +229,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.agentsSel < 0 {
 				m.agentsSel = 0
 			}
+		}
+		return m, nil
+
+	case workspacesMsg:
+		m.ws, m.wsAt, m.wsLoading = msg, time.Now(), false
+		if m.wsSel >= len(m.ws) {
+			m.wsSel = len(m.ws) - 1
+		}
+		if m.wsSel < 0 {
+			m.wsSel = 0
 		}
 		return m, nil
 
@@ -286,6 +309,9 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	if m.agentsMode {
 		return m.handleAgentsKey(msg)
+	}
+	if m.wsMode {
+		return m.handleWorkspacesKey(msg)
 	}
 	if m.fleetMode {
 		return m.handleFleetKey(msg)
@@ -363,12 +389,8 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.skipWaitArmed = false
 			m.refreshFleetSnap()
 		}
-	case "6":
-		if m.disp != nil {
-			m.agentsMode = true
-			m.agentsSel = 0
-			return m, m.fetchAgents()
-		}
+	case "6", "9":
+		return m, m.switchTab(msg.String())
 	case "1":
 		m.setFilter(model.CatRQ)
 	case "2":
@@ -397,7 +419,7 @@ func (m *Model) handleMouse(e tea.MouseEvent) (tea.Model, tea.Cmd) {
 	if logMouse(e) {
 		return m, nil
 	}
-	if m.help || m.actionMode || m.agentsMode || m.fleetMode || m.fetchErr != "" {
+	if m.help || m.actionMode || m.agentsMode || m.wsMode || m.fleetMode || m.fetchErr != "" {
 		return m, nil
 	}
 	if e.IsWheel() {
@@ -708,15 +730,8 @@ func (m *Model) handleAgentsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc", "q", "6":
 		m.agentsMode = false
-	case "0", "1", "2", "3", "4", "5", "7", "8":
-		// another tab: leave the Agents tab and filter the dashboard
-		m.agentsMode = false
-		for _, t := range tabs {
-			if t.key == msg.String() {
-				m.filter = t.cat
-				m.clampCursor()
-			}
-		}
+	case "0", "1", "2", "3", "4", "5", "7", "8", "9":
+		return m, m.switchTab(msg.String())
 	case "?":
 		m.help = true
 	case "F":
@@ -784,6 +799,38 @@ func (m *Model) handleAgentsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.fetchAgents()
 	}
 	return m, nil
+}
+
+// switchTab opens the tab bound to key from the Agents or Workspaces tab
+// (or, for 6 and 9, from the dashboard): a view tab, or a dashboard filter.
+func (m *Model) switchTab(key string) tea.Cmd {
+	m.agentsMode, m.wsMode = false, false
+	switch key {
+	case "6":
+		if m.disp == nil {
+			return nil
+		}
+		m.agentsMode = true
+		m.agentsSel = 0
+		return m.fetchAgents()
+	case "9":
+		if m.disp == nil {
+			return nil
+		}
+		m.wsMode = true
+		m.wsSel = 0
+		if time.Since(m.wsAt) >= wsStale {
+			return m.fetchWorkspaces()
+		}
+		return nil
+	}
+	for _, t := range tabs {
+		if t.key == key {
+			m.filter = t.cat
+			m.clampCursor()
+		}
+	}
+	return nil
 }
 
 // handleFleetKey drives the fleet rollout view. `s` (skip the drain wait)

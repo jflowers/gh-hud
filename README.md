@@ -36,8 +36,8 @@ never reach gh-hud. iTerm2 reports ⌘ as the meta bit, which is how
 sends (clicks do nothing in that mode).
 
 Keys: `j/k` move · `enter/o` open · `y` copy `owner/repo#N` · `Y` copy URL ·
-`r` refresh · `a` agent actions · `6` Agents tab · `F` fleet rollout ·
-`1-8` filter section · `0` all · `/` search · `?` help · `q` quit.
+`r` refresh · `a` agent actions · `6` Agents tab · `9` Workspaces tab ·
+`F` fleet rollout · `1-8` filter section · `0` all · `/` search · `?` help · `q` quit.
 
 ## Sections (header tabs, keys 1-8)
 
@@ -205,6 +205,20 @@ per-machine slot usage (`local 1/2 · lap1 0/2 · lap2 —`, `—` =
 unreachable or disabled). Tasks with `auto = true`
 dispatch themselves on refresh without a keypress; the review queue
 (`8`) drains itself this way up to `max_concurrent` agents.
+
+`9` opens the Workspaces tab (its count is the number of ready
+checkouts): every checkout a dispatch could use (`@` instances only with
+`dispatch_instances_only`) on the hub and each worker, with what the
+next run there would hit. A checkout is ready unless an agent is running
+in it, it has uncommitted files (untracked dewey learnings don't count),
+it has no `upstream` remote, or its default branch has diverged from
+upstream (preflight only fast-forwards). Being on another branch is fine:
+preflight switches to the default branch. Notes show what cleaning up
+would lose (commits on no remote, stashes) and learnings waiting for the
+daily chore PR; the selected checkout's detail lists the files and
+branches. One script per machine reads every checkout (no fetch, so the
+upstream column is as of each checkout's last fetch), every 2 minutes and
+on `r`; `y` copies the checkout's dir.
 
 ## Fleet rollout (GitOps)
 

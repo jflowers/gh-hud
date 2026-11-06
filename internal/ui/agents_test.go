@@ -130,3 +130,36 @@ func TestMachineUsageText(t *testing.T) {
 		t.Errorf("usage text = %q, want %q", plain, want)
 	}
 }
+
+func TestWorkspacesTab(t *testing.T) {
+	m := &Model{cfg: config.Default(), width: 160, height: 40, wsMode: true, wsAt: time.Now()}
+	m.ws = []dispatch.CheckoutHealth{
+		{Workspace: "uf@chai", Repo: "unbound-force/dewey", Dir: "/w/uf@chai/dewey", Branch: "main", Default: "main", Behind: 3, Learnings: 2},
+		{Machine: "lap2", Workspace: "uf@hoopoe", Repo: "unbound-force/gaze", Dir: "/w/uf@hoopoe/gaze", Branch: "feat/x", Default: "main",
+			Dirty: []string{"M .gitignore"}, LocalOnly: []string{"feat/x\t9"}, Ahead: -1, Behind: -1},
+		{Machine: "lap1", Workspace: "uf@cypress", Repo: "unbound-force/website", Branch: "main", Default: "main", Busy: "unbound-force/website#12"},
+	}
+	plain := ansiRe.ReplaceAllString(m.View(), "")
+	for _, want := range []string{"uf@chai", "dewey", "↓3", "ready", "2 learnings",
+		"1 uncommitted", "9 local-only", "running #12", "1 ready · 1 running · 1 blocked",
+		"fast-forwards main"} {
+		if !strings.Contains(plain, want) {
+			t.Errorf("workspaces tab missing %q:\n%s", want, plain)
+		}
+	}
+	if n := strings.Count(plain, "\n") + 1; n != m.height {
+		t.Errorf("workspaces tab is %d lines, terminal is %d", n, m.height)
+	}
+
+	pressKey(t, m, "j")
+	plain = ansiRe.ReplaceAllString(m.View(), "")
+	for _, want := range []string{"M .gitignore", "refused until", "feat/x  9"} {
+		if !strings.Contains(plain, want) {
+			t.Errorf("selected dirty checkout's detail missing %q:\n%s", want, plain)
+		}
+	}
+	pressKey(t, m, "2")
+	if m.wsMode || m.filter != tabs[2].cat {
+		t.Errorf("2 should open Mine: wsMode %v filter %v", m.wsMode, m.filter)
+	}
+}

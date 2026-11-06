@@ -293,23 +293,24 @@ func headerRow(l layout) string {
 // header bar
 
 type tab struct {
-	label  string
-	cat    model.Cats
-	color  lipgloss.Color
-	key    string
-	agents bool // the Agents tab (counts running agents, not items)
+	label string
+	cat   model.Cats
+	color lipgloss.Color
+	key   string
+	view  string // "agents" or "workspaces": a tab of its own, not a filter
 }
 
 var tabs = []tab{
-	{"All", 0, cFg, "0", false},
-	{"Review", model.CatRQ, cYellow, "1", false},
-	{"Mine", model.CatMy, cBlue, "2", false},
-	{"Issues", model.CatISS, cGreen, "3", false},
-	{"CI", model.CatCI, cRed, "4", false},
-	{"Inbox", model.CatNT, cMagenta, "5", false},
-	{"Agents", 0, cTeal, "6", true},
-	{"Ready", model.CatReady, cGreen, "7", false},
-	{"Queue", model.CatQueue, cCyan, "8", false},
+	{"All", 0, cFg, "0", ""},
+	{"Review", model.CatRQ, cYellow, "1", ""},
+	{"Mine", model.CatMy, cBlue, "2", ""},
+	{"Issues", model.CatISS, cGreen, "3", ""},
+	{"CI", model.CatCI, cRed, "4", ""},
+	{"Inbox", model.CatNT, cMagenta, "5", ""},
+	{"Agents", 0, cTeal, "6", "agents"},
+	{"Ready", model.CatReady, cGreen, "7", ""},
+	{"Queue", model.CatQueue, cCyan, "8", ""},
+	{"Workspaces", 0, cGreen, "9", "workspaces"},
 }
 
 func shortDur(d time.Duration) string {
@@ -379,7 +380,7 @@ func (m *Model) headerBar() string {
 		items = m.res.Items
 	}
 	for _, t := range tabs {
-		if t.agents && m.disp == nil {
+		if t.view != "" && m.disp == nil {
 			continue
 		}
 		n := 0
@@ -388,9 +389,12 @@ func (m *Model) headerBar() string {
 				n++
 			}
 		}
-		active := !m.agentsMode && m.filter == t.cat
-		if t.agents {
+		active := !m.agentsMode && !m.wsMode && m.filter == t.cat
+		switch t.view {
+		case "agents":
 			n, active = m.runningAgents(), m.agentsMode
+		case "workspaces":
+			n, active = m.readyCheckouts(), m.wsMode
 		}
 		tp := p
 		if active {
@@ -494,7 +498,7 @@ func (m *Model) footer() string {
 		pairs = append(pairs, "F", "fleet")
 	}
 	pairs = append(pairs,
-		"0-8", "filter",
+		"0-9", "tabs",
 		"/", "find",
 		"?", "help",
 		"q", "quit",
@@ -526,12 +530,13 @@ func (m *Model) helpView() string {
 		line("g G", "top / bottom"),
 		line("enter o", "open"),
 		line("y  Y", "copy ref / URL"),
-		line("0-8", "All Review Mine Issues CI Inbox Agents Ready Queue"),
+		line("0-9", "All Review Mine Issues CI Inbox Agents Ready Queue Workspaces"),
 		line("/", "find (esc clears)"),
 		line("r", "refresh now"),
 		line("a", "agent actions for row"),
 		line("i", "last agent run for row"),
 		line("6", "agent sessions"),
+		line("9", "workspaces: which checkouts a run can use"),
 	}
 	if m.fleet != nil {
 		left = append(left, line("F", "fleet rollout (GitOps)"))
@@ -812,6 +817,9 @@ func (m *Model) View() string {
 	}
 	if m.agentsMode {
 		return m.agentsView()
+	}
+	if m.wsMode {
+		return m.workspacesView()
 	}
 	if m.fleetMode {
 		return m.fleetView()
