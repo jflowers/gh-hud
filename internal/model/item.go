@@ -194,6 +194,12 @@ func (i Item) InBotOrg() bool {
 // scope: "chore: x", "chore(dewey): x", "chore!: x".
 var choreTitle = regexp.MustCompile(`(?i)^chore(\([^)]*\))?!?:`)
 
+// IsChore reports whether the item is a chore PR, which never dispatches
+// on its own.
+func (i Item) IsChore() bool {
+	return i.Kind == KindPR && choreTitle.MatchString(i.Title)
+}
+
 // ReviewQueueReady reports whether a PR is ready for an agent review: not
 // a chore, not draft, checks green or absent, no conflict, and updated
 // within window.
@@ -203,7 +209,7 @@ var choreTitle = regexp.MustCompile(`(?i)^chore(\([^)]*\))?!?:`)
 // head commit.
 func (i Item) ReviewQueueReady(me string, window time.Duration, bots *BotFilter) bool {
 	if i.Kind != KindPR || me == "" || i.Draft || !ciSettled(i.CI) ||
-		choreTitle.MatchString(i.Title) || i.Merge == "⚠️" || time.Since(i.UpdatedAt) > window {
+		i.IsChore() || i.Merge == "⚠️" || time.Since(i.UpdatedAt) > window {
 		return false
 	}
 	if i.Author == me {

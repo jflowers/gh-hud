@@ -513,3 +513,25 @@ func TestScanDirCachesAndFallsBack(t *testing.T) {
 		t.Error("after invalidation a failing listing should error")
 	}
 }
+
+func TestAutoWantsSkipsChorePRs(t *testing.T) {
+	tc := config.TaskConfig{Auto: true}
+	for title, want := range map[string]bool{
+		"chore: bump x":                 true,
+		"chore(dewey): store learnings": true,
+		"fix: a bug":                    false,
+	} {
+		pr := model.Item{Kind: model.KindPR, Repo: "acme/r", Title: title}
+		if got := autoWants(tc, pr); got == want {
+			t.Errorf("PR %q: autoWants = %v", title, got)
+		}
+	}
+	issue := model.Item{Kind: model.KindIssue, Repo: "acme/r", Title: "chore: tidy up"}
+	if !autoWants(tc, issue) {
+		t.Error("an issue titled chore should still auto-dispatch")
+	}
+	chore := model.Item{Kind: model.KindPR, Cats: model.CatMy, CI: model.CIFail, Title: "chore: x"}
+	if got := MenuTasks(chore); !slices.Contains(got, TaskCI) || !slices.Contains(got, TaskReview) {
+		t.Errorf("chore PR should still offer tasks by hand, got %v", got)
+	}
+}

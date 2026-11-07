@@ -170,7 +170,8 @@ login, including reviews of other people's `unbound-force` PRs.
 Your `unbound-force` PRs enter the Queue until `uf-divisor` has reviewed the
 head commit, so each new push gets one review. Chore PRs skip the Queue, so
 they only get a review if you start one with `a`; on a branch that requires
-an approval, they won't auto-merge without one. With `[dispatch.review] auto =
+an approval, they won't auto-merge without one. No task auto-dispatches on a
+chore PR, so a chore with failing CI or a conflict also waits for you. With `[dispatch.review] auto =
 true` they drain like any other Queue row.
 
 The dispatch shell exports `GH_TOKEN` from `UF_DIVISOR_GH_TOKEN`, looking in
