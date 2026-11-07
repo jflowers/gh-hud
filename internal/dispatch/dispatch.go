@@ -242,6 +242,7 @@ type Dispatcher struct {
 	listSessions func(ctx context.Context, m Machine, dir string) ([]rawSession, error)
 
 	botWarned map[string]bool // refs already reported as missing the bot token
+	capNoted  map[string]bool // task|ref already reported as out of rounds
 }
 
 // agentSnapshot is one machine's live herdr agent list.
@@ -409,6 +410,26 @@ var errHerdrDown = errors.New("herdr server unavailable")
 // placement falls through to the next candidate.
 var errMachineUnreachable = errors.New("machine unreachable")
 
+// liveOnRef returns a live agent already working on ref, on any machine:
+// one at a time per PR, so a review never starts while feedback is still
+// pushing. agents is the fresh list for the target machine (key); other
+// machines use the snapshot.
+func liveOnRef(recs []Record, ref, key string, agents []herdrAgent, snaps map[string]agentSnapshot) (Record, bool) {
+	for _, r := range recs {
+		if r.Ref != ref {
+			continue
+		}
+		ag := snaps[r.Machine].agents
+		if r.Machine == key {
+			ag = agents
+		}
+		if recordLive(r, ag) {
+			return r, true
+		}
+	}
+	return Record{}, false
+}
+
 // recordLive reports whether a dispatched agent is still running. Local
 // records are tracked by PID; herdr records by the pane's live agent entry
 // on the record's machine (entries clear when the process exits); TUI
@@ -465,10 +486,8 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 	if live >= m.Max {
 		return Record{}, fmt.Errorf("max_concurrent reached on %s (%d agents running)", machineLabel(m), m.Max)
 	}
-	for _, r := range recs {
-		if r.Ref == ref && r.Machine != m.key() && recordLive(r, snaps[r.Machine].agents) {
-			return Record{}, fmt.Errorf("%s already running on %s", ref, recordMachineLabel(r))
-		}
+	if r, ok := liveOnRef(recs, ref, m.key(), agents, snaps); ok {
+		return Record{}, fmt.Errorf("%s already running on %s", ref, recordMachineLabel(r))
 	}
 	for _, r := range recs {
 		if r.Machine == m.key() && r.Dir == co.Dir && recordLive(r, agents) {
@@ -725,6 +744,12 @@ func (d *Dispatcher) AutoDispatch(ctx context.Context, items []model.Item) []str
 				}
 			}
 			if skip {
+				continue
+			}
+			if note, stop := d.roundsUsed(task, ref, tc.RoundLimit(string(task))); stop {
+				if note != "" {
+					msgs = append(msgs, note)
+				}
 				continue
 			}
 			rec, err := d.Dispatch(ctx, task, it, true)
