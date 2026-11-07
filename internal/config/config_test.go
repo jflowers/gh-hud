@@ -413,3 +413,27 @@ func TestLoadFleetValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestAutoMergeCovers(t *testing.T) {
+	c := AutoMergeConfig{Enabled: true, Orgs: []string{"unbound-force"}, Repos: []string{"acme/one"}}
+	for repo, want := range map[string]bool{
+		"unbound-force/dewey": true,
+		"Unbound-Force/dewey": true,
+		"acme/one":            true,
+		"ACME/One":            true,
+		"acme/two":            false,
+		"unbound-force-x/d":   false,
+		"":                    false,
+	} {
+		if got := c.Covers(repo); got != want {
+			t.Errorf("Covers(%q) = %v, want %v", repo, got, want)
+		}
+	}
+	c.Enabled = false
+	if c.Covers("acme/one") {
+		t.Error("disabled config covers a repo")
+	}
+	if (AutoMergeConfig{Enabled: true}).Covers("acme/one") {
+		t.Error("empty orgs and repos must cover nothing")
+	}
+}

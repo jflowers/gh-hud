@@ -76,6 +76,8 @@ type Config struct {
 	// decision is not reported as needing a human.
 	BlockedNotifySecs int                   `toml:"blocked_notify_secs"`
 	Dispatch          map[string]TaskConfig `toml:"dispatch"`
+	// AutoMerge turns on GitHub auto-merge for your PRs ([auto_merge]).
+	AutoMerge AutoMergeConfig `toml:"auto_merge"`
 	// Fleet is the GitOps rollout coordinator ([fleet]).
 	Fleet FleetConfig `toml:"fleet"`
 }
@@ -116,6 +118,35 @@ func Default() *Config {
 
 		BlockedNotifySecs: 180,
 	}
+}
+
+// AutoMergeConfig says where gh-hud turns on GitHub auto-merge for your own
+// PRs. Off by default, and with orgs and repos both empty it covers nothing.
+type AutoMergeConfig struct {
+	Enabled   bool     `toml:"enabled"`
+	Orgs      []string `toml:"orgs"`       // repo owners covered
+	Repos     []string `toml:"repos"`      // single owner/name repos covered
+	Method    string   `toml:"method"`     // squash (default), merge or rebase
+	HoldLabel string   `toml:"hold_label"` // a PR with this label stays open
+}
+
+// Covers reports whether auto-merge applies to repo ("owner/name").
+func (c AutoMergeConfig) Covers(repo string) bool {
+	if !c.Enabled {
+		return false
+	}
+	owner, _, _ := strings.Cut(repo, "/")
+	for _, o := range c.Orgs {
+		if strings.EqualFold(o, owner) {
+			return true
+		}
+	}
+	for _, r := range c.Repos {
+		if strings.EqualFold(r, repo) {
+			return true
+		}
+	}
+	return false
 }
 
 // TaskConfig is one dispatchable agent task.
@@ -245,6 +276,16 @@ func Load(path string) (*Config, error) {
 	}
 	if err := validateMachines(cfg.Machines); err != nil {
 		return nil, err
+	}
+	switch cfg.AutoMerge.Method {
+	case "":
+		cfg.AutoMerge.Method = "squash"
+	case "squash", "merge", "rebase":
+	default:
+		return nil, fmt.Errorf("auto_merge method %q: want squash, merge or rebase", cfg.AutoMerge.Method)
+	}
+	if cfg.AutoMerge.HoldLabel == "" {
+		cfg.AutoMerge.HoldLabel = "hold"
 	}
 	for i := range cfg.Machines {
 		mc := &cfg.Machines[i]

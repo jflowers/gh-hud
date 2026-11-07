@@ -15,6 +15,7 @@ query($searchQuery: String!, $limit: Int!) {
   search(query: $searchQuery, type: ISSUE, first: $limit) {
     nodes {
       ... on PullRequest {
+        id
         number
         title
         url
@@ -23,9 +24,22 @@ query($searchQuery: String!, $limit: Int!) {
         createdAt
         isDraft
         mergeable
+        mergeStateStatus
+        reviewDecision
+        autoMergeRequest { enabledAt }
+        labels(first: 20) { nodes { name } }
         headRefName
         headRefOid
-        repository { name nameWithOwner }
+        baseRef {
+          branchProtectionRule { requiresApprovingReviews requiredApprovingReviewCount }
+          rules(first: 30) {
+            nodes {
+              type
+              parameters { ... on PullRequestParameters { requiredApprovingReviewCount } }
+            }
+          }
+        }
+        repository { name nameWithOwner autoMergeAllowed }
         commits(last: 1) {
           nodes {
             commit {
@@ -77,19 +91,45 @@ type prSearchResult struct {
 }
 
 type prNode struct {
-	Number      int    `json:"number"`
-	Title       string `json:"title"`
-	URL         string `json:"url"`
-	Author      author `json:"author"`
-	UpdatedAt   time.Time
-	CreatedAt   time.Time
-	IsDraft     bool   `json:"isDraft"`
-	Mergeable   string `json:"mergeable"`
+	ID         string `json:"id"`
+	Number     int    `json:"number"`
+	Title      string `json:"title"`
+	URL        string `json:"url"`
+	Author     author `json:"author"`
+	UpdatedAt  time.Time
+	CreatedAt  time.Time
+	IsDraft    bool   `json:"isDraft"`
+	Mergeable  string `json:"mergeable"`
+	MergeState string `json:"mergeStateStatus"`
+	Decision   string `json:"reviewDecision"`
+	AutoMerge  *struct {
+		EnabledAt time.Time `json:"enabledAt"`
+	} `json:"autoMergeRequest"`
+	Labels struct {
+		Nodes []struct {
+			Name string `json:"name"`
+		} `json:"nodes"`
+	} `json:"labels"`
 	HeadRefName string `json:"headRefName"`
 	HeadRefOid  string `json:"headRefOid"`
-	Repo        struct {
+	BaseRef     *struct {
+		Protection *struct {
+			RequiresReviews bool `json:"requiresApprovingReviews"`
+			Count           int  `json:"requiredApprovingReviewCount"`
+		} `json:"branchProtectionRule"`
+		Rules struct {
+			Nodes []struct {
+				Type       string `json:"type"`
+				Parameters *struct {
+					Count int `json:"requiredApprovingReviewCount"`
+				} `json:"parameters"`
+			} `json:"nodes"`
+		} `json:"rules"`
+	} `json:"baseRef"`
+	Repo struct {
 		Name          string `json:"name"`
 		NameWithOwner string `json:"nameWithOwner"`
+		AutoMergeOK   bool   `json:"autoMergeAllowed"`
 	} `json:"repository"`
 	Commits struct {
 		Nodes []struct {
@@ -188,6 +228,25 @@ func botReviewDue(n prNode) bool {
 	return true
 }
 
+// requiredReviews is how many approvals the base branch's rules demand,
+// from classic protection or rulesets. reviewDecision can't answer this: a
+// repo with no rules still reports CHANGES_REQUESTED after such a review.
+func requiredReviews(n prNode) int {
+	if n.BaseRef == nil {
+		return 0
+	}
+	count := 0
+	if p := n.BaseRef.Protection; p != nil && p.RequiresReviews {
+		count = p.Count
+	}
+	for _, r := range n.BaseRef.Rules.Nodes {
+		if r.Type == "PULL_REQUEST" && r.Parameters != nil {
+			count = max(count, r.Parameters.Count)
+		}
+	}
+	return count
+}
+
 // BuildPRItem converts a search node into an Item, applying the enrichment
 // rules ported from pr-list.sh.
 func BuildPRItem(n prNode, me string, bots *BotFilter) Item {
@@ -203,6 +262,14 @@ func BuildPRItem(n prNode, me string, bots *BotFilter) Item {
 		UpdatedAt:  n.UpdatedAt,
 		HeadBranch: n.HeadRefName,
 		Merge:      " ",
+
+		NodeID:           n.ID,
+		HeadOID:          n.HeadRefOid,
+		MergeState:       n.MergeState,
+		ReviewDecision:   n.Decision,
+		RequiredReviews:  requiredReviews(n),
+		AutoMergeOn:      n.AutoMerge != nil,
+		AutoMergeAllowed: n.Repo.AutoMergeOK,
 	}
 
 	// CI rollup (ci_emoji in pr-list).
@@ -266,6 +333,10 @@ func BuildPRItem(n prNode, me string, bots *BotFilter) Item {
 		} else if last == "" || last == n.Author.Login {
 			it.WaitingOn = "them"
 		}
+	}
+
+	for _, l := range n.Labels.Nodes {
+		it.Labels = append(it.Labels, l.Name)
 	}
 
 	// Tagged: requested reviewer or assignee.

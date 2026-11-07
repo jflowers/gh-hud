@@ -168,3 +168,47 @@ func TestBotReviewDue(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildPRItemAutoMergeFields(t *testing.T) {
+	raw := `{"id":"PR_1","headRefOid":"abc","mergeStateStatus":"BLOCKED","reviewDecision":"REVIEW_REQUIRED",
+		"autoMergeRequest":{"enabledAt":"2026-11-07T00:00:00Z"},"labels":{"nodes":[{"name":"hold"}]},
+		"repository":{"nameWithOwner":"o/r","autoMergeAllowed":true}}`
+	var n prNode
+	if err := json.Unmarshal([]byte(raw), &n); err != nil {
+		t.Fatal(err)
+	}
+	it := BuildPRItem(n, "me", NewBotFilter(nil))
+	if it.NodeID != "PR_1" || it.HeadOID != "abc" || it.MergeState != "BLOCKED" || it.ReviewDecision != "REVIEW_REQUIRED" ||
+		!it.AutoMergeOn || !it.AutoMergeAllowed || len(it.Labels) != 1 || it.Labels[0] != "hold" {
+		t.Errorf("item = %+v", it)
+	}
+
+	var bare prNode
+	if err := json.Unmarshal([]byte(`{"reviewDecision":null,"autoMergeRequest":null}`), &bare); err != nil {
+		t.Fatal(err)
+	}
+	if it := BuildPRItem(bare, "me", NewBotFilter(nil)); it.ReviewDecision != "" || it.AutoMergeOn {
+		t.Errorf("item = %+v", it)
+	}
+}
+
+func TestRequiredReviews(t *testing.T) {
+	for raw, want := range map[string]int{
+		`{}`:                                 0,
+		`{"baseRef":null}`:                   0,
+		`{"baseRef":{"rules":{"nodes":[]}}}`: 0,
+		`{"baseRef":{"branchProtectionRule":{"requiresApprovingReviews":true,"requiredApprovingReviewCount":1}}}`:                                                                                             1,
+		`{"baseRef":{"branchProtectionRule":{"requiresApprovingReviews":false,"requiredApprovingReviewCount":2}}}`:                                                                                            0,
+		`{"baseRef":{"rules":{"nodes":[{"type":"PULL_REQUEST","parameters":{"requiredApprovingReviewCount":0}},{"type":"DELETION","parameters":null}]}}}`:                                                     0,
+		`{"baseRef":{"rules":{"nodes":[{"type":"PULL_REQUEST","parameters":{"requiredApprovingReviewCount":2}}]}}}`:                                                                                           2,
+		`{"baseRef":{"branchProtectionRule":{"requiresApprovingReviews":true,"requiredApprovingReviewCount":1},"rules":{"nodes":[{"type":"PULL_REQUEST","parameters":{"requiredApprovingReviewCount":2}}]}}}`: 2,
+	} {
+		var n prNode
+		if err := json.Unmarshal([]byte(raw), &n); err != nil {
+			t.Fatalf("%s: %v", raw, err)
+		}
+		if got := BuildPRItem(n, "me", NewBotFilter(nil)).RequiredReviews; got != want {
+			t.Errorf("%s: got %d want %d", raw, got, want)
+		}
+	}
+}

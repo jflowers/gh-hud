@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/jflowers/gh-hud/internal/config"
+	"github.com/jflowers/gh-hud/internal/gh"
 	"github.com/jflowers/gh-hud/internal/ghws"
 	"github.com/jflowers/gh-hud/internal/model"
 )
@@ -200,6 +201,8 @@ type Options struct {
 	// LearningsPR opens a chore PR with a checkout's untracked dewey
 	// learnings after a clean run (learnings.go).
 	LearningsPR bool
+	// AutoMerge says where to turn on auto-merge (automerge.go).
+	AutoMerge config.AutoMergeConfig
 }
 
 // Dispatcher launches and tracks agent sessions.
@@ -226,6 +229,11 @@ type Dispatcher struct {
 	// Guarded by mu (see tui.go).
 	blockedSince map[string]time.Time // machine|pane → first seen blocked
 	tuiBusy      map[string]bool      // machine|pane → TUI goroutine in flight
+
+	// graphql runs auto-merge's mutations (a hook for tests).
+	graphql func(ctx context.Context, query string, vars map[string]any) error
+	// Guarded by mu: the state auto-merge last acted on, per PR.
+	mergeTried map[string]string
 
 	// export runs `opencode export` (exportSession; stubbed in tests).
 	export func(ctx context.Context, m Machine, dir, id string) (string, error)
@@ -316,6 +324,10 @@ func New(opts Options) (*Dispatcher, error) {
 		indexLoading: map[string]bool{},
 		export:       exportSession,
 		listSessions: listSessions,
+		graphql: func(ctx context.Context, query string, vars map[string]any) error {
+			return gh.New().Graphql(ctx, query, vars, nil)
+		},
+		mergeTried: map[string]string{},
 	}
 	d.loadState()
 	return d, nil
