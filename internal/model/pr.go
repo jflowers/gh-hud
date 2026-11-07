@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/jflowers/gh-hud/internal/gh"
@@ -23,6 +24,7 @@ query($searchQuery: String!, $limit: Int!) {
         isDraft
         mergeable
         headRefName
+        headRefOid
         repository { name nameWithOwner }
         commits(last: 1) {
           nodes {
@@ -47,7 +49,7 @@ query($searchQuery: String!, $limit: Int!) {
           }
         }
         reviews(last: 30) {
-          nodes { state authorAssociation author { login } submittedAt }
+          nodes { state authorAssociation author { login } submittedAt commit { oid } }
         }
         comments(last: 30) {
           nodes { author { login } createdAt }
@@ -84,6 +86,7 @@ type prNode struct {
 	IsDraft     bool   `json:"isDraft"`
 	Mergeable   string `json:"mergeable"`
 	HeadRefName string `json:"headRefName"`
+	HeadRefOid  string `json:"headRefOid"`
 	Repo        struct {
 		Name          string `json:"name"`
 		NameWithOwner string `json:"nameWithOwner"`
@@ -154,6 +157,9 @@ type reviewNode struct {
 	Assoc     string    `json:"authorAssociation"`
 	Author    author    `json:"author"`
 	Submitted time.Time `json:"submittedAt"`
+	Commit    *struct {
+		Oid string `json:"oid"`
+	} `json:"commit"`
 }
 
 // FetchPRSearch runs a GitHub search restricted to open PRs and returns the
@@ -168,6 +174,18 @@ func FetchPRSearch(ctx context.Context, c *gh.Client, search string, limit int) 
 		return nil, err
 	}
 	return res.Search.Nodes, nil
+}
+
+// botReviewDue reports whether the head commit still lacks a BotLogin
+// review. Comparing commits, not times, stops the bot's own review (which
+// bumps updatedAt) from asking for another one.
+func botReviewDue(n prNode) bool {
+	for _, r := range n.Reviews.Nodes {
+		if strings.EqualFold(r.Author.Login, BotLogin) && r.Commit != nil && r.Commit.Oid == n.HeadRefOid {
+			return false
+		}
+	}
+	return true
 }
 
 // BuildPRItem converts a search node into an Item, applying the enrichment
@@ -208,6 +226,7 @@ func BuildPRItem(n prNode, me string, bots *BotFilter) Item {
 	it.MyAppr = myLatestApproves(human, me)
 	it.OtherAppr = me != "" && n.Author.Login != me && anyApprove(human, me)
 	it.Bot = botReviewCell(ReviewEmoji(bot, ""), n.UpdatedAt)
+	it.BotReviewDue = botReviewDue(n)
 
 	// Merge state.
 	if n.Mergeable == "CONFLICTING" {

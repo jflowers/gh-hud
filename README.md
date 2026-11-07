@@ -54,8 +54,10 @@ under [Agent dispatch](#agent-dispatch); the rest filter the dashboard.
   maintainer: not draft, checks green or absent, no conflicts, no unresolved
   threads, not yet approved, you acted last. Marked `◆` green; a macOS desktop
   notification fires when a PR newly enters this state (`notify = true`).
-- **Queue** (8) — other humans' PRs ready for an agent review: updated within
-  `queue_window_hours`, checks settled, no conflicts, author acted last
+- **Queue** (8) — PRs ready for an agent review: updated within
+  `queue_window_hours`, checks settled, no conflicts. That's other humans' PRs
+  where the author acted last, plus your own `unbound-force` PRs until
+  `uf-divisor` has reviewed the head commit
   (requires `orgs`; the sweep is disabled without them). With
   `[dispatch.review] auto = true` these drain automatically as agent slots
   free up (see [Configuring dispatch](#configuring-dispatch)).
@@ -86,9 +88,9 @@ preferred). The offered tasks follow the row's signals (see
 [Tasks](#tasks) for each one's trigger and command): merge conflict →
 rebase, failing CI → fix, changes requested on your PR → address feedback,
 PR in the review queue → review, issue → implement. Your own PRs also offer
-review on request (never auto-dispatched; `/uf.review-pr` posts the
-verdict as a comment, since GitHub rejects approving your own PR; see
-[Review identity](#review-identity) for `unbound-force`). Tasks
+review on request (never auto-dispatched outside `unbound-force`;
+`/uf.review-pr` posts the verdict as a comment, since GitHub rejects approving
+your own PR; see [Review identity](#review-identity) for `unbound-force`). Tasks
 can also start themselves with `auto` (see
 [Configuring dispatch](#configuring-dispatch)). The
 dispatcher never assumes
@@ -155,15 +157,18 @@ rather than a prompt; sessions you start yourself keep the config's `ask`.
 
 ### Review identity
 
-`review` tasks on `unbound-force` repos run as the `uf-divisor` machine
-account, on your PRs and other people's, auto or by hand with `a`. Everything
-else runs as your own `gh` login: `feedback`, `ci`, `rebase` and `issue` in
-any org, and `review` in any other org.
+`review` tasks on your own `unbound-force` PRs run as the `uf-divisor` machine
+account, auto or by hand with `a`. Everything else runs as your own `gh`
+login, including reviews of other people's `unbound-force` PRs.
 
-| Task | `unbound-force` | any other org |
+| Task | your `unbound-force` PR | anything else |
 | --- | --- | --- |
 | `review` | `uf-divisor` | you |
 | `feedback`, `ci`, `rebase`, `issue` | you | you |
+
+Your `unbound-force` PRs enter the Queue until `uf-divisor` has reviewed the
+head commit, so each new push gets one review. With `[dispatch.review] auto =
+true` they drain like any other Queue row.
 
 The dispatch shell exports `GH_TOKEN` from `UF_DIVISOR_GH_TOKEN`, looking in
 `~/.config/agent-env` when the shell doesn't already have it (a hub pane only
@@ -177,8 +182,8 @@ can take it, `a` shows the error and an auto dispatch flashes it once per PR,
 retrying as usual.
 
 The bot posts the council's real verdict, so its `APPROVE` counts toward
-required approvals, on your PRs too (GitHub only stops you approving your own
-PR, not `uf-divisor`). It never merges: a `gh` guard first on `PATH`
+required approvals (GitHub only stops you approving your own PR, not
+`uf-divisor`). It never merges: a `gh` guard first on `PATH`
 (`~/.local/share/gh-hud/guard/gh`, rewritten on each such dispatch) refuses
 `gh pr merge`, the merge API and GraphQL merge mutations.
 
@@ -281,7 +286,7 @@ orgs a worker serves is also decided by which workspaces you create on it.
 | `rebase` | `/uf.rebase-pr {num}` | any listed PR with a merge conflict |
 | `ci` | `/uf.fix-ci {num}` | any listed PR with failing checks |
 | `feedback` | `/uf.address-feedback {num}` | your PRs with changes requested or unresolved review threads |
-| `review` | `/uf.review-pr {num}` | PRs in the Queue (`8`): others' PRs ready for review. Also offered on your own PRs, never auto-dispatched there. Runs as `uf-divisor` in `unbound-force` (see [Review identity](#review-identity)) |
+| `review` | `/uf.review-pr {num}` | PRs in the Queue (`8`): others' PRs ready for review, and your own in `unbound-force`. Also offered on your own PRs elsewhere, never auto-dispatched there. Your `unbound-force` PRs run as `uf-divisor` (see [Review identity](#review-identity)) |
 | `issue` | `/uf.run-pipeline-plan #{num}` | issues assigned to you or mentioning you |
 
 "Any listed PR" includes other people's PRs in Review and CI, so `auto` on
@@ -518,7 +523,7 @@ url_click = "cmd+right"    # gesture → copy URL
 ref_click = "shift+click"  # gesture → copy owner/repo#N
 fetch_timeout_secs = 45    # per-section timeout
 notify = true              # desktop notification when my PR becomes maintainer-ready
-queue_window_hours = 48    # review queue sweep: others' PRs updated within this window
+queue_window_hours = 48    # review queue: PRs updated within this window
 
 # agent dispatch (see "Agent dispatch" above)
 ghws_root = "~/Projects/github"  # ghws workspace root ($GHWS_ROOT default)
@@ -569,8 +574,8 @@ auto = false
 command = "/uf.address-feedback {num}"
 auto = false
 
-[dispatch.review]          # Queue (8): others' PRs ready for review; also
-command = "/uf.review-pr {num}"  # offered on your own PRs, never auto there
+[dispatch.review]          # Queue (8): PRs ready for review; also offered on
+command = "/uf.review-pr {num}"  # your own PRs, auto there only in unbound-force
 auto = false
 
 [dispatch.issue]           # issues assigned to you or mentioning you; auto

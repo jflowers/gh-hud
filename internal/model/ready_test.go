@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 )
@@ -83,6 +84,31 @@ func TestReviewQueueReady(t *testing.T) {
 	if (Item{}).ReviewQueueReady("", window, bots) {
 		t.Error("empty me must never be queue-ready")
 	}
+
+	own := base
+	own.Author, own.Repo, own.BotReviewDue, own.WaitingOn = "me", "unbound-force/dewey", true, ""
+	ownCases := []struct {
+		name  string
+		mutae func(*Item)
+		want  bool
+	}{
+		{"own pr in bot org", func(*Item) {}, true},
+		{"waiting signal is ignored", func(i *Item) { i.WaitingOn = "me" }, true},
+		{"owner case differs", func(i *Item) { i.Repo = "Unbound-Force/dewey" }, true},
+		{"bot reviewed head", func(i *Item) { i.BotReviewDue = false }, false},
+		{"other org", func(i *Item) { i.Repo = "fullsend-ai/agents" }, false},
+		{"draft", func(i *Item) { i.Draft = true }, false},
+		{"failing ci", func(i *Item) { i.CI = CIFail }, false},
+		{"conflict", func(i *Item) { i.Merge = "⚠️" }, false},
+		{"stale beyond window", func(i *Item) { i.UpdatedAt = time.Now().Add(-72 * time.Hour) }, false},
+	}
+	for _, tc := range ownCases {
+		it := own
+		tc.mutae(&it)
+		if got := it.ReviewQueueReady("me", window, bots); got != tc.want {
+			t.Errorf("%s: got %v want %v", tc.name, got, tc.want)
+		}
+	}
 }
 
 func TestMarkReady(t *testing.T) {
@@ -111,5 +137,34 @@ func TestMarkReady(t *testing.T) {
 	}
 	if items[3].Cats&CatReady != 0 {
 		t.Errorf("issue must not be marked ready, got %s", items[3].Cats)
+	}
+}
+
+func TestBotReviewDue(t *testing.T) {
+	review := func(login, oid string) string {
+		return `{"author":{"login":"` + login + `"},"commit":{"oid":"` + oid + `"}}`
+	}
+	cases := []struct {
+		name    string
+		reviews string
+		want    bool
+	}{
+		{"no reviews", ``, true},
+		{"reviewed head", review("uf-divisor", "head"), false},
+		{"login case differs", review("UF-Divisor", "head"), false},
+		{"reviewed an older commit", review("uf-divisor", "old"), true},
+		{"someone else reviewed head", review("jflowers", "head"), true},
+		{"older then head", review("uf-divisor", "old") + "," + review("uf-divisor", "head"), false},
+		{"review without a commit", `{"author":{"login":"uf-divisor"},"commit":null}`, true},
+	}
+	for _, tc := range cases {
+		var n prNode
+		raw := `{"headRefOid":"head","reviews":{"nodes":[` + tc.reviews + `]}}`
+		if err := json.Unmarshal([]byte(raw), &n); err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		if got := BuildPRItem(n, "me", NewBotFilter(nil)).BotReviewDue; got != tc.want {
+			t.Errorf("%s: got %v want %v", tc.name, got, tc.want)
+		}
 	}
 }

@@ -31,9 +31,12 @@ func TestRunsAsBotMatrix(t *testing.T) {
 	}
 	for _, task := range TaskOrder {
 		for repo, inOrg := range repos {
-			want := inOrg && task == TaskReview
-			if got := runsAsBot(task, repo); got != want {
-				t.Errorf("runsAsBot(%s, %q) = %v, want %v", task, repo, got, want)
+			for _, cats := range []model.Cats{model.CatMy, model.CatQueue} {
+				it := model.Item{Kind: model.KindPR, Repo: repo, Cats: cats}
+				want := inOrg && task == TaskReview && cats == model.CatMy
+				if got := runsAsBot(task, it); got != want {
+					t.Errorf("runsAsBot(%s, %q, %s) = %v, want %v", task, repo, cats, got, want)
+				}
 			}
 		}
 	}
@@ -191,7 +194,7 @@ func TestDispatchRefusesBeforeTouchingCheckout(t *testing.T) {
 	d := newTestDispatcher(t, "stash")
 	d.opts.Tasks = map[string]config.TaskConfig{"review": {Command: "/uf.review-pr {num}"}}
 
-	it := model.Item{Kind: model.KindPR, Repo: "unbound-force/dewey", Num: 5}
+	it := model.Item{Kind: model.KindPR, Repo: "unbound-force/dewey", Num: 5, Cats: model.CatMy}
 	_, err := d.DispatchIn(context.Background(), TaskReview, it, testLocalMachine, ghws.Checkout{Dir: work, Workspace: "ws"}, false)
 	if !errors.Is(err, errBotToken) {
 		t.Fatalf("err = %v, want errBotToken", err)

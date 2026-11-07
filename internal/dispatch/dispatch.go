@@ -88,9 +88,10 @@ func mine(it model.Item) bool {
 }
 
 // MenuTasks is InferTasks plus tasks offered only on request: a review of
-// my own PRs (never auto-dispatched). /uf.review-pr posts a self-review as
-// a COMMENT, since GitHub rejects approving your own PR; in botOrg the
-// poster is the bot (see identity.go), so its real verdict is posted.
+// my own PRs. /uf.review-pr posts a self-review as a COMMENT, since GitHub
+// rejects approving your own PR; in model.BotOrg the poster is the bot (see
+// identity.go), so its real verdict is posted, and those PRs also reach
+// the Queue.
 func MenuTasks(it model.Item) []Task {
 	tasks := InferTasks(it)
 	if it.Kind == model.KindPR && it.Cats&model.CatMy != 0 && !slices.Contains(tasks, TaskReview) {
@@ -425,7 +426,7 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 		return Record{}, fmt.Errorf("remote dispatch requires runner = %q", "herdr")
 	}
 	ref := it.Ref()
-	if runsAsBot(task, it.Repo) {
+	if runsAsBot(task, it) {
 		if err := prepareBot(ctx, m, ref); err != nil {
 			return Record{}, err
 		}
@@ -558,7 +559,7 @@ func (d *Dispatcher) dispatchLocal(ctx context.Context, task Task, it model.Item
 	}
 	argv := append([]string{"run", "--agent", d.opts.Agent, "--title", title, "--command", name}, args...)
 	cmd := exec.Command(opencodeBinary(), argv...)
-	if runsAsBot(task, it.Repo) {
+	if runsAsBot(task, it) {
 		cmd = botCommand(opencodeBinary(), argv)
 	}
 	cmd.Dir = co.Dir
@@ -635,7 +636,7 @@ func (d *Dispatcher) dispatchHerdr(ctx context.Context, task Task, it model.Item
 	if err != nil {
 		return Record{}, fmt.Errorf("herdr tab: %w", err)
 	}
-	bot := runsAsBot(task, it.Repo)
+	bot := runsAsBot(task, it)
 	if err := herdrPaneReady(ctx, m, paneID, bot); err != nil {
 		if errors.Is(err, errBotToken) {
 			_, _ = herdrRun(ctx, m, "pane", "close", paneID)
