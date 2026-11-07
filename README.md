@@ -168,7 +168,14 @@ login, including reviews of other people's `unbound-force` PRs.
 | `feedback`, `ci`, `rebase`, `issue` | you | you |
 
 Your `unbound-force` PRs enter the Queue until `uf-divisor` has reviewed the
-head commit, so each new push gets one review. Chore PRs skip the Queue, so
+head commit, so each new push gets one review. Review and feedback feed each other, so each stops auto-dispatching on a PR
+after 2 rounds, counting runs you started by hand. gh-hud shows a notice
+once, and `a` still starts another round. Set `max_rounds` in the task's
+table to change it, or a negative value for no limit. Only one agent works
+on a PR at a time, on any machine, so a review never starts while a
+feedback run is still pushing.
+
+Chore PRs skip the Queue, so
 they only get a review if you start one with `a`; on a branch that requires
 an approval, they won't auto-merge without one. No task auto-dispatches on a
 chore PR, so a chore with failing CI or a conflict also waits for you. With `[dispatch.review] auto =
@@ -615,10 +622,12 @@ auto = false
 [dispatch.feedback]        # your PRs: changes requested or unresolved threads
 command = "/uf.address-feedback {num}"
 auto = false
+max_rounds = 2             # auto runs per PR (negative = no limit)
 
 [dispatch.review]          # Queue (8): PRs ready for review; also offered on
 command = "/uf.review-pr {num}"  # your own PRs, auto there only in unbound-force
 auto = false
+max_rounds = 2             # auto runs per PR (negative = no limit)
 
 [dispatch.issue]           # issues assigned to you or mentioning you; auto
 command = "/uf.run-pipeline-plan #{num}"  # here implements every listed issue

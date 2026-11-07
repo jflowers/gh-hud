@@ -155,6 +155,25 @@ type TaskConfig struct {
 	Auto    bool     `toml:"auto"`    // auto-dispatch on refresh without confirmation
 	Orgs    []string `toml:"orgs"`    // limits auto to these repo owners; empty = every org
 	Mine    bool     `toml:"mine"`    // limits auto to your PRs and issues assigned to you
+	// MaxRounds caps how many times the task auto-dispatches on one PR,
+	// counting runs started by hand. 0 uses the default (see RoundLimit),
+	// negative means no limit.
+	MaxRounds int `toml:"max_rounds"`
+}
+
+// defaultRounds caps review and feedback, which feed each other: every
+// review finds something and every fix earns another review.
+var defaultRounds = map[string]int{"review": 2, "feedback": 2}
+
+// RoundLimit is the task's per-PR auto round cap; 0 means unlimited.
+func (tc TaskConfig) RoundLimit(task string) int {
+	switch {
+	case tc.MaxRounds < 0:
+		return 0
+	case tc.MaxRounds > 0:
+		return tc.MaxRounds
+	}
+	return defaultRounds[task]
 }
 
 // AutoFor reports whether the task auto-dispatches for repo ("owner/name"):
