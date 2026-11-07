@@ -5,6 +5,7 @@ package model
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -189,15 +190,20 @@ func (i Item) InBotOrg() bool {
 	return ok && strings.EqualFold(owner, BotOrg)
 }
 
+// choreTitle matches a conventional-commit chore title, with or without a
+// scope: "chore: x", "chore(dewey): x", "chore!: x".
+var choreTitle = regexp.MustCompile(`(?i)^chore(\([^)]*\))?!?:`)
+
 // ReviewQueueReady reports whether a PR is ready for an agent review: not
-// draft, checks green or absent, no conflict, and updated within window.
+// a chore, not draft, checks green or absent, no conflict, and updated
+// within window.
 // Someone else's PR also needs a human author who acted last (so I have not
 // reviewed since their latest activity). My own PR only qualifies in
 // BotOrg, where BotLogin can review it, until BotLogin has reviewed the
 // head commit.
 func (i Item) ReviewQueueReady(me string, window time.Duration, bots *BotFilter) bool {
 	if i.Kind != KindPR || me == "" || i.Draft || !ciSettled(i.CI) ||
-		i.Merge == "⚠️" || time.Since(i.UpdatedAt) > window {
+		choreTitle.MatchString(i.Title) || i.Merge == "⚠️" || time.Since(i.UpdatedAt) > window {
 		return false
 	}
 	if i.Author == me {
