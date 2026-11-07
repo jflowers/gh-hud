@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+// The machine account that reviews my PRs, and the org it does so in.
+const (
+	BotOrg   = "unbound-force"
+	BotLogin = "uf-divisor"
+)
+
 // Kind identifies what an item is.
 type Kind uint8
 
@@ -42,7 +48,7 @@ const (
 	CatCI                     // actions: failing runs, failing checks
 	CatNT                     // notifications: mentions, comments, activity
 	CatReady                  // my PRs ready for a human maintainer review
-	CatQueue                  // others' PRs ready for an agent review
+	CatQueue                  // PRs ready for an agent review
 )
 
 func (c Cats) String() string {
@@ -129,6 +135,8 @@ type Item struct {
 	Tagged    bool // I am a requested reviewer or assignee
 	OtherAppr bool // a human maintainer other than me approved
 	MyAppr    bool // my latest review is an approval
+	// BotReviewDue is true while BotLogin hasn't reviewed the head commit.
+	BotReviewDue bool
 
 	Reasons []string // notification reasons (mention, review, ...)
 
@@ -164,20 +172,28 @@ func (i Item) MyMaintainerReady() bool {
 		i.WaitingOn == "them"
 }
 
-// ReviewQueueReady reports whether someone else's PR is ready for an agent
-// review: not draft, checks green or absent, no conflict, the author acted
-// last (so I have not reviewed since their latest activity), not written by
-// me or a bot, and updated within window.
+// InBotOrg reports whether the item's repo is owned by BotOrg. GitHub
+// owners are case-insensitive.
+func (i Item) InBotOrg() bool {
+	owner, _, ok := strings.Cut(i.Repo, "/")
+	return ok && strings.EqualFold(owner, BotOrg)
+}
+
+// ReviewQueueReady reports whether a PR is ready for an agent review: not
+// draft, checks green or absent, no conflict, and updated within window.
+// Someone else's PR also needs a human author who acted last (so I have not
+// reviewed since their latest activity). My own PR only qualifies in
+// BotOrg, where BotLogin can review it, until BotLogin has reviewed the
+// head commit.
 func (i Item) ReviewQueueReady(me string, window time.Duration, bots *BotFilter) bool {
-	return i.Kind == KindPR &&
-		me != "" &&
-		i.Author != me &&
-		!bots.IsBot(i.Author) &&
-		!i.Draft &&
-		ciSettled(i.CI) &&
-		i.Merge != "⚠️" &&
-		i.WaitingOn == "them" &&
-		time.Since(i.UpdatedAt) <= window
+	if i.Kind != KindPR || me == "" || i.Draft || !ciSettled(i.CI) ||
+		i.Merge == "⚠️" || time.Since(i.UpdatedAt) > window {
+		return false
+	}
+	if i.Author == me {
+		return i.InBotOrg() && i.BotReviewDue
+	}
+	return !bots.IsBot(i.Author) && i.WaitingOn == "them"
 }
 
 // Score ranks attention-worthiness (higher first).

@@ -239,7 +239,7 @@ func FetchAll(ctx context.Context, c *gh.Client, cfg *config.Config) *FetchResul
 }
 
 // markReady sets the derived section bits: CatReady for my PRs waiting only
-// on a human maintainer, CatQueue for others' PRs ready for an agent review.
+// on a human maintainer, CatQueue for PRs ready for an agent review.
 func markReady(items []Item, me string, window time.Duration, bots *BotFilter) {
 	for i := range items {
 		if items[i].MyMaintainerReady() {

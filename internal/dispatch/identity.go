@@ -1,10 +1,11 @@
 package dispatch
 
 // Which GitHub account a dispatched agent acts as. Everything runs as the
-// operator's own gh login except reviews in botOrg, which run as the
-// uf-divisor machine account: the pane exports GH_TOKEN from botTokenVar
-// and puts a gh guard first on PATH. The bot posts the council's real
-// verdict, APPROVE included, and its approval counts; it never merges.
+// operator's own gh login except reviews of the operator's PRs in
+// model.BotOrg, which run as the uf-divisor machine account: the pane
+// exports GH_TOKEN from botTokenVar and puts a gh guard first on PATH. The
+// bot posts the council's real verdict, APPROVE included, and its approval
+// counts; it never merges.
 //
 // The token lives in agent-env on every machine, so an agent could read it
 // whatever gh-hud does, and the guard only sees gh; both are conventions
@@ -18,11 +19,12 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/jflowers/gh-hud/internal/model"
 )
 
 const (
-	botOrg      = "unbound-force"
-	botLogin    = "uf-divisor"
+	botLogin    = model.BotLogin
 	botTokenVar = "UF_DIVISOR_GH_TOKEN"
 
 	// botGuardDir holds the gh guard, on every machine. Written for the
@@ -44,10 +46,9 @@ const (
 var errBotToken = errors.New(botTokenVar + " is missing or empty")
 
 // runsAsBot reports whether the task runs as the bot account: a review of
-// a PR in botOrg, whoever opened it. GitHub owners are case-insensitive.
-func runsAsBot(task Task, repo string) bool {
-	owner, _, ok := strings.Cut(repo, "/")
-	return ok && task == TaskReview && strings.EqualFold(owner, botOrg)
+// my own PR in model.BotOrg. Other people's PRs are reviewed as me.
+func runsAsBot(task Task, it model.Item) bool {
+	return task == TaskReview && mine(it) && it.InBotOrg()
 }
 
 // botGuard is the gh first on PATH in a bot dispatch. It refuses merges,
