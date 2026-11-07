@@ -55,7 +55,8 @@ under [Agent dispatch](#agent-dispatch); the rest filter the dashboard.
   threads, not yet approved, you acted last. Marked `◆` green; a macOS desktop
   notification fires when a PR newly enters this state (`notify = true`).
 - **Queue** (8) — PRs ready for an agent review: updated within
-  `queue_window_hours`, checks settled, no conflicts. That's other humans' PRs
+  `queue_window_hours`, checks settled, no conflicts, and not a chore (a title
+  starting `chore:` or `chore(scope):`). That's other humans' PRs
   where the author acted last, plus your own `unbound-force` PRs until
   `uf-divisor` has reviewed the head commit
   (requires `orgs`; the sweep is disabled without them). With
@@ -167,7 +168,9 @@ login, including reviews of other people's `unbound-force` PRs.
 | `feedback`, `ci`, `rebase`, `issue` | you | you |
 
 Your `unbound-force` PRs enter the Queue until `uf-divisor` has reviewed the
-head commit, so each new push gets one review. With `[dispatch.review] auto =
+head commit, so each new push gets one review. Chore PRs skip the Queue, so
+they only get a review if you start one with `a`; on a branch that requires
+an approval, they won't auto-merge without one. With `[dispatch.review] auto =
 true` they drain like any other Queue row.
 
 The dispatch shell exports `GH_TOKEN` from `UF_DIVISOR_GH_TOKEN`, looking in
