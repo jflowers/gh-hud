@@ -74,9 +74,10 @@ func InferTasks(it model.Item) []Task {
 }
 
 // autoWants reports whether a task's auto settings cover the item: auto
-// on, the repo owner in orgs, and the item yours when mine is set.
+// on, the repo owner in orgs, the item yours when mine is set, and not a
+// chore PR. Chores can still be dispatched by hand.
 func autoWants(tc config.TaskConfig, it model.Item) bool {
-	return tc.AutoFor(it.Repo) && (!tc.Mine || mine(it))
+	return tc.AutoFor(it.Repo) && (!tc.Mine || mine(it)) && !it.IsChore()
 }
 
 // mine reports whether the item is yours for a task's `mine` limit: a PR
