@@ -75,6 +75,7 @@ func main() {
 		BusyWindow:    time.Duration(cfg.BusyWindowSecs) * time.Second,
 		Dirty:         cfg.Dirty,
 		Tasks:         cfg.Dispatch,
+		AutoMerge:     cfg.AutoMerge,
 		WatchCmd:      cfg.AgentWatchCmd,
 		Runner:        cfg.Runner,
 		Mode:          cfg.DispatchMode,

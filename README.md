@@ -473,6 +473,44 @@ dispatch_mode = "run"        # except lap1, headless
 dirty = "stash"              # or "stash-tracked" to leave untracked files
 ```
 
+## Auto-merge
+
+gh-hud can turn on GitHub auto-merge for your own PRs, so GitHub merges each
+one when its branch rules pass. GitHub's repo setting only makes auto-merge
+available; something still has to switch it on for each PR. This is off by
+default, and covers nothing until you list orgs or repos:
+
+```toml
+[auto_merge]
+enabled = true
+repos = ["unbound-force/dewey"]  # single repos; orgs = [...] covers whole orgs
+method = "squash"                # squash (default), merge or rebase
+hold_label = "hold"              # default
+```
+
+"Done" is whatever the branch rules on the base branch require, so that's
+where approvals, checks and resolved threads are configured. gh-hud acts on a
+PR only when all of these hold:
+
+- you opened it, and it's in a covered repo
+- it's not a draft, has no `hold_label` label and has no merge conflict
+- the repo allows auto-merge
+- the base branch's protection or rulesets require at least one approval
+
+The last check is the safety net: on a branch with no such rule, auto-merge
+has nothing to wait for. gh-hud also doesn't use `gh pr merge --auto`, which
+merges on the spot when nothing is pending.
+
+A PR that's already approved and `CLEAN` when gh-hud first sees it has nothing
+left to wait for, so GitHub refuses auto-merge and gh-hud merges it directly.
+Every call names the head commit it checked, so a newer push makes GitHub
+refuse it.
+
+To stop a PR, add the hold label or convert it to a draft: gh-hud turns
+auto-merge off at the next refresh, so a merge can still land before then.
+New PRs are only picked up while gh-hud runs; once auto-merge is on, GitHub
+finishes the merge without it. Merges run as your `gh` login, not `uf-divisor`.
+
 ## Fleet rollout (GitOps)
 
 `[fleet]` turns gh-hud into a GitOps coordinator for the machines it
@@ -581,6 +619,14 @@ auto = false
 [dispatch.issue]           # issues assigned to you or mentioning you; auto
 command = "/uf.run-pipeline-plan #{num}"  # here implements every listed issue
 auto = false
+
+# Turn on GitHub auto-merge for your PRs (see "Auto-merge" above).
+[auto_merge]
+enabled = false            # run it at all
+orgs = []                  # repo owners covered
+repos = []                 # single owner/name repos covered
+method = "squash"          # squash, merge or rebase
+hold_label = "hold"        # a PR with this label stays open
 
 # GitOps fleet rollout (see "Fleet rollout (GitOps)" above). Machines need
 # a fleet-apply script on PATH (chezmoi dotfiles checkout).

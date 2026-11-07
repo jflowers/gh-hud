@@ -676,7 +676,8 @@ func autoCmd(m *Model, items []model.Item) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 		defer cancel()
-		return autoDoneMsg(d.AutoDispatch(ctx, items))
+		msgs := d.AutoMerge(ctx, items)
+		return autoDoneMsg(append(msgs, d.AutoDispatch(ctx, items)...))
 	}
 }
 

@@ -140,6 +140,16 @@ type Item struct {
 
 	Reasons []string // notification reasons (mention, review, ...)
 
+	// What auto-merge decides on (see dispatch/automerge.go).
+	NodeID           string   // GraphQL ID
+	HeadOID          string   // PR head commit
+	MergeState       string   // GitHub mergeStateStatus, e.g. CLEAN, BLOCKED
+	ReviewDecision   string   // APPROVED, CHANGES_REQUESTED, REVIEW_REQUIRED or ""
+	RequiredReviews  int      // approvals the base branch rules demand
+	AutoMergeOn      bool     // auto-merge is enabled on this PR
+	AutoMergeAllowed bool     // the repo allows auto-merge
+	Labels           []string // label names
+
 	HeadBranch string // PR head ref name
 	RunBranch  string // workflow run details
 	RunEvent   string
