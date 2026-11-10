@@ -4,7 +4,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/jflowers/gh-hud/internal/config"
 )
@@ -30,33 +29,18 @@ func TestRoundLimitDefaults(t *testing.T) {
 	}
 }
 
-func TestRoundsUsed(t *testing.T) {
+func TestStopNoteOnce(t *testing.T) {
 	d := newTestDispatcher(t, "refuse")
-	ref := "acme/r#1"
-	add := func(task Task, ref string) {
-		d.mu.Lock()
-		d.records = append(d.records, Record{Task: task, Ref: ref, StartedAt: time.Now()})
-		d.mu.Unlock()
+	st := Stage{Kind: StageNeedsYou, Task: TaskReview, Reason: "2/2 rounds"}
+	if note := d.stopNote(st, "acme/r#1"); !strings.Contains(note, "acme/r#1 at review (2/2 rounds)") {
+		t.Fatalf("first note = %q", note)
 	}
-	add(TaskReview, ref)
-	add(TaskFeedback, ref)
-	add(TaskReview, "acme/r#2")
-	if _, stop := d.roundsUsed(TaskReview, ref, 2); stop {
-		t.Fatal("stopped after 1 round")
+	if note := d.stopNote(st, "acme/r#1"); note != "" {
+		t.Errorf("second note = %q, want silence", note)
 	}
-	add(TaskReview, ref)
-	note, stop := d.roundsUsed(TaskReview, ref, 2)
-	if !stop || !strings.Contains(note, "after 2 rounds") {
-		t.Fatalf("stop=%v note=%q", stop, note)
-	}
-	if note, stop := d.roundsUsed(TaskReview, ref, 2); !stop || note != "" {
-		t.Errorf("second check: stop=%v note=%q, want a silent stop", stop, note)
-	}
-	if _, stop := d.roundsUsed(TaskFeedback, ref, 2); stop {
-		t.Error("feedback counted review runs")
-	}
-	if _, stop := d.roundsUsed(TaskReview, ref, 0); stop {
-		t.Error("limit 0 must not stop")
+	st.Reason = "last run failed"
+	if note := d.stopNote(st, "acme/r#1"); note == "" {
+		t.Error("a new reason stayed silent")
 	}
 }
 

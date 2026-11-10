@@ -77,9 +77,10 @@ func autoMergeAction(it model.Item, cfg config.AutoMergeConfig) mergeAction {
 // every refresh.
 func (d *Dispatcher) AutoMerge(ctx context.Context, items []model.Item) []string {
 	cfg := d.opts.AutoMerge
-	if !cfg.Enabled {
+	if !cfg.Enabled || !d.owns() {
 		return nil
 	}
+	var runs []Run
 	var msgs []string
 	for _, it := range items {
 		action := autoMergeAction(it, cfg)
@@ -87,6 +88,16 @@ func (d *Dispatcher) AutoMerge(ctx context.Context, items []model.Item) []string
 			continue
 		}
 		ref := it.Ref()
+		// Merge is the pipeline's last step: while an agent is on the PR or
+		// another step is due, don't arm or merge it. Disabling is never held.
+		if action != mergeDisable {
+			if runs == nil {
+				runs = d.Runs(ctx)
+			}
+			if d.reserved(ref) || d.Stage(it, runs).Holds() {
+				continue
+			}
+		}
 		state := fmt.Sprintf("%s|%s|%s", action, it.HeadOID, it.UpdatedAt)
 		d.mu.Lock()
 		tried := d.mergeTried[ref] == state

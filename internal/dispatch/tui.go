@@ -109,6 +109,9 @@ func paneKey(machine, pane string) string {
 // hands finished TUI records to finishTUI. Machines whose herdr did not
 // answer are skipped, so an outage never reads as "agent gone".
 func (d *Dispatcher) observeAgents(snaps map[string]agentSnapshot) {
+	if !d.owns() {
+		return // the owner finishes runs; a follower only shows them
+	}
 	now := time.Now()
 	d.mu.Lock()
 	defer d.mu.Unlock()

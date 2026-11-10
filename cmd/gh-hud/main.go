@@ -90,6 +90,8 @@ func main() {
 	disp, dispErr := dispatch.New(dispOpts)
 	if dispErr != nil {
 		disp = nil
+	} else {
+		defer disp.Close()
 	}
 
 	var fleetCoord *fleet.Coordinator
@@ -123,7 +125,11 @@ func main() {
 			fleetCoord = c
 			fleetCtx, fleetCancel := context.WithCancel(context.Background())
 			defer fleetCancel()
-			go c.Run(fleetCtx)
+			// Rollouts drain and update machines: only the gh-hud that owns
+			// dispatch runs them, so a second one never competes.
+			if owner, _ := ownsDispatch(disp); owner {
+				go c.Run(fleetCtx)
+			}
 		}
 	}
 
@@ -162,4 +168,13 @@ func runOnce(cfg *config.Config, client *gh.Client, width int) {
 	if res.User == "" {
 		os.Exit(1)
 	}
+}
+
+// ownsDispatch reports whether this gh-hud owns dispatch (true without a
+// dispatcher, which has nothing to compete over).
+func ownsDispatch(disp *dispatch.Dispatcher) (bool, string) {
+	if disp == nil {
+		return true, ""
+	}
+	return disp.Owner()
 }

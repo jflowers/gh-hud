@@ -358,13 +358,18 @@ func TestAutoDispatchSkips(t *testing.T) {
 	}
 	d.opts.LocalIndex = ix
 
-	// Fingerprint match for the same item state: skipped, no dispatch attempted.
+	// Fingerprint match for the same item state: no dispatch, one notice
+	// that the pipeline stopped, then silence.
+	done := 0
 	d.records = append(d.records, Record{
 		Task: TaskRebase, Ref: "acme/r#7", StartedAt: time.Now().Add(-time.Hour),
-		Fingerprint: fingerprint(TaskRebase, it),
+		Fingerprint: fingerprint(TaskRebase, it), ExitCode: &done,
 	})
-	if got := d.AutoDispatch(context.Background(), []model.Item{it}); len(got) != 0 {
+	if got := d.AutoDispatch(context.Background(), []model.Item{it}); len(got) != 1 || !strings.Contains(got[0], "nothing changed") {
 		t.Errorf("fingerprint skip: got %v", got)
+	}
+	if got := d.AutoDispatch(context.Background(), []model.Item{it}); len(got) != 0 {
+		t.Errorf("fingerprint skip, second pass: got %v", got)
 	}
 
 	// Same task+ref started recently: skipped even with a stale fingerprint.

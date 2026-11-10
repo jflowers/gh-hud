@@ -55,6 +55,9 @@ type Run struct {
 	Pushed     []string // commits that reached the remote during the run
 	Branch     string   // branch the run left checked out
 	Cleaned    bool     // returned to the default branch after the run
+	// Fingerprint is the PR/issue state the run started from (task, ref,
+	// updated-at); the auto pipeline compares it to the current state.
+	Fingerprint string
 }
 
 // runID identifies a record across snapshots.
@@ -114,7 +117,7 @@ func (d *Dispatcher) Runs(ctx context.Context) []Run {
 			StartedAt: r.StartedAt, FinishedAt: r.FinishedAt,
 			SessionID: r.SessionID, PaneID: r.PaneID, WSID: r.WSID, Log: r.Log,
 			Reason: reason, Summary: r.Summary, Left: r.Left, Pushed: r.Pushed,
-			Branch: r.Branch, Cleaned: r.Cleaned,
+			Branch: r.Branch, Cleaned: r.Cleaned, Fingerprint: r.Fingerprint,
 		})
 	}
 	return out
@@ -494,6 +497,9 @@ func (d *Dispatcher) busyElsewhere(ctx context.Context, r Record) bool {
 // Reinspect re-runs the after-run inspection of a finished run, e.g. after
 // its leftovers were committed, pushed or discarded by hand.
 func (d *Dispatcher) Reinspect(ctx context.Context, id string) (Run, error) {
+	if !d.owns() {
+		return Run{}, d.followerErr()
+	}
 	var rec Record
 	found := false
 	for _, r := range d.snapshot() {

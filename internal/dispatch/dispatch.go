@@ -243,6 +243,13 @@ type Dispatcher struct {
 
 	botWarned map[string]bool // refs already reported as missing the bot token
 	capNoted  map[string]bool // task|ref already reported as out of rounds
+
+	// Coordination (coord.go). claims and stateMod are guarded by mu.
+	claims   map[string]string // ref|… and dir|… → the dispatch holding them
+	stateMod time.Time         // state.json mtime at the last load or save
+	ownMu    sync.Mutex
+	lock     *os.File   // held dispatch.lock; nil in a follower
+	autoMu   sync.Mutex // one auto pass at a time
 }
 
 // agentSnapshot is one machine's live herdr agent list.
@@ -332,6 +339,7 @@ func New(opts Options) (*Dispatcher, error) {
 		mergeTried: map[string]string{},
 	}
 	d.loadState()
+	d.acquireOwnership()
 	return d, nil
 }
 
@@ -347,6 +355,9 @@ func (d *Dispatcher) Configured(task Task) (string, bool) {
 // The opencode process is detached: it keeps running after gh-hud exits.
 // auto records whether this dispatch came from the auto-drain queue.
 func (d *Dispatcher) Dispatch(ctx context.Context, task Task, it model.Item, auto bool) (Record, error) {
+	if !d.owns() {
+		return Record{}, d.followerErr()
+	}
 	name, args, title, err := d.taskCommand(task, it)
 	if err != nil {
 		return Record{}, err
@@ -378,6 +389,9 @@ func (d *Dispatcher) Dispatch(ctx context.Context, task Task, it model.Item, aut
 // DispatchIn launches the task at one exact placement (machine +
 // checkout), without candidate fallback. For tests and tooling.
 func (d *Dispatcher) DispatchIn(ctx context.Context, task Task, it model.Item, m Machine, co ghws.Checkout, auto bool) (Record, error) {
+	if !d.owns() {
+		return Record{}, d.followerErr()
+	}
 	name, args, title, err := d.taskCommand(task, it)
 	if err != nil {
 		return Record{}, err
@@ -460,6 +474,14 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 		return Record{}, fmt.Errorf("remote dispatch requires runner = %q", "herdr")
 	}
 	ref := it.Ref()
+	// Hold the PR and the checkout from the busy checks until the run is
+	// recorded: the preflight below takes seconds, and without the claim a
+	// second dispatch passes the same checks before this one is on record.
+	release, err := d.reserve(task, ref, m, co.Dir)
+	if err != nil {
+		return Record{}, err
+	}
+	defer release()
 	if runsAsBot(task, it) {
 		if err := prepareBot(ctx, m, ref); err != nil {
 			return Record{}, err
@@ -715,52 +737,51 @@ func (d *Dispatcher) dispatchHerdr(ctx context.Context, task Task, it model.Item
 	return rec, nil
 }
 
-// AutoDispatch dispatches allowlisted tasks for the given items, skipping
-// refs already dispatched for the same item state or started recently.
-// Returns human-readable messages, one per dispatch.
+// AutoDispatch runs one auto pass: for each item, the most urgent task
+// auto-dispatch handles (see pipelineTasks), and nothing else on that item
+// until that step is done. A step that is waiting (cooldown) or stopped
+// (out of rounds, or its last run changed nothing) holds the item
+// rather than letting a later step run on a PR that isn't ready for it.
+// Only one pass runs at a time, and only in the gh-hud that owns
+// dispatch; a pass that would overlap returns nothing. Returns
+// human-readable messages, one per dispatch or notice.
 func (d *Dispatcher) AutoDispatch(ctx context.Context, items []model.Item) []string {
 	if d.opts.LocalIndex == nil && len(d.remoteMachines()) == 0 {
 		return nil
 	}
+	if !d.autoMu.TryLock() {
+		return nil
+	}
+	defer d.autoMu.Unlock()
+	if !d.owns() {
+		return nil
+	}
+	runs := d.Runs(ctx)
 	var msgs []string
 	for _, it := range items {
-		for _, task := range InferTasks(it) {
-			tc, ok := d.opts.Tasks[string(task)]
-			if !ok || !autoWants(tc, it) {
-				continue
-			}
-			ref := it.Ref()
-			if ref == "" {
-				continue
-			}
-			fp := fingerprint(task, it)
-			skip := false
-			for _, r := range d.snapshot() {
-				if r.Task == task && r.Ref == ref {
-					if r.Fingerprint == fp || time.Since(r.StartedAt) < 30*time.Minute {
-						skip = true
-						break
-					}
-				}
-			}
-			if skip {
-				continue
-			}
-			if note, stop := d.roundsUsed(task, ref, tc.RoundLimit(string(task))); stop {
-				if note != "" {
-					msgs = append(msgs, note)
-				}
-				continue
-			}
-			rec, err := d.Dispatch(ctx, task, it, true)
-			if note, ok := d.autoFailNote(task, ref, err); ok {
+		ref := it.Ref()
+		if ref == "" || d.reserved(ref) {
+			continue
+		}
+		st := d.Stage(it, runs)
+		switch st.Kind {
+		case StageNext:
+		case StageNeedsYou:
+			if note := d.stopNote(st, ref); note != "" {
 				msgs = append(msgs, note)
 			}
-			if err != nil {
-				continue
-			}
-			msgs = append(msgs, fmt.Sprintf("auto %s %s → %s", task, ref, recordTarget(rec)))
+			continue
+		default:
+			continue
 		}
+		rec, err := d.Dispatch(ctx, st.Task, it, true)
+		if note, ok := d.autoFailNote(st.Task, ref, err); ok {
+			msgs = append(msgs, note)
+		}
+		if err != nil {
+			continue
+		}
+		msgs = append(msgs, fmt.Sprintf("auto %s %s → %s", st.Task, ref, recordTarget(rec)))
 	}
 	return msgs
 }
@@ -1435,13 +1456,18 @@ func (d *Dispatcher) preflight(ctx context.Context, m Machine, dir string, task 
 func (d *Dispatcher) snapshot() []Record {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	d.refreshFollowerLocked()
 	out := make([]Record, len(d.records))
 	copy(out, d.records)
 	return out
 }
 
 func (d *Dispatcher) loadState() {
-	data, err := os.ReadFile(filepath.Join(d.opts.StateDir, "state.json"))
+	path := filepath.Join(d.opts.StateDir, "state.json")
+	if st, err := os.Stat(path); err == nil {
+		d.stateMod = st.ModTime()
+	}
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return
 	}
@@ -1452,6 +1478,12 @@ func (d *Dispatcher) loadState() {
 }
 
 func (d *Dispatcher) saveStateLocked() {
+	d.ownMu.Lock()
+	owner := d.lock != nil
+	d.ownMu.Unlock()
+	if !owner {
+		return // a follower never writes the owner's state
+	}
 	if len(d.records) > 500 {
 		d.records = append([]Record(nil), d.records[len(d.records)-500:]...)
 	}
@@ -1459,7 +1491,11 @@ func (d *Dispatcher) saveStateLocked() {
 	if err != nil {
 		return
 	}
-	_ = os.WriteFile(filepath.Join(d.opts.StateDir, "state.json"), data, 0o644)
+	path := filepath.Join(d.opts.StateDir, "state.json")
+	_ = os.WriteFile(path, data, 0o644)
+	if st, err := os.Stat(path); err == nil {
+		d.stateMod = st.ModTime()
+	}
 }
 
 // checkoutPR checks the PR head out in the preflighted checkout with

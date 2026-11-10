@@ -173,7 +173,7 @@ after 2 rounds, counting runs you started by hand. gh-hud shows a notice
 once, and `a` still starts another round. Set `max_rounds` in the task's
 table to change it, or a negative value for no limit. Only one agent works
 on a PR at a time, on any machine, so a review never starts while a
-feedback run is still pushing.
+feedback run is still pushing (see [Coordination](#coordination)).
 
 Chore PRs skip the Queue, so
 they only get a review if you start one with `a`; on a branch that requires
@@ -273,6 +273,42 @@ daily chore PR; the selected checkout's detail lists the files and
 branches. One script per machine reads every checkout (no fetch, so the
 upstream column is as of each checkout's last fetch), every 2 minutes and
 on `r`; `y` copies the checkout's dir.
+
+### Coordination
+
+gh-hud moves a PR toward merge one step at a time and keeps agents from
+competing over it:
+
+- **One dispatcher.** The first gh-hud to start takes an exclusive lock on
+  `dispatch.lock` in its state dir and owns dispatch, auto-merge, finishing
+  runs and fleet rollouts. Another gh-hud on the same state dir is
+  read-only: it shows runs from `state.json`, its header says
+  `read-only: dispatch owned by gh-hud pid N`, and `a` is refused. It takes
+  over when the owner exits (fleet rollouts need a restart). Workers never
+  run gh-hud; the hub places all their work.
+- **Reservations.** A dispatch claims its PR/issue and its checkout before
+  preflight and holds them until the run is recorded, so a second dispatch
+  can't pass the same busy checks during the seconds preflight takes.
+- **One auto pass at a time.** A refresh that lands while the previous pass
+  is still placing agents skips its pass.
+- **One step per PR.** Of the tasks auto-dispatch handles for a PR, only the
+  most urgent runs: rebase, then ci, then feedback, then review, and merge
+  last. Feedback is due only while a human thread is unresolved or a
+  reviewer acted after you; a changes-requested review you already answered
+  goes to the review step. A step that can't go on stops the PR at "needs
+  you" instead of letting a later step run on a PR that isn't ready for it:
+  out of rounds, or its last run on the PR's current state failed, left
+  work, or changed nothing. gh-hud flashes that once; `a` still starts any
+  task by hand. Tasks without `auto` are skipped, not waited on.
+
+Each row shows its stage after the run tag:
+
+| Tag | Meaning |
+|---|---|
+| `▸ci` | the next step, starting when a slot frees |
+| `▸ci wait` | the step ran in the last 30 minutes; it waits before another round |
+| `▸you: review 2/2 rounds` | the pipeline stopped (orange `◆`); the reason follows the task |
+| `▸merge` | auto-merge is on; GitHub merges when the rules pass |
 
 ## Configuring dispatch
 
@@ -507,6 +543,8 @@ PR only when all of these hold:
 - it's not a draft, has no `hold_label` label and has no merge conflict
 - the repo allows auto-merge
 - the base branch's protection or rulesets require at least one approval
+- no agent is working on it and no agent step is due (merge is the
+  [pipeline's](#coordination) last step; turning auto-merge off is never held)
 
 The last check is the safety net: on a branch with no such rule, auto-merge
 has nothing to wait for. gh-hud also doesn't use `gh pr merge --auto`, which

@@ -29,6 +29,7 @@ type agentsMsg struct {
 	sessions []dispatch.Session
 	runs     []dispatch.Run
 	usage    []dispatch.MachineUsage
+	follower string // owning gh-hud's pid when this one only follows ("?" if unknown)
 	err      error
 }
 
@@ -104,6 +105,10 @@ type Model struct {
 
 	// machineUsage is the per-machine slot line for the status area.
 	machineUsage []dispatch.MachineUsage
+	// follower is set when another gh-hud owns dispatch: this one shows
+	// runs but never dispatches, merges or notifies. Its value is the
+	// owner's pid ("?" when unknown).
+	follower string
 
 	// readySeen dedupes maintainer-ready notifications: keyed by ref,
 	// rebuilt each fetch; the first fetch only seeds it.
@@ -220,8 +225,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.agents = msg.sessions
 			m.runs = msg.runs
 			m.machineUsage = msg.usage
-			m.notifyBlocked(msg.sessions)
-			m.notifyFinished(msg.runs)
+			m.follower = msg.follower
+			if m.follower == "" {
+				// The owner notifies; a follower would only repeat it.
+				m.notifyBlocked(msg.sessions)
+				m.notifyFinished(msg.runs)
+			}
 			m.refreshRunView()
 			if n := len(m.visibleAgents()); m.agentsSel >= n {
 				m.agentsSel = n - 1
@@ -663,7 +672,14 @@ func (m *Model) fetchAgents() tea.Cmd {
 		live, cancelLive := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancelLive()
 		usage := d.MachineUsage(live)
-		return agentsMsg{sessions: sessions, runs: d.Runs(live), usage: usage, err: err}
+		follower := ""
+		if own, pid := d.Owner(); !own {
+			follower = pid
+			if follower == "" {
+				follower = "?"
+			}
+		}
+		return agentsMsg{sessions: sessions, runs: d.Runs(live), usage: usage, follower: follower, err: err}
 	}
 }
 

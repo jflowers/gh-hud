@@ -95,3 +95,32 @@ func TestNotifyFinishedSeedsThenNotifies(t *testing.T) {
 		t.Errorf("notifications = %q", got)
 	}
 }
+
+func TestStageTagOnRow(t *testing.T) {
+	now := time.Now()
+	l := layoutFor(160)
+	it := model.Item{Kind: model.KindPR, Repo: "acme/r", Num: 960, Title: "stuck", URL: "u"}
+	cases := []struct {
+		st       dispatch.Stage
+		tag      string
+		diamond  bool
+		noTagFor bool
+	}{
+		{dispatch.Stage{Kind: dispatch.StageNext, Task: dispatch.TaskCI}, "▸ci", false, false},
+		{dispatch.Stage{Kind: dispatch.StageWait, Task: dispatch.TaskReview, Reason: "cooldown"}, "▸review wait", false, false},
+		{dispatch.Stage{Kind: dispatch.StageNeedsYou, Task: dispatch.TaskReview, Reason: "2/2 rounds"}, "▸you: review 2/2 rounds", true, false},
+		{dispatch.Stage{Kind: dispatch.StageMerge}, "▸merge", false, false},
+		{dispatch.Stage{Kind: dispatch.StageRunning, Task: dispatch.TaskCI}, "▸", false, true},
+	}
+	for _, c := range cases {
+		st := c.st
+		rc := rowCtx{now: now, stage: func(model.Item) dispatch.Stage { return st }}
+		plain := ansiRe.ReplaceAllString(renderRow(it, l, rc, false, false), "")
+		if got := strings.Contains(plain, c.tag); got == c.noTagFor {
+			t.Errorf("%+v: tag %q present=%v:\n%s", c.st, c.tag, got, plain)
+		}
+		if got := strings.Contains(plain, "◆"); got != c.diamond {
+			t.Errorf("%+v: ◆ present=%v:\n%s", c.st, got, plain)
+		}
+	}
+}

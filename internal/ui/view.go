@@ -71,6 +71,31 @@ type rowCtx struct {
 	bots *model.BotFilter
 	now  time.Time
 	runs map[string]dispatch.Run // ref → latest run
+	// stage is the row's place in the auto pipeline (nil without dispatch).
+	stage func(model.Item) dispatch.Stage
+}
+
+// titleTag is one colored tag after a row's title.
+type titleTag struct {
+	text  string
+	color lipgloss.Color
+}
+
+// stageTag renders a pipeline stage as a row tag: "▸ci" next up, "▸ci
+// wait" in cooldown, "▸you: review 2/2 rounds" stopped for a human,
+// "▸merge" armed. Running steps already show as the run tag.
+func stageTag(st dispatch.Stage) (titleTag, bool) {
+	switch st.Kind {
+	case dispatch.StageNext:
+		return titleTag{"▸" + string(st.Task), cComment}, true
+	case dispatch.StageWait:
+		return titleTag{"▸" + string(st.Task) + " wait", cDim}, true
+	case dispatch.StageNeedsYou:
+		return titleTag{"▸you: " + string(st.Task) + " " + st.Reason, cOrange}, true
+	case dispatch.StageMerge:
+		return titleTag{"▸merge", cGreen}, true
+	}
+	return titleTag{}, false
 }
 
 func renderRepo(p paint, repo string, w int) string {
@@ -88,12 +113,12 @@ func renderRepo(p paint, repo string, w int) string {
 	return p.text(cDim, owner) + p.text(cDim, "/") + p.text(cSubtle, name) + p.space(w-used)
 }
 
-func renderTitle(p paint, it model.Item, w int, runTag string, runColor lipgloss.Color) string {
+func renderTitle(p paint, it model.Item, w int, lead []titleTag) string {
 	var tags []string
 	tagW := 0
-	if runTag != "" {
-		tags = append(tags, p.text(runColor, runTag))
-		tagW += width(runTag) + 1
+	for _, t := range lead {
+		tags = append(tags, p.text(t.color, t.text))
+		tagW += width(t.text) + 1
 	}
 	for _, r := range visibleReasons(it) {
 		tags = append(tags, p.text(reasonColor(r), r))
@@ -172,10 +197,16 @@ func renderRow(it model.Item, l layout, rc rowCtx, selected, hover bool) string 
 	// attention marker: the row's own run outranks ready and
 	// waiting-on-you (agent state is per row, never per repo)
 	run, hasRun := rc.runs[it.Ref()]
+	var st dispatch.Stage
+	if rc.stage != nil {
+		st = rc.stage(it)
+	}
 	if hasRun && showRunTag(run, rc.now) && (run.Status == dispatch.RunBlocked || run.Status == dispatch.RunRunning ||
 		run.Status == dispatch.RunFailed || run.Status == dispatch.RunLeftWork) {
 		g, c := runGlyph(run.Status)
 		b.WriteString(p.text(c, g))
+	} else if st.Kind == dispatch.StageNeedsYou {
+		b.WriteString(p.text(cOrange, "◆"))
 	} else if it.Cats&model.CatReady != 0 {
 		b.WriteString(p.text(cGreen, "◆"))
 	} else if it.WaitingOn == "me" {
@@ -215,11 +246,15 @@ func renderRow(it model.Item, l layout, rc rowCtx, selected, hover bool) string 
 
 	b.WriteString(renderRepo(p, it.Repo, l.repoW))
 	b.WriteString(sp)
-	tag, tagColor := "", cDim
+	var lead []titleTag
 	if hasRun && showRunTag(run, rc.now) {
-		tag, tagColor = runTag(run, rc.now)
+		tag, tagColor := runTag(run, rc.now)
+		lead = append(lead, titleTag{tag, tagColor})
 	}
-	b.WriteString(renderTitle(p, it, l.titleW, tag, tagColor))
+	if t, ok := stageTag(st); ok {
+		lead = append(lead, t)
+	}
+	b.WriteString(renderTitle(p, it, l.titleW, lead))
 
 	if l.threads {
 		b.WriteString(sp)
@@ -425,6 +460,9 @@ func (m *Model) headerBar() string {
 	}
 	if s := fleetIndicatorText(p, m.fleetSnap); s != "" {
 		right = append(right, s)
+	}
+	if m.follower != "" {
+		right = append(right, p.text(cOrange, "read-only: dispatch owned by gh-hud pid "+m.follower))
 	}
 	if len(m.machineUsage) > 0 {
 		right = append(right, machineUsageText(p, m.machineUsage))
@@ -842,6 +880,10 @@ func (m *Model) View() string {
 			lines = append(lines, "", lipgloss.NewStyle().Foreground(cGreen).Render("   "+msg))
 		}
 		rc := rowCtx{me: m.me(), bots: m.bots, now: time.Now(), runs: latestRuns(m.runs)}
+		if m.disp != nil {
+			runs := m.runs
+			rc.stage = func(it model.Item) dispatch.Stage { return m.disp.Stage(it, runs) }
+		}
 		end := m.offset + maxRows
 		if end > len(vis) {
 			end = len(vis)
