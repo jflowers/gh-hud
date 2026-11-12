@@ -16,6 +16,13 @@ import (
 )
 
 // waitFor polls cond until it holds or the test times out.
+// autoBusy reports whether an auto pass is running.
+func (h *Hub) autoBusy() bool {
+	h.autoMu.Lock()
+	defer h.autoMu.Unlock()
+	return h.autoRunning
+}
+
 func waitFor(t *testing.T, what string, cond func() bool) {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
@@ -195,6 +202,8 @@ func TestAutoPassOncePerFetchAndNotices(t *testing.T) {
 	d := &fakeDisp{owner: true, autoMsgs: []string{"dispatched ci acme/r#1", "merged acme/r#2"}}
 	h, _ := start(t, Options{Fetch: f.fetch, Dispatcher: d})
 	_, events := h.Subscribe(t.Context())
+	// Let the first pass finish: a fetch landing mid-pass skips its pass.
+	waitFor(t, "first auto pass", func() bool { return d.get(func(d *fakeDisp) int { return d.autoDispat }) == 1 && !h.autoBusy() })
 	_ = h.Refresh(context.Background())
 	waitFor(t, "two auto passes", func() bool { return d.get(func(d *fakeDisp) int { return d.autoDispat }) == 2 })
 	select {
@@ -246,19 +255,23 @@ func TestAgentsAlertOnlyWhenOwner(t *testing.T) {
 		d.mu.Lock()
 		d.runs = []dispatch.Run{{ID: "a", Task: dispatch.TaskCI, Ref: "acme/r#1", Workspace: "r", Status: dispatch.RunOK}}
 		d.mu.Unlock()
+		alerts := func() int { mu.Lock(); defer mu.Unlock(); return len(got) }
 		at := h.Snapshot().AgentsAt
 		_ = h.RefreshAgents(context.Background())
 		waitFor(t, "agents refresh", func() bool { return h.Snapshot().AgentsAt.After(at) })
 
-		s := h.Snapshot()
-		mu.Lock()
-		alerts := len(got)
-		mu.Unlock()
-		if owner && (alerts != 1 || s.Follower != "") {
-			t.Errorf("owner: alerts=%d follower=%q, want 1 and \"\"", alerts, s.Follower)
+		if owner {
+			// The alert is posted just after the snapshot updates.
+			waitFor(t, "owner alert", func() bool { return alerts() == 1 })
+		} else {
+			time.Sleep(50 * time.Millisecond)
 		}
-		if !owner && (alerts != 0 || s.Follower != "4242") {
-			t.Errorf("follower: alerts=%d follower=%q, want 0 and 4242", alerts, s.Follower)
+		s := h.Snapshot()
+		if owner && (alerts() != 1 || s.Follower != "") {
+			t.Errorf("owner: alerts=%d follower=%q, want 1 and \"\"", alerts(), s.Follower)
+		}
+		if !owner && (alerts() != 0 || s.Follower != "4242") {
+			t.Errorf("follower: alerts=%d follower=%q, want 0 and 4242", alerts(), s.Follower)
 		}
 	}
 }
