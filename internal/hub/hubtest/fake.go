@@ -25,6 +25,11 @@ type Fake struct {
 	Record    dispatch.Record
 	Run       dispatch.Run
 	Pos       int // Enqueue's position and MoveQueued's index
+
+	// Snaps and Events, when set, are what Subscribe returns, so a test
+	// can stream; otherwise Subscribe's channels never deliver.
+	Snaps  chan hub.Snapshot
+	Events chan hub.Event
 }
 
 var _ hub.Backend = (*Fake)(nil)
@@ -64,9 +69,12 @@ func (f *Fake) Snapshot() hub.Snapshot {
 	return f.Snap
 }
 
-// Subscribe returns channels that never deliver; tests feed snapshots to
-// the client directly.
+// Subscribe returns Snaps and Events, or channels that never deliver
+// (tests then feed snapshots to the client directly).
 func (f *Fake) Subscribe(context.Context) (<-chan hub.Snapshot, <-chan hub.Event) {
+	if f.Snaps != nil {
+		return f.Snaps, f.Events
+	}
 	return make(chan hub.Snapshot), make(chan hub.Event)
 }
 

@@ -3,11 +3,13 @@ module github.com/jflowers/gh-hud
 go 1.26.11
 
 require (
+	connectrpc.com/connect v1.21.1
 	github.com/BurntSushi/toml v1.6.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/mattn/go-runewidth v0.0.31
 	github.com/muesli/termenv v0.16.0
+	google.golang.org/protobuf v1.36.12
 )
 
 require (
