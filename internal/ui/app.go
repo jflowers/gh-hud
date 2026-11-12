@@ -552,6 +552,17 @@ func (m *Model) setFilter(f model.Cats) {
 	m.clampCursor()
 }
 
+// statusBad reports whether the status line says something went wrong
+// (drawn red with ✗ rather than green with ✓).
+func (m *Model) statusBad() bool {
+	for _, w := range []string{"failed", "can't", "lost the hub"} {
+		if strings.Contains(m.statusMsg, w) {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *Model) flash(msg string) {
 	m.statusMsg = msg
 	m.statusAt = time.Now()

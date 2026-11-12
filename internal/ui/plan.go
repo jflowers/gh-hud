@@ -189,7 +189,7 @@ func (m *Model) planView() string {
 
 func (m *Model) planFooter() string {
 	if m.statusMsg != "" && time.Since(m.statusAt) < 4*time.Second {
-		if strings.Contains(m.statusMsg, "failed") || strings.Contains(m.statusMsg, "can't") {
+		if m.statusBad() {
 			return lipgloss.NewStyle().Foreground(cRed).Render(" ✗ " + m.statusMsg)
 		}
 		return lipgloss.NewStyle().Foreground(cGreen).Render(" ✓ " + m.statusMsg)

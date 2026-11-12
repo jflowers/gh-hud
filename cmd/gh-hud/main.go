@@ -6,10 +6,15 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"os"
+	"os/signal"
+	"path/filepath"
+	"syscall"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/jflowers/gh-hud/internal/api"
 	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/dispatch"
 	"github.com/jflowers/gh-hud/internal/fleet"
@@ -28,17 +33,42 @@ func main() {
 }
 
 // run is main with an exit code, so deferred cleanup (the dispatch lock,
-// the fleet loop) runs before the process exits.
+// the fleet loop, the hub socket) runs before the process exits.
+//
+// gh-hud runs one hub per state directory, reachable on its socket:
+//
+//   - gh-hud serve runs the hub alone (for launchd, or a spare terminal).
+//   - gh-hud attaches the TUI to the hub on the socket when one answers.
+//   - Otherwise gh-hud runs the hub in-process and serves the socket, so a
+//     second gh-hud (or another client) attaches to this one. Quitting it
+//     stops the hub; attached clients wait for the next one.
 func run() int {
+	args := os.Args[1:]
+	serve := len(args) > 0 && args[0] == "serve"
+	if serve {
+		args = args[1:]
+	}
 	var (
 		configPath = flag.String("config", config.DefaultPath(), "config file path")
 		once       = flag.Bool("once", false, "fetch once and print a table, then exit")
 		widthFlag  = flag.Int("width", 120, "table width for --once")
 		showVer    = flag.Bool("version", false, "print version and exit")
 		snapshot   = flag.String("snapshot", "", "render one frame at WxH to stdout (for screenshots)")
-		stateDir   = flag.String("state-dir", "", "dispatch/fleet state directory (default ~/.local/state/gh-hud)")
+		stateDir   = flag.String("state-dir", "", "dispatch/fleet state directory, and the hub socket's (default ~/.local/state/gh-hud)")
+		inProcess  = flag.Bool("no-attach", false, "run a hub in this process even when one is serving (it then only follows)")
 	)
-	flag.Parse()
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "usage: gh-hud [flags]        the dashboard\n       gh-hud serve [flags]  the hub alone, on its socket\n\nflags:\n")
+		flag.PrintDefaults()
+	}
+	if err := flag.CommandLine.Parse(args); err != nil {
+		return 2
+	}
+	if flag.NArg() > 0 {
+		fmt.Fprintf(os.Stderr, "gh-hud: unexpected argument %q\n", flag.Arg(0))
+		flag.Usage()
+		return 2
+	}
 
 	if *showVer {
 		fmt.Println("gh-hud", version)
@@ -50,9 +80,157 @@ func run() int {
 		fmt.Fprintln(os.Stderr, "config:", err)
 		return 1
 	}
-
 	client := gh.New()
 
+	if *snapshot != "" {
+		var w, h int
+		if _, err := fmt.Sscanf(*snapshot, "%dx%d", &w, &h); err != nil || w < 20 || h < 5 {
+			fmt.Fprintln(os.Stderr, "snapshot: want WxH, e.g. 160x40")
+			return 2
+		}
+		res := model.FetchAll(context.Background(), client, cfg)
+		fmt.Println(ui.Snapshot(cfg, res, w, h))
+		return 0
+	}
+	if *once {
+		return runOnce(cfg, client, *widthFlag)
+	}
+
+	dir, err := resolveStateDir(*stateDir)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "state dir:", err)
+		return 1
+	}
+	sock := filepath.Join(dir, api.SocketName)
+	if serve {
+		return runServe(cfg, client, dir, sock)
+	}
+
+	if !*inProcess {
+		if c := attach(sock); c != nil {
+			return runTUI(cfg, c)
+		}
+	}
+	h, cleanup := buildHub(cfg, client, dir)
+	defer cleanup()
+	ctx, stop := context.WithCancel(context.Background())
+	served := make(chan struct{})
+	defer func() {
+		stop()
+		<-served // the socket is removed before we exit
+	}()
+	go h.Run(ctx)
+	go func() {
+		defer close(served)
+		if *inProcess {
+			return
+		}
+		l, err := api.ListenUnix(sock)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "hub socket:", err)
+			return
+		}
+		if err := api.Serve(ctx, l, h); err != nil {
+			fmt.Fprintln(os.Stderr, "hub socket:", err)
+		}
+	}()
+	return runTUI(cfg, h)
+}
+
+// resolveStateDir applies the default state directory.
+func resolveStateDir(dir string) (string, error) {
+	if dir != "" {
+		return dir, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".local", "state", "gh-hud"), nil
+}
+
+// attach returns a client for the hub on sock, or nil when none answers.
+func attach(sock string) *api.Client {
+	if _, err := os.Stat(sock); err != nil {
+		return nil
+	}
+	c := api.DialUnix(sock)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if _, err := c.Fetch(ctx); err != nil {
+		return nil
+	}
+	return c
+}
+
+func runTUI(cfg *config.Config, b hub.Backend) int {
+	p := tea.NewProgram(ui.New(cfg, b),
+		tea.WithAltScreen(),
+		tea.WithMouseAllMotion(),
+	)
+	if _, err := p.Run(); err != nil {
+		fmt.Fprintln(os.Stderr, "run:", err)
+		return 1
+	}
+	return 0
+}
+
+// runServe runs the hub with no TUI until SIGINT or SIGTERM, logging its
+// notices and alerts to stderr.
+func runServe(cfg *config.Config, client *gh.Client, dir, sock string) int {
+	// Claim the socket first: a second hub must not touch the dispatch lock.
+	l, err := api.ListenUnix(sock)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "gh-hud serve:", err)
+		return 1
+	}
+	h, cleanup := buildHub(cfg, client, dir)
+	defer cleanup()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	go h.Run(ctx)
+	go logEvents(ctx, h)
+	log.Printf("gh-hud %s: hub serving on %s (pid %d)", version, sock, os.Getpid())
+	if err := api.Serve(ctx, l, h); err != nil {
+		log.Printf("serve: %v", err)
+		return 1
+	}
+	log.Print("gh-hud: hub stopped")
+	return 0
+}
+
+// logEvents writes the hub's notices and alerts to the log, and says when
+// the hub only follows another gh-hud.
+func logEvents(ctx context.Context, h *hub.Hub) {
+	snaps, events := h.Subscribe(ctx)
+	follower := ""
+	for {
+		select {
+		case s, ok := <-snaps:
+			if !ok {
+				return
+			}
+			if s.Follower != follower {
+				follower = s.Follower
+				if follower != "" {
+					log.Printf("following gh-hud pid %s, which owns dispatch: this hub won't dispatch, merge or notify", follower)
+				} else {
+					log.Print("this hub owns dispatch")
+				}
+			}
+		case e, ok := <-events:
+			if !ok {
+				return
+			}
+			log.Print(e.Text)
+		}
+	}
+}
+
+// buildHub builds the hub over this machine's dispatcher and fleet (each
+// nil when off or failing to start). cleanup releases the dispatch lock.
+func buildHub(cfg *config.Config, client *gh.Client, stateDir string) (h *hub.Hub, cleanup func()) {
+	cleanup = func() {}
 	idx, idxErr := ghws.Discover(cfg.GhwsRoot)
 	if idxErr != nil {
 		idx = nil
@@ -92,14 +270,14 @@ func run() int {
 		Machines:      machines,
 		LocalIndex:    idx,
 		InstancesOnly: cfg.DispatchInstancesOnly,
-		StateDir:      *stateDir,
+		StateDir:      stateDir,
 		LearningsPR:   cfg.LearningsPR,
 	}
 	disp, dispErr := dispatch.New(dispOpts)
 	if dispErr != nil {
 		disp = nil
 	} else {
-		defer disp.Close()
+		cleanup = func() { disp.Close() }
 	}
 
 	var fleetCoord *fleet.Coordinator
@@ -126,28 +304,13 @@ func run() int {
 		if disp != nil {
 			sched = disp
 		}
-		c, err := fleet.New(fleet.Options{Config: cfg.Fleet, Machines: fleetMachines, Scheduler: sched, StateDir: *stateDir})
+		c, err := fleet.New(fleet.Options{Config: cfg.Fleet, Machines: fleetMachines, Scheduler: sched, StateDir: stateDir})
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "fleet:", err)
 		} else {
 			// The hub runs rollouts, and only when it owns dispatch.
 			fleetCoord = c
 		}
-	}
-
-	if *snapshot != "" {
-		var w, h int
-		if _, err := fmt.Sscanf(*snapshot, "%dx%d", &w, &h); err != nil || w < 20 || h < 5 {
-			fmt.Fprintln(os.Stderr, "snapshot: want WxH, e.g. 160x40")
-			return 2
-		}
-		res := model.FetchAll(context.Background(), client, cfg)
-		fmt.Println(ui.Snapshot(cfg, res, w, h))
-		return 0
-	}
-
-	if *once {
-		return runOnce(cfg, client, *widthFlag)
 	}
 
 	hopts := hub.Options{
@@ -162,20 +325,7 @@ func run() int {
 	if fleetCoord != nil {
 		hopts.Fleet = fleetCoord
 	}
-	h := hub.New(hopts)
-	hubCtx, stopHub := context.WithCancel(context.Background())
-	defer stopHub()
-	go h.Run(hubCtx)
-
-	p := tea.NewProgram(ui.New(cfg, h),
-		tea.WithAltScreen(),
-		tea.WithMouseAllMotion(),
-	)
-	if _, err := p.Run(); err != nil {
-		fmt.Fprintln(os.Stderr, "run:", err)
-		return 1
-	}
-	return 0
+	return hub.New(hopts), cleanup
 }
 
 func runOnce(cfg *config.Config, client *gh.Client, width int) int {

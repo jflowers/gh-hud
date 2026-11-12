@@ -291,7 +291,7 @@ func wsDetail(h dispatch.CheckoutHealth, w int) []string {
 
 func (m *Model) workspacesFooter() string {
 	if m.statusMsg != "" && time.Since(m.statusAt) < 4*time.Second {
-		if strings.Contains(m.statusMsg, "failed") {
+		if m.statusBad() {
 			return lipgloss.NewStyle().Foreground(cRed).Render(" ✗ " + m.statusMsg)
 		}
 		return lipgloss.NewStyle().Foreground(cGreen).Render(" ✓ " + m.statusMsg)

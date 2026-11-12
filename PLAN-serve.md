@@ -54,24 +54,26 @@ remote TUI would silently lose it.
 
 ## Sequence
 
-1. **API library (2a).** Schema, generated code, converters, server,
+1. **API library (2a).** *(done, #26)* Schema, generated code, converters, server,
    client, unix-socket transport, and tests over a real socket: every
    command, error mapping, snapshot dedupe, events, a hub restart, a
    stale socket, and a real hub end to end. No behavior change: nothing
    serves yet.
-2. **`gh-hud serve` and attach (2b).**
+2. **`gh-hud serve` and attach (2b).** *(done)*
    - `gh-hud serve` runs a hub with no TUI and serves the socket.
    - `gh-hud` first tries the socket: if a hub answers, the TUI attaches
      to it. If not, it builds its hub in-process as today *and* serves
      the socket, so a second `gh-hud` (or the Mac app) attaches to the
      first instead of becoming a follower.
    - Follower mode stays as the fallback for an owner without a socket
-     (an older gh-hud), and goes away a release later.
+     (an older gh-hud, or `--no-attach`), and goes away a release later.
+   - `--once` and `--snapshot` no longer build a dispatcher, so they never
+     take the dispatch lock.
    - A launchd agent (`gh-hud serve`, `KeepAlive`) is documented, not
      installed, so the hub can run without a terminal.
-   - Open question for 2b: when the TUI that hosts the hub quits while
-     another client is attached, the hub goes with it (the other client
-     shows "lost the hub" and reconnects to whatever comes next). Running
-     `gh-hud serve` under launchd is the way to keep it up.
+   - Decided: when the TUI that hosts the hub quits while another client
+     is attached, the hub goes with it and nothing takes over on its own;
+     the other client shows "lost the hub" and reconnects to whatever hub
+     starts next. `gh-hud serve` under launchd keeps one up.
 3. **Later in Phase 2:** `buf breaking` against master in CI once a
    client outside this repo depends on the schema.
