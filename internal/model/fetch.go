@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -228,6 +229,29 @@ func FetchAll(ctx context.Context, c *gh.Client, cfg *config.Config) *FetchResul
 			res.Errors = append(res.Errors, SectionError{"notification-states", err})
 		}
 		items = dropClosed(items, closed)
+	}
+
+	// Failing checks on the base branch of each repo with your PRs, so a
+	// failure every PR inherits isn't treated as each PR's own.
+	var mine []string
+	for _, it := range items {
+		if it.Kind == KindPR && it.Cats&CatMy != 0 && !slices.Contains(mine, it.Repo) {
+			mine = append(mine, it.Repo)
+		}
+	}
+	if len(mine) > 0 {
+		sctx, cancel := context.WithTimeout(ctx, time.Duration(cfg.FetchTimeoutSecs)*time.Second)
+		base, err := FetchBaseChecks(sctx, c, mine)
+		cancel()
+		if err != nil {
+			res.Errors = append(res.Errors, SectionError{"base-checks", err})
+		}
+		for i := range items {
+			if items[i].Kind == KindPR {
+				b := base[items[i].Repo]
+				items[i].BaseFailing, items[i].BasePassing, items[i].BaseOID = b.Failing, b.Passing, b.OID
+			}
+		}
 	}
 
 	markReady(items, me, time.Duration(cfg.QueueWindowHours)*time.Hour, bots)

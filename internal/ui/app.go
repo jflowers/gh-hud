@@ -76,10 +76,15 @@ type Model struct {
 	searchText string
 	help       bool
 
-	actionMode bool
-	actionSel  int
-	actionItem model.Item
-	actions    []actionChoice
+	actionMode  bool
+	actionQueue bool // the menu queues the task instead of starting it
+	actionSel   int
+	actionItem  model.Item
+	actions     []actionChoice
+
+	// planMode is the Plan tab (p): what starts next, and your queue.
+	planMode bool
+	planSel  int
 
 	agentsMode bool
 	agents     []dispatch.Session
@@ -316,6 +321,9 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.actionMode {
 		return m.handleActionKey(msg)
 	}
+	if m.planMode {
+		return m.handlePlanKey(msg)
+	}
 	if m.agentsMode {
 		return m.handleAgentsKey(msg)
 	}
@@ -388,6 +396,12 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "a":
 		m.openAction()
+	case "+":
+		if it, ok := m.selected(); ok && m.disp != nil {
+			m.openActionFor(it, true)
+		}
+	case "p":
+		return m, m.switchTab("p")
 	case "i":
 		if m.disp != nil {
 			m.openRowRun()
@@ -428,7 +442,7 @@ func (m *Model) handleMouse(e tea.MouseEvent) (tea.Model, tea.Cmd) {
 	if logMouse(e) {
 		return m, nil
 	}
-	if m.help || m.actionMode || m.agentsMode || m.wsMode || m.fleetMode || m.fetchErr != "" {
+	if m.help || m.actionMode || m.planMode || m.agentsMode || m.wsMode || m.fleetMode || m.fetchErr != "" {
 		return m, nil
 	}
 	if e.IsWheel() {
@@ -715,8 +729,17 @@ func (m *Model) handleActionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.actionMode = false
 		if m.actionSel < len(m.actions) {
 			choice := m.actions[m.actionSel]
+			if m.actionQueue {
+				m.queueTask(choice.task, m.actionItem)
+				return m, nil
+			}
 			m.flash("dispatching " + string(choice.task) + " " + m.actionItem.Ref() + "…")
 			return m, m.dispatchCmd(choice)
+		}
+	case "+":
+		m.actionMode = false
+		if m.actionSel < len(m.actions) {
+			m.queueTask(m.actions[m.actionSel].task, m.actionItem)
 		}
 	}
 	return m, nil
@@ -821,8 +844,15 @@ func (m *Model) handleAgentsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // switchTab opens the tab bound to key from the Agents or Workspaces tab
 // (or, for 6 and 9, from the dashboard): a view tab, or a dashboard filter.
 func (m *Model) switchTab(key string) tea.Cmd {
-	m.agentsMode, m.wsMode = false, false
+	m.agentsMode, m.wsMode, m.planMode = false, false, false
 	switch key {
+	case "p":
+		if m.disp == nil {
+			return nil
+		}
+		m.planMode = true
+		m.planSel = 0
+		return nil
 	case "6":
 		if m.disp == nil {
 			return nil
@@ -906,14 +936,34 @@ func (m *Model) openAction() {
 		m.flash("dispatch unavailable")
 		return
 	}
-	it, ok := m.selected()
-	if !ok {
+	if it, ok := m.selected(); ok {
+		m.openActionFor(it, false)
+	}
+}
+
+// openActionFor builds the agent menu for an item. With queue set the menu
+// adds the chosen task to your queue, which needs no free checkout yet.
+func (m *Model) openActionFor(it model.Item, queue bool) {
+	if m.disp == nil {
+		m.flash("dispatch unavailable")
 		return
 	}
 	tasks := dispatch.MenuTasks(it)
 	m.actionItem = it
+	m.actionQueue = queue
 	m.actions = nil
 	m.actionSel = 0
+	if queue {
+		for _, t := range m.disp.QueueChoices(it) {
+			m.actions = append(m.actions, actionChoice{task: t, target: "your queue"})
+		}
+		if len(m.actions) == 0 {
+			m.flash("no agent tasks to queue for this row")
+			return
+		}
+		m.actionMode = true
+		return
+	}
 	for _, choice := range m.disp.MenuChoices(it) {
 		m.actions = append(m.actions, actionChoice{task: choice.Task, cmd: choice.Cmd, target: choice.Target})
 		if len(m.actions) >= 8 {

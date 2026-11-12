@@ -81,6 +81,7 @@ func (d *Dispatcher) owns() bool {
 	}
 	d.mu.Lock()
 	d.loadState()
+	d.loadQueueLocked()
 	d.mu.Unlock()
 	return true
 }
@@ -124,6 +125,9 @@ func (d *Dispatcher) refreshFollowerLocked() {
 	d.ownMu.Unlock()
 	if owner {
 		return
+	}
+	if st, err := os.Stat(filepath.Join(d.opts.StateDir, queueName)); err == nil && !st.ModTime().Equal(d.queueMod) {
+		d.loadQueueLocked()
 	}
 	st, err := os.Stat(filepath.Join(d.opts.StateDir, "state.json"))
 	if err != nil || st.ModTime().Equal(d.stateMod) {
@@ -180,7 +184,7 @@ const (
 	StageNone     StageKind = ""        // nothing automated applies
 	StageRunning  StageKind = "running" // an agent is working on it
 	StageNext     StageKind = "next"    // the next step will start when a slot frees
-	StageWait     StageKind = "wait"    // the step ran recently; waiting before another
+	StageWait     StageKind = "wait"    // the step ran recently, or waits for another PR's merge
 	StageNeedsYou StageKind = "you"     // the pipeline stopped; a human decides
 	StageMerge    StageKind = "merge"   // auto-merge is on; GitHub merges when the rules pass
 )
@@ -218,7 +222,7 @@ func pipelineTasks(it model.Item, tasks map[string]config.TaskConfig) []Task {
 
 // stageOf works out a PR's stage from its signals and its runs (newest
 // first, any refs). Pure: no I/O, so the UI can call it while rendering.
-func stageOf(it model.Item, runs []Run, tasks map[string]config.TaskConfig, am config.AutoMergeConfig, now time.Time) Stage {
+func stageOf(it model.Item, runs []Run, tasks map[string]config.TaskConfig, am config.AutoMergeConfig, tp *trainPlan, now time.Time) Stage {
 	ref := it.Ref()
 	if ref == "" || (it.Kind != model.KindPR && it.Kind != model.KindIssue) {
 		return Stage{}
@@ -241,11 +245,19 @@ func stageOf(it model.Item, runs []Run, tasks map[string]config.TaskConfig, am c
 	steps := pipelineTasks(it, tasks)
 	if len(steps) == 0 {
 		if it.Kind == model.KindPR && it.AutoMergeOn && mine(it) && am.Covers(it.Repo) {
-			return Stage{Kind: StageMerge}
+			return Stage{Kind: StageMerge, Reason: tp.mergeReason(it)}
 		}
 		return Stage{}
 	}
 	task := steps[0]
+	if task == TaskCI {
+		if fixed := tp.rearmFor(it); len(fixed) > 0 {
+			return Stage{Kind: StageWait, Task: task, Reason: rearmReason(fixed)}
+		}
+		if g, ok := tp.sharedOnly(it); ok {
+			return Stage{Kind: StageNeedsYou, Task: task, Reason: g.reason()}
+		}
+	}
 	tc := tasks[string(task)]
 	n := 0
 	var last *Run
@@ -274,6 +286,11 @@ func stageOf(it model.Item, runs []Run, tasks map[string]config.TaskConfig, am c
 				return Stage{Kind: StageNeedsYou, Task: task, Reason: "ran, nothing changed"}
 			}
 		}
+	}
+	if reason, ok := tp.hold(it, task); ok {
+		return Stage{Kind: StageWait, Task: task, Reason: reason}
+	}
+	if last != nil {
 		if now.Sub(last.StartedAt) < autoCooldown {
 			return Stage{Kind: StageWait, Task: task, Reason: "cooldown"}
 		}
@@ -284,7 +301,7 @@ func stageOf(it model.Item, runs []Run, tasks map[string]config.TaskConfig, am c
 // Stage reports a PR's stage in the auto pipeline from the given runs
 // (as Runs returns them). No I/O.
 func (d *Dispatcher) Stage(it model.Item, runs []Run) Stage {
-	return stageOf(it, runs, d.opts.Tasks, d.opts.AutoMerge, time.Now())
+	return stageOf(it, runs, d.opts.Tasks, d.opts.AutoMerge, d.trainSnapshot(), time.Now())
 }
 
 // Holds reports whether a PR has an agent step running or still to come,

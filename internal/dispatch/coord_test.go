@@ -183,7 +183,7 @@ func TestStageOf(t *testing.T) {
 		{"chore: not automated", pr(func(i *model.Item) { i.Merge, i.Title = "⚠️", "chore: bump" }), nil, Stage{}},
 	}
 	for _, c := range cases {
-		if got := stageOf(c.it, c.runs, tasks, am, now); got != c.want {
+		if got := stageOf(c.it, c.runs, tasks, am, nil, now); got != c.want {
 			t.Errorf("%s: got %+v want %+v", c.name, got, c.want)
 		}
 	}
@@ -191,7 +191,7 @@ func TestStageOf(t *testing.T) {
 	// A task that isn't automated is skipped, not held on.
 	manualCI := map[string]config.TaskConfig{"ci": {Command: "/c {num}"}, "review": {Command: "/v {num}", Auto: true}}
 	failingQueued := pr(func(i *model.Item) { i.CI, i.Cats = model.CIFail, model.CatMy|model.CatQueue })
-	if got := stageOf(failingQueued, nil, manualCI, am, now); got != (Stage{Kind: StageNext, Task: TaskReview}) {
+	if got := stageOf(failingQueued, nil, manualCI, am, nil, now); got != (Stage{Kind: StageNext, Task: TaskReview}) {
 		t.Errorf("manual ci: got %+v", got)
 	}
 }

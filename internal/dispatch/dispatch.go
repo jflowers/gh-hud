@@ -57,7 +57,7 @@ func InferTasks(it model.Item) []Task {
 		if it.Merge == "⚠️" {
 			tasks = append(tasks, TaskRebase)
 		}
-		if it.CI == model.CIFail {
+		if ciMatters(it) {
 			tasks = append(tasks, TaskCI)
 		}
 		if it.Cats&model.CatMy != 0 && (it.Review == "❌" || it.Thread > 0) {
@@ -96,6 +96,10 @@ func mine(it model.Item) bool {
 // the Queue.
 func MenuTasks(it model.Item) []Task {
 	tasks := InferTasks(it)
+	// Any failing check can be handed to an agent by hand, required or not.
+	if it.Kind == model.KindPR && it.CI == model.CIFail && !slices.Contains(tasks, TaskCI) {
+		tasks = append(tasks, TaskCI)
+	}
 	if it.Kind == model.KindPR && it.Cats&model.CatMy != 0 && !slices.Contains(tasks, TaskReview) {
 		tasks = append(tasks, TaskReview)
 	}
@@ -250,6 +254,12 @@ type Dispatcher struct {
 	ownMu    sync.Mutex
 	lock     *os.File   // held dispatch.lock; nil in a follower
 	autoMu   sync.Mutex // one auto pass at a time
+	train    *trainPlan // guarded by mu: merge order from the latest refresh (train.go)
+	// baseBroke is guarded by mu: repo → checks seen failing on its base
+	// branch that some PR of yours still fails (train.go noteBaseLocked).
+	baseBroke map[string]map[string]bool
+	queue     []QueueEntry // guarded by mu: tasks you queued (queue.go)
+	queueMod  time.Time    // queue.json mtime at the last load or save
 }
 
 // agentSnapshot is one machine's live herdr agent list.
@@ -339,6 +349,7 @@ func New(opts Options) (*Dispatcher, error) {
 		mergeTried: map[string]string{},
 	}
 	d.loadState()
+	d.loadQueueLocked()
 	d.acquireOwnership()
 	return d, nil
 }
@@ -746,6 +757,7 @@ func (d *Dispatcher) dispatchHerdr(ctx context.Context, task Task, it model.Item
 // dispatch; a pass that would overlap returns nothing. Returns
 // human-readable messages, one per dispatch or notice.
 func (d *Dispatcher) AutoDispatch(ctx context.Context, items []model.Item) []string {
+	d.updateTrain(items)
 	if d.opts.LocalIndex == nil && len(d.remoteMachines()) == 0 {
 		return nil
 	}
@@ -758,12 +770,24 @@ func (d *Dispatcher) AutoDispatch(ctx context.Context, items []model.Item) []str
 	}
 	runs := d.Runs(ctx)
 	var msgs []string
-	for _, it := range items {
-		ref := it.Ref()
-		if ref == "" || d.reserved(ref) {
+	started := map[string]bool{}
+	for _, row := range d.Plan(items, runs) {
+		ref := row.Item.Ref()
+		if ref == "" || started[ref] || d.reserved(ref) {
 			continue
 		}
-		st := d.Stage(it, runs)
+		if row.Queued > 0 {
+			if !row.Starts() {
+				continue
+			}
+			msg, ok := d.startQueued(ctx, row)
+			if msg != "" {
+				msgs = append(msgs, msg)
+			}
+			started[ref] = started[ref] || ok
+			continue
+		}
+		st := row.Stage
 		switch st.Kind {
 		case StageNext:
 		case StageNeedsYou:
@@ -774,13 +798,14 @@ func (d *Dispatcher) AutoDispatch(ctx context.Context, items []model.Item) []str
 		default:
 			continue
 		}
-		rec, err := d.Dispatch(ctx, st.Task, it, true)
+		rec, err := d.Dispatch(ctx, st.Task, row.Item, true)
 		if note, ok := d.autoFailNote(st.Task, ref, err); ok {
 			msgs = append(msgs, note)
 		}
 		if err != nil {
 			continue
 		}
+		started[ref] = true
 		msgs = append(msgs, fmt.Sprintf("auto %s %s → %s", st.Task, ref, recordTarget(rec)))
 	}
 	return msgs

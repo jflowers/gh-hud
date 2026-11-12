@@ -128,6 +128,9 @@ type AutoMergeConfig struct {
 	Repos     []string `toml:"repos"`      // single owner/name repos covered
 	Method    string   `toml:"method"`     // squash (default), merge or rebase
 	HoldLabel string   `toml:"hold_label"` // a PR with this label stays open
+	// UpdateMethod is how the merge train brings the next PR up to date in
+	// a repo that requires it: merge (default) or rebase.
+	UpdateMethod string `toml:"update_method"`
 }
 
 // Covers reports whether auto-merge applies to repo ("owner/name").

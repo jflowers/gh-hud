@@ -30,12 +30,19 @@ query($searchQuery: String!, $limit: Int!) {
         labels(first: 20) { nodes { name } }
         headRefName
         headRefOid
+        additions
+        deletions
+        changedFiles
+        files(first: 100) { nodes { path } }
         baseRef {
-          branchProtectionRule { requiresApprovingReviews requiredApprovingReviewCount }
+          branchProtectionRule { requiresApprovingReviews requiredApprovingReviewCount requiredStatusCheckContexts }
           rules(first: 30) {
             nodes {
               type
-              parameters { ... on PullRequestParameters { requiredApprovingReviewCount } }
+              parameters {
+                ... on PullRequestParameters { requiredApprovingReviewCount }
+                ... on RequiredStatusChecksParameters { requiredStatusChecks { context } }
+              }
             }
           }
         }
@@ -112,16 +119,28 @@ type prNode struct {
 	} `json:"labels"`
 	HeadRefName string `json:"headRefName"`
 	HeadRefOid  string `json:"headRefOid"`
-	BaseRef     *struct {
+	Additions   int    `json:"additions"`
+	Deletions   int    `json:"deletions"`
+	Changed     int    `json:"changedFiles"`
+	Files       struct {
+		Nodes []struct {
+			Path string `json:"path"`
+		} `json:"nodes"`
+	} `json:"files"`
+	BaseRef *struct {
 		Protection *struct {
-			RequiresReviews bool `json:"requiresApprovingReviews"`
-			Count           int  `json:"requiredApprovingReviewCount"`
+			RequiresReviews bool     `json:"requiresApprovingReviews"`
+			Count           int      `json:"requiredApprovingReviewCount"`
+			Checks          []string `json:"requiredStatusCheckContexts"`
 		} `json:"branchProtectionRule"`
 		Rules struct {
 			Nodes []struct {
 				Type       string `json:"type"`
 				Parameters *struct {
-					Count int `json:"requiredApprovingReviewCount"`
+					Count  int `json:"requiredApprovingReviewCount"`
+					Checks []struct {
+						Context string `json:"context"`
+					} `json:"requiredStatusChecks"`
 				} `json:"parameters"`
 			} `json:"nodes"`
 		} `json:"rules"`
@@ -247,6 +266,28 @@ func requiredReviews(n prNode) int {
 	return count
 }
 
+// requiredChecks is the set of check names the base branch's rules
+// require, from classic protection or rulesets.
+func requiredChecks(n prNode) map[string]bool {
+	out := map[string]bool{}
+	if n.BaseRef == nil {
+		return out
+	}
+	if p := n.BaseRef.Protection; p != nil {
+		for _, c := range p.Checks {
+			out[c] = true
+		}
+	}
+	for _, r := range n.BaseRef.Rules.Nodes {
+		if r.Type == "REQUIRED_STATUS_CHECKS" && r.Parameters != nil {
+			for _, c := range r.Parameters.Checks {
+				out[c.Context] = true
+			}
+		}
+	}
+	return out
+}
+
 // BuildPRItem converts a search node into an Item, applying the enrichment
 // rules ported from pr-list.sh.
 func BuildPRItem(n prNode, me string, bots *BotFilter) Item {
@@ -270,6 +311,15 @@ func BuildPRItem(n prNode, me string, bots *BotFilter) Item {
 		RequiredReviews:  requiredReviews(n),
 		AutoMergeOn:      n.AutoMerge != nil,
 		AutoMergeAllowed: n.Repo.AutoMergeOK,
+		Size:             n.Additions + n.Deletions,
+	}
+	// The file list is only complete when every changed file fits in the
+	// page; a partial list would hide overlaps, so leave it unknown.
+	if len(n.Files.Nodes) == n.Changed {
+		it.Files = make([]string, 0, n.Changed)
+		for _, f := range n.Files.Nodes {
+			it.Files = append(it.Files, f.Path)
+		}
 	}
 
 	// CI rollup (ci_emoji in pr-list).
@@ -279,6 +329,14 @@ func BuildPRItem(n prNode, me string, bots *BotFilter) Item {
 	}
 	it.CI = CIEmoji(checks)
 	it.CC = CCEmoji(checks)
+	required := requiredChecks(n)
+	it.ChecksRequired = len(required) > 0
+	it.FailingChecks = FailingChecks(checks)
+	for _, name := range it.FailingChecks {
+		if required[name] {
+			it.RequiredFails = append(it.RequiredFails, name)
+		}
+	}
 
 	// Human vs bot reviews (review_emoji in pr-list).
 	var human, bot []reviewNode

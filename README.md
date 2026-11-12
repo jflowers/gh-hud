@@ -36,14 +36,15 @@ never reach gh-hud. iTerm2 reports ⌘ as the meta bit, which is how
 sends (clicks do nothing in that mode).
 
 Keys: `j/k` move · `enter/o` open · `y` copy `owner/repo#N` · `Y` copy URL ·
-`r` refresh · `a` agent actions · `i` row's last run · `6` Agents tab ·
-`9` Workspaces tab · `F` fleet rollout · `1-5`/`7-8` filter section ·
+`r` refresh · `a` agent actions · `+` queue an agent task · `p` Plan ·
+`i` row's last run · `6` Agents tab · `9` Workspaces tab · `F` fleet rollout · `1-5`/`7-8` filter section ·
 `0` all · `/` search · `?` help · `q` quit.
 
 ## Sections (header tabs, keys 0-9)
 
-Tabs `6` (Agents) and `9` (Workspaces) are views of their own, described
-under [Agent dispatch](#agent-dispatch); the rest filter the dashboard.
+Tabs `6` (Agents), `9` (Workspaces) and `p` (Plan) are views of their own,
+described under [Agent dispatch](#agent-dispatch) and
+[Plan and your queue](#plan-and-your-queue); the rest filter the dashboard.
 
 - **Review** — open PRs in your orgs where your review is requested or you're assigned
 - **Mine** — your open PRs in your orgs (set `my_prs_everywhere = true` for all of GitHub)
@@ -87,7 +88,8 @@ ghws checkout of that repo (workspace root: `$GHWS_ROOT`, default
 `~/Projects/github`; instance whose branch matches the PR's head branch is
 preferred). The offered tasks follow the row's signals (see
 [Tasks](#tasks) for each one's trigger and command): merge conflict →
-rebase, failing CI → fix, changes requested on your PR → address feedback,
+rebase, a failing required check → fix (see
+[Coordination](#coordination)), changes requested on your PR → address feedback,
 PR in the review queue → review, issue → implement. Your own PRs also offer
 review on request (never auto-dispatched outside `unbound-force`;
 `/uf.review-pr` posts the verdict as a comment, since GitHub rejects approving
@@ -300,6 +302,37 @@ competing over it:
   out of rounds, or its last run on the PR's current state failed, left
   work, or changed nothing. gh-hud flashes that once; `a` still starts any
   task by hand. Tasks without `auto` are skipped, not waited on.
+- **Merge train.** Your own PRs in each repo are ordered closest to merge
+  first: ready to merge, approved but needing a fix, waiting on review,
+  changes requested, draft; then smaller, then older. Auto-dispatch gives
+  free agents to your PRs in that order (other people's PRs keep their
+  place). A rebase or review waits while another of your PRs in the repo
+  that changes a file in common (or whose files are unknown) has auto-merge
+  on and is ready to merge, because that merge would undo it; fixing checks
+  and answering feedback don't wait. In a repo that requires branches to be
+  up to date, only the next PR to merge is updated, with GitHub's update
+  branch (`update_method`, as your login, in repos `[auto_merge]` covers);
+  the rest wait their turn instead of being updated after every merge.
+- **Required checks only.** Where the base branch requires checks, only a
+  failing required check starts a `ci` agent; another failing check doesn't
+  block the merge, so it doesn't start one (the row still shows ❌, and `a`
+  still offers `ci`). A repo that requires no checks can't tell them apart,
+  so any failure counts there.
+- **Shared failures.** A check that also fails on the base branch's latest
+  commit, or fails on two or more of your PRs in the repo, has one cause
+  outside each PR. Instead of a `ci` agent per PR, each fixing it again and
+  conflicting with the others, a PR whose only failures are shared stops at
+  "needs you", once for the group: `▸you: ci shared: OSV-Scanner (main
+  too)`. A PR with a failure of its own still gets its agent.
+- **Fixed on main.** A PR's checks only run again when the PR changes, so
+  after the base branch is fixed the PRs would keep their old failures.
+  Once the base branch passes a shared check again, gh-hud brings each PR
+  still failing it up to date with GitHub's update-branch, as your gh login
+  (no agent), and its checks rerun on top of the fix: `▸ci update: main
+  fixed OSV-Scanner`. This needs `auto_merge` to cover the repo. Each PR
+  commit is tried once per base commit. A conflict goes to a `rebase` as
+  usual, and a PR that already had the fix gets a `ci` agent, since its
+  failure is its own.
 
 Each row shows its stage after the run tag:
 
@@ -307,8 +340,52 @@ Each row shows its stage after the run tag:
 |---|---|
 | `▸ci` | the next step, starting when a slot frees |
 | `▸ci wait` | the step ran in the last 30 minutes; it waits before another round |
+| `▸rebase after #12` | the step waits for #12, which changes the same files, to merge |
 | `▸you: review 2/2 rounds` | the pipeline stopped (orange `◆`); the reason follows the task |
+| `▸you: ci shared: Lint (3 PRs)` | the failing check is shared; one fix is needed, not one per PR |
+| `▸ci update: main fixed Lint` | main fixed the failing check; gh-hud updates the PR so its checks rerun |
 | `▸merge` | auto-merge is on; GitHub merges when the rules pass |
+| `▸merge updating` | next to merge in a repo that requires up-to-date branches; gh-hud updated it |
+| `▸merge after #12` | behind main; it's updated once #12 has merged |
+
+### Plan and your queue
+
+`p` opens the Plan: what agents start next, in the order they start, and
+what's running, waiting, stopped and merging below that. It draws the same
+plan the auto pass follows, so the numbered rows start in that order as
+slots free (the header shows the slots).
+
+```
+    3 start next  ·  slots local 2/3 · lap1 0/2 · lap2 0/4
+    # task      item                    title                         status
+  ── your queue ──────────────────────────────────────────────────────────────
+    1 review    uf/dewey#177            fix(review): use the reply…   next free slot
+    2 rebase    uf/unbound-force#1006   fix(doctor,scaffold): …       waits: ci agent on it
+  ── auto, next ──────────────────────────────────────────────────────────────
+    3 review    uf/unbound-force#1004   fix(review-dispatch): …       next free slot
+  ── waiting ─────────────────────────────────────────────────────────────────
+      rebase    uf/gaze#330             fix(cli): …                   after #326
+  ── needs you ───────────────────────────────────────────────────────────────
+      review    uf/dewey#163            feat: resolve bare compiled…  2/2 rounds
+```
+
+Your queue goes first. `+` on any dashboard row, or on a Plan row, queues an
+agent task (on the dashboard it asks which task; in the `a` menu, `+` queues
+the selected task instead of starting it now). Queue as many as you like:
+
+- **Order:** `J`/`K` move the selected queued task later or earlier, `x`
+  removes it.
+- **Starting:** a queued task starts as if you had pressed `a` when a slot
+  frees, so it runs even where the auto pipeline would wait or has stopped
+  (out of rounds, held for a merge, a shared failure). One agent per PR and
+  the machines' slots still apply: a queued task on a PR with an agent
+  working waits for it. If it can't start (no idle checkout, a dirty one),
+  it stays queued with the reason, flashed once.
+- **Precedence:** a PR with a task in your queue gets nothing else
+  automatically, and auto-merge doesn't arm or merge it, until that task has
+  started.
+- **Persistence:** the queue is saved in `queue.json` in the state dir, so it
+  survives a restart. Only the gh-hud that owns dispatch edits it.
 
 ## Configuring dispatch
 
@@ -331,7 +408,7 @@ orgs a worker serves is also decided by which workspaces you create on it.
 | Task | Default command | Offered on (`a`, and what `auto` dispatches for) |
 |---|---|---|
 | `rebase` | `/uf.rebase-pr {num}` | any listed PR with a merge conflict |
-| `ci` | `/uf.fix-ci {num}` | any listed PR with failing checks |
+| `ci` | `/uf.fix-ci {num}` | any listed PR with a failing required check (any failing check where none are required) |
 | `feedback` | `/uf.address-feedback {num}` | your PRs with changes requested or unresolved review threads |
 | `review` | `/uf.review-pr {num}` | PRs in the Queue (`8`): others' PRs ready for review, and your own in `unbound-force`. Also offered on your own PRs elsewhere, never auto-dispatched there. Your `unbound-force` PRs run as `uf-divisor` (see [Review identity](#review-identity)) |
 | `issue` | `/uf.run-pipeline-plan #{num}` | issues assigned to you or mentioning you |
@@ -533,6 +610,7 @@ enabled = true
 repos = ["unbound-force/dewey"]  # single repos; orgs = [...] covers whole orgs
 method = "squash"                # squash (default), merge or rebase
 hold_label = "hold"              # default
+update_method = "merge"          # how the merge train updates the next PR: merge (default) or rebase
 ```
 
 "Done" is whatever the branch rules on the base branch require, so that's
@@ -678,6 +756,7 @@ orgs = []                  # repo owners covered
 repos = []                 # single owner/name repos covered
 method = "squash"          # squash, merge or rebase
 hold_label = "hold"        # a PR with this label stays open
+update_method = "merge"    # merge train's branch update: merge or rebase
 
 # GitOps fleet rollout (see "Fleet rollout (GitOps)" above). Machines need
 # a fleet-apply script on PATH (chezmoi dotfiles checkout).

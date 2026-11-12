@@ -1,6 +1,7 @@
 package model
 
 import (
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -84,6 +85,35 @@ func (c checkContext) verdict() string {
 
 // CIEmoji ports pr-list's ci_emoji: fail beats pending beats ok; no checks
 // at all means "⏳". The "dispatch / dispatch" check is ignored.
+// FailingChecks lists the names of the checks that failed, in order,
+// skipping the same checks CIEmoji skips.
+func FailingChecks(checks []checkContext) []string {
+	var out []string
+	for _, c := range checks {
+		if c.label() == "dispatch / dispatch" || (c.Status == "" && c.State == "") {
+			continue
+		}
+		if c.verdict() == "fail" && !slices.Contains(out, c.label()) {
+			out = append(out, c.label())
+		}
+	}
+	return out
+}
+
+// PassingChecks returns the names of checks that passed.
+func PassingChecks(checks []checkContext) []string {
+	var out []string
+	for _, c := range checks {
+		if c.label() == "dispatch / dispatch" || (c.Status == "" && c.State == "") {
+			continue
+		}
+		if c.verdict() == "ok" && !slices.Contains(out, c.label()) {
+			out = append(out, c.label())
+		}
+	}
+	return out
+}
+
 func CIEmoji(checks []checkContext) CIState {
 	var sawFail, sawPending bool
 	counted := 0

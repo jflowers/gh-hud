@@ -89,10 +89,16 @@ func stageTag(st dispatch.Stage) (titleTag, bool) {
 	case dispatch.StageNext:
 		return titleTag{"▸" + string(st.Task), cComment}, true
 	case dispatch.StageWait:
+		if st.Reason != "" && st.Reason != "cooldown" {
+			return titleTag{"▸" + string(st.Task) + " " + st.Reason, cDim}, true
+		}
 		return titleTag{"▸" + string(st.Task) + " wait", cDim}, true
 	case dispatch.StageNeedsYou:
 		return titleTag{"▸you: " + string(st.Task) + " " + st.Reason, cOrange}, true
 	case dispatch.StageMerge:
+		if st.Reason != "" {
+			return titleTag{"▸merge " + st.Reason, cGreen}, true
+		}
 		return titleTag{"▸merge", cGreen}, true
 	}
 	return titleTag{}, false
@@ -346,6 +352,7 @@ var tabs = []tab{
 	{"Ready", model.CatReady, cGreen, "7", ""},
 	{"Queue", model.CatQueue, cCyan, "8", ""},
 	{"Workspaces", 0, cGreen, "9", "workspaces"},
+	{"Plan", 0, cMagenta, "p", "plan"},
 }
 
 func shortDur(d time.Duration) string {
@@ -424,8 +431,10 @@ func (m *Model) headerBar() string {
 				n++
 			}
 		}
-		active := !m.agentsMode && !m.wsMode && m.filter == t.cat
+		active := !m.agentsMode && !m.wsMode && !m.planMode && m.filter == t.cat
 		switch t.view {
+		case "plan":
+			n, active = m.planStarting(), m.planMode
 		case "agents":
 			n, active = m.runningAgents(), m.agentsMode
 		case "workspaces":
@@ -529,6 +538,8 @@ func (m *Model) footer() string {
 		"y/Y", "ref/url",
 		"r", "refresh",
 		"a", "agent",
+		"+", "queue",
+		"p", "plan",
 		"i", "run",
 		"6", "agents",
 	}
@@ -572,6 +583,8 @@ func (m *Model) helpView() string {
 		line("/", "find (esc clears)"),
 		line("r", "refresh now"),
 		line("a", "agent actions for row"),
+		line("+", "queue an agent task for row"),
+		line("p", "plan: what starts next; J K reorder, x unqueue"),
 		line("i", "last agent run for row"),
 		line("6", "agent sessions"),
 		line("9", "workspaces: which checkouts a run can use"),
@@ -639,8 +652,12 @@ func (m *Model) actionView() string {
 	if ref == "" {
 		ref = m.actionItem.URL
 	}
+	heading, hint := " dispatch agent ", "enter dispatch · + queue · j/k move · esc cancel"
+	if m.actionQueue {
+		heading, hint = " queue agent ", "enter queue · j/k move · esc cancel"
+	}
 	lines := []string{
-		title.Render(" dispatch agent ") + comment.Render(ref+" · "+truncatePlain(m.actionItem.Title, 48)),
+		title.Render(heading) + comment.Render(ref+" · "+truncatePlain(m.actionItem.Title, 48)),
 		"",
 	}
 	for i, a := range m.actions {
@@ -650,9 +667,13 @@ func (m *Model) actionView() string {
 			marker = sel.Render("▶ ")
 			task = sel.Render(string(a.task))
 		}
-		lines = append(lines, marker+task+comment.Render(" "+a.cmd+"  ·  "+a.target))
+		detail := a.target
+		if a.cmd != "" {
+			detail = a.cmd + "  ·  " + a.target
+		}
+		lines = append(lines, marker+task+comment.Render(" "+detail))
 	}
-	lines = append(lines, "", comment.Render("enter dispatch · j/k move · esc cancel"))
+	lines = append(lines, "", comment.Render(hint))
 
 	box := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
@@ -852,6 +873,9 @@ func (m *Model) View() string {
 	}
 	if m.actionMode {
 		return m.actionView()
+	}
+	if m.planMode {
+		return m.planView()
 	}
 	if m.agentsMode {
 		return m.agentsView()

@@ -76,11 +76,18 @@ func autoMergeAction(it model.Item, cfg config.AutoMergeConfig) mergeAction {
 // once, so a refused call waits for the PR to change instead of repeating
 // every refresh.
 func (d *Dispatcher) AutoMerge(ctx context.Context, items []model.Item) []string {
+	d.updateTrain(items)
 	cfg := d.opts.AutoMerge
 	if !cfg.Enabled || !d.owns() {
 		return nil
 	}
 	var runs []Run
+	allRuns := func() []Run {
+		if runs == nil {
+			runs = d.Runs(ctx)
+		}
+		return runs
+	}
 	var msgs []string
 	for _, it := range items {
 		action := autoMergeAction(it, cfg)
@@ -91,10 +98,7 @@ func (d *Dispatcher) AutoMerge(ctx context.Context, items []model.Item) []string
 		// Merge is the pipeline's last step: while an agent is on the PR or
 		// another step is due, don't arm or merge it. Disabling is never held.
 		if action != mergeDisable {
-			if runs == nil {
-				runs = d.Runs(ctx)
-			}
-			if d.reserved(ref) || d.Stage(it, runs).Holds() {
+			if d.reserved(ref) || d.queuedRef(ref) || d.Stage(it, allRuns()).Holds() {
 				continue
 			}
 		}
@@ -121,7 +125,8 @@ func (d *Dispatcher) AutoMerge(ctx context.Context, items []model.Item) []string
 			msgs = append(msgs, "merged "+ref)
 		}
 	}
-	return msgs
+	msgs = append(msgs, d.updateHeads(ctx, items, allRuns)...)
+	return append(msgs, d.rearmBranches(ctx, allRuns)...)
 }
 
 func (d *Dispatcher) applyMerge(ctx context.Context, action mergeAction, it model.Item, cfg config.AutoMergeConfig) error {
