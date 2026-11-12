@@ -45,9 +45,13 @@ jobs:
       matrix:
         # gh-hud targets macOS (pbcopy, osascript, iTerm2); Linux keeps the
         # core portable for remote workers and a future headless hub.
-        os: [macos-latest, ubuntu-latest]
+        # Pull requests test on Linux only: hosted macOS runners can queue
+        # past a job's time limit, which marks a PR red without running a
+        # test. macOS runs after merge to master (and on manual runs).
+        os: ${{ github.event_name == 'pull_request' && fromJSON('["ubuntu-latest"]') || fromJSON('["macos-latest", "ubuntu-latest"]') }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    # The limit counts time spent waiting for a runner; macOS waits longer.
+    timeout-minutes: ${{ matrix.os == 'macos-latest' && 45 || 15 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
