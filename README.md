@@ -811,8 +811,10 @@ notify = true              # herdr push notifications (phone via Ovis)
 
 CI (`.github/workflows/ci.yml`) runs on every pull request and on pushes to
 `master`. It checks that `go mod tidy` leaves no diff, runs golangci-lint
-(`.golangci.yml`), runs the tests with `-race` on macOS and Linux, and scans
-dependencies with govulncheck. Run the same checks locally with:
+(`.golangci.yml`), runs the tests with `-race`, and scans dependencies with
+govulncheck. Pull requests test on Linux; pushes to `master` test on macOS
+too, since hosted macOS runners can queue long enough to time out a PR check.
+Run the same checks locally with:
 
 ```
 make ci      # tidy, lint, test, vuln
