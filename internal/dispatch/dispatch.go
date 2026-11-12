@@ -297,7 +297,7 @@ func New(opts Options) (*Dispatcher, error) {
 		}
 		opts.StateDir = filepath.Join(home, ".local", "state", "gh-hud")
 	}
-	if err := os.MkdirAll(filepath.Join(opts.StateDir, "logs"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(opts.StateDir, "logs"), 0o700); err != nil {
 		return nil, fmt.Errorf("state dir: %w", err)
 	}
 	if opts.WatchCmd == "" {
@@ -591,7 +591,7 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 		}
 		// Local herdr server unreachable: fall through to the local runner.
 	}
-	rec, err := d.dispatchLocal(ctx, task, it, co, name, args, title, stash, auto)
+	rec, err := d.dispatchLocal(task, it, co, name, args, title, stash, auto)
 	if err == nil {
 		rec = d.setStartHead(rec, startHead)
 		d.invalidateScan(co.Dir)
@@ -616,7 +616,7 @@ func (d *Dispatcher) setStartHead(rec Record, head string) Record {
 
 // dispatchLocal launches a detached local opencode run (the fallback
 // runner when herdr is unavailable).
-func (d *Dispatcher) dispatchLocal(ctx context.Context, task Task, it model.Item, co ghws.Checkout, name string, args []string, title, stash string, auto bool) (Record, error) {
+func (d *Dispatcher) dispatchLocal(task Task, it model.Item, co ghws.Checkout, name string, args []string, title, stash string, auto bool) (Record, error) {
 	logPath := filepath.Join(d.opts.StateDir, "logs", fmt.Sprintf("%d-%s-%s.log", time.Now().Unix(), task, sanitize(it.Ref())))
 	f, err := os.Create(logPath)
 	if err != nil {
@@ -662,7 +662,7 @@ func (d *Dispatcher) dispatchLocal(ctx context.Context, task Task, it model.Item
 		code := 0
 		if err != nil {
 			code = 1
-			if ee, ok := err.(*exec.ExitError); ok {
+			if ee := (*exec.ExitError)(nil); errors.As(err, &ee) {
 				code = ee.ExitCode()
 			}
 		}
@@ -681,7 +681,7 @@ func (d *Dispatcher) dispatchHerdr(ctx context.Context, task Task, it model.Item
 		if !m.Local {
 			return Record{}, err // already classified unreachable
 		}
-		return Record{}, fmt.Errorf("%w (%v)", errHerdrDown, err)
+		return Record{}, fmt.Errorf("%w (%w)", errHerdrDown, err)
 	}
 	agents, _, err := herdrAgents(ctx, m)
 	if err != nil {
@@ -1433,7 +1433,7 @@ func (d *Dispatcher) preflight(ctx context.Context, m Machine, dir string, task 
 	out, err := git("status", "--porcelain", "--untracked-files=all")
 	if err != nil {
 		if !m.Local {
-			return "", fmt.Errorf("%w: %v", errMachineUnreachable, err)
+			return "", fmt.Errorf("%w: %w", errMachineUnreachable, err)
 		}
 		return "", err
 	}
@@ -1517,7 +1517,7 @@ func (d *Dispatcher) saveStateLocked() {
 		return
 	}
 	path := filepath.Join(d.opts.StateDir, "state.json")
-	_ = os.WriteFile(path, data, 0o644)
+	_ = os.WriteFile(path, data, 0o600)
 	if st, err := os.Stat(path); err == nil {
 		d.stateMod = st.ModTime()
 	}
@@ -1552,7 +1552,7 @@ func (d *Dispatcher) refuseDirty(ctx context.Context, m Machine, dir string) err
 	out, err := m.Run(ctx, dir, "git", "status", "--porcelain", "--untracked-files=all")
 	if err != nil {
 		if !m.Local {
-			return fmt.Errorf("%w: %v", errMachineUnreachable, err)
+			return fmt.Errorf("%w: %w", errMachineUnreachable, err)
 		}
 		return err
 	}

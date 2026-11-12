@@ -187,7 +187,7 @@ func (d *Dispatcher) saveQueueLocked() {
 	}
 	path := filepath.Join(d.opts.StateDir, queueName)
 	tmp := path + ".tmp"
-	if os.WriteFile(tmp, data, 0o644) != nil || os.Rename(tmp, path) != nil {
+	if os.WriteFile(tmp, data, 0o600) != nil || os.Rename(tmp, path) != nil {
 		return
 	}
 	if st, err := os.Stat(path); err == nil {
@@ -283,7 +283,7 @@ func splitRef(ref string) (string, int) {
 	var num int
 	for i := len(ref) - 1; i >= 0; i-- {
 		if ref[i] == '#' {
-			fmt.Sscanf(ref[i+1:], "%d", &num)
+			_, _ = fmt.Sscanf(ref[i+1:], "%d", &num) // num stays 0 when not a number
 			return ref[:i], num
 		}
 	}

@@ -25,7 +25,7 @@ import (
 
 const (
 	botLogin    = model.BotLogin
-	botTokenVar = "UF_DIVISOR_GH_TOKEN"
+	botTokenVar = "UF_DIVISOR_GH_TOKEN" //nolint:gosec // the variable's name, not a credential
 
 	// botGuardDir holds the gh guard, on every machine. Written for the
 	// shell: $HOME is expanded where the line runs.
@@ -149,7 +149,7 @@ func prepareBot(ctx context.Context, m Machine, ref string) error {
 	out, err := m.Run(ctx, "", "sh", "-c", botPrepareScript())
 	if err != nil {
 		if !m.Local {
-			return fmt.Errorf("%w: %v", errMachineUnreachable, err)
+			return fmt.Errorf("%w: %w", errMachineUnreachable, err)
 		}
 		return fmt.Errorf("prepare %s review: %w", botLogin, err)
 	}

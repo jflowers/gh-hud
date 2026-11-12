@@ -131,7 +131,8 @@ func (d *Dispatcher) remoteIndex(ctx context.Context, m Machine) *ghws.Index {
 		// Stale: serve it and refresh in the background.
 		if !d.indexLoading[m.Name] {
 			d.indexLoading[m.Name] = true
-			go func() {
+			// The refresh outlives the caller's request on purpose.
+			go func() { //nolint:gosec // G118: see above
 				bctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
 				ix, err := scanRemoteMachine(bctx, m)

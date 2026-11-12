@@ -75,5 +75,5 @@ func (c *Coordinator) persistLocked() {
 	if err != nil {
 		return
 	}
-	_ = os.WriteFile(c.statePath(), data, 0o644)
+	_ = os.WriteFile(c.statePath(), data, 0o600)
 }

@@ -1,0 +1,72 @@
+# golangci-lint v2 configuration. Run locally with `make lint`.
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - bodyclose
+    - copyloopvar
+    - errorlint
+    - gocritic
+    - gosec
+    - misspell
+    - nilerr
+    - revive
+    - unconvert
+    - unparam
+    - usestdlibvars
+    - wastedassign
+  settings:
+    gosec:
+      excludes:
+        # gh-hud's job is running gh, git, ssh, herdr and opencode with
+        # arguments built from GitHub data and config: every exec has a
+        # variable argument by design.
+        - G204
+        # Files are read from the config file, the state dir and ghws
+        # checkouts, all of them paths the operator chose.
+        - G304
+        # Duplicates errcheck, which honors the std-error-handling preset.
+        - G104
+    revive:
+      # revive's defaults, minus `exported` (doc comments on every exported
+      # name in internal/ packages) and `unused-parameter` (interface and
+      # callback signatures).
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: empty-block
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: superfluous-else
+        - name: time-naming
+        - name: unexported-return
+        - name: unreachable-code
+        - name: var-declaration
+        - name: var-naming
+  exclusions:
+    generated: strict
+    presets:
+      - std-error-handling # unchecked Close/Remove/Fprint* and friends
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

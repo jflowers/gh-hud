@@ -771,6 +771,22 @@ max_wait = "4h"            # drain grace before notifying (never forces)
 notify = true              # herdr push notifications (phone via Ovis)
 ```
 
+## Development
+
+CI (`.github/workflows/ci.yml`) runs on every pull request and on pushes to
+`master`. It checks that `go mod tidy` leaves no diff, runs golangci-lint
+(`.golangci.yml`), runs the tests with `-race` on macOS and Linux, and scans
+dependencies with govulncheck. Run the same checks locally with:
+
+```
+make ci      # tidy, lint, test, vuln
+make lint    # needs golangci-lint v2 on PATH
+make fmt     # gofmt + goimports
+```
+
+Tests never read your git config: `internal/dispatch` points git at a
+throwaway config of its own.
+
 ## Attribution
 
 The PR enrichment logic (CI/review/thread/last-actor rules, bot masking, row

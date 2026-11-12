@@ -188,7 +188,7 @@ func herdrStatusServer(ctx context.Context, m Machine) error {
 func ensureHerdrServer(ctx context.Context, m Machine) error {
 	if !m.Local {
 		if err := herdrStatusServer(ctx, m); err != nil {
-			return fmt.Errorf("%w: %v", errMachineUnreachable, err)
+			return fmt.Errorf("%w: %w", errMachineUnreachable, err)
 		}
 		return nil
 	}

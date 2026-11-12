@@ -125,7 +125,7 @@ func (d *Dispatcher) AutoMerge(ctx context.Context, items []model.Item) []string
 			msgs = append(msgs, "merged "+ref)
 		}
 	}
-	msgs = append(msgs, d.updateHeads(ctx, items, allRuns)...)
+	msgs = append(msgs, d.updateHeads(ctx, allRuns)...)
 	return append(msgs, d.rearmBranches(ctx, allRuns)...)
 }
 

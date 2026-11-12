@@ -22,6 +22,12 @@ import (
 var version = "dev"
 
 func main() {
+	os.Exit(run())
+}
+
+// run is main with an exit code, so deferred cleanup (the dispatch lock,
+// the fleet loop) runs before the process exits.
+func run() int {
 	var (
 		configPath = flag.String("config", config.DefaultPath(), "config file path")
 		once       = flag.Bool("once", false, "fetch once and print a table, then exit")
@@ -34,13 +40,13 @@ func main() {
 
 	if *showVer {
 		fmt.Println("gh-hud", version)
-		return
+		return 0
 	}
 
 	cfg, err := config.Load(*configPath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "config:", err)
-		os.Exit(1)
+		return 1
 	}
 
 	client := gh.New()
@@ -137,16 +143,15 @@ func main() {
 		var w, h int
 		if _, err := fmt.Sscanf(*snapshot, "%dx%d", &w, &h); err != nil || w < 20 || h < 5 {
 			fmt.Fprintln(os.Stderr, "snapshot: want WxH, e.g. 160x40")
-			os.Exit(2)
+			return 2
 		}
 		res := model.FetchAll(context.Background(), client, cfg)
 		fmt.Println(ui.Snapshot(cfg, client, res, w, h))
-		return
+		return 0
 	}
 
 	if *once {
-		runOnce(cfg, client, *widthFlag)
-		return
+		return runOnce(cfg, client, *widthFlag)
 	}
 
 	p := tea.NewProgram(ui.New(cfg, client, disp, idx, fleetCoord),
@@ -155,19 +160,21 @@ func main() {
 	)
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "run:", err)
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
 
-func runOnce(cfg *config.Config, client *gh.Client, width int) {
+func runOnce(cfg *config.Config, client *gh.Client, width int) int {
 	res := model.FetchAll(context.Background(), client, cfg)
 	fmt.Print(ui.PlainTable(res, cfg, width, time.Now()))
 	for _, e := range res.Errors {
 		fmt.Fprintf(os.Stderr, "⚠ %s\n", e.Error())
 	}
 	if res.User == "" {
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
 
 // ownsDispatch reports whether this gh-hud owns dispatch (true without a

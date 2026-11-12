@@ -207,17 +207,18 @@ func renderRow(it model.Item, l layout, rc rowCtx, selected, hover bool) string 
 	if rc.stage != nil {
 		st = rc.stage(it)
 	}
-	if hasRun && showRunTag(run, rc.now) && (run.Status == dispatch.RunBlocked || run.Status == dispatch.RunRunning ||
-		run.Status == dispatch.RunFailed || run.Status == dispatch.RunLeftWork) {
+	switch {
+	case hasRun && showRunTag(run, rc.now) && (run.Status == dispatch.RunBlocked || run.Status == dispatch.RunRunning ||
+		run.Status == dispatch.RunFailed || run.Status == dispatch.RunLeftWork):
 		g, c := runGlyph(run.Status)
 		b.WriteString(p.text(c, g))
-	} else if st.Kind == dispatch.StageNeedsYou {
+	case st.Kind == dispatch.StageNeedsYou:
 		b.WriteString(p.text(cOrange, "◆"))
-	} else if it.Cats&model.CatReady != 0 {
+	case it.Cats&model.CatReady != 0:
 		b.WriteString(p.text(cGreen, "◆"))
-	} else if it.WaitingOn == "me" {
+	case it.WaitingOn == "me":
 		b.WriteString(p.text(cYellow, "◆"))
-	} else {
+	default:
 		b.WriteString(sp)
 	}
 	b.WriteString(sp)
@@ -282,10 +283,10 @@ func renderRow(it model.Item, l layout, rc rowCtx, selected, hover bool) string 
 	if l.whoW > 0 {
 		b.WriteString(sp)
 		who := rc.bots.Mask(it.LastActor)
-		switch {
-		case who == "":
+		switch who {
+		case "":
 			b.WriteString(p.space(l.whoW))
-		case who == rc.me:
+		case rc.me:
 			b.WriteString(p.text(cDim, padPlain("you", l.whoW, false)))
 		default:
 			b.WriteString(p.text(cTeal, padPlain(who, l.whoW, false)))
@@ -891,8 +892,8 @@ func (m *Model) View() string {
 	lines := []string{m.headerBar(), headerRow(l)}
 	maxRows := m.rowsFit()
 
-	switch {
-	case m.res == nil:
+	switch m.res {
+	case nil:
 		lines = append(lines, "", lipgloss.NewStyle().Foreground(cComment).Render("   fetching from GitHub…"))
 	default:
 		vis := m.visible()

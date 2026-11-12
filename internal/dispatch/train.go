@@ -191,7 +191,7 @@ func (d *Dispatcher) updateTrain(items []model.Item) {
 		prev = d.train.head
 	}
 	d.train = buildTrain(items, prev)
-	d.noteBaseLocked(items)
+	d.noteBaseLocked()
 	d.train.rearm = map[string][]string{}
 	cfg := d.opts.AutoMerge
 	if !cfg.Enabled {
@@ -220,7 +220,7 @@ func (d *Dispatcher) updateTrain(items []model.Item) {
 // to need only an update. A check is forgotten once none of your PRs fail
 // it. The memory lasts as long as this gh-hud; after a restart, two PRs
 // failing the same check still count as shared.
-func (d *Dispatcher) noteBaseLocked(items []model.Item) {
+func (d *Dispatcher) noteBaseLocked() {
 	if d.baseBroke == nil {
 		d.baseBroke = map[string]map[string]bool{}
 	}
@@ -287,7 +287,7 @@ func trainOrder(items []model.Item) []model.Item {
 // the repo requires that before merging. It runs as your gh login, like
 // auto-merge; it updates a branch and never merges. Each head commit is
 // tried once.
-func (d *Dispatcher) updateHeads(ctx context.Context, items []model.Item, runs func() []Run) []string {
+func (d *Dispatcher) updateHeads(ctx context.Context, runs func() []Run) []string {
 	cfg := d.opts.AutoMerge
 	tp := d.trainSnapshot()
 	if tp == nil {

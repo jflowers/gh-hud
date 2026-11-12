@@ -106,7 +106,9 @@ func machineScript(dir string, argv []string) string {
 // shell. The script travels as one ssh command argument (bash -lc
 // '<script>') so the remote shell cannot mis-split it.
 func (m Machine) runScript(ctx context.Context, script string) (string, error) {
-	cmd := exec.CommandContext(ctx, "ssh", "-o", "BatchMode=yes", m.SSH, "bash -lc "+shellQuote(script))
+	// The script is single-quoted for the remote shell; ssh joins its
+	// arguments into one command line, so it must travel quoted.
+	cmd := exec.CommandContext(ctx, "ssh", "-o", "BatchMode=yes", m.SSH, "bash -lc "+shellQuote(script)) //nolint:gosec // G702: quoted above
 	var out, errb strings.Builder
 	cmd.Stdout = &out
 	cmd.Stderr = &errb
