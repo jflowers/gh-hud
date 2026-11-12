@@ -15,7 +15,9 @@ import (
 	"github.com/jflowers/gh-hud/internal/fleet"
 	"github.com/jflowers/gh-hud/internal/gh"
 	"github.com/jflowers/gh-hud/internal/ghws"
+	"github.com/jflowers/gh-hud/internal/hub"
 	"github.com/jflowers/gh-hud/internal/model"
+	"github.com/jflowers/gh-hud/internal/notify"
 	"github.com/jflowers/gh-hud/internal/ui"
 )
 
@@ -128,14 +130,8 @@ func run() int {
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "fleet:", err)
 		} else {
+			// The hub runs rollouts, and only when it owns dispatch.
 			fleetCoord = c
-			fleetCtx, fleetCancel := context.WithCancel(context.Background())
-			defer fleetCancel()
-			// Rollouts drain and update machines: only the gh-hud that owns
-			// dispatch runs them, so a second one never competes.
-			if owner, _ := ownsDispatch(disp); owner {
-				go c.Run(fleetCtx)
-			}
 		}
 	}
 
@@ -146,7 +142,7 @@ func run() int {
 			return 2
 		}
 		res := model.FetchAll(context.Background(), client, cfg)
-		fmt.Println(ui.Snapshot(cfg, client, res, w, h))
+		fmt.Println(ui.Snapshot(cfg, res, w, h))
 		return 0
 	}
 
@@ -154,7 +150,24 @@ func run() int {
 		return runOnce(cfg, client, *widthFlag)
 	}
 
-	p := tea.NewProgram(ui.New(cfg, client, disp, idx, fleetCoord),
+	hopts := hub.Options{
+		Config:   cfg,
+		Fetch:    func(ctx context.Context) *model.FetchResult { return model.FetchAll(ctx, client, cfg) },
+		Notifier: notify.OSAScript{},
+	}
+	// Leave nil pointers out: a nil *Dispatcher in an interface is not nil.
+	if disp != nil {
+		hopts.Dispatcher = disp
+	}
+	if fleetCoord != nil {
+		hopts.Fleet = fleetCoord
+	}
+	h := hub.New(hopts)
+	hubCtx, stopHub := context.WithCancel(context.Background())
+	defer stopHub()
+	go h.Run(hubCtx)
+
+	p := tea.NewProgram(ui.New(cfg, h, disp, idx, fleetCoord),
 		tea.WithAltScreen(),
 		tea.WithMouseAllMotion(),
 	)
@@ -175,13 +188,4 @@ func runOnce(cfg *config.Config, client *gh.Client, width int) int {
 		return 1
 	}
 	return 0
-}
-
-// ownsDispatch reports whether this gh-hud owns dispatch (true without a
-// dispatcher, which has nothing to compete over).
-func ownsDispatch(disp *dispatch.Dispatcher) (bool, string) {
-	if disp == nil {
-		return true, ""
-	}
-	return disp.Owner()
 }

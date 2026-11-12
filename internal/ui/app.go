@@ -12,28 +12,24 @@ import (
 	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/dispatch"
 	"github.com/jflowers/gh-hud/internal/fleet"
-	"github.com/jflowers/gh-hud/internal/gh"
 	"github.com/jflowers/gh-hud/internal/ghws"
 	"github.com/jflowers/gh-hud/internal/hub"
 	"github.com/jflowers/gh-hud/internal/model"
-	"github.com/jflowers/gh-hud/internal/notify"
 )
 
 type tickMsg time.Time
 
-type fetchedMsg struct {
-	res *model.FetchResult
+// snapshotMsg and eventMsg carry what the hub publishes; ok is false once
+// the subscription has ended.
+type snapshotMsg struct {
+	snap hub.Snapshot
+	ok   bool
 }
 
-type agentsMsg struct {
-	sessions []dispatch.Session
-	runs     []dispatch.Run
-	usage    []dispatch.MachineUsage
-	follower string // owning gh-hud's pid when this one only follows ("?" if unknown)
-	err      error
+type eventMsg struct {
+	ev hub.Event
+	ok bool
 }
-
-type workspacesMsg []dispatch.CheckoutHealth
 
 type dispatchDoneMsg struct {
 	task    string
@@ -44,8 +40,6 @@ type dispatchDoneMsg struct {
 	err     error
 }
 
-type autoDoneMsg []string
-
 // actionChoice is one dispatchable task for the row under the cursor.
 type actionChoice struct {
 	task   dispatch.Task
@@ -55,21 +49,28 @@ type actionChoice struct {
 
 // Model is the bubbletea model for the dashboard.
 type Model struct {
-	cfg    *config.Config
-	client *gh.Client
-	bots   *model.BotFilter
-	disp   *dispatch.Dispatcher
-	idx    *ghws.Index
+	cfg     *config.Config
+	backend hub.Backend // nil in --snapshot renders
+	bots    *model.BotFilter
+	disp    *dispatch.Dispatcher
+	idx     *ghws.Index
+
+	// snaps and events are the hub subscription (see Init); seq is the
+	// last snapshot applied.
+	snaps  <-chan hub.Snapshot
+	events <-chan hub.Event
+	seq    uint64
+	// stages is each item's pipeline stage by URL, from the hub.
+	stages map[string]dispatch.Stage
 
 	res       *model.FetchResult
 	fetching  bool
 	lastFetch time.Time
 	fetchErr  string
 
-	cursor        int
-	offset        int
-	hover         int
-	prevCursorURL string
+	cursor int
+	offset int
+	hover  int
 
 	filter     model.Cats
 	searchMode bool
@@ -90,10 +91,9 @@ type Model struct {
 	agents     []dispatch.Session
 	agentsSel  int
 	agentsAll  bool // show stale sessions too (default: only relevant ones)
-	lastAgents time.Time
 
 	// wsMode is the Workspaces tab (9): every dispatchable checkout's
-	// health, refreshed every wsRefresh (one ssh per worker) or on r.
+	// health, refreshed by the hub every couple of minutes or on r.
 	wsMode    bool
 	ws        []dispatch.CheckoutHealth
 	wsSel     int
@@ -101,7 +101,8 @@ type Model struct {
 	wsLoading bool
 
 	// fleetMode is the GitOps rollout view (F); fleet is nil when [fleet]
-	// is disabled. fleetSnap is refreshed from the coordinator on tick.
+	// is disabled. fleetSnap comes from the hub, and straight from the
+	// coordinator after a fleet key so the view answers at once.
 	fleetMode     bool
 	fleet         *fleet.Coordinator
 	fleetSnap     fleet.Snapshot
@@ -115,11 +116,6 @@ type Model struct {
 	// owner's pid ("?" when unknown).
 	follower string
 
-	// alerter decides which refreshes deserve a desktop alert (see
-	// alerts); notifier delivers them (nil: alerts are dropped).
-	alerter  *hub.Alerter
-	notifier notify.Notifier
-
 	// runs are the dispatch runs, newest first (see runs.go); runView is
 	// the open run detail view.
 	runs      []dispatch.Run
@@ -132,22 +128,23 @@ type Model struct {
 	width, height int
 }
 
-// New builds the dashboard model. disp, idx, and fleetCoord may be nil
-// (dispatch / fleet off).
-func New(cfg *config.Config, client *gh.Client, disp *dispatch.Dispatcher, idx *ghws.Index, fleetCoord *fleet.Coordinator) *Model {
+// New builds the dashboard model over a hub. backend is nil only for
+// one-frame renders; disp, idx, and fleetCoord may be nil (dispatch /
+// fleet off). disp and fleetCoord still serve the commands the hub does
+// not carry yet.
+func New(cfg *config.Config, backend hub.Backend, disp *dispatch.Dispatcher, idx *ghws.Index, fleetCoord *fleet.Coordinator) *Model {
 	// No OSC-8 links in the TUI: iTerm2 would open ⌘-clicked links itself
 	// *and* report the click to us (double tab), and it swallows ⌘-right-click
 	// on links. The app handles every click itself; --once keeps links.
 	hyperlinks = false
 	m := &Model{
-		cfg:      cfg,
-		client:   client,
-		bots:     model.NewBotFilter(cfg.KnownBots),
-		disp:     disp,
-		idx:      idx,
-		fleet:    fleetCoord,
-		hover:    -1,
-		notifier: notify.OSAScript{},
+		cfg:     cfg,
+		backend: backend,
+		bots:    model.NewBotFilter(cfg.KnownBots),
+		disp:    disp,
+		idx:     idx,
+		fleet:   fleetCoord,
+		hover:   -1,
 	}
 	m.refreshFleetSnap()
 	return m
@@ -160,18 +157,80 @@ func (m *Model) refreshFleetSnap() {
 	}
 }
 
-// Init starts the first fetch and the clock.
+// Init subscribes to the hub and starts the clock (which only re-renders
+// ages and expires the status line; the hub does the refreshing).
 func (m *Model) Init() tea.Cmd {
-	cmds := []tea.Cmd{fetchCmd(m.cfg, m.client), tick()}
-	if m.disp != nil {
-		cmds = append(cmds, m.fetchAgents(), m.fetchWorkspaces())
+	if m.backend == nil {
+		return tick()
 	}
-	return tea.Batch(cmds...)
+	m.snaps, m.events = m.backend.Subscribe(context.Background())
+	return tea.Batch(m.waitSnapshot(), m.waitEvent(), tick())
 }
 
-func fetchCmd(cfg *config.Config, c *gh.Client) tea.Cmd {
+func (m *Model) waitSnapshot() tea.Cmd {
+	ch := m.snaps
 	return func() tea.Msg {
-		return fetchedMsg{model.FetchAll(context.Background(), c, cfg)}
+		s, ok := <-ch
+		return snapshotMsg{snap: s, ok: ok}
+	}
+}
+
+func (m *Model) waitEvent() tea.Cmd {
+	ch := m.events
+	return func() tea.Msg {
+		e, ok := <-ch
+		return eventMsg{ev: e, ok: ok}
+	}
+}
+
+// applySnapshot copies the hub's state into the view, keeping the cursor
+// on the same item when the list changes.
+func (m *Model) applySnapshot(s hub.Snapshot) {
+	if s.Seq != 0 && s.Seq <= m.seq {
+		return
+	}
+	m.seq = s.Seq
+	keep := m.cursorURL()
+	newRes := s.Res != m.res
+	m.res, m.fetching, m.lastFetch, m.fetchErr = s.Res, s.Fetching, s.FetchedAt, s.FetchErr
+	m.agents, m.runs, m.machineUsage, m.follower = s.Sessions, s.Runs, s.Usage, s.Follower
+	m.ws, m.wsAt, m.wsLoading = s.Workspaces, s.WorkspacesAt, s.WorkspacesLoading
+	m.stages = s.Stages
+	if s.Fleet != nil {
+		m.fleetSnap = *s.Fleet
+	}
+	if newRes && m.res != nil && m.fetchErr == "" {
+		m.restoreCursor(keep)
+	}
+	m.refreshRunView()
+	m.agentsSel = clampSel(m.agentsSel, len(m.visibleAgents()))
+	m.wsSel = clampSel(m.wsSel, len(m.ws))
+}
+
+func clampSel(sel, n int) int {
+	if sel >= n {
+		sel = n - 1
+	}
+	if sel < 0 {
+		sel = 0
+	}
+	return sel
+}
+
+// Hub triggers. They only ask; the result arrives as a snapshot. They
+// return no command so call sites read `return m, m.refreshAgents()`.
+
+func (m *Model) refreshAgents() tea.Cmd {
+	if m.backend != nil && m.disp != nil {
+		_ = m.backend.RefreshAgents(context.Background())
+	}
+	return nil
+}
+
+func (m *Model) refreshWorkspaces() {
+	if m.backend != nil && m.disp != nil {
+		m.wsLoading = true // until the hub says otherwise
+		_ = m.backend.RefreshWorkspaces(context.Background())
 	}
 }
 
@@ -183,75 +242,23 @@ func tick() tea.Cmd {
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tickMsg:
-		cmds := []tea.Cmd{tick()}
-		if !m.fetching && m.res != nil &&
-			time.Since(m.lastFetch) >= time.Duration(m.cfg.RefreshSecs)*time.Second {
-			m.fetching = true
-			m.prevCursorURL = m.cursorURL()
-			cmds = append(cmds, fetchCmd(m.cfg, m.client))
-		}
-		if m.disp != nil && time.Since(m.lastAgents) >= 30*time.Second {
-			m.lastAgents = time.Now()
-			cmds = append(cmds, m.fetchAgents())
-		}
-		if m.disp != nil && time.Since(m.wsAt) >= wsRefresh {
-			cmds = append(cmds, m.fetchWorkspaces())
-		}
-		if m.fleet != nil {
-			m.refreshFleetSnap()
-		}
-		return m, tea.Batch(cmds...)
+		return m, tick()
 
-	case fetchedMsg:
-		m.fetching = false
-		m.res = msg.res
-		m.lastFetch = time.Now()
-		if msg.res.User == "" {
-			for _, e := range msg.res.Errors {
-				if e.Section == "user" {
-					m.fetchErr = e.Err.Error()
-				}
-			}
-		} else {
-			m.fetchErr = ""
-			m.restoreCursor()
+	case snapshotMsg:
+		if !msg.ok {
+			return m, nil
 		}
-		hub.Post(m.notifier, m.alerts().Items(msg.res.User, msg.res.Items))
-		if m.disp != nil && msg.res.User != "" {
-			return m, tea.Batch(autoCmd(m, msg.res.Items), m.fetchAgents())
-		}
-		return m, nil
+		m.applySnapshot(msg.snap)
+		return m, m.waitSnapshot()
 
-	case agentsMsg:
-		if msg.err == nil {
-			m.agents = msg.sessions
-			m.runs = msg.runs
-			m.machineUsage = msg.usage
-			m.follower = msg.follower
-			if m.follower == "" {
-				// The owner notifies; a follower would only repeat it.
-				hub.Post(m.notifier, m.alerts().Sessions(msg.sessions, time.Now()))
-				hub.Post(m.notifier, m.alerts().Runs(msg.runs))
-			}
-			m.refreshRunView()
-			if n := len(m.visibleAgents()); m.agentsSel >= n {
-				m.agentsSel = n - 1
-			}
-			if m.agentsSel < 0 {
-				m.agentsSel = 0
-			}
+	case eventMsg:
+		if !msg.ok {
+			return m, nil
 		}
-		return m, nil
-
-	case workspacesMsg:
-		m.ws, m.wsAt, m.wsLoading = msg, time.Now(), false
-		if m.wsSel >= len(m.ws) {
-			m.wsSel = len(m.ws) - 1
+		if msg.ev.Kind == hub.EventNotice {
+			m.flash(msg.ev.Text)
 		}
-		if m.wsSel < 0 {
-			m.wsSel = 0
-		}
-		return m, nil
+		return m, m.waitEvent()
 
 	case dispatchDoneMsg:
 		if msg.err != nil {
@@ -266,7 +273,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.flash(flash)
 		}
-		return m, m.fetchAgents()
+		return m, m.refreshAgents()
 
 	case reinspectMsg:
 		if msg.err != nil {
@@ -278,14 +285,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.flash(fmt.Sprintf("re-check: %d item(s) still left in %s", len(msg.run.Left), runAt(msg.run)))
 		}
-		return m, m.fetchAgents()
-
-	case autoDoneMsg:
-		if len(msg) > 0 {
-			m.flash(strings.Join(msg, " · "))
-			return m, m.fetchAgents()
-		}
-		return m, nil
+		return m, m.refreshAgents()
 
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
@@ -385,11 +385,10 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.copyURL(it)
 		}
 	case "r":
-		if !m.fetching {
-			m.fetching = true
+		if !m.fetching && m.backend != nil {
+			m.fetching = true // until the hub says otherwise
 			m.flash("refreshing…")
-			m.prevCursorURL = m.cursorURL()
-			return m, fetchCmd(m.cfg, m.client)
+			_ = m.backend.Refresh(context.Background())
 		}
 	case "a":
 		m.openAction()
@@ -620,18 +619,18 @@ func (m *Model) cursorURL() string {
 	return ""
 }
 
-// restoreCursor keeps the cursor on the same item across refreshes.
-func (m *Model) restoreCursor() {
-	if m.prevCursorURL != "" {
+// restoreCursor puts the cursor back on the item at url after the list
+// changed (it stays at its index when that item is gone).
+func (m *Model) restoreCursor(url string) {
+	if url != "" {
 		for i, it := range m.visible() {
-			if it.URL == m.prevCursorURL {
+			if it.URL == url {
 				m.cursor = i
 				m.ensureVisible()
 				break
 			}
 		}
 	}
-	m.prevCursorURL = ""
 	m.clampCursor()
 }
 
@@ -665,47 +664,6 @@ func (m *Model) copyRef(it model.Item) {
 		return
 	}
 	m.flash("copied " + ref)
-}
-
-// fetchAgents polls agent session status and machine slot usage (nil cmd
-// when dispatch is off).
-func (m *Model) fetchAgents() tea.Cmd {
-	d := m.disp
-	if d == nil {
-		return nil
-	}
-	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		sessions, err := d.Sessions(ctx)
-		// Runs and slot usage get their own deadline: a slow session scan
-		// must not expire the herdr calls that say which agents are live.
-		live, cancelLive := context.WithTimeout(context.Background(), 20*time.Second)
-		defer cancelLive()
-		usage := d.MachineUsage(live)
-		follower := ""
-		if own, pid := d.Owner(); !own {
-			follower = pid
-			if follower == "" {
-				follower = "?"
-			}
-		}
-		return agentsMsg{sessions: sessions, runs: d.Runs(live), usage: usage, follower: follower, err: err}
-	}
-}
-
-// autoCmd runs allowlisted auto-dispatch for the freshly fetched items.
-func autoCmd(m *Model, items []model.Item) tea.Cmd {
-	d := m.disp
-	if d == nil {
-		return nil
-	}
-	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
-		defer cancel()
-		msgs := d.AutoMerge(ctx, items)
-		return autoDoneMsg(append(msgs, d.AutoDispatch(ctx, items)...))
-	}
 }
 
 func (m *Model) handleActionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -833,7 +791,7 @@ func (m *Model) handleAgentsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case "r":
-		return m, m.fetchAgents()
+		return m, m.refreshAgents()
 	}
 	return m, nil
 }
@@ -856,15 +814,15 @@ func (m *Model) switchTab(key string) tea.Cmd {
 		}
 		m.agentsMode = true
 		m.agentsSel = 0
-		return m.fetchAgents()
+		return m.refreshAgents()
 	case "9":
 		if m.disp == nil {
 			return nil
 		}
 		m.wsMode = true
 		m.wsSel = 0
-		if time.Since(m.wsAt) >= wsStale {
-			return m.fetchWorkspaces()
+		if time.Since(m.wsAt) >= wsStale && !m.wsLoading {
+			m.refreshWorkspaces()
 		}
 		return nil
 	}
@@ -987,12 +945,4 @@ func (m *Model) dispatchCmd(c actionChoice) tea.Cmd {
 		rec, err := d.Dispatch(ctx, c.task, it, false)
 		return dispatchDoneMsg{task: string(c.task), ref: it.Ref(), ws: rec.Workspace, machine: rec.Machine, runner: rec.Runner, err: err}
 	}
-}
-
-// alerts is the alert tracker, built on first use.
-func (m *Model) alerts() *hub.Alerter {
-	if m.alerter == nil {
-		m.alerter = hub.NewAlerter(m.cfg)
-	}
-	return m.alerter
 }

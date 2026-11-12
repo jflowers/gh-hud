@@ -205,12 +205,18 @@ I/O.
    share them. The UI calls the alerter, so behavior is unchanged. The one
    difference is that ready alerts now fire in rank order rather than
    map order.
-2. **`hub.Hub` owns the loops and the snapshot.** Add `New`, `Run`,
-   `Snapshot`, `Subscribe` and the `Refresh*` triggers. `main.go` builds the
-   hub and stops starting the fleet itself. The UI switches from
-   `fetchCmd`, `fetchAgents`, `fetchWorkspaces`, `autoCmd` and its tick
-   logic to the subscription. Stages are precomputed. This PR carries the
-   real risk: test it by running owner and follower side by side.
+2. **`hub.Hub` owns the loops and the snapshot.** *(done)* `hub.New` /
+   `Run` / `Snapshot` / `Subscribe` and the `Refresh*` triggers, behind a
+   narrow `hub.Backend` interface that step 3 extends. Each cadence (fetch,
+   agents, workspaces) is one goroutine that runs, waits for its interval
+   or a trigger, and folds triggers that arrive mid-run into a single
+   rerun. A 1 s publish refreshes the fleet state and the pipeline stages.
+   The hub runs the auto pass after each fetch (one at a time) and starts
+   the fleet when it owns dispatch. Alerts move into the hub along with
+   the notifier. The UI keeps its view fields and fills them from each
+   snapshot, so rendering and its tests are unchanged. `Snapshot.Res` is
+   the whole `*model.FetchResult` rather than the separate `Items` /
+   `Warnings` fields sketched above; the wire types in Phase 2 split it.
 3. **Commands through `Backend`.** Dispatch, actions, reinspect, the fleet
    controls and the host-local actions. Remove the `*dispatch.Dispatcher`
    and `*fleet.Coordinator` fields from `ui.Model`. Add
