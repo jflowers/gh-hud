@@ -1,6 +1,9 @@
 package ui
 
 import (
+	"errors"
+	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -8,36 +11,28 @@ import (
 
 	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/dispatch"
+	"github.com/jflowers/gh-hud/internal/hub"
+	"github.com/jflowers/gh-hud/internal/hub/hubtest"
 	"github.com/jflowers/gh-hud/internal/model"
 )
 
 func TestPlanViewQueueAndReorder(t *testing.T) {
-	d, err := dispatch.New(dispatch.Options{
-		Root: t.TempDir(), StateDir: t.TempDir(),
-		Tasks: map[string]config.TaskConfig{
-			"rebase": {Command: "/r {num}", Auto: true},
-			"review": {Command: "/v {num}", Auto: true},
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer d.Close()
 	pr := func(num int, title string) model.Item {
 		return model.Item{Kind: model.KindPR, Cats: model.CatMy, Repo: "acme/r", Num: num, Title: title,
-			URL: "u", Merge: " ", CI: model.CIOK, RequiredReviews: 1}
+			URL: fmt.Sprint("u", num)}
 	}
-	conflict := pr(1, "conflicted change")
-	conflict.Merge = "⚠️"
-	a, b := pr(2, "first queued"), pr(3, "second queued")
-	m := New(config.Default(), nil, d, nil, nil)
+	conflict, a, b := pr(1, "conflicted change"), pr(2, "first queued"), pr(3, "second queued")
+	fake := &hubtest.Fake{}
+	fake.SetSnap(hub.Snapshot{Seq: 1, Dispatch: true,
+		Res: &model.FetchResult{Items: []model.Item{conflict, a, b}},
+		Plan: []dispatch.PlanRow{
+			{Item: a, Task: dispatch.TaskReview, Queued: 1, Note: "next free slot"},
+			{Item: b, Task: dispatch.TaskReview, Queued: 2, Note: "next free slot"},
+			{Item: conflict, Task: dispatch.TaskRebase, Stage: dispatch.Stage{Kind: dispatch.StageNext, Task: dispatch.TaskRebase}},
+		},
+	})
+	m := New(config.Default(), fake)
 	m.width, m.height = 160, 30
-	m.res = &model.FetchResult{Items: []model.Item{conflict, a, b}}
-	for _, it := range []model.Item{a, b} {
-		if err := d.Enqueue(dispatch.TaskReview, it); err != nil {
-			t.Fatal(err)
-		}
-	}
 
 	key := func(k string) {
 		var msg tea.KeyMsg
@@ -63,25 +58,46 @@ func TestPlanViewQueueAndReorder(t *testing.T) {
 		t.Errorf("order wrong:\n%s", view)
 	}
 
-	// Move the second queued task up, then unqueue it.
+	// Move the second queued task up, then unqueue it: the hub gets each
+	// change by task and ref, and the selection follows the moved row.
 	key("j")
 	key("K")
-	if q := d.Queue(); q[0].Ref != "acme/r#3" || m.planSel != 0 {
-		t.Errorf("after K: queue %v sel %d", q, m.planSel)
+	if m.planSel != 0 {
+		t.Errorf("after K: sel %d, want 0", m.planSel)
 	}
 	key("x")
-	if q := d.Queue(); len(q) != 1 || q[0].Ref != "acme/r#2" {
-		t.Errorf("after x: %v", q)
-	}
-	// + on the auto row queues its task.
+	// + on the auto row queues its task, by the item's URL.
+	fake.Pos = 3
 	key("G")
 	key("+")
-	if q := d.Queue(); len(q) != 2 || q[1].Ref != "acme/r#1" || q[1].Task != dispatch.TaskRebase {
-		t.Errorf("after +: %v", q)
+	if m.planSel != 2 {
+		t.Errorf("after +: sel %d, want 2", m.planSel)
+	}
+	want := []string{
+		"MoveQueued review acme/r#3 -1",
+		"Unqueue review acme/r#2",
+		"Enqueue rebase u1",
+	}
+	if !slices.Equal(fake.Calls, want) {
+		t.Errorf("calls = %q\nwant    %q", fake.Calls, want)
 	}
 	key("esc")
 	if m.planMode {
 		t.Error("esc didn't close the plan")
+	}
+}
+
+func TestPlanQueueErrorFlashes(t *testing.T) {
+	it := model.Item{Kind: model.KindPR, Repo: "acme/r", Num: 1, URL: "u1"}
+	fake := &hubtest.Fake{Err: errors.New("gh-hud pid 42 owns dispatch")}
+	fake.SetSnap(hub.Snapshot{Seq: 1, Dispatch: true, Res: &model.FetchResult{Items: []model.Item{it}},
+		Plan: []dispatch.PlanRow{{Item: it, Task: dispatch.TaskCI, Stage: dispatch.Stage{Kind: dispatch.StageNext}}}})
+	m := New(config.Default(), fake)
+	m.width, m.height = 120, 30
+	pressKey(t, m, "p")
+	pressKey(t, m, "+")
+	if !strings.Contains(m.statusMsg, "can't queue: gh-hud pid 42 owns dispatch") {
+		t.Errorf("status = %q", m.statusMsg)
 	}
 }
 

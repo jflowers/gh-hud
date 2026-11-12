@@ -423,7 +423,7 @@ func (m *Model) headerBar() string {
 		items = m.res.Items
 	}
 	for _, t := range tabs {
-		if t.view != "" && m.disp == nil {
+		if t.view != "" && !m.dispatchOn {
 			continue
 		}
 		n := 0
@@ -544,7 +544,7 @@ func (m *Model) footer() string {
 		"i", "run",
 		"6", "agents",
 	}
-	if m.fleet != nil {
+	if m.fleetOn {
 		pairs = append(pairs, "F", "fleet")
 	}
 	pairs = append(pairs,
@@ -590,7 +590,7 @@ func (m *Model) helpView() string {
 		line("6", "agent sessions"),
 		line("9", "workspaces: which checkouts a run can use"),
 	}
-	if m.fleet != nil {
+	if m.fleetOn {
 		left = append(left, line("F", "fleet rollout (GitOps)"))
 	}
 	left = append(left, line("q", "quit"))

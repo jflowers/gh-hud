@@ -6,7 +6,6 @@ package ui
 // behind.
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -144,13 +143,13 @@ func (m *Model) handleRunKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "g", "home":
 		m.runScroll = 0
 	case "w", "enter":
-		if err := m.disp.WatchRun(*r); err != nil {
+		if err := m.backend.WatchRun(ctx(), r.ID); err != nil {
 			m.flash("watch failed: " + err.Error())
 		} else {
 			m.flash("watching " + string(r.Task) + " " + r.Ref)
 		}
 	case "t":
-		if err := m.disp.OpenTranscript(*r); err != nil {
+		if err := m.backend.OpenTranscript(ctx(), r.ID); err != nil {
 			m.flash("transcript failed: " + err.Error())
 		} else {
 			m.flash("opening transcript " + r.SessionID)
@@ -164,12 +163,10 @@ func (m *Model) handleRunKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.flash("copied " + r.SessionID)
 		}
 	case "r":
-		d, id := m.disp, r.ID
+		b, id := m.backend, r.ID
 		m.flash("re-checking " + runAt(*r) + "…")
 		return m, func() tea.Msg {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-			defer cancel()
-			run, err := d.Reinspect(ctx, id)
+			run, err := b.Reinspect(ctx(), id)
 			return reinspectMsg{run: run, err: err}
 		}
 	}

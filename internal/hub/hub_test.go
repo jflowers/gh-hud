@@ -65,6 +65,8 @@ type fakeDisp struct {
 	autoGate    chan struct{}
 	autoMsgs    []string
 	wsReads     int
+	calls       []string // commands, as "Dispatch ci acme/r#1"
+	queue       []dispatch.QueueEntry
 }
 
 func (d *fakeDisp) Sessions(context.Context) ([]dispatch.Session, error) {
@@ -128,12 +130,26 @@ func (d *fakeDisp) get(f func(d *fakeDisp) int) int {
 	return f(d)
 }
 
-type fakeFleet struct{ runs atomic.Int32 }
+type fakeFleet struct {
+	runs   atomic.Int32
+	paused atomic.Bool
+	mu     sync.Mutex
+	ops    []string
+}
 
-func (f *fakeFleet) Snapshot() fleet.Snapshot { return fleet.Snapshot{Paused: true} }
+func (f *fakeFleet) Snapshot() fleet.Snapshot { return fleet.Snapshot{Paused: f.paused.Load()} }
 func (f *fakeFleet) Run(ctx context.Context) {
 	f.runs.Add(1)
 	<-ctx.Done()
+}
+func (f *fakeFleet) SetPaused(p bool) { f.paused.Store(p); f.op("pause") }
+func (f *fakeFleet) ApplyNow()        { f.op("apply") }
+func (f *fakeFleet) SkipWait()        { f.op("skip") }
+func (f *fakeFleet) Retry()           { f.op("retry") }
+func (f *fakeFleet) op(s string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.ops = append(f.ops, s)
 }
 
 func testCfg() *config.Config {
@@ -315,6 +331,7 @@ func TestWorkspacesLoadingThenLoaded(t *testing.T) {
 func TestFleetRunsOnlyForOwner(t *testing.T) {
 	for _, owner := range []bool{true, false} {
 		fl := &fakeFleet{}
+		fl.paused.Store(true)
 		h, cancel := start(t, Options{Fetch: (&fakeFetcher{}).fetch, Dispatcher: &fakeDisp{owner: owner}, Fleet: fl})
 		waitFor(t, "fetch", func() bool { return h.Snapshot().Res != nil })
 		if s := h.Snapshot(); s.Fleet == nil || !s.Fleet.Paused {

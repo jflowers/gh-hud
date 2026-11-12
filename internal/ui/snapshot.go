@@ -16,7 +16,7 @@ import (
 func Snapshot(cfg *config.Config, res *model.FetchResult, w, h int) string {
 	lipgloss.SetColorProfile(termenv.TrueColor)
 	hyperlinks = false
-	m := New(cfg, nil, nil, nil, nil)
+	m := New(cfg, nil)
 	m.res = res
 	m.width, m.height = w, h
 	m.lastFetch = time.Now().Add(-12 * time.Second)
