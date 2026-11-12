@@ -52,7 +52,7 @@ func (d *Dispatcher) acquireOwnership() bool {
 		return true
 	}
 	path := filepath.Join(d.opts.StateDir, lockName)
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o644)
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600)
 	if err != nil {
 		return false
 	}

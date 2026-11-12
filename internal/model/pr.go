@@ -221,9 +221,9 @@ type reviewNode struct {
 	} `json:"commit"`
 }
 
-// FetchPRSearch runs a GitHub search restricted to open PRs and returns the
+// fetchPRSearch runs a GitHub search restricted to open PRs and returns the
 // raw nodes. extra qualifiers are prepended to the search string.
-func FetchPRSearch(ctx context.Context, c *gh.Client, search string, limit int) ([]prNode, error) {
+func fetchPRSearch(ctx context.Context, c *gh.Client, search string, limit int) ([]prNode, error) {
 	var res prSearchResult
 	vars := map[string]any{
 		"searchQuery": search + " is:pr is:open sort:updated-desc",

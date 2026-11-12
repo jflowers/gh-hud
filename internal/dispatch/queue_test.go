@@ -271,7 +271,7 @@ func TestRearmWhenMainFixed(t *testing.T) {
 	}
 
 	// A PR that already has the fix: GitHub says so, and it goes to ci.
-	refuse = errors.New("There are no new commits on the base branch.")
+	refuse = errors.New("There are no new commits on the base branch.") //nolint:revive // GitHub's exact message
 	own := pr(2, "m2", nil, []string{"Build"})
 	own.Num = 2
 	d2 := newTestDispatcher(t, "refuse")

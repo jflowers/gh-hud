@@ -116,12 +116,12 @@ func TestShortRepo(t *testing.T) {
 
 func TestSamePath(t *testing.T) {
 	dir := t.TempDir()
-	real, err := filepath.EvalSymlinks(dir)
+	resolved, err := filepath.EvalSymlinks(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !samePath(dir, real) {
-		t.Errorf("samePath(%q, %q) = false, want true (symlink variant)", dir, real)
+	if !samePath(dir, resolved) {
+		t.Errorf("samePath(%q, %q) = false, want true (symlink variant)", dir, resolved)
 	}
 	if samePath(dir, filepath.Join(dir, "other")) {
 		t.Error("samePath on different dirs = true, want false")

@@ -6,12 +6,12 @@ import (
 	"github.com/jflowers/gh-hud/internal/ghws"
 )
 
-func localM(max int) Machine {
-	return Machine{Name: "local", Max: max, Enabled: true, Local: true}
+func localM(slots int) Machine {
+	return Machine{Name: "local", Max: slots, Enabled: true, Local: true}
 }
 
-func remoteM(name string, max int) Machine {
-	return Machine{Name: name, SSH: name, Max: max, GhwsRoot: "~/Projects/github", Enabled: true}
+func remoteM(name string, slots int) Machine {
+	return Machine{Name: name, SSH: name, Max: slots, GhwsRoot: "~/Projects/github", Enabled: true}
 }
 
 func testView() machineView {

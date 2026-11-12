@@ -20,7 +20,7 @@ func logMouse(e tea.MouseEvent) bool {
 	if e.Action == tea.MouseActionMotion {
 		return true
 	}
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) //nolint:gosec // G703: a debug log path the operator sets
 	if err != nil {
 		return true
 	}

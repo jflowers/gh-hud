@@ -239,9 +239,9 @@ func (i Item) Score() int {
 	case i.Cats&CatNT != 0:
 		s += 2
 	case i.Cats&CatMy != 0:
-		s += 1
+		s++
 	case i.Cats&CatISS != 0:
-		s += 1
+		s++
 	}
 	if i.Cats&CatReady != 0 {
 		s += 4
@@ -256,13 +256,13 @@ func (i Item) Score() int {
 	case CIFail:
 		s += 5
 	case CIPending:
-		s += 1
+		s++
 	}
 	switch i.Review {
 	case "❌", "❗", "‼️":
 		s += 4
 	case "🟡":
-		s += 1
+		s++
 	case "✅":
 		s--
 	}

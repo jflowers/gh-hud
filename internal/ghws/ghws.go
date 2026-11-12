@@ -135,8 +135,8 @@ func (ix *Index) RepoFor(dir string) string {
 		return r
 	}
 	// Sessions may carry a symlinked or trailing-slash variant.
-	if real, err := filepath.EvalSymlinks(dir); err == nil {
-		return ix.byDir[real]
+	if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+		return ix.byDir[resolved]
 	}
 	return ""
 }

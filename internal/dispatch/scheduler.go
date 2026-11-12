@@ -69,11 +69,11 @@ func pickMachines(v machineView, task Task, ref string) []Machine {
 
 // freeFrac is the machine's free slot fraction, in [0, 1].
 func freeFrac(m Machine, v machineView) float64 {
-	max := m.Max
-	if max < 1 {
-		max = 1
+	slots := m.Max
+	if slots < 1 {
+		slots = 1
 	}
-	return float64(max-v.live[m.key()]) / float64(max)
+	return float64(slots-v.live[m.key()]) / float64(slots)
 }
 
 // candidates returns ranked placements for repo: capacity-ranked machines

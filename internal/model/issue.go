@@ -55,8 +55,8 @@ type issueNode struct {
 	} `json:"assignees"`
 }
 
-// FetchIssueSearch runs a GitHub search restricted to open issues.
-func FetchIssueSearch(ctx context.Context, c *gh.Client, search string, limit int) ([]issueNode, error) {
+// fetchIssueSearch runs a GitHub search restricted to open issues.
+func fetchIssueSearch(ctx context.Context, c *gh.Client, search string, limit int) ([]issueNode, error) {
 	var res issueSearchResult
 	vars := map[string]any{
 		"searchQuery": search + " is:issue is:open sort:updated-desc",

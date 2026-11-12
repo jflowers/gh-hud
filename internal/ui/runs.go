@@ -307,8 +307,8 @@ func (m *Model) runViewText() string {
 	if rows < 5 {
 		rows = 5
 	}
-	if max := len(body) - rows; m.runScroll > max {
-		m.runScroll = max
+	if last := len(body) - rows; m.runScroll > last {
+		m.runScroll = last
 	}
 	if m.runScroll < 0 {
 		m.runScroll = 0

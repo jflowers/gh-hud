@@ -101,7 +101,7 @@ func FetchAll(ctx context.Context, c *gh.Client, cfg *config.Config) *FetchResul
 	// prSection fetches a PR search and merges items by URL (OR-ing cats).
 	prSection := func(name, search string, cats Cats) {
 		section(name, func(ctx context.Context) error {
-			nodes, err := FetchPRSearch(ctx, c, search, cfg.Limit)
+			nodes, err := fetchPRSearch(ctx, c, search, cfg.Limit)
 			if err != nil {
 				return err
 			}
@@ -124,7 +124,7 @@ func FetchAll(ctx context.Context, c *gh.Client, cfg *config.Config) *FetchResul
 	// issueSection fetches an issue search and merges items by URL.
 	issueSection := func(name, search string) {
 		section(name, func(ctx context.Context) error {
-			nodes, err := FetchIssueSearch(ctx, c, search, cfg.Limit)
+			nodes, err := fetchIssueSearch(ctx, c, search, cfg.Limit)
 			if err != nil {
 				return err
 			}
@@ -175,7 +175,6 @@ func FetchAll(ctx context.Context, c *gh.Client, cfg *config.Config) *FetchResul
 	})
 
 	for _, repo := range cfg.WatchRepos {
-		repo := repo
 		section("runs:"+repo, func(ctx context.Context) error {
 			ris, err := FetchFailedRuns(ctx, c, repo, 72*time.Hour)
 			if err != nil {

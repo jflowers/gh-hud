@@ -125,7 +125,7 @@ func New(opts Options) (*Coordinator, error) {
 		}
 		opts.StateDir = filepath.Join(home, ".local", "state", "gh-hud")
 	}
-	if err := os.MkdirAll(opts.StateDir, 0o755); err != nil {
+	if err := os.MkdirAll(opts.StateDir, 0o700); err != nil {
 		return nil, fmt.Errorf("fleet state dir: %w", err)
 	}
 	if opts.GH == nil {
@@ -394,7 +394,7 @@ func (c *Coordinator) doDrain(ctx context.Context, name string) bool {
 		c.mu.Unlock()
 		return true
 	}
-	if !(ok && records == 0 && agents == 0) && !c.skipWait {
+	if (!ok || records != 0 || agents != 0) && !c.skipWait {
 		if waited := c.opts.Clock.Now().Sub(ms.DrainStart); waited > c.maxWait && !ms.WaitNotified {
 			ms.WaitNotified = true
 			c.notifyLocked("fleet drain still waiting on "+name,
