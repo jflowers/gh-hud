@@ -81,6 +81,7 @@ func (d *Dispatcher) AutoMerge(ctx context.Context, items []model.Item) []string
 	if !cfg.Enabled || !d.owns() {
 		return nil
 	}
+	sup := d.superviseAndRebuild(items)
 	var runs []Run
 	allRuns := func() []Run {
 		if runs == nil {
@@ -88,7 +89,7 @@ func (d *Dispatcher) AutoMerge(ctx context.Context, items []model.Item) []string
 		}
 		return runs
 	}
-	var msgs []string
+	msgs := sup
 	for _, it := range items {
 		action := autoMergeAction(it, cfg)
 		if action == mergeNone {

@@ -262,7 +262,11 @@ func (d *Dispatcher) Plan(items []model.Item, runs []Run) []PlanRow {
 	order := map[StageKind]int{StageNext: 0, StageRunning: 1, StageWait: 2, StageNeedsYou: 3, StageMerge: 4}
 	var auto []PlanRow
 	seen := map[string]bool{}
-	for _, it := range trainOrder(items) {
+	var prio map[string]bool
+	if tp := d.trainSnapshot(); tp != nil {
+		prio = tp.prio
+	}
+	for _, it := range trainOrderPrio(items, prio) {
 		ref := it.Ref()
 		if ref == "" || queued[ref] || seen[ref] {
 			continue
