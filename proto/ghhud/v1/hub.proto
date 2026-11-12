@@ -1,0 +1,467 @@
+syntax = "proto3";
+
+// The gh-hud hub API. A hub runs gh-hud's refresh loops, the agent
+// dispatcher and the fleet; clients (the TUI, the Mac and Android apps)
+// read its state as snapshots and send it commands.
+//
+// Clients name things by stable keys: items by URL, runs and sessions by
+// ID, queue entries by task and ref ("owner/repo#N"). State changes
+// arrive in the next snapshot; commands return only what the caller
+// needs at once.
+//
+// Open sets are strings, so a newer hub can add values without breaking
+// older clients: tasks ("rebase", "ci", "feedback", "review", "issue"),
+// run statuses, stage kinds, and fleet states. Closed sets are enums.
+package ghhud.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/jflowers/gh-hud/internal/api/gen/ghhud/v1;ghhudv1";
+
+service HubService {
+  // GetSnapshot returns the hub's current state.
+  rpc GetSnapshot(GetSnapshotRequest) returns (GetSnapshotResponse);
+  // Subscribe streams the current snapshot, then every change, and the
+  // events (notices and alerts) that happen meanwhile. A slow reader
+  // skips intermediate snapshots but always gets the newest.
+  rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse);
+
+  // Refresh asks for a refresh now; it coalesces with work in flight.
+  rpc Refresh(RefreshRequest) returns (RefreshResponse);
+
+  // Dispatch. These fail with FAILED_PRECONDITION when dispatch is off,
+  // and the hub refuses changes while another gh-hud owns dispatch.
+  rpc MenuChoices(MenuChoicesRequest) returns (MenuChoicesResponse);
+  rpc Dispatch(DispatchRequest) returns (DispatchResponse);
+  rpc Reinspect(ReinspectRequest) returns (ReinspectResponse);
+
+  // Your queue of agent tasks.
+  rpc QueueChoices(QueueChoicesRequest) returns (QueueChoicesResponse);
+  rpc Enqueue(EnqueueRequest) returns (EnqueueResponse);
+  rpc Unqueue(UnqueueRequest) returns (UnqueueResponse);
+  rpc MoveQueued(MoveQueuedRequest) returns (MoveQueuedResponse);
+
+  // Viewers. They open a terminal window on the hub's machine.
+  rpc Watch(WatchRequest) returns (WatchResponse);
+  rpc WatchRun(WatchRunRequest) returns (WatchRunResponse);
+  rpc OpenTranscript(OpenTranscriptRequest) returns (OpenTranscriptResponse);
+
+  // FleetControl drives the GitOps rollout; FAILED_PRECONDITION when the
+  // fleet is off.
+  rpc FleetControl(FleetControlRequest) returns (FleetControlResponse);
+}
+
+message GetSnapshotRequest {}
+
+message GetSnapshotResponse {
+  Snapshot snapshot = 1;
+}
+
+message SubscribeRequest {}
+
+message SubscribeResponse {
+  oneof msg {
+    Snapshot snapshot = 1;
+    Event event = 2;
+  }
+}
+
+message RefreshRequest {
+  RefreshTarget target = 1;
+}
+
+enum RefreshTarget {
+  REFRESH_TARGET_UNSPECIFIED = 0;
+  REFRESH_TARGET_GITHUB = 1; // fetch GitHub
+  REFRESH_TARGET_AGENTS = 2; // sessions, runs and slot usage
+  REFRESH_TARGET_WORKSPACES = 3; // checkout health on every machine
+}
+
+message RefreshResponse {}
+
+message MenuChoicesRequest {
+  string url = 1;
+}
+
+message MenuChoicesResponse {
+  repeated MenuChoice choices = 1;
+}
+
+// MenuChoice is a task that can start on an item now, and where.
+message MenuChoice {
+  string task = 1;
+  string cmd = 2;
+  // "workspace" locally, "machine:workspace" remotely.
+  string target = 3;
+}
+
+message DispatchRequest {
+  string task = 1;
+  string url = 2;
+}
+
+message DispatchResponse {
+  // Where the run started.
+  string task = 1;
+  string ref = 2;
+  string workspace = 3;
+  string machine = 4; // "" is the hub's machine
+  string runner = 5; // "herdr" or "local"
+  string dir = 6;
+}
+
+message ReinspectRequest {
+  string run_id = 1;
+}
+
+message ReinspectResponse {
+  Run run = 1;
+}
+
+message QueueChoicesRequest {
+  string url = 1;
+}
+
+message QueueChoicesResponse {
+  repeated string tasks = 1;
+}
+
+message EnqueueRequest {
+  string task = 1;
+  string url = 2;
+}
+
+message EnqueueResponse {
+  int64 position = 1; // 1 is first
+}
+
+message UnqueueRequest {
+  string task = 1;
+  string ref = 2;
+}
+
+message UnqueueResponse {}
+
+message MoveQueuedRequest {
+  string task = 1;
+  string ref = 2;
+  int64 delta = 3; // negative is earlier
+}
+
+message MoveQueuedResponse {
+  int64 index = 1; // 0 is first
+}
+
+message WatchRequest {
+  string session_id = 1;
+}
+
+message WatchResponse {}
+
+message WatchRunRequest {
+  string run_id = 1;
+}
+
+message WatchRunResponse {}
+
+message OpenTranscriptRequest {
+  string run_id = 1;
+}
+
+message OpenTranscriptResponse {}
+
+message FleetControlRequest {
+  FleetAction action = 1;
+}
+
+enum FleetAction {
+  FLEET_ACTION_UNSPECIFIED = 0;
+  FLEET_ACTION_PAUSE = 1;
+  FLEET_ACTION_RESUME = 2;
+  FLEET_ACTION_APPLY_NOW = 3; // poll the target now
+  FLEET_ACTION_SKIP_WAIT = 4; // apply without waiting for agents to drain
+  FLEET_ACTION_RETRY = 5; // retry the failed machine
+}
+
+message FleetControlResponse {}
+
+// Snapshot is the hub's state at one moment.
+message Snapshot {
+  // seq increases with every publish; clients drop older snapshots.
+  uint64 seq = 1;
+
+  FetchResult result = 2; // unset until the first fetch completes
+  google.protobuf.Timestamp fetched_at = 3;
+  bool fetching = 4;
+  // fetch_error is fatal: the GitHub user could not be resolved.
+  string fetch_error = 5;
+
+  // dispatch is true when the hub has a dispatcher.
+  bool dispatch = 6;
+  // follower is the owning gh-hud's pid when this hub only follows ("?"
+  // when unknown); "" when it owns dispatch.
+  string follower = 7;
+  repeated Session sessions = 8;
+  repeated Run runs = 9; // newest first
+  repeated MachineUsage usage = 10;
+  google.protobuf.Timestamp agents_at = 11;
+  // stages is each item's pipeline stage, keyed by item URL.
+  map<string, Stage> stages = 12;
+  // plan is what agents work on next, in start order; queue is your
+  // queue, first to start first.
+  repeated PlanRow plan = 13;
+  repeated QueueEntry queue = 14;
+
+  repeated CheckoutHealth workspaces = 15;
+  google.protobuf.Timestamp workspaces_at = 16;
+  bool workspaces_loading = 17;
+
+  FleetSnapshot fleet = 18; // unset when the fleet is off
+}
+
+message FetchResult {
+  repeated Item items = 1; // attention-ranked
+  repeated SectionError errors = 2;
+  google.protobuf.Duration took = 3;
+  google.protobuf.Timestamp fetched_at = 4;
+  string user = 5;
+}
+
+// SectionError is a dashboard section that failed to load.
+message SectionError {
+  string section = 1;
+  string message = 2;
+}
+
+enum ItemKind {
+  ITEM_KIND_UNSPECIFIED = 0;
+  ITEM_KIND_NOTE = 1; // a notification not backed by a fetched PR/issue
+  ITEM_KIND_PR = 2;
+  ITEM_KIND_ISSUE = 3;
+  ITEM_KIND_RUN = 4; // an Actions run
+}
+
+enum CIState {
+  CI_STATE_UNSPECIFIED = 0;
+  CI_STATE_BLANK = 1; // no CI column
+  CI_STATE_NONE = 2; // no checks at all
+  CI_STATE_OK = 3;
+  CI_STATE_PENDING = 4;
+  CI_STATE_FAIL = 5;
+}
+
+// Item is one row on the dashboard: a PR, issue, Actions run or
+// notification.
+message Item {
+  ItemKind kind = 1;
+  // categories is a bitmask of dashboard sections: 1 review requested,
+  // 2 mine, 4 issues, 8 CI, 16 notifications, 32 ready for a
+  // maintainer, 64 ready for an agent review.
+  uint32 categories = 2;
+  string url = 3;
+  string repo = 4; // owner/name
+  int64 num = 5;
+  string title = 6;
+
+  string author = 7;
+  bool draft = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+
+  CIState ci = 11; // overall checks
+  CIState codecov = 12; // codecov/patch
+  // review, bot_review and merge are the TUI's glyphs for now: the
+  // human and bot review states, and the merge state ("⚠️" conflict,
+  // " " ok, "?" unknown).
+  string review = 13;
+  string bot_review = 14;
+  string merge = 15;
+  int64 threads = 16; // unresolved review threads opened by humans
+  int64 bot_threads = 17; // ... and by bots
+
+  string last_actor = 18;
+  string waiting_on = 19; // "me", "them" or ""
+  bool tagged = 20; // you are a requested reviewer or assignee
+  bool other_approved = 21; // a maintainer other than you approved
+  bool my_approval = 22; // your latest review is an approval
+  bool bot_review_due = 23;
+
+  repeated string reasons = 24; // notification reasons
+
+  string node_id = 25;
+  string head_oid = 26;
+  string merge_state = 27; // GitHub mergeStateStatus
+  string review_decision = 28;
+  int64 required_reviews = 29;
+  bool auto_merge_on = 30;
+  bool auto_merge_allowed = 31;
+  repeated string labels = 32;
+
+  repeated string failing_checks = 33;
+  bool checks_required = 34;
+  repeated string required_fails = 35;
+  repeated string base_failing = 36;
+  repeated string base_passing = 37;
+  string base_oid = 38;
+
+  int64 size = 39; // lines added plus removed
+  repeated string files = 40;
+
+  string head_branch = 41;
+  string run_branch = 42;
+  string run_event = 43;
+}
+
+// Session is an agent session on some machine.
+message Session {
+  string id = 1;
+  string title = 2;
+  string directory = 3;
+  google.protobuf.Timestamp updated_at = 4;
+  bool running = 5;
+  bool failed = 6;
+  bool unknown = 7;
+  string note = 8;
+  string task = 9;
+  string log = 10;
+  string workspace = 11;
+  string ref = 12;
+  string machine = 13; // "" is the hub's machine
+  string state = 14;
+  string pane_id = 15;
+  string ws_id = 16;
+  bool blocked = 17;
+  google.protobuf.Timestamp blocked_since = 18;
+  string run_id = 19;
+}
+
+// Run is one dispatch: its status and what it did.
+message Run {
+  string id = 1;
+  string task = 2;
+  string ref = 3;
+  string repo = 4;
+  int64 num = 5;
+  string machine = 6;
+  string workspace = 7;
+  string dir = 8;
+  // status: running, blocked, ok, failed, left-work or unknown.
+  string status = 9;
+  bool auto = 10;
+  google.protobuf.Timestamp started_at = 11;
+  google.protobuf.Timestamp finished_at = 12; // unset while running
+  string session_id = 13;
+  string pane_id = 14;
+  string ws_id = 15;
+  string log = 16;
+  string reason = 17;
+  string summary = 18;
+  repeated string left = 19;
+  repeated string pushed = 20;
+  string branch = 21;
+  bool cleaned = 22;
+  string fingerprint = 23;
+}
+
+message MachineUsage {
+  string name = 1;
+  int64 used = 2;
+  int64 max = 3;
+  bool ok = 4; // reachable and enabled
+}
+
+// Stage is a PR's position in the auto pipeline.
+message Stage {
+  // kind: "" none, running, next, wait, you, merge.
+  string kind = 1;
+  string task = 2;
+  string reason = 3;
+}
+
+message PlanRow {
+  Item item = 1;
+  string task = 2;
+  Stage stage = 3;
+  int64 queued = 4; // position in your queue (1 first); 0 for auto rows
+  string note = 5;
+  bool missing = 6; // queued, but not in the latest refresh
+}
+
+message QueueEntry {
+  string ref = 1;
+  string task = 2;
+  string title = 3;
+  google.protobuf.Timestamp added = 4;
+  string last_error = 5;
+}
+
+// CheckoutHealth is whether a ghws checkout can take a dispatch.
+message CheckoutHealth {
+  string machine = 1;
+  string workspace = 2;
+  string repo = 3;
+  string dir = 4;
+  string branch = 5;
+  string default_branch = 6;
+  int64 ahead = 7; // -1 unknown
+  int64 behind = 8; // -1 unknown
+  repeated string dirty = 9;
+  int64 learnings = 10;
+  repeated string local_only = 11;
+  int64 stashes = 12;
+  string busy = 13;
+  bool no_upstream = 14;
+  string error = 15;
+}
+
+message FleetSnapshot {
+  string target = 1;
+  string target_short = 2;
+  string ci = 3; // unknown, green, pending, failed, "no checks"
+  string ci_detail = 4;
+  bool blocked = 5;
+  bool paused = 6;
+  bool active = 7;
+  string failed = 8;
+  string banner = 9;
+  string last_error = 10;
+  repeated FleetMachine machines = 11;
+}
+
+message FleetMachine {
+  string name = 1;
+  string state = 2;
+  bool reachable = 3;
+  string applied = 4;
+  string applied_short = 5;
+  google.protobuf.Duration waited = 6; // time spent draining
+  string last_error = 7;
+}
+
+enum EventKind {
+  EVENT_KIND_UNSPECIFIED = 0;
+  EVENT_KIND_NOTICE = 1; // a status-line message
+  EVENT_KIND_ALERT = 2; // something worth interrupting you for
+}
+
+message Event {
+  EventKind kind = 1;
+  string text = 2;
+  Alert alert = 3; // EVENT_KIND_ALERT
+}
+
+enum AlertType {
+  ALERT_TYPE_UNSPECIFIED = 0;
+  ALERT_TYPE_READY = 1; // your PR is ready for a maintainer
+  ALERT_TYPE_BLOCKED = 2; // an agent has waited on you too long
+  ALERT_TYPE_RUN_FINISHED = 3;
+}
+
+message Alert {
+  AlertType type = 1;
+  string ref = 2;
+  Run run = 3; // run alerts
+  Session session = 4; // blocked alerts
+  string text = 5;
+}
