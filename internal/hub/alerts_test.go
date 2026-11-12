@@ -22,8 +22,8 @@ func texts(alerts []Alert) []string {
 
 func on() *config.Config { return &config.Config{Notify: true, BlockedNotifySecs: 600} }
 
-func readyPR(repo string, num int) model.Item {
-	return model.Item{Kind: model.KindPR, Cats: model.CatMy | model.CatReady, Repo: repo, Num: num}
+func readyPR(num int) model.Item {
+	return model.Item{Kind: model.KindPR, Cats: model.CatMy | model.CatReady, Repo: "acme/r", Num: num}
 }
 
 func TestRunsSeedsThenAlerts(t *testing.T) {
@@ -79,10 +79,10 @@ func TestRunsTracksSeenWithAlertsOff(t *testing.T) {
 
 func TestItemsSeedsThenAlertsOncePerRef(t *testing.T) {
 	a := NewAlerter(on())
-	if got := a.Items("me", []model.Item{readyPR("acme/r", 1)}); got != nil {
+	if got := a.Items("me", []model.Item{readyPR(1)}); got != nil {
 		t.Fatalf("first fetch must only seed, got %q", texts(got))
 	}
-	items := []model.Item{readyPR("acme/r", 1), readyPR("acme/r", 2), readyPR("acme/r", 2), {Kind: model.KindPR, Cats: model.CatMy, Repo: "acme/r", Num: 3}}
+	items := []model.Item{readyPR(1), readyPR(2), readyPR(2), {Kind: model.KindPR, Cats: model.CatMy, Repo: "acme/r", Num: 3}}
 	want := []string{"acme/r#2 ready for maintainer review"}
 	if got := a.Items("me", items); !reflect.DeepEqual(texts(got), want) {
 		t.Errorf("alerts = %q, want %q", texts(got), want)
@@ -95,8 +95,8 @@ func TestItemsSeedsThenAlertsOncePerRef(t *testing.T) {
 func TestItemsIgnoresFailedFetch(t *testing.T) {
 	a := NewAlerter(on())
 	a.Items("me", nil)
-	a.Items("", []model.Item{readyPR("acme/r", 1)}) // fetch without a user: no change
-	if got := a.Items("me", []model.Item{readyPR("acme/r", 1)}); len(got) != 1 {
+	a.Items("", []model.Item{readyPR(1)}) // fetch without a user: no change
+	if got := a.Items("me", []model.Item{readyPR(1)}); len(got) != 1 {
 		t.Errorf("alerts = %q, want one", texts(got))
 	}
 }
