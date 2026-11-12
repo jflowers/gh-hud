@@ -205,17 +205,41 @@ I/O.
    share them. The UI calls the alerter, so behavior is unchanged. The one
    difference is that ready alerts now fire in rank order rather than
    map order.
-2. **`hub.Hub` owns the loops and the snapshot.** Add `New`, `Run`,
-   `Snapshot`, `Subscribe` and the `Refresh*` triggers. `main.go` builds the
-   hub and stops starting the fleet itself. The UI switches from
-   `fetchCmd`, `fetchAgents`, `fetchWorkspaces`, `autoCmd` and its tick
-   logic to the subscription. Stages are precomputed. This PR carries the
-   real risk: test it by running owner and follower side by side.
+2. **`hub.Hub` owns the loops and the snapshot.** *(done)* `hub.New` /
+   `Run` / `Snapshot` / `Subscribe` and the `Refresh*` triggers, behind a
+   narrow `hub.Backend` interface that step 3 extends. Each cadence (fetch,
+   agents, workspaces) is one goroutine that runs, waits for its interval
+   or a trigger, and folds triggers that arrive mid-run into a single
+   rerun. A 1 s publish refreshes the fleet state and the pipeline stages.
+   The hub runs the auto pass after each fetch (one at a time) and starts
+   the fleet when it owns dispatch. Alerts move into the hub along with
+   the notifier. The UI keeps its view fields and fills them from each
+   snapshot, so rendering and its tests are unchanged. `Snapshot.Res` is
+   the whole `*model.FetchResult` rather than the separate `Items` /
+   `Warnings` fields sketched above; the wire types in Phase 2 split it.
 3. **Commands through `Backend`.** Dispatch, actions, reinspect, the fleet
    controls and the host-local actions. Remove the `*dispatch.Dispatcher`
    and `*fleet.Coordinator` fields from `ui.Model`. Add
    `hub/hubtest.Fake` and move the UI tests that build `&Model{...}` with
    raw fields onto it.
+
+   The queue and the Plan tab (added in 5b4f2da, after this plan was first
+   written) come along too:
+   - **State:** `Snapshot.Plan` (`[]dispatch.PlanRow` from
+     `Dispatcher.Plan(items, runs)`) and `Snapshot.Queue`
+     (`[]dispatch.QueueEntry`), computed in the same publish as `Stages`.
+   - **Commands, addressed by URL** like `Dispatch`: `Enqueue(task, url)`,
+     `Unqueue(task, url)`, `MoveQueued(task, url, delta) (int, error)` and
+     `QueueChoices(url)`.
+   - Queue changes are owner-only. A follower's command returns the
+     dispatcher's follower error, and its view picks up the owner's
+     `queue.json` through the snapshot.
+
+   File ownership while this is in flight, agreed with the dispatch-rules
+   session: this work owns `internal/hub`, `internal/ui/app.go`,
+   `cmd/gh-hud/main.go` and the auto-pass wiring, and that session owns
+   `internal/dispatch` and `internal/model`. Its new features reach the UI
+   through `Backend` methods and `Snapshot` fields.
 4. **Guard the boundary.** Add a test that fails if `internal/ui` imports
    `os/exec`, or references `dispatch.Dispatcher` or `fleet.Coordinator`.
    Update the Architecture section of `PLAN.md` and `AGENTS.md`.

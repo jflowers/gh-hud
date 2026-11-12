@@ -905,9 +905,9 @@ func (m *Model) View() string {
 			lines = append(lines, "", lipgloss.NewStyle().Foreground(cGreen).Render("   "+msg))
 		}
 		rc := rowCtx{me: m.me(), bots: m.bots, now: time.Now(), runs: latestRuns(m.runs)}
-		if m.disp != nil {
-			runs := m.runs
-			rc.stage = func(it model.Item) dispatch.Stage { return m.disp.Stage(it, runs) }
+		if m.stages != nil {
+			stages := m.stages
+			rc.stage = func(it model.Item) dispatch.Stage { return stages[it.URL] }
 		}
 		end := m.offset + maxRows
 		if end > len(vis) {

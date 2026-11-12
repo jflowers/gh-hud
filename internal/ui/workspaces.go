@@ -5,7 +5,6 @@ package ui
 // a cleanup would lose. The selected checkout's detail is below the table.
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -19,8 +18,7 @@ import (
 )
 
 const (
-	wsRefresh = 2 * time.Minute  // background refresh (one ssh per worker)
-	wsStale   = 30 * time.Second // opening the tab refreshes older data
+	wsStale = 30 * time.Second // opening the tab refreshes older data
 )
 
 // workspace table column widths (the notes column takes the rest)
@@ -32,21 +30,6 @@ const (
 	wsSyncW   = 8
 	wsStateW  = 20
 )
-
-// fetchWorkspaces reads checkout health (nil cmd when dispatch is off or
-// a read is already running).
-func (m *Model) fetchWorkspaces() tea.Cmd {
-	d := m.disp
-	if d == nil || m.wsLoading {
-		return nil
-	}
-	m.wsLoading = true
-	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-		defer cancel()
-		return workspacesMsg(d.Workspaces(ctx))
-	}
-}
 
 // readyCheckouts counts checkouts the next run could use, for the tab count.
 func (m *Model) readyCheckouts() int {
@@ -357,9 +340,9 @@ func (m *Model) handleWorkspacesKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case "r":
-		if cmd := m.fetchWorkspaces(); cmd != nil {
+		if m.disp != nil && !m.wsLoading {
 			m.flash("reading checkouts…")
-			return m, cmd
+			m.refreshWorkspaces()
 		}
 	}
 	return m, nil
