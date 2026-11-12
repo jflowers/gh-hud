@@ -12,7 +12,6 @@ import (
 	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/dispatch"
 	"github.com/jflowers/gh-hud/internal/fleet"
-	"github.com/jflowers/gh-hud/internal/ghws"
 	"github.com/jflowers/gh-hud/internal/hub"
 	"github.com/jflowers/gh-hud/internal/model"
 )
@@ -50,18 +49,23 @@ type actionChoice struct {
 // Model is the bubbletea model for the dashboard.
 type Model struct {
 	cfg     *config.Config
-	backend hub.Backend // nil in --snapshot renders
+	backend hub.Backend // nil only in tests that render one frame
 	bots    *model.BotFilter
-	disp    *dispatch.Dispatcher
-	idx     *ghws.Index
+	// dispatchOn and fleetOn say whether the hub has a dispatcher and a
+	// fleet coordinator; every action on them goes through backend.
+	dispatchOn bool
+	fleetOn    bool
 
 	// snaps and events are the hub subscription (see Init); seq is the
 	// last snapshot applied.
 	snaps  <-chan hub.Snapshot
 	events <-chan hub.Event
 	seq    uint64
-	// stages is each item's pipeline stage by URL, from the hub.
+	// stages is each item's pipeline stage by URL, plan the Plan tab's
+	// rows, and queue your queue, all from the hub.
 	stages map[string]dispatch.Stage
+	plan   []dispatch.PlanRow
+	queue  []dispatch.QueueEntry
 
 	res       *model.FetchResult
 	fetching  bool
@@ -100,11 +104,8 @@ type Model struct {
 	wsAt      time.Time
 	wsLoading bool
 
-	// fleetMode is the GitOps rollout view (F); fleet is nil when [fleet]
-	// is disabled. fleetSnap comes from the hub, and straight from the
-	// coordinator after a fleet key so the view answers at once.
+	// fleetMode is the GitOps rollout view (F), shown when fleetOn.
 	fleetMode     bool
-	fleet         *fleet.Coordinator
 	fleetSnap     fleet.Snapshot
 	skipWaitArmed bool
 	skipWaitAt    time.Time
@@ -128,11 +129,9 @@ type Model struct {
 	width, height int
 }
 
-// New builds the dashboard model over a hub. backend is nil only for
-// one-frame renders; disp, idx, and fleetCoord may be nil (dispatch /
-// fleet off). disp and fleetCoord still serve the commands the hub does
-// not carry yet.
-func New(cfg *config.Config, backend hub.Backend, disp *dispatch.Dispatcher, idx *ghws.Index, fleetCoord *fleet.Coordinator) *Model {
+// New builds the dashboard model over a hub, which it reads state from and
+// sends every command to.
+func New(cfg *config.Config, backend hub.Backend) *Model {
 	// No OSC-8 links in the TUI: iTerm2 would open ⌘-clicked links itself
 	// *and* report the click to us (double tab), and it swallows ⌘-right-click
 	// on links. The app handles every click itself; --once keeps links.
@@ -141,21 +140,22 @@ func New(cfg *config.Config, backend hub.Backend, disp *dispatch.Dispatcher, idx
 		cfg:     cfg,
 		backend: backend,
 		bots:    model.NewBotFilter(cfg.KnownBots),
-		disp:    disp,
-		idx:     idx,
-		fleet:   fleetCoord,
 		hover:   -1,
 	}
-	m.refreshFleetSnap()
+	m.sync()
 	return m
 }
 
-// refreshFleetSnap copies the coordinator's state for rendering.
-func (m *Model) refreshFleetSnap() {
-	if m.fleet != nil {
-		m.fleetSnap = m.fleet.Snapshot()
+// sync applies the hub's current state now, so a command's effect shows
+// before its snapshot arrives (and the next key acts on fresh rows).
+func (m *Model) sync() {
+	if m.backend != nil {
+		m.applySnapshot(m.backend.Snapshot())
 	}
 }
+
+// ctx is the context for backend calls made from the UI loop.
+func ctx() context.Context { return context.Background() }
 
 // Init subscribes to the hub and starts the clock (which only re-renders
 // ages and expires the status line; the hub does the refreshing).
@@ -195,7 +195,8 @@ func (m *Model) applySnapshot(s hub.Snapshot) {
 	m.res, m.fetching, m.lastFetch, m.fetchErr = s.Res, s.Fetching, s.FetchedAt, s.FetchErr
 	m.agents, m.runs, m.machineUsage, m.follower = s.Sessions, s.Runs, s.Usage, s.Follower
 	m.ws, m.wsAt, m.wsLoading = s.Workspaces, s.WorkspacesAt, s.WorkspacesLoading
-	m.stages = s.Stages
+	m.stages, m.plan, m.queue = s.Stages, s.Plan, s.Queue
+	m.dispatchOn, m.fleetOn = s.Dispatch, s.Fleet != nil
 	if s.Fleet != nil {
 		m.fleetSnap = *s.Fleet
 	}
@@ -221,16 +222,16 @@ func clampSel(sel, n int) int {
 // return no command so call sites read `return m, m.refreshAgents()`.
 
 func (m *Model) refreshAgents() tea.Cmd {
-	if m.backend != nil && m.disp != nil {
-		_ = m.backend.RefreshAgents(context.Background())
+	if m.backend != nil && m.dispatchOn {
+		_ = m.backend.RefreshAgents(ctx())
 	}
 	return nil
 }
 
 func (m *Model) refreshWorkspaces() {
-	if m.backend != nil && m.disp != nil {
+	if m.backend != nil && m.dispatchOn {
 		m.wsLoading = true // until the hub says otherwise
-		_ = m.backend.RefreshWorkspaces(context.Background())
+		_ = m.backend.RefreshWorkspaces(ctx())
 	}
 }
 
@@ -273,7 +274,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.flash(flash)
 		}
-		return m, m.refreshAgents()
+		return m, nil // the hub refreshes agents after a dispatch
 
 	case reinspectMsg:
 		if msg.err != nil {
@@ -285,7 +286,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.flash(fmt.Sprintf("re-check: %d item(s) still left in %s", len(msg.run.Left), runAt(msg.run)))
 		}
-		return m, m.refreshAgents()
+		return m, nil
 
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
@@ -388,26 +389,22 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if !m.fetching && m.backend != nil {
 			m.fetching = true // until the hub says otherwise
 			m.flash("refreshing…")
-			_ = m.backend.Refresh(context.Background())
+			_ = m.backend.Refresh(ctx())
 		}
 	case "a":
 		m.openAction()
 	case "+":
-		if it, ok := m.selected(); ok && m.disp != nil {
+		if it, ok := m.selected(); ok && m.dispatchOn {
 			m.openActionFor(it, true)
 		}
 	case "p":
 		return m, m.switchTab("p")
 	case "i":
-		if m.disp != nil {
+		if m.dispatchOn {
 			m.openRowRun()
 		}
 	case "F":
-		if m.fleet != nil {
-			m.fleetMode = true
-			m.skipWaitArmed = false
-			m.refreshFleetSnap()
-		}
+		m.openFleet()
 	case "6", "9":
 		return m, m.switchTab(msg.String())
 	case "1":
@@ -730,18 +727,16 @@ func (m *Model) handleAgentsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "?":
 		m.help = true
 	case "F":
-		if m.fleet != nil {
+		if m.fleetOn {
 			m.agentsMode = false
-			m.fleetMode = true
-			m.skipWaitArmed = false
-			m.refreshFleetSnap()
+			m.openFleet()
 		}
 	case "t":
 		if m.agentsSel < len(list) {
 			r, ok := m.sessionRun(list[m.agentsSel])
 			if !ok {
 				m.flash("not a gh-hud dispatch")
-			} else if err := m.disp.OpenTranscript(r); err != nil {
+			} else if err := m.backend.OpenTranscript(ctx(), r.ID); err != nil {
 				m.flash("transcript failed: " + err.Error())
 			} else {
 				m.flash("opening transcript " + r.SessionID)
@@ -778,7 +773,7 @@ func (m *Model) handleAgentsKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter", "o":
 		if m.agentsSel < len(list) {
 			s := list[m.agentsSel]
-			if err := m.disp.Watch(s); err != nil {
+			if err := m.backend.Watch(ctx(), s.ID); err != nil {
 				m.flash("watch failed: " + err.Error())
 			} else {
 				m.flash("watching " + s.Title)
@@ -802,21 +797,21 @@ func (m *Model) switchTab(key string) tea.Cmd {
 	m.agentsMode, m.wsMode, m.planMode = false, false, false
 	switch key {
 	case "p":
-		if m.disp == nil {
+		if !m.dispatchOn {
 			return nil
 		}
 		m.planMode = true
 		m.planSel = 0
 		return nil
 	case "6":
-		if m.disp == nil {
+		if !m.dispatchOn {
 			return nil
 		}
 		m.agentsMode = true
 		m.agentsSel = 0
 		return m.refreshAgents()
 	case "9":
-		if m.disp == nil {
+		if !m.dispatchOn {
 			return nil
 		}
 		m.wsMode = true
@@ -840,7 +835,25 @@ func (m *Model) switchTab(key string) tea.Cmd {
 // pattern in the codebase, so the double press is the confirmation.
 const skipWaitWindow = 5 * time.Second
 
+// openFleet opens the fleet rollout view (when the fleet is on).
+func (m *Model) openFleet() {
+	if m.fleetOn {
+		m.fleetMode = true
+		m.skipWaitArmed = false
+		m.sync()
+	}
+}
+
 func (m *Model) handleFleetKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// fleetDo runs a fleet control and flashes done, or why it failed.
+	fleetDo := func(err error, done string) {
+		if err != nil {
+			m.flash("fleet: " + err.Error() + " (failed)")
+			return
+		}
+		m.flash(done)
+		m.sync()
+	}
 	switch msg.String() {
 	case "esc", "q", "F":
 		m.fleetMode = false
@@ -848,46 +861,31 @@ func (m *Model) handleFleetKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+c":
 		return m, tea.Quit
 	case "p":
-		if m.fleet != nil {
-			paused := !m.fleetSnap.Paused
-			m.fleet.SetPaused(paused)
-			if paused {
-				m.flash("fleet rollout paused")
-			} else {
-				m.flash("fleet rollout resumed")
-			}
+		if m.fleetSnap.Paused {
+			fleetDo(m.backend.FleetPause(ctx(), false), "fleet rollout resumed")
+		} else {
+			fleetDo(m.backend.FleetPause(ctx(), true), "fleet rollout paused")
 		}
 	case "a":
-		if m.fleet != nil {
-			m.fleet.ApplyNow()
-			m.flash("fleet poll forced")
-		}
+		fleetDo(m.backend.FleetApplyNow(ctx()), "fleet poll forced")
 	case "s":
-		if m.fleet == nil {
-			return m, nil
-		}
 		if m.skipWaitArmed && time.Since(m.skipWaitAt) < skipWaitWindow {
 			m.skipWaitArmed = false
-			m.fleet.SkipWait()
-			m.flash("skipping drain wait — applying with live agents")
+			fleetDo(m.backend.FleetSkipWait(ctx()), "skipping drain wait — applying with live agents")
 		} else {
 			m.skipWaitArmed = true
 			m.skipWaitAt = time.Now()
 			m.flash("press s again to skip the drain wait")
 		}
 	case "r":
-		if m.fleet != nil {
-			m.fleet.Retry()
-			m.flash("fleet retrying failed machine")
-		}
+		fleetDo(m.backend.FleetRetry(ctx()), "fleet retrying failed machine")
 	}
-	m.refreshFleetSnap()
 	return m, nil
 }
 
 // openAction builds the dispatch menu for the selected row.
 func (m *Model) openAction() {
-	if m.disp == nil {
+	if !m.dispatchOn {
 		m.flash("dispatch unavailable")
 		return
 	}
@@ -899,7 +897,7 @@ func (m *Model) openAction() {
 // openActionFor builds the agent menu for an item. With queue set the menu
 // adds the chosen task to your queue, which needs no free checkout yet.
 func (m *Model) openActionFor(it model.Item, queue bool) {
-	if m.disp == nil {
+	if !m.dispatchOn {
 		m.flash("dispatch unavailable")
 		return
 	}
@@ -909,7 +907,12 @@ func (m *Model) openActionFor(it model.Item, queue bool) {
 	m.actions = nil
 	m.actionSel = 0
 	if queue {
-		for _, t := range m.disp.QueueChoices(it) {
+		opts, err := m.backend.QueueChoices(ctx(), it.URL)
+		if err != nil {
+			m.flash("can't queue: " + err.Error())
+			return
+		}
+		for _, t := range opts {
 			m.actions = append(m.actions, actionChoice{task: t, target: "your queue"})
 		}
 		if len(m.actions) == 0 {
@@ -919,7 +922,12 @@ func (m *Model) openActionFor(it model.Item, queue bool) {
 		m.actionMode = true
 		return
 	}
-	for _, choice := range m.disp.MenuChoices(it) {
+	choices, err := m.backend.MenuChoices(ctx(), it.URL)
+	if err != nil {
+		m.flash("agent menu failed: " + err.Error())
+		return
+	}
+	for _, choice := range choices {
 		m.actions = append(m.actions, actionChoice{task: choice.Task, cmd: choice.Cmd, target: choice.Target})
 		if len(m.actions) >= 8 {
 			break
@@ -937,12 +945,10 @@ func (m *Model) openActionFor(it model.Item, queue bool) {
 }
 
 func (m *Model) dispatchCmd(c actionChoice) tea.Cmd {
-	d := m.disp
+	b := m.backend
 	it := m.actionItem
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		defer cancel()
-		rec, err := d.Dispatch(ctx, c.task, it, false)
+		rec, err := b.Dispatch(ctx(), c.task, it.URL)
 		return dispatchDoneMsg{task: string(c.task), ref: it.Ref(), ws: rec.Workspace, machine: rec.Machine, runner: rec.Runner, err: err}
 	}
 }

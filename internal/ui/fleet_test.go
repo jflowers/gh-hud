@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"context"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -10,6 +10,8 @@ import (
 	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/dispatch"
 	"github.com/jflowers/gh-hud/internal/fleet"
+	"github.com/jflowers/gh-hud/internal/hub"
+	"github.com/jflowers/gh-hud/internal/hub/hubtest"
 )
 
 func fleetTestSnapshot() fleet.Snapshot {
@@ -97,72 +99,12 @@ func TestFleetIndicatorText(t *testing.T) {
 	}
 }
 
-// uiFakeGH/uiFakeRunner/uiFakeSched are just enough fleet plumbing to drive
-// the Model's fleet keys against a real coordinator.
-type uiFakeGH struct{ sha string }
-
-func (g uiFakeGH) HeadSHA(ctx context.Context, repo, branch string) (string, error) {
-	return g.sha, nil
-}
-func (g uiFakeGH) CheckRuns(ctx context.Context, repo, sha string) ([]fleet.CheckRun, error) {
-	return []fleet.CheckRun{{Status: "completed", Conclusion: "success"}}, nil
-}
-
-type uiFakeRunner struct{ applied map[string]string }
-
-func (r uiFakeRunner) Run(ctx context.Context, machine string, argv ...string) (string, string, error) {
-	if len(argv) == 2 && argv[0] == "fleet-apply" && argv[1] == "--status" {
-		return r.applied[machine], "", nil
-	}
-	if len(argv) == 2 && argv[0] == "fleet-apply" && argv[1] == "--check" {
-		return "fleet-apply: ok " + r.applied[machine] + "\n", "", nil
-	}
-	r.applied[machine] = argv[1]
-	return "fleet-apply: ok " + argv[1] + "\n", "", nil
-}
-
-type uiFakeSched struct {
-	drain []string
-	live  map[string][3]int // machine → records, agents, ok(0/1)
-}
-
-func (s *uiFakeSched) SetDraining(names ...string) { s.drain = append([]string(nil), names...) }
-func (s *uiFakeSched) LiveOn(ctx context.Context, machine string) (int, int, bool) {
-	lc := s.live[machine]
-	return lc[0], lc[1], lc[2] == 1
-}
-
-func TestFleetKeysDriveCoordinator(t *testing.T) {
-	dir := t.TempDir()
-	runner := &uiFakeRunner{applied: map[string]string{
-		"lap1": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-		"lap2": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-	}}
-	sched := &uiFakeSched{live: map[string][3]int{}}
+func TestFleetKeysAskTheHub(t *testing.T) {
 	cfg := config.Default()
-	cfg.Fleet = config.FleetConfig{
-		Enabled: true, Repo: "acme/dotfiles", Branch: "main",
-		Poll: "5m", RequireCI: true, MaxWait: "1h", Notify: false,
-		Order: []string{"lap1", "lap2", "local"},
-	}
-	coord, err := fleet.New(fleet.Options{
-		Config: cfg.Fleet,
-		Machines: []dispatch.Machine{
-			{Name: "lap1", Max: 2, Enabled: true},
-			{Name: "lap2", Max: 2, Enabled: true},
-			{Name: "local", Max: 2, Enabled: true, Local: true},
-		},
-		StateDir:  dir,
-		Scheduler: sched,
-		GH:        uiFakeGH{sha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
-		Runner:    runner,
-		Notifier:  noopNotifier{},
-		Clock:     wallClock{},
-	})
-	if err != nil {
-		t.Fatalf("fleet.New: %v", err)
-	}
-	m := New(cfg, nil, nil, nil, coord)
+	fake := &hubtest.Fake{}
+	snap := fleetTestSnapshot()
+	fake.SetSnap(hub.Snapshot{Seq: 1, Fleet: &snap})
+	m := New(cfg, fake)
 	m.width, m.height = 120, 30
 
 	// F opens the fleet view and shows the machines in rollout order.
@@ -175,15 +117,13 @@ func TestFleetKeysDriveCoordinator(t *testing.T) {
 		t.Errorf("fleet view = %q, want machine rows", out)
 	}
 
-	// p pauses and resumes through the coordinator.
+	// p pauses; once the hub reports the pause, p resumes.
 	pressKey(t, m, "p")
-	if !m.fleetSnap.Paused || !coord.Paused() {
-		t.Error("p did not pause the rollout")
-	}
+	paused := snap
+	paused.Paused = true
+	fake.SetSnap(hub.Snapshot{Seq: 2, Fleet: &paused})
+	m.sync()
 	pressKey(t, m, "p")
-	if m.fleetSnap.Paused || coord.Paused() {
-		t.Error("second p did not resume the rollout")
-	}
 
 	// s needs two presses within the window to skip a drain wait.
 	pressKey(t, m, "s")
@@ -194,11 +134,25 @@ func TestFleetKeysDriveCoordinator(t *testing.T) {
 	if m.skipWaitArmed {
 		t.Error("second s should consume the arm")
 	}
+	pressKey(t, m, "a")
+	pressKey(t, m, "r")
+	want := []string{"FleetPause true", "FleetPause false", "FleetSkipWait", "FleetApplyNow", "FleetRetry"}
+	if !slices.Equal(fake.Calls, want) {
+		t.Errorf("calls = %q\nwant    %q", fake.Calls, want)
+	}
 
 	// F/esc closes.
 	pressKey(t, m, "F")
 	if m.fleetMode {
 		t.Error("F did not close the fleet view")
+	}
+}
+
+func TestFleetKeyIgnoredWhenFleetOff(t *testing.T) {
+	m := New(config.Default(), &hubtest.Fake{})
+	pressKey(t, m, "F")
+	if m.fleetMode {
+		t.Error("F opened the fleet view with the fleet off")
 	}
 }
 
@@ -213,11 +167,3 @@ func pressKey(t *testing.T, m *Model, key string) {
 		t.Fatal("Update did not return a model")
 	}
 }
-
-type noopNotifier struct{}
-
-func (noopNotifier) Notify(title, body string) {}
-
-type wallClock struct{}
-
-func (wallClock) Now() time.Time { return time.Now() }

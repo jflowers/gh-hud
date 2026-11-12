@@ -29,13 +29,9 @@ const (
 	plStatusW = 38
 )
 
-// planRows is the current plan (nil without dispatch or a fetch).
-func (m *Model) planRows() []dispatch.PlanRow {
-	if m.disp == nil || m.res == nil {
-		return nil
-	}
-	return m.disp.Plan(m.res.Items, m.runs)
-}
+// planRows is the current plan, from the hub (nil without dispatch or a
+// fetch).
+func (m *Model) planRows() []dispatch.PlanRow { return m.plan }
 
 // planStarting counts the rows the next pass tries to start, for the tab.
 func (m *Model) planStarting() int {
@@ -285,8 +281,9 @@ func (m *Model) handlePlanKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.openActionFor(cur.Item, true)
 			break
 		}
-		m.queueTask(cur.Task, cur.Item)
-		m.planSel = m.queueLen() - 1
+		if pos := m.queueTask(cur.Task, cur.Item); pos > 0 {
+			m.planSel = pos - 1
+		}
 	case "J", "K":
 		if !have || cur.Queued == 0 {
 			m.flash("only your queued tasks move: + queues this one")
@@ -296,36 +293,35 @@ func (m *Model) handlePlanKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if msg.String() == "K" {
 			delta = -1
 		}
-		if i, err := m.disp.MoveQueued(cur.Task, cur.Item.Ref(), delta); err != nil {
+		if i, err := m.backend.MoveQueued(ctx(), cur.Task, cur.Item.Ref(), delta); err != nil {
 			m.flash("move failed: " + err.Error())
 		} else {
+			m.sync()
 			m.planSel = i
 		}
 	case "x", "delete", "backspace":
 		if !have || cur.Queued == 0 {
 			break
 		}
-		if err := m.disp.Unqueue(cur.Task, cur.Item.Ref()); err != nil {
+		if err := m.backend.Unqueue(ctx(), cur.Task, cur.Item.Ref()); err != nil {
 			m.flash("unqueue failed: " + err.Error())
 		} else {
+			m.sync()
 			m.flash("unqueued " + string(cur.Task) + " " + cur.Item.Ref())
 		}
 	}
 	return m, nil
 }
 
-// queueTask adds a task to your queue and says so.
-func (m *Model) queueTask(task dispatch.Task, it model.Item) {
-	if err := m.disp.Enqueue(task, it); err != nil {
+// queueTask adds a task to your queue, says so, and returns its position
+// (0 when it failed).
+func (m *Model) queueTask(task dispatch.Task, it model.Item) int {
+	pos, err := m.backend.Enqueue(ctx(), task, it.URL)
+	if err != nil {
 		m.flash("can't queue: " + err.Error())
-		return
-	}
-	m.flash(fmt.Sprintf("queued %s %s (#%d): p shows the plan", task, it.Ref(), m.queueLen()))
-}
-
-func (m *Model) queueLen() int {
-	if m.disp == nil {
 		return 0
 	}
-	return len(m.disp.Queue())
+	m.sync()
+	m.flash(fmt.Sprintf("queued %s %s (#%d): p shows the plan", task, it.Ref(), pos))
+	return pos
 }

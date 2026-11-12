@@ -167,7 +167,7 @@ func run() int {
 	defer stopHub()
 	go h.Run(hubCtx)
 
-	p := tea.NewProgram(ui.New(cfg, h, disp, idx, fleetCoord),
+	p := tea.NewProgram(ui.New(cfg, h),
 		tea.WithAltScreen(),
 		tea.WithMouseAllMotion(),
 	)

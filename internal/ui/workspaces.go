@@ -308,11 +308,9 @@ func (m *Model) handleWorkspacesKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "?":
 		m.help = true
 	case "F":
-		if m.fleet != nil {
+		if m.fleetOn {
 			m.wsMode = false
-			m.fleetMode = true
-			m.skipWaitArmed = false
-			m.refreshFleetSnap()
+			m.openFleet()
 		}
 	case "ctrl+c":
 		return m, tea.Quit
@@ -340,7 +338,7 @@ func (m *Model) handleWorkspacesKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case "r":
-		if m.disp != nil && !m.wsLoading {
+		if m.dispatchOn && !m.wsLoading {
 			m.flash("reading checkouts…")
 			m.refreshWorkspaces()
 		}

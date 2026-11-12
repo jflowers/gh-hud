@@ -217,7 +217,7 @@ I/O.
    snapshot, so rendering and its tests are unchanged. `Snapshot.Res` is
    the whole `*model.FetchResult` rather than the separate `Items` /
    `Warnings` fields sketched above; the wire types in Phase 2 split it.
-3. **Commands through `Backend`.** Dispatch, actions, reinspect, the fleet
+3. **Commands through `Backend`.** *(done)* Dispatch, actions, reinspect, the fleet
    controls and the host-local actions. Remove the `*dispatch.Dispatcher`
    and `*fleet.Coordinator` fields from `ui.Model`. Add
    `hub/hubtest.Fake` and move the UI tests that build `&Model{...}` with
@@ -235,14 +235,27 @@ I/O.
      dispatcher's follower error, and its view picks up the owner's
      `queue.json` through the snapshot.
 
+   As built: items are addressed by URL, runs and sessions by ID, and
+   `Unqueue` / `MoveQueued` by task and ref rather than URL, because a
+   queued PR that drops out of the refresh has only its ref. Commands that
+   change state publish at once, and the TUI applies `Backend.Snapshot()`
+   right after one, so the next key acts on fresh rows. Dispatch and
+   reinspect ask for an agents refresh themselves. The viewer commands
+   (`Watch`, `WatchRun`, `OpenTranscript`) open a terminal on the hub's
+   machine; Phase 2 decides whether remote clients get them. `ghws.Index`
+   left `ui.New` too: the UI never used it.
+
    File ownership while this is in flight, agreed with the dispatch-rules
    session: this work owns `internal/hub`, `internal/ui/app.go`,
    `cmd/gh-hud/main.go` and the auto-pass wiring, and that session owns
    `internal/dispatch` and `internal/model`. Its new features reach the UI
    through `Backend` methods and `Snapshot` fields.
-4. **Guard the boundary.** Add a test that fails if `internal/ui` imports
-   `os/exec`, or references `dispatch.Dispatcher` or `fleet.Coordinator`.
-   Update the Architecture section of `PLAN.md` and `AGENTS.md`.
+4. **Guard the boundary.** *(done)* `ui.TestUIStaysAClient` parses the
+   UI's sources and fails on an `os/exec` import, an internal import
+   outside clipboard, config, dispatch, fleet, hub and model, or a use of
+   `dispatch.Dispatcher`/`New`, `fleet.Coordinator`/`New`,
+   `model.FetchAll` or `hub.Hub`/`New`. The Architecture section of
+   `PLAN.md` describes the split (`AGENTS.md` is not tracked).
 
 ## Verification
 

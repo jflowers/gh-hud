@@ -23,8 +23,15 @@ Architecture:
   Go port of pr-list.sh jq logic (CI rollup, review emojis, bot masking,
   last actor, waiting-on, threads, merge state, colors as row styles).
   Notifications merge into matching rows by URL (reason tags).
-- `internal/ui` — custom table (not bubbles/table) for row hit-testing and
-  hover; adaptive columns by terminal width; Tokyo Night palette.
+- `internal/hub` — the engine: refresh loops (GitHub, agents, workspaces),
+  the auto pass, alerts, and the fleet, published as `hub.Snapshot`s.
+  Clients use only `hub.Backend` (snapshots, events, commands keyed by
+  item URL, run/session ID, or task + ref); `hub/hubtest.Fake` stands in
+  for it in client tests. See `PLAN-hub.md`.
+- `internal/ui` — a client of `hub.Backend`: custom table (not
+  bubbles/table) for row hit-testing and hover; adaptive columns by
+  terminal width; Tokyo Night palette. It never drives the dispatcher,
+  the fleet or GitHub itself; `TestUIStaysAClient` enforces that.
 - `internal/clipboard` — pbcopy + `open`.
 - `cmd/gh-hud` — TUI (`--config`, `--version`) and `--once` plain table.
 

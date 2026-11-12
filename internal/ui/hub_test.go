@@ -1,26 +1,13 @@
 package ui
 
 import (
-	"context"
 	"testing"
 
 	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/hub"
+	"github.com/jflowers/gh-hud/internal/hub/hubtest"
 	"github.com/jflowers/gh-hud/internal/model"
 )
-
-// fakeBackend records triggers; snapshots are fed to the model directly.
-type fakeBackend struct {
-	refreshes, agents, workspaces int
-}
-
-func (f *fakeBackend) Snapshot() hub.Snapshot { return hub.Snapshot{} }
-func (f *fakeBackend) Subscribe(context.Context) (<-chan hub.Snapshot, <-chan hub.Event) {
-	return make(chan hub.Snapshot), make(chan hub.Event)
-}
-func (f *fakeBackend) Refresh(context.Context) error           { f.refreshes++; return nil }
-func (f *fakeBackend) RefreshAgents(context.Context) error     { f.agents++; return nil }
-func (f *fakeBackend) RefreshWorkspaces(context.Context) error { f.workspaces++; return nil }
 
 func items(urls ...string) *model.FetchResult {
 	res := &model.FetchResult{User: "me"}
@@ -31,7 +18,7 @@ func items(urls ...string) *model.FetchResult {
 }
 
 func TestSnapshotKeepsCursorOnItem(t *testing.T) {
-	m := New(config.Default(), &fakeBackend{}, nil, nil, nil)
+	m := New(config.Default(), &hubtest.Fake{})
 	m.width, m.height = 120, 30
 	m.Update(snapshotMsg{snap: hub.Snapshot{Seq: 1, Res: items("a", "b", "c")}, ok: true})
 	m.cursor = 1 // on "b"
@@ -50,7 +37,7 @@ func TestSnapshotKeepsCursorOnItem(t *testing.T) {
 }
 
 func TestEventNoticeFlashes(t *testing.T) {
-	m := New(config.Default(), &fakeBackend{}, nil, nil, nil)
+	m := New(config.Default(), &hubtest.Fake{})
 	m.Update(eventMsg{ev: hub.Event{Kind: hub.EventNotice, Text: "merged acme/r#2"}, ok: true})
 	if m.statusMsg != "merged acme/r#2" {
 		t.Errorf("status = %q", m.statusMsg)
@@ -62,13 +49,13 @@ func TestEventNoticeFlashes(t *testing.T) {
 }
 
 func TestRefreshKeyAsksTheHub(t *testing.T) {
-	b := &fakeBackend{}
-	m := New(config.Default(), b, nil, nil, nil)
+	b := &hubtest.Fake{}
+	m := New(config.Default(), b)
 	m.Update(snapshotMsg{snap: hub.Snapshot{Seq: 1, Res: items("a")}, ok: true})
 	pressKey(t, m, "r")
 	pressKey(t, m, "r") // ignored: already refreshing
-	if b.refreshes != 1 || !m.fetching {
-		t.Errorf("refreshes = %d fetching = %v, want 1 and true", b.refreshes, m.fetching)
+	if b.Called("Refresh") != 1 || !m.fetching {
+		t.Errorf("refreshes = %d fetching = %v, want 1 and true", b.Called("Refresh"), m.fetching)
 	}
 	m.Update(snapshotMsg{snap: hub.Snapshot{Seq: 2, Res: items("a")}, ok: true})
 	if m.fetching {

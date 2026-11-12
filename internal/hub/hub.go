@@ -23,23 +23,71 @@ type Dispatcher interface {
 	AutoMerge(ctx context.Context, items []model.Item) []string
 	AutoDispatch(ctx context.Context, items []model.Item) []string
 	Stage(it model.Item, runs []dispatch.Run) dispatch.Stage
+	Plan(items []model.Item, runs []dispatch.Run) []dispatch.PlanRow
+	Queue() []dispatch.QueueEntry
+
+	MenuChoices(it model.Item) []dispatch.MenuChoice
+	Dispatch(ctx context.Context, task dispatch.Task, it model.Item, auto bool) (dispatch.Record, error)
+	Reinspect(ctx context.Context, id string) (dispatch.Run, error)
+	QueueChoices(it model.Item) []dispatch.Task
+	Enqueue(task dispatch.Task, it model.Item) error
+	Unqueue(task dispatch.Task, ref string) error
+	MoveQueued(task dispatch.Task, ref string, delta int) (int, error)
+	Watch(s dispatch.Session) error
+	WatchRun(r dispatch.Run) error
+	OpenTranscript(r dispatch.Run) error
 }
 
 // Fleet is the part of *fleet.Coordinator the hub drives.
 type Fleet interface {
 	Snapshot() fleet.Snapshot
 	Run(ctx context.Context)
+	SetPaused(paused bool)
+	ApplyNow()
+	SkipWait()
+	Retry()
 }
 
 // Backend is what a client needs from the hub. *Hub implements it
 // in-process; a remote implementation (Phase 2) keeps the same contract,
-// which is why the triggers take a context and return an error.
+// which is why every call takes a context and can fail.
+//
+// Clients name things by stable keys: items by URL, runs and sessions by
+// ID, queue entries by task and ref (a queued PR can drop out of the
+// refresh, leaving only its ref). State changes show up in the next
+// snapshot; commands return only what the caller needs at once.
 type Backend interface {
 	Snapshot() Snapshot
 	Subscribe(ctx context.Context) (<-chan Snapshot, <-chan Event)
+
+	// Refresh triggers: they only ask, and coalesce with work in flight.
 	Refresh(ctx context.Context) error
 	RefreshAgents(ctx context.Context) error
 	RefreshWorkspaces(ctx context.Context) error
+
+	// Dispatch. These need dispatch configured; the dispatcher refuses
+	// changes when another gh-hud owns dispatch.
+	MenuChoices(ctx context.Context, url string) ([]dispatch.MenuChoice, error)
+	Dispatch(ctx context.Context, task dispatch.Task, url string) (dispatch.Record, error)
+	Reinspect(ctx context.Context, runID string) (dispatch.Run, error)
+
+	// Your queue. Enqueue returns the entry's position (1 is first),
+	// MoveQueued its new index (0 is first).
+	QueueChoices(ctx context.Context, url string) ([]dispatch.Task, error)
+	Enqueue(ctx context.Context, task dispatch.Task, url string) (int, error)
+	Unqueue(ctx context.Context, task dispatch.Task, ref string) error
+	MoveQueued(ctx context.Context, task dispatch.Task, ref string, delta int) (int, error)
+
+	// Viewers. They open a terminal window on the hub's machine.
+	Watch(ctx context.Context, sessionID string) error
+	WatchRun(ctx context.Context, runID string) error
+	OpenTranscript(ctx context.Context, runID string) error
+
+	// Fleet rollout controls; they fail when the fleet is off.
+	FleetPause(ctx context.Context, paused bool) error
+	FleetApplyNow(ctx context.Context) error
+	FleetSkipWait(ctx context.Context) error
+	FleetRetry(ctx context.Context) error
 }
 
 // Options configures a Hub.
@@ -100,6 +148,11 @@ type Snapshot struct {
 	// Stages is each item's pipeline stage, keyed by Item.URL (nil
 	// without a dispatcher).
 	Stages map[string]dispatch.Stage
+	// Plan is what agents work on next, in start order (dispatch.Plan);
+	// Queue is your queue, first to start first. Both nil without a
+	// dispatcher.
+	Plan  []dispatch.PlanRow
+	Queue []dispatch.QueueEntry
 
 	Workspaces        []dispatch.CheckoutHealth
 	WorkspacesAt      time.Time
@@ -376,7 +429,8 @@ func (h *Hub) Snapshot() Snapshot {
 	return h.snap
 }
 
-// publish refreshes the derived fields (fleet state, pipeline stages),
+// publish refreshes the derived fields (fleet state, pipeline stages,
+// the plan and queue),
 // bumps Seq, and hands the snapshot to every subscriber.
 func (h *Hub) publish() {
 	h.publishMu.Lock()
@@ -388,11 +442,19 @@ func (h *Hub) publish() {
 		v := h.opts.Fleet.Snapshot()
 		fs = &v
 	}
-	var stages map[string]dispatch.Stage
-	if h.opts.Dispatcher != nil && cur.Res != nil {
-		stages = make(map[string]dispatch.Stage, len(cur.Res.Items))
-		for _, it := range cur.Res.Items {
-			stages[it.URL] = h.opts.Dispatcher.Stage(it, cur.Runs)
+	var (
+		stages map[string]dispatch.Stage
+		plan   []dispatch.PlanRow
+		queue  []dispatch.QueueEntry
+	)
+	if d := h.opts.Dispatcher; d != nil {
+		queue = d.Queue()
+		if cur.Res != nil {
+			stages = make(map[string]dispatch.Stage, len(cur.Res.Items))
+			for _, it := range cur.Res.Items {
+				stages[it.URL] = d.Stage(it, cur.Runs)
+			}
+			plan = d.Plan(cur.Res.Items, cur.Runs)
 		}
 	}
 
@@ -400,6 +462,7 @@ func (h *Hub) publish() {
 	h.snap.Seq++
 	h.snap.Fleet = fs
 	h.snap.Stages = stages
+	h.snap.Plan, h.snap.Queue = plan, queue
 	snap := h.snap
 	h.mu.Unlock()
 
