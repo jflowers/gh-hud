@@ -23,6 +23,10 @@ const SocketName = "hub.sock"
 // answers on the socket.
 var ErrHubRunning = errors.New("a gh-hud hub is already serving")
 
+// maxSocketPath is the longest socket path macOS accepts (sun_path is
+// 104 bytes with its terminating NUL; Linux allows 107).
+const maxSocketPath = 103
+
 // baseURL is the client's URL; the socket, not the host, picks the hub.
 const baseURL = "http://gh-hud"
 
@@ -38,6 +42,9 @@ func h2c(http1 bool) *http.Protocols {
 // ListenUnix listens on the socket at path. A socket left behind by a hub
 // that died is replaced; one a live hub answers on is not.
 func ListenUnix(path string) (net.Listener, error) {
+	if len(path) > maxSocketPath {
+		return nil, fmt.Errorf("socket path %s is %d bytes, over the %d unix sockets allow: use a shorter --state-dir", path, len(path), maxSocketPath)
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, err
 	}

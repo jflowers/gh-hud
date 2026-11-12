@@ -15,6 +15,7 @@ it stores no tokens.
 go install github.com/jflowers/gh-hud/cmd/gh-hud@latest
 gh-hud            # interactive dashboard
 gh-hud --once     # one-shot table with hyperlinks, then exit
+gh-hud serve      # the hub alone, no dashboard (see "The hub")
 ```
 
 From a checkout: `go install ./cmd/gh-hud` (or `go build -o gh-hud ./cmd/gh-hud`).
@@ -80,6 +81,71 @@ actor (`you` or a name) · `age`.
 Glyphs: `✓` passing/approved · `✗` failing/changes requested · `●` running/mixed
 · `!` you requested changes · `○` no checks · `⊘` merge conflict. Press `?` in
 the app for the full legend.
+
+## The hub
+
+Refreshing GitHub, dispatching agents, auto-merge, alerts and fleet
+rollouts all run in gh-hud's *hub*. The dashboard is a client of it, and
+there is one hub per state directory (`~/.local/state/gh-hud`, or
+`--state-dir`), reachable on the unix socket `hub.sock` there (only you
+can open it).
+
+- `gh-hud` attaches to the hub on the socket when one answers. Otherwise
+  it runs the hub itself and serves the socket, so the next `gh-hud`
+  attaches to it: open as many dashboards as you like, and they share one
+  refresh and one dispatcher.
+- Quitting the `gh-hud` that runs the hub stops it. Attached dashboards
+  say `lost the hub; reconnecting…` and pick up the next hub that starts
+  on the socket; nothing takes over on its own.
+- `gh-hud serve` runs the hub with no dashboard and logs its notices and
+  alerts to stderr. It refuses to start while another hub serves the
+  socket. Run it under launchd to keep a hub up without a terminal.
+- `gh-hud --no-attach` runs a hub in-process even when one is serving
+  (it follows the serving hub's dispatch, read-only); for debugging.
+
+### Running the hub under launchd
+
+Save as `~/Library/LaunchAgents/gh-hud.hub.plist`, with your username in
+the paths. The hub runs `gh`, `git`, `ssh`, `herdr` and `opencode`, so
+`PATH` has to find them: launchd's default doesn't include Homebrew or
+`~/go/bin`.
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>gh-hud.hub</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/YOU/go/bin/gh-hud</string>
+    <string>serve</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/Users/YOU/go/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardErrorPath</key><string>/Users/YOU/Library/Logs/gh-hud.log</string>
+</dict>
+</plist>
+```
+
+```
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/gh-hud.hub.plist
+launchctl kickstart -k gui/$(id -u)/gh-hud.hub   # restart, e.g. after go install
+launchctl bootout gui/$(id -u)/gh-hud.hub        # stop and unload
+tail -f ~/Library/Logs/gh-hud.log
+```
+
+With `KeepAlive`, launchd restarts the hub if it exits. While a dashboard
+runs its own hub, `gh-hud serve` exits with "already serving" and launchd
+retries every 10 seconds, taking over once that dashboard quits. Start
+your dashboards after the agent to attach to it from the start.
+
+The hub reads its config when it starts: restart it after editing
+`config.toml`.
 
 ## Agent dispatch
 
@@ -281,10 +347,11 @@ on `r`; `y` copies the checkout's dir.
 gh-hud moves a PR toward merge one step at a time and keeps agents from
 competing over it:
 
-- **One dispatcher.** The first gh-hud to start takes an exclusive lock on
+- **One dispatcher.** The hub (see "The hub") takes an exclusive lock on
   `dispatch.lock` in its state dir and owns dispatch, auto-merge, finishing
-  runs and fleet rollouts. Another gh-hud on the same state dir is
-  read-only: it shows runs from `state.json`, its header says
+  runs and fleet rollouts; dashboards attached to it share it. A second
+  hub on the same state dir (`--no-attach`, or a gh-hud from before the
+  socket) is read-only: it shows runs from `state.json`, its header says
   `read-only: dispatch owned by gh-hud pid N`, and `a` is refused. It takes
   over when the owner exits (fleet rollouts need a restart). Workers never
   run gh-hud; the hub places all their work.
@@ -817,10 +884,16 @@ too, since hosted macOS runners can queue long enough to time out a PR check.
 Run the same checks locally with:
 
 ```
-make ci      # tidy, lint, test, vuln
+make ci      # tidy, proto-check, lint, test, vuln
 make lint    # needs golangci-lint v2 on PATH
 make fmt     # gofmt + goimports
+make proto   # regenerate internal/api/gen from proto/ (pinned buf + plugins)
 ```
+
+The hub's API is `proto/ghhud/v1/hub.proto` (Connect-RPC; see
+`PLAN-serve.md`). A field added to the types the hub publishes needs a
+proto field and a line in `internal/api/convert.go`: `api.TestRoundTrip`
+fails until it has them.
 
 Tests never read your git config: `internal/dispatch` points git at a
 throwaway config of its own.

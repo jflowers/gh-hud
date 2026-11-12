@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -253,6 +254,13 @@ func TestListenRefusesALiveHub(t *testing.T) {
 	}
 	if perm := fi.Mode().Perm(); perm != 0o600 {
 		t.Errorf("socket mode = %o, want 600", perm)
+	}
+}
+
+func TestListenRejectsALongPath(t *testing.T) {
+	long := filepath.Join(t.TempDir(), strings.Repeat("d", 100), SocketName)
+	if _, err := ListenUnix(long); err == nil || !strings.Contains(err.Error(), "shorter --state-dir") {
+		t.Errorf("err = %v", err)
 	}
 }
 
