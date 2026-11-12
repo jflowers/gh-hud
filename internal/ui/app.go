@@ -4,9 +4,7 @@ package ui
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"strings"
-	"syscall"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,7 +14,9 @@ import (
 	"github.com/jflowers/gh-hud/internal/fleet"
 	"github.com/jflowers/gh-hud/internal/gh"
 	"github.com/jflowers/gh-hud/internal/ghws"
+	"github.com/jflowers/gh-hud/internal/hub"
 	"github.com/jflowers/gh-hud/internal/model"
+	"github.com/jflowers/gh-hud/internal/notify"
 )
 
 type tickMsg time.Time
@@ -110,20 +110,16 @@ type Model struct {
 	// owner's pid ("?" when unknown).
 	follower string
 
-	// readySeen dedupes maintainer-ready notifications: keyed by ref,
-	// rebuilt each fetch; the first fetch only seeds it.
-	readySeen map[string]bool
-	// blockedSeen dedupes long-blocked agent notifications: keyed by
-	// session ID, dropped once the agent is no longer blocked.
-	blockedSeen map[string]bool
+	// alerter decides which refreshes deserve a desktop alert (see
+	// alerts); notifier delivers them (nil: alerts are dropped).
+	alerter  *hub.Alerter
+	notifier notify.Notifier
 
 	// runs are the dispatch runs, newest first (see runs.go); runView is
-	// the open run detail view. finishedSeen dedupes finish notifications
-	// (nil until the first agents refresh seeds it).
-	runs         []dispatch.Run
-	runView      *dispatch.Run
-	runScroll    int
-	finishedSeen map[string]bool
+	// the open run detail view.
+	runs      []dispatch.Run
+	runView   *dispatch.Run
+	runScroll int
 
 	statusMsg string
 	statusAt  time.Time
@@ -139,13 +135,14 @@ func New(cfg *config.Config, client *gh.Client, disp *dispatch.Dispatcher, idx *
 	// on links. The app handles every click itself; --once keeps links.
 	hyperlinks = false
 	m := &Model{
-		cfg:    cfg,
-		client: client,
-		bots:   model.NewBotFilter(cfg.KnownBots),
-		disp:   disp,
-		idx:    idx,
-		fleet:  fleetCoord,
-		hover:  -1,
+		cfg:      cfg,
+		client:   client,
+		bots:     model.NewBotFilter(cfg.KnownBots),
+		disp:     disp,
+		idx:      idx,
+		fleet:    fleetCoord,
+		hover:    -1,
+		notifier: notify.OSAScript{},
 	}
 	m.refreshFleetSnap()
 	return m
@@ -214,7 +211,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.fetchErr = ""
 			m.restoreCursor()
 		}
-		m.notifyReady(msg.res)
+		hub.Post(m.notifier, m.alerts().Items(msg.res.User, msg.res.Items))
 		if m.disp != nil && msg.res.User != "" {
 			return m, tea.Batch(autoCmd(m, msg.res.Items), m.fetchAgents())
 		}
@@ -228,8 +225,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.follower = msg.follower
 			if m.follower == "" {
 				// The owner notifies; a follower would only repeat it.
-				m.notifyBlocked(msg.sessions)
-				m.notifyFinished(msg.runs)
+				hub.Post(m.notifier, m.alerts().Sessions(msg.sessions, time.Now()))
+				hub.Post(m.notifier, m.alerts().Runs(msg.runs))
 			}
 			m.refreshRunView()
 			if n := len(m.visibleAgents()); m.agentsSel >= n {
@@ -942,70 +939,10 @@ func (m *Model) dispatchCmd(c actionChoice) tea.Cmd {
 	}
 }
 
-// notifyReady sends a macOS desktop notification for each of my PRs that
-// just became ready for a human maintainer review. The first fetch after
-// startup only seeds the seen-set so pre-existing ready PRs stay quiet.
-func (m *Model) notifyReady(res *model.FetchResult) {
-	if !m.cfg.Notify || res.User == "" {
-		return
+// alerts is the alert tracker, built on first use.
+func (m *Model) alerts() *hub.Alerter {
+	if m.alerter == nil {
+		m.alerter = hub.NewAlerter(m.cfg)
 	}
-	ready := map[string]bool{}
-	for _, it := range res.Items {
-		if it.Cats&model.CatReady != 0 {
-			if ref := it.Ref(); ref != "" {
-				ready[ref] = true
-			}
-		}
-	}
-	if m.readySeen == nil {
-		m.readySeen = ready
-		return
-	}
-	for ref := range ready {
-		if !m.readySeen[ref] {
-			desktopNotify(fmt.Sprintf("%s ready for maintainer review", ref))
-		}
-	}
-	m.readySeen = ready
-}
-
-// notifyBlocked sends a desktop notification once per block when a
-// gh-hud-dispatched agent has been blocked longer than
-// blocked_notify_secs. Shorter blocks are the auto-question plugin
-// deciding; a long one means the question went to a human.
-func (m *Model) notifyBlocked(sessions []dispatch.Session) {
-	if !m.cfg.Notify || m.cfg.BlockedNotifySecs <= 0 {
-		return
-	}
-	limit := time.Duration(m.cfg.BlockedNotifySecs) * time.Second
-	still := map[string]bool{}
-	for _, s := range sessions {
-		if !s.Blocked || s.Task == "" || s.BlockedSince.IsZero() {
-			continue
-		}
-		still[s.ID] = m.blockedSeen[s.ID]
-		if still[s.ID] || time.Since(s.BlockedSince) < limit {
-			continue
-		}
-		still[s.ID] = true
-		where := "local"
-		if s.Machine != "" {
-			where = s.Machine
-		}
-		desktopNotify(fmt.Sprintf("%s %s needs input (blocked %s on %s, pane %s)",
-			s.Task, s.Ref, time.Since(s.BlockedSince).Round(time.Minute), where, s.PaneID))
-	}
-	m.blockedSeen = still
-}
-
-// desktopNotify posts a macOS notification via osascript, fire-and-forget
-// (a variable so tests can capture notifications).
-var desktopNotify = func(text string) {
-	script := fmt.Sprintf("display notification %q with title \"gh-hud\"", text)
-	cmd := exec.Command("osascript", "-e", script)
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	if err := cmd.Start(); err != nil {
-		return
-	}
-	go func() { _ = cmd.Wait() }()
+	return m.alerter
 }

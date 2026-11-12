@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/dispatch"
 	"github.com/jflowers/gh-hud/internal/model"
 )
@@ -71,28 +70,6 @@ func TestRunViewFitsAndShowsDetail(t *testing.T) {
 		if !strings.Contains(plain, want) {
 			t.Errorf("run view missing %q", want)
 		}
-	}
-}
-
-func TestNotifyFinishedSeedsThenNotifies(t *testing.T) {
-	var got []string
-	orig := desktopNotify
-	desktopNotify = func(s string) { got = append(got, s) }
-	defer func() { desktopNotify = orig }()
-
-	m := &Model{cfg: &config.Config{Notify: true}}
-	done := time.Now()
-	m.notifyFinished([]dispatch.Run{{ID: "old", Status: dispatch.RunOK, FinishedAt: &done}})
-	if len(got) != 0 {
-		t.Fatalf("first refresh must only seed, got %q", got)
-	}
-	m.notifyFinished([]dispatch.Run{
-		{ID: "new", Task: dispatch.TaskFeedback, Ref: "acme/r#5", Machine: "lap1", Workspace: "acme@oak", Status: dispatch.RunFailed, Reason: "UnknownError", FinishedAt: &done},
-		{ID: "live", Status: dispatch.RunRunning},
-		{ID: "old", Status: dispatch.RunOK, FinishedAt: &done},
-	})
-	if len(got) != 1 || got[0] != "✗ feedback acme/r#5 failed on lap1:acme@oak: UnknownError" {
-		t.Errorf("notifications = %q", got)
 	}
 }
 
