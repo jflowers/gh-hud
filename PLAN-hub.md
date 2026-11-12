@@ -222,6 +222,24 @@ I/O.
    and `*fleet.Coordinator` fields from `ui.Model`. Add
    `hub/hubtest.Fake` and move the UI tests that build `&Model{...}` with
    raw fields onto it.
+
+   The queue and the Plan tab (added in 5b4f2da, after this plan was first
+   written) come along too:
+   - **State:** `Snapshot.Plan` (`[]dispatch.PlanRow` from
+     `Dispatcher.Plan(items, runs)`) and `Snapshot.Queue`
+     (`[]dispatch.QueueEntry`), computed in the same publish as `Stages`.
+   - **Commands, addressed by URL** like `Dispatch`: `Enqueue(task, url)`,
+     `Unqueue(task, url)`, `MoveQueued(task, url, delta) (int, error)` and
+     `QueueChoices(url)`.
+   - Queue changes are owner-only. A follower's command returns the
+     dispatcher's follower error, and its view picks up the owner's
+     `queue.json` through the snapshot.
+
+   File ownership while this is in flight, agreed with the dispatch-rules
+   session: this work owns `internal/hub`, `internal/ui/app.go`,
+   `cmd/gh-hud/main.go` and the auto-pass wiring, and that session owns
+   `internal/dispatch` and `internal/model`. Its new features reach the UI
+   through `Backend` methods and `Snapshot` fields.
 4. **Guard the boundary.** Add a test that fails if `internal/ui` imports
    `os/exec`, or references `dispatch.Dispatcher` or `fleet.Coordinator`.
    Update the Architecture section of `PLAN.md` and `AGENTS.md`.
