@@ -36,35 +36,19 @@ type reinspectMsg struct {
 func runGlyph(s dispatch.RunStatus) (string, lipgloss.Color) {
 	switch s {
 	case dispatch.RunRunning:
-		return "●", cTeal
-	case dispatch.RunBlocked:
-		return "◆", cOrange
+		return s.Glyph(), cTeal
+	case dispatch.RunBlocked, dispatch.RunLeftWork:
+		return s.Glyph(), cOrange
 	case dispatch.RunOK:
-		return "✓", cGreen
+		return s.Glyph(), cGreen
 	case dispatch.RunFailed:
-		return "✗", cRed
-	case dispatch.RunLeftWork:
-		return "!", cOrange
+		return s.Glyph(), cRed
 	}
-	return "?", cYellow
+	return s.Glyph(), cYellow
 }
 
 // runWords is the status in words.
-func runWords(s dispatch.RunStatus) string {
-	switch s {
-	case dispatch.RunRunning:
-		return "running"
-	case dispatch.RunBlocked:
-		return "blocked, needs input"
-	case dispatch.RunOK:
-		return "succeeded"
-	case dispatch.RunFailed:
-		return "failed"
-	case dispatch.RunLeftWork:
-		return "left work behind"
-	}
-	return "outcome unknown"
-}
+func runWords(s dispatch.RunStatus) string { return s.Words() }
 
 // latestRuns maps ref → its newest run (runs arrive newest first).
 func latestRuns(runs []dispatch.Run) map[string]dispatch.Run {
@@ -103,46 +87,7 @@ func runTag(r dispatch.Run, now time.Time) (string, lipgloss.Color) {
 }
 
 // runAt is where a run ran: "lap1:ws" or "local:ws".
-func runAt(r dispatch.Run) string {
-	mach := r.Machine
-	if mach == "" {
-		mach = "local"
-	}
-	return mach + ":" + r.Workspace
-}
-
-// notifyFinished posts a desktop notification once per run that finished
-// since the previous agents refresh. The first refresh only seeds the seen
-// set, so runs that ended before gh-hud started stay quiet.
-func (m *Model) notifyFinished(runs []dispatch.Run) {
-	seen := map[string]bool{}
-	for _, r := range runs {
-		if r.Status != dispatch.RunRunning && r.Status != dispatch.RunBlocked {
-			seen[r.ID] = true
-		}
-	}
-	prev := m.finishedSeen
-	m.finishedSeen = seen
-	if prev == nil || !m.cfg.Notify {
-		return
-	}
-	for _, r := range runs {
-		if !seen[r.ID] || prev[r.ID] {
-			continue
-		}
-		g, _ := runGlyph(r.Status)
-		text := fmt.Sprintf("%s %s %s %s on %s", g, r.Task, r.Ref, runWords(r.Status), runAt(r))
-		switch {
-		case r.Status == dispatch.RunFailed && r.Reason != "":
-			text += ": " + truncatePlain(r.Reason, 80)
-		case r.Status == dispatch.RunLeftWork:
-			text += fmt.Sprintf(": %d item(s) — press i on the row", len(r.Left))
-		case r.Status == dispatch.RunUnknown && r.Reason != "":
-			text += ": " + truncatePlain(r.Reason, 80)
-		}
-		desktopNotify(text)
-	}
-}
+func runAt(r dispatch.Run) string { return r.Where() }
 
 // openRun opens the run detail view for a run ID.
 func (m *Model) openRun(id string) bool {
