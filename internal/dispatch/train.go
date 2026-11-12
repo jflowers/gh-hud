@@ -47,6 +47,10 @@ type trainPlan struct {
 	// rearm is the PRs to bring up to date because the base branch fixed a
 	// shared failure, ref → the checks fixed (checks.go).
 	rearm map[string][]string
+	// live is the supervisor decisions in force, by case id, and prio the
+	// fix PRs they put first (supervisor.go).
+	live map[string]Decision
+	prio map[string]bool
 }
 
 // approved reports whether a PR has the approvals its base branch needs.
@@ -91,6 +95,14 @@ func trainLess(a, b model.Item) bool {
 		return a.CreatedAt.Before(b.CreatedAt)
 	}
 	return a.Num < b.Num
+}
+
+// trainLessPrio is trainLess with the PRs in prio first.
+func trainLessPrio(a, b model.Item, prio map[string]bool) bool {
+	if pa, pb := prio[a.Ref()], prio[b.Ref()]; pa != pb {
+		return pa
+	}
+	return trainLess(a, b)
 }
 
 // inTrain reports whether a PR rides the merge train: your own open PRs.
@@ -191,6 +203,7 @@ func (d *Dispatcher) updateTrain(items []model.Item) {
 		prev = d.train.head
 	}
 	d.train = buildTrain(items, prev)
+	d.train.applyDecisions(items, d.decisions)
 	d.noteBaseLocked()
 	d.train.rearm = map[string][]string{}
 	cfg := d.opts.AutoMerge
@@ -266,7 +279,10 @@ func (d *Dispatcher) trainSnapshot() *trainPlan {
 // to merge first, leaving everything else where it was. Auto-dispatch
 // walks items in order, so the first free agents go to nearly-done PRs
 // without pushing reviews of other people's PRs back.
-func trainOrder(items []model.Item) []model.Item {
+func trainOrder(items []model.Item) []model.Item { return trainOrderPrio(items, nil) }
+
+// trainOrderPrio is trainOrder with the PRs in prio first.
+func trainOrderPrio(items []model.Item, prio map[string]bool) []model.Item {
 	out := slices.Clone(items)
 	var slots []int
 	var prs []model.Item
@@ -276,7 +292,7 @@ func trainOrder(items []model.Item) []model.Item {
 			prs = append(prs, it)
 		}
 	}
-	sort.SliceStable(prs, func(i, j int) bool { return trainLess(prs[i], prs[j]) })
+	sort.SliceStable(prs, func(i, j int) bool { return trainLessPrio(prs[i], prs[j], prio) })
 	for k, i := range slots {
 		out[i] = prs[k]
 	}

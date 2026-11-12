@@ -343,6 +343,7 @@ Each row shows its stage after the run tag:
 | `▸rebase after #12` | the step waits for #12, which changes the same files, to merge |
 | `▸you: review 2/2 rounds` | the pipeline stopped (orange `◆`); the reason follows the task |
 | `▸you: ci shared: Lint (3 PRs)` | the failing check is shared; one fix is needed, not one per PR |
+| `▸ci fix in #1031` | a supervisor linked the shared failure to the PR that fixes it |
 | `▸ci update: main fixed Lint` | main fixed the failing check; gh-hud updates the PR so its checks rerun |
 | `▸merge` | auto-merge is on; GitHub merges when the rules pass |
 | `▸merge updating` | next to merge in a repo that requires up-to-date branches; gh-hud updated it |
@@ -386,6 +387,41 @@ the selected task instead of starting it now). Queue as many as you like:
   started.
 - **Persistence:** the queue is saved in `queue.json` in the state dir, so it
   survives a restart. Only the gh-hud that owns dispatch edits it.
+
+### Supervisor cases and decisions
+
+Some cases need judgment the rules can't make. gh-hud lists them in
+`cases.json` in the state dir and takes answers from files dropped in the
+state dir's `decisions/` folder. A supervisor (an agent, or you) reads the
+cases and writes decisions. The owning gh-hud checks each decision against
+the case as it stands on its next pass, applies it or refuses it, and
+removes the file. A refused decision is kept as `<name>.refused` with the
+reason. Decisions only hold or order work. They can't start an agent,
+merge, push or post.
+
+There is one kind of case:
+
+- **`shared_failure`**: a required check failing on main or on several of
+  your PRs. Its id is `shared_failure|owner/repo|check`.
+
+A decision answers it in one of two ways:
+
+- **`link_fix`** names the open PR that fixes the check, for example
+  `{"case": "shared_failure|acme/app|OSV-Scanner", "kind": "link_fix",
+  "fix_pr": 1031}`.
+  - The group's PRs wait for it (`▸ci fix in #1031`) instead of stopping.
+  - The fix PR goes first in its repo's merge train if it's yours.
+  - Once it merges, the PRs are updated so their checks rerun.
+- **`escalate`** says the supervisor can't decide, for example
+  `{"case": "…", "kind": "escalate", "summary": "No open PR fixes the
+  advisory", "options": ["bump effect", "ignore it"]}`. The PRs stop with
+  its summary (`▸you: ci supervisor: No open PR fixes…`).
+
+A decision lapses when its case closes or a linked fix PR stops being
+open. An escalation also lapses when its case's facts change: the PRs in
+the group, or main's commit. A PR with a failure of its own still gets its
+`ci` agent whatever the decision. The fix PR must be one gh-hud can see,
+which means it's yours, waiting on your review, or mentions you.
 
 ## Configuring dispatch
 

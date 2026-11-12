@@ -260,6 +260,10 @@ type Dispatcher struct {
 	baseBroke map[string]map[string]bool
 	queue     []QueueEntry // guarded by mu: tasks you queued (queue.go)
 	queueMod  time.Time    // queue.json mtime at the last load or save
+	// decisions are the supervisor's accepted decisions (supervisor.go),
+	// guarded by mu; decisionsMod is decisions.json's mtime.
+	decisions    []Decision
+	decisionsMod time.Time
 }
 
 // agentSnapshot is one machine's live herdr agent list.
@@ -350,6 +354,7 @@ func New(opts Options) (*Dispatcher, error) {
 	}
 	d.loadState()
 	d.loadQueueLocked()
+	d.loadDecisionsLocked()
 	d.acquireOwnership()
 	return d, nil
 }
@@ -768,8 +773,8 @@ func (d *Dispatcher) AutoDispatch(ctx context.Context, items []model.Item) []str
 	if !d.owns() {
 		return nil
 	}
+	msgs := d.superviseAndRebuild(items)
 	runs := d.Runs(ctx)
-	var msgs []string
 	started := map[string]bool{}
 	for _, row := range d.Plan(items, runs) {
 		ref := row.Item.Ref()
