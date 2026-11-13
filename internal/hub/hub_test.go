@@ -67,6 +67,15 @@ type fakeDisp struct {
 	wsReads     int
 	calls       []string // commands, as "Dispatch ci acme/r#1"
 	queue       []dispatch.QueueEntry
+	opts        []dispatch.Options // SetOptions calls
+	restart     []string           // what SetOptions returns
+}
+
+func (d *fakeDisp) SetOptions(o dispatch.Options) []string {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.opts = append(d.opts, o)
+	return d.restart
 }
 
 func (d *fakeDisp) Sessions(context.Context) ([]dispatch.Session, error) {
