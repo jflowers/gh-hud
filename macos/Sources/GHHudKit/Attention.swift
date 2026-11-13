@@ -21,6 +21,20 @@ public extension Ghhud_V1_Item {
     var ref: String { num > 0 ? "\(repo)#\(num)" : url }
 }
 
+/// Something you can approve from the menu.
+public enum Approval: Equatable, Sendable {
+    /// A supervisor proposal (Case.proposal), approved or rejected by id.
+    case proposal(id: String)
+    /// An epic's plan, approved by the epic's ref and the plan seen.
+    case epic(ref: String, planID: String)
+
+    /// Whether it can be rejected (an epic plan is approved or left).
+    public var rejectable: Bool {
+        if case .proposal = self { return true }
+        return false
+    }
+}
+
 /// One row in the menu.
 public struct AttentionRow: Identifiable, Equatable, Sendable {
     public let id: String
@@ -28,6 +42,18 @@ public struct AttentionRow: Identifiable, Equatable, Sendable {
     public let detail: String
     public let url: URL?
     public let updated: Date?
+    /// Set when the row waits for your approval.
+    public let approval: Approval?
+
+    public init(id: String, title: String, detail: String, url: URL?, updated: Date?,
+                approval: Approval? = nil) {
+        self.id = id
+        self.title = title
+        self.detail = detail
+        self.url = url
+        self.updated = updated
+        self.approval = approval
+    }
 }
 
 /// A titled group of rows.
@@ -45,8 +71,9 @@ public struct Attention: Equatable, Sendable {
 
     public static let empty = Attention(sections: [], count: 0)
 
-    /// What needs you in a snapshot: reviews requested of you, your PRs
-    /// ready for a maintainer, and agents waiting on you. Newest first.
+    /// What needs you in a snapshot: agents waiting on you, supervisor
+    /// proposals and epic plans to approve, reviews requested of you, and
+    /// your PRs ready for a maintainer. Newest first.
     public init(_ s: Ghhud_V1_Snapshot) {
         let items = s.result.items
         func rows(_ c: Category) -> [AttentionRow] {
@@ -73,11 +100,53 @@ public struct Attention: Equatable, Sendable {
             }
         let all = [
             AttentionSection(id: "blocked", title: "Agents waiting on you", rows: blocked),
+            AttentionSection(id: "proposals", title: "Proposals awaiting approval", rows: Self.proposals(s)),
+            AttentionSection(id: "epics", title: "Epic plans awaiting approval", rows: Self.epics(s)),
             AttentionSection(id: "review", title: "Review requested", rows: rows(.reviewRequested)),
             AttentionSection(id: "ready", title: "Ready for a maintainer", rows: rows(.readyForMaintainer)),
         ]
         self.init(sections: all.filter { !$0.rows.isEmpty },
                   count: all.reduce(0) { $0 + $1.rows.count })
+    }
+
+    /// Cases whose supervisor proposal waits for you, oldest first.
+    static func proposals(_ s: Ghhud_V1_Snapshot) -> [AttentionRow] {
+        s.cases.filter { c in
+            c.hasProposal && !c.proposal.id.isEmpty
+                && (c.proposal.status.isEmpty || c.proposal.status == "pending")
+        }
+        .sorted { $0.proposal.created.date < $1.proposal.created.date }
+        .map { c in
+            let p = c.proposal
+            let d = p.decision
+            let summary = d.summary.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
+            let kind = d.kind.replacingOccurrences(of: "_", with: " ")
+            let title = summary.isEmpty ? "\(kind.isEmpty ? "proposal" : kind) for \(c.repo)" : summary
+            let pr = d.fixPr > 0 ? d.fixPr : (c.facts.prs.first ?? 0)
+            return AttentionRow(
+                id: "proposal:" + p.id,
+                title: title,
+                detail: [kind, c.repo, c.check].filter { !$0.isEmpty }.joined(separator: " · "),
+                url: pr > 0 ? Links.forRef("\(c.repo)#\(pr)") : nil,
+                updated: p.hasCreated ? p.created.date : nil,
+                approval: .proposal(id: p.id))
+        }
+    }
+
+    /// Epics whose current plan waits for approval. A stale plan (the epic
+    /// changed since it was read) isn't offered: the hub reads it again.
+    static func epics(_ s: Ghhud_V1_Snapshot) -> [AttentionRow] {
+        s.epics.filter { $0.state == "planned" && $0.hasPlan && !$0.plan.stale && !$0.plan.id.isEmpty }
+            .map { e in
+                let open = e.plan.nodes.filter { $0.state != "done" && $0.state != "dropped" }.count
+                return AttentionRow(
+                    id: "epic:" + e.ref,
+                    title: e.title.isEmpty ? e.ref : e.title,
+                    detail: "\(e.ref) · \(e.plan.nodes.count) pieces, \(open) open",
+                    url: URL(string: e.url) ?? Links.forRef(e.ref),
+                    updated: e.plan.hasCreated ? e.plan.created.date : nil,
+                    approval: .epic(ref: e.ref, planID: e.plan.id))
+            }
     }
 
     public init(sections: [AttentionSection], count: Int) {
