@@ -86,8 +86,16 @@ struct MenuView: View {
                             ForEach(section.rows.prefix(perSection)) { row in
                                 if rendering {
                                     RowLabel(row: row, highlighted: false)
+                                    if let a = row.approval {
+                                        Text(a.rejectable ? "Approve · Reject" : "Approve")
+                                            .font(.caption).foregroundStyle(.tint)
+                                            .padding(.horizontal, 6)
+                                    }
                                 } else {
                                     RowButton(row: row, ui: ui)
+                                    if let a = row.approval {
+                                        ApprovalButtons(row: row, approval: a, conn: conn, ui: ui)
+                                    }
                                 }
                             }
                             if section.rows.count > perSection {
@@ -129,11 +137,52 @@ struct MenuView: View {
     }
 }
 
-/// The menu's own state: the hovered row and the last refresh error.
+/// The menu's own state: the hovered row, the last refresh error, and
+/// approvals in flight or failed, by row.
 @MainActor
 final class MenuState: ObservableObject {
     @Published var hovered: String?
     @Published var refreshError: String?
+    @Published var busy: Set<String> = []
+    @Published var actionError: [String: String] = [:]
+}
+
+/// Approve (and, for a proposal, Reject) under a row. The row goes away
+/// when the hub's next snapshot no longer has it waiting.
+struct ApprovalButtons: View {
+    let row: AttentionRow
+    let approval: Approval
+    let conn: HubConnection
+    @ObservedObject var ui: MenuState
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button("Approve") { run { await conn.approve(approval) } }
+            if approval.rejectable {
+                Button("Reject") { run { await conn.reject(approval) } }
+            }
+            if ui.busy.contains(row.id) {
+                ProgressView().controlSize(.small)
+            } else if let err = ui.actionError[row.id] {
+                Text(err).font(.caption).foregroundStyle(.red).lineLimit(2)
+            }
+        }
+        .controlSize(.small)
+        .disabled(ui.busy.contains(row.id) || conn.status != .connected)
+        .padding(.horizontal, 6)
+        .padding(.bottom, 4)
+    }
+
+    private func run(_ act: @escaping @MainActor () async -> String?) {
+        let id = row.id
+        ui.busy.insert(id)
+        ui.actionError[id] = nil
+        Task {
+            let err = await act()
+            ui.busy.remove(id)
+            ui.actionError[id] = err
+        }
+    }
 }
 
 /// A clickable row: opens the item on GitHub.

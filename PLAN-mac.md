@@ -60,6 +60,14 @@ in the menu bar, native notifications, and later a full window.
    URLSession with a long timeout, because an idle hub sends nothing.
    `--snapshot` renders the menu with ImageRenderer, which can't draw
    scroll views or system buttons, so it gets a plain layout.
+
+   Then approvals: supervisor proposals (`Case.proposal`, pending) and
+   epic plans (`Epic.state == "planned"`, not stale) are sections with
+   Approve (and Reject, for a proposal) under each row; they count toward
+   the badge. The row goes when the hub's next snapshot no longer has it
+   waiting; a refusal (say, a plan replaced since you saw it) shows under
+   the row. `GHHudChecks --live <dir> --approve` exercises this against a
+   scratch hub.
 3. **3c, the window.** The dashboard's tabs as a native window: the list
    with filters and search, agents, workspaces, the plan and your queue,
    and the fleet, with the same commands as the TUI (dispatch, queue,

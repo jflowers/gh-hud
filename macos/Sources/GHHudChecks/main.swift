@@ -82,6 +82,62 @@ do {
     check(Attention(Ghhud_V1_Snapshot()) == .empty, "empty snapshot needs nothing")
 }
 
+// MARK: approvals
+
+do {
+    var s = Ghhud_V1_Snapshot()
+    var pending = Ghhud_V1_Case()
+    pending.id = "shared_failure|acme/r|lint"
+    pending.repo = "acme/r"
+    pending.check = "lint"
+    pending.facts.prs = [5, 6]
+    pending.proposal.id = "p1"
+    pending.proposal.status = "pending"
+    pending.proposal.decision.kind = "link_fix"
+    pending.proposal.decision.fixPr = 9
+    pending.proposal.decision.summary = "#9 fixes lint for #5 and #6\nmore detail"
+    var done = pending
+    done.id = "other"
+    done.proposal.id = "p2"
+    done.proposal.status = "applied"
+    var undecided = Ghhud_V1_Case()
+    undecided.id = "none"
+    s.cases = [pending, done, undecided]
+
+    var planned = Ghhud_V1_Epic()
+    planned.ref = "acme/r#100"
+    planned.url = "https://github.com/acme/r/issues/100"
+    planned.title = "Big thing"
+    planned.state = "planned"
+    planned.plan.id = "plan-1"
+    var n1 = Ghhud_V1_EpicNode()
+    n1.state = "done"
+    var n2 = Ghhud_V1_EpicNode()
+    n2.state = "ready"
+    planned.plan.nodes = [n1, n2]
+    var stale = planned
+    stale.ref = "acme/r#101"
+    stale.plan.stale = true
+    var approved = planned
+    approved.ref = "acme/r#102"
+    approved.state = "approved"
+    s.epics = [planned, stale, approved]
+
+    let a = Attention(s)
+    check(a.sections.map(\.id) == ["proposals", "epics"], "approval sections \(a.sections.map(\.id))")
+    check(a.count == 2, "count = \(a.count), want 2 (1 proposal, 1 epic)")
+    let p = a.sections.first?.rows.first
+    check(p?.approval == .proposal(id: "p1"), "proposal approval \(String(describing: p?.approval))")
+    check(p?.title == "#9 fixes lint for #5 and #6", "proposal title is the summary's first line: \(p?.title ?? "")")
+    check(p?.detail == "link fix · acme/r · lint", "proposal detail \(p?.detail ?? "")")
+    check(p?.url?.absoluteString == "https://github.com/acme/r/issues/9", "proposal links the fix PR")
+    let e = a.sections.last?.rows.first
+    check(e?.approval == .epic(ref: "acme/r#100", planID: "plan-1"), "epic approval \(String(describing: e?.approval))")
+    check(e?.detail == "acme/r#100 · 2 pieces, 1 open", "epic detail \(e?.detail ?? "")")
+    check(Approval.proposal(id: "x").rejectable && !Approval.epic(ref: "a/b#1", planID: "p").rejectable,
+          "only proposals reject")
+}
+
 // MARK: summary and links
 
 do {
@@ -123,6 +179,24 @@ if let i = CommandLine.arguments.firstIndex(of: "--live"), i + 1 < CommandLine.a
         print("live: seq \(conn.snapshot.seq) · \(HubSummary.line(conn.snapshot))")
         let err = await conn.refresh()
         check(err == nil, "live: refresh: \(err ?? "")")
+    }
+    // `--approve` (only against a scratch hub such as a fake): approve
+    // every row waiting on you, wait for the hub to drop them, then check
+    // that an old epic plan is refused with the hub's reason.
+    if connected, CommandLine.arguments.contains("--approve") {
+        for row in conn.attention.sections.flatMap(\.rows) {
+            guard let a = row.approval else { continue }
+            let err = await conn.approve(a)
+            check(err == nil, "live: approve \(row.id): \(err ?? "")")
+        }
+        for _ in 0..<50 where conn.attention.sections.contains(where: { $0.rows.contains { $0.approval != nil } }) {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        check(!conn.attention.sections.contains { $0.rows.contains { $0.approval != nil } },
+              "live: nothing left to approve")
+        let err = await conn.approve(.epic(ref: "acme/widgets#30", planID: "old-plan"))
+        check(err != nil, "live: an old plan is refused: \(err ?? "nil")")
+        if let err { print("live: hub said: \(err)") }
     }
     conn.stop()
 }

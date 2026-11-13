@@ -66,8 +66,36 @@ public final class HubConnection {
         guard let hub, let client = commands else { return "not connected" }
         var req = Ghhud_V1_RefreshRequest()
         req.target = .github
-        let resp = await client.refresh(request: req, headers: hub.authHeaders)
-        return resp.error.map { $0.message ?? String(describing: $0.code) }
+        return Self.why(await client.refresh(request: req, headers: hub.authHeaders))
+    }
+
+    /// Approves something waiting on you. Returns why it failed, if it did.
+    public func approve(_ a: Approval) async -> String? {
+        guard let hub, let client = commands else { return "not connected" }
+        switch a {
+        case .proposal(let id):
+            var req = Ghhud_V1_ApproveProposalRequest()
+            req.id = id
+            return Self.why(await client.approveProposal(request: req, headers: hub.authHeaders))
+        case .epic(let ref, let planID):
+            var req = Ghhud_V1_ApproveEpicRequest()
+            req.ref = ref
+            req.planID = planID
+            return Self.why(await client.approveEpic(request: req, headers: hub.authHeaders))
+        }
+    }
+
+    /// Rejects a supervisor proposal. Returns why it failed, if it did.
+    public func reject(_ a: Approval) async -> String? {
+        guard case .proposal(let id) = a else { return "only a proposal can be rejected" }
+        guard let hub, let client = commands else { return "not connected" }
+        var req = Ghhud_V1_RejectProposalRequest()
+        req.id = id
+        return Self.why(await client.rejectProposal(request: req, headers: hub.authHeaders))
+    }
+
+    private static func why<T>(_ resp: ResponseMessage<T>) -> String? {
+        resp.error.map { $0.message ?? String(describing: $0.code) }
     }
 
     private func run() async {
