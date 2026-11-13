@@ -1,9 +1,18 @@
 version: v2
 clean: true
 plugins:
+  # Go: the hub, its API and the TUI (local plugins, pinned in the Makefile).
   - local: protoc-gen-go
     out: internal/api/gen
     opt: paths=source_relative
   - local: protoc-gen-connect-go
     out: internal/api/gen
     opt: paths=source_relative
+  # Swift: the Mac app (buf's hosted plugins). The generator versions
+  # must not be newer than the libraries in macos/Package.swift.
+  - remote: buf.build/apple/swift:v1.39.0
+    out: macos/Sources/GHHudKit/Gen
+    opt: Visibility=Public
+  - remote: buf.build/connectrpc/swift:v1.2.3
+    out: macos/Sources/GHHudKit/Gen
+    opt: Visibility=Public
