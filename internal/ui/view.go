@@ -532,6 +532,10 @@ func (m *Model) footer() string {
 		}
 		return lipgloss.NewStyle().Foreground(cGreen).Render(" ✓ " + m.statusMsg)
 	}
+	if len(m.cfgWarn) > 0 {
+		return lipgloss.NewStyle().Foreground(cYellow).Render(
+			truncatePlain(" ⚠ "+strings.Join(m.cfgWarn, " · "), max(m.width, 20)))
+	}
 	pairs := []string{
 		"click", "open",
 		gestureLabel(m.cfg.URLClick), "copy url",

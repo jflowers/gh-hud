@@ -186,6 +186,10 @@ type Snapshot struct {
 	WorkspacesLoading bool
 
 	Fleet *fleet.Snapshot // nil when the fleet is off
+
+	// ConfigWarnings are problems with config.toml that didn't stop it
+	// loading (config.Config.Warnings).
+	ConfigWarnings []string
 }
 
 // EventKind says what an Event carries.
@@ -256,6 +260,9 @@ func New(opts Options) *Hub {
 		wsReq:     make(chan struct{}, 1),
 	}
 	h.snap.Dispatch = opts.Dispatcher != nil
+	if opts.Config != nil {
+		h.snap.ConfigWarnings = opts.Config.Warnings
+	}
 	if opts.Fleet != nil {
 		fs := opts.Fleet.Snapshot()
 		h.snap.Fleet = &fs

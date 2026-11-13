@@ -2249,9 +2249,12 @@ type Snapshot struct {
 	// decisions, runs and proposals.
 	Cases []*Case `protobuf:"bytes,19,rep,name=cases,proto3" json:"cases,omitempty"`
 	// epics are the enrolled epics with their plans and status.
-	Epics         []*Epic `protobuf:"bytes,20,rep,name=epics,proto3" json:"epics,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Epics []*Epic `protobuf:"bytes,20,rep,name=epics,proto3" json:"epics,omitempty"`
+	// config_warnings are problems with config.toml that didn't stop it
+	// loading, such as keys nothing reads.
+	ConfigWarnings []string `protobuf:"bytes,21,rep,name=config_warnings,json=configWarnings,proto3" json:"config_warnings,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Snapshot) Reset() {
@@ -2420,6 +2423,13 @@ func (x *Snapshot) GetCases() []*Case {
 func (x *Snapshot) GetEpics() []*Epic {
 	if x != nil {
 		return x.Epics
+	}
+	return nil
+}
+
+func (x *Snapshot) GetConfigWarnings() []string {
+	if x != nil {
+		return x.ConfigWarnings
 	}
 	return nil
 }
@@ -4933,7 +4943,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x16OpenTranscriptResponse\"D\n" +
 	"\x13FleetControlRequest\x12-\n" +
 	"\x06action\x18\x01 \x01(\x0e2\x15.ghhud.v1.FleetActionR\x06action\"\x16\n" +
-	"\x14FleetControlResponse\"\xb0\a\n" +
+	"\x14FleetControlResponse\"\xd9\a\n" +
 	"\bSnapshot\x12\x10\n" +
 	"\x03seq\x18\x01 \x01(\x04R\x03seq\x12-\n" +
 	"\x06result\x18\x02 \x01(\v2\x15.ghhud.v1.FetchResultR\x06result\x129\n" +
@@ -4959,7 +4969,8 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x12workspaces_loading\x18\x11 \x01(\bR\x11workspacesLoading\x12-\n" +
 	"\x05fleet\x18\x12 \x01(\v2\x17.ghhud.v1.FleetSnapshotR\x05fleet\x12$\n" +
 	"\x05cases\x18\x13 \x03(\v2\x0e.ghhud.v1.CaseR\x05cases\x12$\n" +
-	"\x05epics\x18\x14 \x03(\v2\x0e.ghhud.v1.EpicR\x05epics\x1aJ\n" +
+	"\x05epics\x18\x14 \x03(\v2\x0e.ghhud.v1.EpicR\x05epics\x12'\n" +
+	"\x0fconfig_warnings\x18\x15 \x03(\tR\x0econfigWarnings\x1aJ\n" +
 	"\vStagesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12%\n" +
 	"\x05value\x18\x02 \x01(\v2\x0f.ghhud.v1.StageR\x05value:\x028\x01\"\xe1\x01\n" +

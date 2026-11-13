@@ -77,6 +77,9 @@ type Model struct {
 	fetching  bool
 	lastFetch time.Time
 	fetchErr  string
+	// cfgWarn are problems with config.toml (Snapshot.ConfigWarnings);
+	// the footer shows them until they're fixed.
+	cfgWarn []string
 
 	cursor int
 	offset int
@@ -203,6 +206,7 @@ func (m *Model) applySnapshot(s hub.Snapshot) {
 	m.ws, m.wsAt, m.wsLoading = s.Workspaces, s.WorkspacesAt, s.WorkspacesLoading
 	m.stages, m.plan, m.queue = s.Stages, s.Plan, s.Queue
 	m.cases, m.epics = s.Cases, s.Epics
+	m.cfgWarn = s.ConfigWarnings
 	m.dispatchOn, m.fleetOn = s.Dispatch, s.Fleet != nil
 	if s.Fleet != nil {
 		m.fleetSnap = *s.Fleet
