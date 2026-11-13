@@ -449,6 +449,7 @@ message PlanRow {
   int64 queued = 4; // position in your queue (1 first); 0 for auto rows
   string note = 5;
   bool missing = 6; // queued, but not in the latest refresh
+  string epic = 7;   // the epic a piece's row comes from (owner/repo#N)
 }
 
 message QueueEntry {

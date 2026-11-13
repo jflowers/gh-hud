@@ -211,6 +211,8 @@ type Options struct {
 	AutoMerge config.AutoMergeConfig
 	// Supervisor configures the supervisor agent (supervisor_run.go).
 	Supervisor config.SupervisorConfig
+	// Epics bounds the work started on approved epics (epic_run.go).
+	Epics config.EpicsConfig
 }
 
 // Dispatcher launches and tracks agent sessions.
@@ -291,6 +293,7 @@ type Dispatcher struct {
 	epicReading  map[string]bool
 	epicChecking bool
 	epicNotes    []string
+	epicFailed   map[string]string // piece ref → the start error last announced
 	// ghQuery runs a GraphQL query and decodes its data (a hook for tests;
 	// nil uses gh).
 	ghQuery func(ctx context.Context, query string, out any) error
@@ -411,6 +414,13 @@ func (d *Dispatcher) Configured(task Task) (string, bool) {
 // The opencode process is detached: it keeps running after gh-hud exits.
 // auto records whether this dispatch came from the auto-drain queue.
 func (d *Dispatcher) Dispatch(ctx context.Context, task Task, it model.Item, auto bool) (Record, error) {
+	return d.dispatchWith(ctx, task, it, auto, nil)
+}
+
+// dispatchWith is Dispatch with prep, when set, run on each candidate
+// machine before it's tried: it returns the command's arguments there
+// (epic pieces write their plan file this way).
+func (d *Dispatcher) dispatchWith(ctx context.Context, task Task, it model.Item, auto bool, prep func(context.Context, Machine) ([]string, error)) (Record, error) {
 	if !d.owns() {
 		return Record{}, d.followerErr()
 	}
@@ -425,7 +435,19 @@ func (d *Dispatcher) Dispatch(ctx context.Context, task Task, it model.Item, aut
 	var refusals []string
 	noToken := false
 	for _, c := range cands {
-		rec, err := d.dispatchCore(ctx, task, it, c.machine, c.checkout, name, args, title, auto)
+		cargs := args
+		if prep != nil {
+			a, err := prep(ctx, c.machine)
+			if err != nil {
+				if len(cands) == 1 {
+					return Record{}, err
+				}
+				refusals = append(refusals, placementLabel(c)+": "+err.Error())
+				continue
+			}
+			cargs = a
+		}
+		rec, err := d.dispatchCore(ctx, task, it, c.machine, c.checkout, name, cargs, title, auto)
 		if err == nil {
 			return rec, nil
 		}
@@ -843,14 +865,28 @@ func (d *Dispatcher) AutoDispatch(ctx context.Context, items []model.Item) []str
 		default:
 			continue
 		}
-		rec, err := d.Dispatch(ctx, st.Task, row.Item, true)
-		if note, ok := d.autoFailNote(st.Task, ref, err); ok {
+		var rec Record
+		var err error
+		if row.Epic != "" {
+			rec, err = d.startEpicPiece(ctx, row)
+		} else {
+			rec, err = d.Dispatch(ctx, st.Task, row.Item, true)
+		}
+		if row.Epic != "" {
+			if note := d.epicFailNote(row.Epic, ref, err); note != "" {
+				msgs = append(msgs, note)
+			}
+		} else if note, ok := d.autoFailNote(st.Task, ref, err); ok {
 			msgs = append(msgs, note)
 		}
 		if err != nil {
 			continue
 		}
 		started[ref] = true
+		if row.Epic != "" {
+			msgs = append(msgs, fmt.Sprintf("epic %s: started %s → %s", row.Epic, ref, recordTarget(rec)))
+			continue
+		}
 		msgs = append(msgs, fmt.Sprintf("auto %s %s → %s", st.Task, ref, recordTarget(rec)))
 	}
 	return msgs

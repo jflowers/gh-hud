@@ -86,6 +86,8 @@ type Config struct {
 	// Supervisor starts a read-only agent on cases the rules can't settle
 	// ([supervisor]).
 	Supervisor SupervisorConfig `toml:"supervisor"`
+	// Epics bounds how gh-hud runs approved epics ([epics]).
+	Epics EpicsConfig `toml:"epics"`
 	// Fleet is the GitOps rollout coordinator ([fleet]).
 	Fleet FleetConfig `toml:"fleet"`
 	// Hub is how other apps reach the hub ([hub]).
@@ -154,6 +156,16 @@ type SupervisorConfig struct {
 	Model string `toml:"model"`
 	// TimeoutSecs bounds one run (default 600).
 	TimeoutSecs int `toml:"timeout_secs"`
+}
+
+// EpicsConfig bounds the work gh-hud starts on an approved epic.
+type EpicsConfig struct {
+	// MaxActive is how many of one epic's pieces may be active at once:
+	// an agent on it, or an open PR for it (default 2).
+	MaxActive int `toml:"max_active"`
+	// MaxRuns is how many runs one piece gets after the plan is approved
+	// before it's left to you (default 2).
+	MaxRuns int `toml:"max_runs"`
 }
 
 // AutoMergeConfig says where gh-hud turns on GitHub auto-merge for your own
@@ -352,6 +364,12 @@ func Load(path string) (*Config, error) {
 	case "propose", "act":
 	default:
 		return nil, fmt.Errorf("supervisor mode %q: want propose or act", cfg.Supervisor.Mode)
+	}
+	if cfg.Epics.MaxActive <= 0 {
+		cfg.Epics.MaxActive = 2
+	}
+	if cfg.Epics.MaxRuns <= 0 {
+		cfg.Epics.MaxRuns = 2
 	}
 	if cfg.Supervisor.TimeoutSecs <= 0 {
 		cfg.Supervisor.TimeoutSecs = 600

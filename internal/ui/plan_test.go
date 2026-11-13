@@ -183,3 +183,15 @@ func TestPlanShowsEpicsAndApproves(t *testing.T) {
 		t.Error("E didn't approve the plan")
 	}
 }
+
+func TestPlanEpicRowStatus(t *testing.T) {
+	row := dispatch.PlanRow{Item: model.Item{Kind: model.KindIssue, Repo: "acme/app", Num: 2}, Task: dispatch.TaskIssue,
+		Stage: dispatch.Stage{Kind: dispatch.StageNext, Task: dispatch.TaskIssue}, Epic: "acme/app#100"}
+	if s, _ := planStatus(row); s != "next free slot · epic acme/app#100" {
+		t.Error(s)
+	}
+	row.Stage = dispatch.Stage{Kind: dispatch.StageWait, Reason: "epic: 2 active (max 2)"}
+	if s, _ := planStatus(row); s != "epic: 2 active (max 2)" {
+		t.Error(s)
+	}
+}
