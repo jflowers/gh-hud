@@ -12,7 +12,7 @@ PROTOC_GEN_CONNECT_GO_VERSION ?= v1.21.1
 TOOLS := $(CURDIR)/.tools
 export PATH := $(TOOLS):$(PATH)
 
-.PHONY: all build test lint fmt tidy vuln proto proto-check ci mac mac-check
+.PHONY: all build test lint fmt tidy vuln proto proto-check ci mac mac-notarize mac-check
 
 all: build
 
@@ -52,9 +52,11 @@ ci: tidy proto-check lint test vuln
 
 # The Mac app (macos/). Needs only the Command Line Tools. MAC_SIGN_ID is a
 # codesigning identity ("Developer ID Application: …"); empty signs ad hoc,
-# which runs on this Mac only.
+# which runs on this Mac only. MAC_NOTARY_PROFILE is a notarytool keychain
+# profile (xcrun notarytool store-credentials) for mac-notarize.
 MAC_APP := build/gh-hud.app
 MAC_SIGN_ID ?=
+MAC_NOTARY_PROFILE ?= gh-hud-notary
 MAC_VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 
 mac:
@@ -63,9 +65,21 @@ mac:
 	mkdir -p $(MAC_APP)/Contents/MacOS
 	cp macos/.build/release/GHHud $(MAC_APP)/Contents/MacOS/GHHud
 	sed 's/VERSION/$(MAC_VERSION)/g' macos/Resources/Info.plist > $(MAC_APP)/Contents/Info.plist
-	codesign --force --options runtime --timestamp=none --sign "$(if $(MAC_SIGN_ID),$(MAC_SIGN_ID),-)" $(MAC_APP)
+	codesign --force --options runtime $(if $(MAC_SIGN_ID),--timestamp,--timestamp=none) --sign "$(if $(MAC_SIGN_ID),$(MAC_SIGN_ID),-)" $(MAC_APP)
 	codesign --verify --strict $(MAC_APP)
 	@echo "built $(MAC_APP)"
+
+# mac-notarize builds with a Developer ID, has Apple notarize the app and
+# staples the ticket, so it opens on any Mac.
+mac-notarize:
+	@test -n "$(MAC_SIGN_ID)" || { echo "mac-notarize needs MAC_SIGN_ID (a Developer ID Application identity)"; exit 1; }
+	$(MAKE) mac MAC_SIGN_ID="$(MAC_SIGN_ID)"
+	rm -f build/gh-hud.zip
+	ditto -c -k --keepParent $(MAC_APP) build/gh-hud.zip
+	xcrun notarytool submit build/gh-hud.zip --keychain-profile "$(MAC_NOTARY_PROFILE)" --wait
+	xcrun stapler staple $(MAC_APP)
+	spctl --assess --type execute -vv $(MAC_APP)
+	rm -f build/gh-hud.zip
 
 mac-check:
 	cd macos && swift run GHHudChecks

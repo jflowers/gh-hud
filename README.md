@@ -171,6 +171,18 @@ make mac MAC_SIGN_ID="Developer ID Application: Your Name (TEAMID)"
 cp -R build/gh-hud.app /Applications/ && open /Applications/gh-hud.app
 ```
 
+A Developer ID build only opens on other Macs once Apple has notarized it.
+`make mac-notarize` builds, notarizes and staples in one step. It needs a
+notarytool keychain profile, stored once from an App Store Connect API key:
+
+```
+xcrun notarytool store-credentials gh-hud-notary --key AuthKey_XXXX.p8 --key-id <KEY_ID> --issuer <ISSUER_ID>
+make mac-notarize MAC_SIGN_ID="Developer ID Application: Your Name (TEAMID)"
+```
+
+`MAC_NOTARY_PROFILE` names another profile. A build signed with a
+Developer ID now carries a secure timestamp, which notarization requires.
+
 It builds with the Command Line Tools alone (no Xcode). Add it to
 System Settings → General → Login Items to start it with your Mac.
 
