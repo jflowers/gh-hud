@@ -408,3 +408,12 @@ func TestMuteNotifier(t *testing.T) {
 		}
 	}
 }
+
+func TestSnapshotCarriesConfigWarnings(t *testing.T) {
+	cfg := config.Default()
+	cfg.Warnings = []string{"config: unknown key x"}
+	h := New(Options{Config: cfg, Fetch: func(context.Context) *model.FetchResult { return nil }})
+	if got := h.Snapshot().ConfigWarnings; len(got) != 1 || got[0] != "config: unknown key x" {
+		t.Errorf("ConfigWarnings = %q", got)
+	}
+}

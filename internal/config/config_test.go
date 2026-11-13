@@ -437,3 +437,34 @@ func TestAutoMergeCovers(t *testing.T) {
 		t.Error("empty orgs and repos must cover nothing")
 	}
 }
+
+func TestLoadWarnsUnknownKeys(t *testing.T) {
+	cases := []struct {
+		name, toml, want string
+	}{
+		{"clean", "agent = \"x\"\n[supervisor]\nenabled = true\n", ""},
+		{"typo", "refresh_sec = 30\n", "config: unknown key refresh_sec"},
+		{
+			"swallowed",
+			"[supervisor]\nenabled = true\nagent = \"build\"\nmax_concurrent = 3\n",
+			"config: unknown keys supervisor.agent, supervisor.max_concurrent (a [table] header above top-level settings?)",
+		},
+		{"nested typo", "[auto_merge]\nmethd = \"squash\"\n", "config: unknown key auto_merge.methd"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			p := filepath.Join(t.TempDir(), "config.toml")
+			if err := os.WriteFile(p, []byte(c.toml), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := Load(p)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := strings.Join(cfg.Warnings, "\n")
+			if got != c.want {
+				t.Errorf("warnings %q, want %q", got, c.want)
+			}
+		})
+	}
+}

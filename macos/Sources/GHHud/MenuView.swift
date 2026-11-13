@@ -33,6 +33,14 @@ struct MenuView: View {
                 .font(.caption)
                 .foregroundStyle(statusIsBad ? .red : .secondary)
                 .lineLimit(2)
+            if conn.status == .connected {
+                ForEach(conn.snapshot.configWarnings, id: \.self) { w in
+                    Label(w, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .lineLimit(3)
+                }
+            }
         }
     }
 
