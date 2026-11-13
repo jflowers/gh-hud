@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/jflowers/gh-hud/internal/config"
@@ -60,5 +61,24 @@ func TestRefreshKeyAsksTheHub(t *testing.T) {
 	m.Update(snapshotMsg{snap: hub.Snapshot{Seq: 2, Res: items("a")}, ok: true})
 	if m.fetching {
 		t.Error("the hub's snapshot did not clear fetching")
+	}
+}
+
+func TestConfigWarningsInFooter(t *testing.T) {
+	m := New(config.Default(), &hubtest.Fake{})
+	m.width, m.height = 120, 30
+	warn := "config: unknown key refresh_sec"
+	m.Update(snapshotMsg{snap: hub.Snapshot{Seq: 1, Res: items("a"), ConfigWarnings: []string{warn}}, ok: true})
+	if f := m.footer(); !strings.Contains(f, warn) {
+		t.Errorf("footer %q lacks the warning", f)
+	}
+	m.flash("refreshed")
+	if f := m.footer(); !strings.Contains(f, "refreshed") {
+		t.Errorf("a flash should win over the warning: %q", f)
+	}
+	m.statusMsg = ""
+	m.Update(snapshotMsg{snap: hub.Snapshot{Seq: 2, Res: items("a")}, ok: true})
+	if f := m.footer(); strings.Contains(f, "config:") {
+		t.Errorf("fixed warning still shown: %q", f)
 	}
 }

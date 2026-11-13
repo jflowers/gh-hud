@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
 
@@ -16,6 +17,10 @@ import (
 // Config is the full gh-hud configuration. Fields left unset in the TOML
 // file fall back to the defaults in Default().
 type Config struct {
+	// Warnings are problems with the file that didn't stop it loading,
+	// such as keys nothing reads. Not read from the file.
+	Warnings []string `toml:"-"`
+
 	// Orgs limits PR/issue searches to these orgs; empty searches all of GitHub.
 	Orgs            []string `toml:"orgs"`
 	RefreshSecs     int      `toml:"refresh_secs"`
@@ -312,8 +317,12 @@ func Load(path string) (*Config, error) {
 		}
 		return nil, fmt.Errorf("read %s: %w", path, err)
 	}
-	if err := toml.Unmarshal(data, cfg); err != nil {
+	md, err := toml.Decode(string(data), cfg)
+	if err != nil {
 		return nil, fmt.Errorf("parse %s: %w", path, err)
+	}
+	if w := unknownKeys(md.Undecoded()); w != "" {
+		cfg.Warnings = append(cfg.Warnings, w)
 	}
 	if cfg.RefreshSecs < 10 {
 		cfg.RefreshSecs = 10
@@ -515,4 +524,44 @@ func validGesture(g string) bool {
 		}
 	}
 	return false
+}
+
+// unknownKeys describes keys in the file that no setting reads, or "".
+// TOML puts every key after a [table] header in that table, so a table
+// placed above top-level settings quietly swallows them; the hint names
+// that case when a stray key's last part is a top-level setting.
+func unknownKeys(keys []toml.Key) string {
+	if len(keys) == 0 {
+		return ""
+	}
+	top := topLevelKeys()
+	names := make([]string, 0, len(keys))
+	swallowed := false
+	for _, k := range keys {
+		names = append(names, k.String())
+		if len(k) > 1 && top[k[len(k)-1]] {
+			swallowed = true
+		}
+	}
+	msg := "config: unknown keys " + strings.Join(names, ", ")
+	if len(keys) == 1 {
+		msg = "config: unknown key " + names[0]
+	}
+	if swallowed {
+		msg += " (a [table] header above top-level settings?)"
+	}
+	return msg
+}
+
+// topLevelKeys are the TOML names of Config's own fields.
+func topLevelKeys() map[string]bool {
+	t := reflect.TypeFor[Config]()
+	out := make(map[string]bool, t.NumField())
+	for i := range t.NumField() {
+		name, _, _ := strings.Cut(t.Field(i).Tag.Get("toml"), ",")
+		if name != "" && name != "-" {
+			out[name] = true
+		}
+	}
+	return out
 }

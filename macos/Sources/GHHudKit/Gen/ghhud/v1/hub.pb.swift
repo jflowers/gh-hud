@@ -1003,6 +1003,13 @@ public nonisolated struct Ghhud_V1_Snapshot: @unchecked Sendable {
     set {_uniqueStorage()._epics = newValue}
   }
 
+  /// config_warnings are problems with config.toml that didn't stop it
+  /// loading, such as keys nothing reads.
+  public var configWarnings: [String] {
+    get {_storage._configWarnings}
+    set {_uniqueStorage()._configWarnings = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3437,7 +3444,7 @@ nonisolated extension Ghhud_V1_FleetControlResponse: SwiftProtobuf.Message, Swif
 
 nonisolated extension Ghhud_V1_Snapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Snapshot"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}seq\0\u{1}result\0\u{3}fetched_at\0\u{1}fetching\0\u{3}fetch_error\0\u{1}dispatch\0\u{1}follower\0\u{1}sessions\0\u{1}runs\0\u{1}usage\0\u{3}agents_at\0\u{1}stages\0\u{1}plan\0\u{1}queue\0\u{1}workspaces\0\u{3}workspaces_at\0\u{3}workspaces_loading\0\u{1}fleet\0\u{1}cases\0\u{1}epics\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}seq\0\u{1}result\0\u{3}fetched_at\0\u{1}fetching\0\u{3}fetch_error\0\u{1}dispatch\0\u{1}follower\0\u{1}sessions\0\u{1}runs\0\u{1}usage\0\u{3}agents_at\0\u{1}stages\0\u{1}plan\0\u{1}queue\0\u{1}workspaces\0\u{3}workspaces_at\0\u{3}workspaces_loading\0\u{1}fleet\0\u{1}cases\0\u{1}epics\0\u{3}config_warnings\0")
 
   fileprivate class _StorageClass {
     var _seq: UInt64 = 0
@@ -3460,6 +3467,7 @@ nonisolated extension Ghhud_V1_Snapshot: SwiftProtobuf.Message, SwiftProtobuf._M
     var _fleet: Ghhud_V1_FleetSnapshot? = nil
     var _cases: [Ghhud_V1_Case] = []
     var _epics: [Ghhud_V1_Epic] = []
+    var _configWarnings: [String] = []
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3490,6 +3498,7 @@ nonisolated extension Ghhud_V1_Snapshot: SwiftProtobuf.Message, SwiftProtobuf._M
       _fleet = source._fleet
       _cases = source._cases
       _epics = source._epics
+      _configWarnings = source._configWarnings
     }
   }
 
@@ -3528,6 +3537,7 @@ nonisolated extension Ghhud_V1_Snapshot: SwiftProtobuf.Message, SwiftProtobuf._M
         case 18: try { try decoder.decodeSingularMessageField(value: &_storage._fleet) }()
         case 19: try { try decoder.decodeRepeatedMessageField(value: &_storage._cases) }()
         case 20: try { try decoder.decodeRepeatedMessageField(value: &_storage._epics) }()
+        case 21: try { try decoder.decodeRepeatedStringField(value: &_storage._configWarnings) }()
         default: break
         }
       }
@@ -3600,6 +3610,9 @@ nonisolated extension Ghhud_V1_Snapshot: SwiftProtobuf.Message, SwiftProtobuf._M
       if !_storage._epics.isEmpty {
         try visitor.visitRepeatedMessageField(value: _storage._epics, fieldNumber: 20)
       }
+      if !_storage._configWarnings.isEmpty {
+        try visitor.visitRepeatedStringField(value: _storage._configWarnings, fieldNumber: 21)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3629,6 +3642,7 @@ nonisolated extension Ghhud_V1_Snapshot: SwiftProtobuf.Message, SwiftProtobuf._M
         if _storage._fleet != rhs_storage._fleet {return false}
         if _storage._cases != rhs_storage._cases {return false}
         if _storage._epics != rhs_storage._epics {return false}
+        if _storage._configWarnings != rhs_storage._configWarnings {return false}
         return true
       }
       if !storagesAreEqual {return false}

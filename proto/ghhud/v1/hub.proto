@@ -278,6 +278,9 @@ message Snapshot {
   repeated Case cases = 19;
   // epics are the enrolled epics with their plans and status.
   repeated Epic epics = 20;
+  // config_warnings are problems with config.toml that didn't stop it
+  // loading, such as keys nothing reads.
+  repeated string config_warnings = 21;
 }
 
 message FetchResult {

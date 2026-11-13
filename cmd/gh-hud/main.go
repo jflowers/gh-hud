@@ -217,6 +217,9 @@ func runServe(cfg *config.Config, client *gh.Client, dir, sock string) int {
 	go h.Run(ctx)
 	go logEvents(ctx, h)
 	log.Printf("gh-hud %s: hub serving on %s (pid %d)", version, sock, os.Getpid())
+	for _, w := range cfg.Warnings {
+		log.Print(w)
+	}
 	tcpReady := func(d api.Discovery) {
 		log.Printf("apps reach the hub at %s (token in %s)", d.URL, filepath.Join(dir, api.DiscoveryName))
 	}
