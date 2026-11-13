@@ -213,7 +213,7 @@ func (d *Dispatcher) updateTrain(items []model.Item) {
 	d.train.sup = d.supStatesLocked()
 	d.noteBaseLocked()
 	d.train.rearm = map[string][]string{}
-	cfg := d.opts.AutoMerge
+	cfg := d.o().AutoMerge
 	if !cfg.Enabled {
 		return
 	}
@@ -311,7 +311,7 @@ func trainOrderPrio(items []model.Item, prio map[string]bool) []model.Item {
 // auto-merge; it updates a branch and never merges. Each head commit is
 // tried once.
 func (d *Dispatcher) updateHeads(ctx context.Context, runs func() []Run) []string {
-	cfg := d.opts.AutoMerge
+	cfg := d.o().AutoMerge
 	tp := d.trainSnapshot()
 	if tp == nil {
 		return nil
@@ -369,7 +369,7 @@ func (d *Dispatcher) rearmBranches(ctx context.Context, runs func() []Run) []str
 		return nil
 	}
 	method := "MERGE"
-	if strings.EqualFold(d.opts.AutoMerge.UpdateMethod, "rebase") {
+	if strings.EqualFold(d.o().AutoMerge.UpdateMethod, "rebase") {
 		method = "REBASE"
 	}
 	var msgs []string

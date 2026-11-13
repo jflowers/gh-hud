@@ -209,7 +209,7 @@ type epicIssue struct {
 func (d *Dispatcher) readEpic(ref string) {
 	// Reading a large epic takes a while (dewey#153: ten minutes), so it
 	// gets twice the supervisor's timeout, and at least epicReadFloor.
-	timeout := max(2*time.Duration(d.opts.Supervisor.TimeoutSecs)*time.Second, epicReadFloor)
+	timeout := max(2*time.Duration(d.o().Supervisor.TimeoutSecs)*time.Second, epicReadFloor)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -556,7 +556,7 @@ func (d *Dispatcher) fetchEpicIssue(ctx context.Context, ref string) (epicIssue,
 // epics.json
 
 func (d *Dispatcher) loadEpicsLocked() {
-	path := filepath.Join(d.opts.StateDir, epicsName)
+	path := filepath.Join(d.o().StateDir, epicsName)
 	if st, err := os.Stat(path); err == nil {
 		d.epicsMod = st.ModTime()
 	}
@@ -581,7 +581,7 @@ func (d *Dispatcher) saveEpicsLocked() {
 	if err != nil {
 		return
 	}
-	path := filepath.Join(d.opts.StateDir, epicsName)
+	path := filepath.Join(d.o().StateDir, epicsName)
 	if writeAtomic(path, data) {
 		if st, err := os.Stat(path); err == nil {
 			d.epicsMod = st.ModTime()

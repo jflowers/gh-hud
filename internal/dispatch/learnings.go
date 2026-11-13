@@ -74,7 +74,7 @@ func learningsPRScript(dir, repo, def, branch, title, body string) string {
 // learningsPR runs learningsPRScript for a clean checkout on def and
 // returns a "Pushed" line ("" when there was nothing to do).
 func (d *Dispatcher) learningsPR(ctx context.Context, m Machine, r Record, def string) (string, error) {
-	if !d.opts.LearningsPR || r.Repo == "" {
+	if !d.o().LearningsPR || r.Repo == "" {
 		return "", nil
 	}
 	where := r.Workspace

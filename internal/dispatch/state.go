@@ -87,7 +87,7 @@ type machineStatusEntry struct {
 // list (not saved in herdr) are unreachable. With no machines configured
 // there is nothing to ask herdr.
 func (d *Dispatcher) reachability(ctx context.Context) map[string]bool {
-	if len(d.opts.Machines) == 0 {
+	if len(d.o().Machines) == 0 {
 		return map[string]bool{}
 	}
 	d.cacheMu.Lock()

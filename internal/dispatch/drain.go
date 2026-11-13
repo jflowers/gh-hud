@@ -66,7 +66,7 @@ func (d *Dispatcher) LiveOn(ctx context.Context, name string) (records, agents i
 	m := d.localMachine()
 	if key != "" {
 		found := false
-		for _, mm := range d.opts.Machines {
+		for _, mm := range d.o().Machines {
 			if mm.Name == key {
 				m, found = mm, true
 				break
@@ -93,7 +93,7 @@ func (d *Dispatcher) LiveOn(ctx context.Context, name string) (records, agents i
 			agents++
 		}
 	}
-	if !snap.ok && m.Local && d.opts.Runner != "herdr" {
+	if !snap.ok && m.Local && d.o().Runner != "herdr" {
 		return records, 0, true
 	}
 	return records, agents, snap.ok

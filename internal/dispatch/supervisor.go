@@ -278,7 +278,7 @@ func (d *Dispatcher) supervise(items []model.Item) ([]string, bool) {
 	if tp == nil {
 		return nil, false
 	}
-	dir := filepath.Join(d.opts.StateDir, inboxDir)
+	dir := filepath.Join(d.o().StateDir, inboxDir)
 	entries, _ := os.ReadDir(dir)
 	open := openPRs(items)
 	bases := baseOIDs(tp)
@@ -344,7 +344,7 @@ func (d *Dispatcher) writeCases() {
 	if err != nil {
 		return
 	}
-	path := filepath.Join(d.opts.StateDir, casesName)
+	path := filepath.Join(d.o().StateDir, casesName)
 	if old, err := os.ReadFile(path); err == nil && string(old) == string(data) {
 		return
 	}
@@ -352,7 +352,7 @@ func (d *Dispatcher) writeCases() {
 }
 
 func (d *Dispatcher) loadDecisionsLocked() {
-	path := filepath.Join(d.opts.StateDir, decisionsName)
+	path := filepath.Join(d.o().StateDir, decisionsName)
 	if st, err := os.Stat(path); err == nil {
 		d.decisionsMod = st.ModTime()
 	}
@@ -377,7 +377,7 @@ func (d *Dispatcher) saveDecisionsLocked() {
 	if err != nil {
 		return
 	}
-	path := filepath.Join(d.opts.StateDir, decisionsName)
+	path := filepath.Join(d.o().StateDir, decisionsName)
 	if writeAtomic(path, data) {
 		if st, err := os.Stat(path); err == nil {
 			d.decisionsMod = st.ModTime()
