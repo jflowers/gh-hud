@@ -36,20 +36,30 @@ in the menu bar, native notifications, and later a full window.
 
 ## Sequence
 
-1. **3a, Go: reachable from the Mac.** `[hub] listen` (loopback only,
+1. **3a, Go: reachable from the Mac.** *(done, #29)* `[hub] listen` (loopback only,
    default `127.0.0.1:0`), the bearer token, `hub.json`, and
    `native_notifications` muting. Tests: token required, hub.json 0600
    and removed on exit (only by the hub that wrote it), loopback-only
    listen, muting held for exactly the subscription, and `gh-hud serve`
    end to end over TCP.
-2. **3b, the menu bar app.**
+2. **3b, the menu bar app.** *(done)*
    - The icon shows how many things need you: reviews requested, your
      PRs ready for a maintainer, and agents blocked on you.
    - The menu lists them by section, newest activity first; a click
      opens the PR in the browser. It also shows the hub's state
      (connected, refreshing, follower, lost) and has Refresh.
    - Alerts become native notifications (`UNUserNotificationCenter`);
-     clicking one opens its PR or run.
+     clicking one opens its PR or run. The app only asks the hub to mute
+     its own notifications once you've allowed the app's.
+
+   As built: SwiftUI's `@State` and the XCTest / Swift Testing macros
+   need Xcode, so the app keeps view state in `ObservableObject`s and its
+   checks are an executable (`make mac-check`). Swift code is generated
+   with buf's hosted plugins (swift-protobuf 1.39 generator, 1.40
+   library; connect-swift 1.2.3). The subscription uses its own
+   URLSession with a long timeout, because an idle hub sends nothing.
+   `--snapshot` renders the menu with ImageRenderer, which can't draw
+   scroll views or system buttons, so it gets a plain layout.
 3. **3c, the window.** The dashboard's tabs as a native window: the list
    with filters and search, agents, workspaces, the plan and your queue,
    and the fleet, with the same commands as the TUI (dispatch, queue,

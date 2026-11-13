@@ -12,7 +12,7 @@ PROTOC_GEN_CONNECT_GO_VERSION ?= v1.21.1
 TOOLS := $(CURDIR)/.tools
 export PATH := $(TOOLS):$(PATH)
 
-.PHONY: all build test lint fmt tidy vuln proto proto-check ci
+.PHONY: all build test lint fmt tidy vuln proto proto-check ci mac mac-check
 
 all: build
 
@@ -45,7 +45,27 @@ proto:
 
 # proto-check fails when the generated code is out of date.
 proto-check: proto
-	git add -N internal/api/gen
-	git diff --exit-code -- internal/api/gen
+	git add -N internal/api/gen macos/Sources/GHHudKit/Gen
+	git diff --exit-code -- internal/api/gen macos/Sources/GHHudKit/Gen
 
 ci: tidy proto-check lint test vuln
+
+# The Mac app (macos/). Needs only the Command Line Tools. MAC_SIGN_ID is a
+# codesigning identity ("Developer ID Application: …"); empty signs ad hoc,
+# which runs on this Mac only.
+MAC_APP := build/gh-hud.app
+MAC_SIGN_ID ?=
+MAC_VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+
+mac:
+	cd macos && swift build -c release --product GHHud
+	rm -rf $(MAC_APP)
+	mkdir -p $(MAC_APP)/Contents/MacOS
+	cp macos/.build/release/GHHud $(MAC_APP)/Contents/MacOS/GHHud
+	sed 's/VERSION/$(MAC_VERSION)/g' macos/Resources/Info.plist > $(MAC_APP)/Contents/Info.plist
+	codesign --force --options runtime --timestamp=none --sign "$(if $(MAC_SIGN_ID),$(MAC_SIGN_ID),-)" $(MAC_APP)
+	codesign --verify --strict $(MAC_APP)
+	@echo "built $(MAC_APP)"
+
+mac-check:
+	cd macos && swift run GHHudChecks

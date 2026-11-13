@@ -156,6 +156,37 @@ your dashboards after the agent to attach to it from the start.
 The hub reads its config when it starts: restart it after editing
 `config.toml`.
 
+## Mac app
+
+A menu bar app that shows what needs you, from the hub: reviews requested
+of you, your PRs ready for a maintainer, and agents waiting on you. The
+icon shows the count; the menu lists them (click one to open it on
+GitHub) with the hub's state and a Refresh button. Its source is in
+`macos/` and it needs a hub running (see "The hub") with TCP on, which is
+the default.
+
+```
+make mac                                   # build/gh-hud.app, signed ad hoc
+make mac MAC_SIGN_ID="Developer ID Application: Your Name (TEAMID)"
+cp -R build/gh-hud.app /Applications/ && open /Applications/gh-hud.app
+```
+
+It builds with the Command Line Tools alone (no Xcode). Add it to
+System Settings → General → Login Items to start it with your Mac.
+
+- **Notifications.** On first launch it asks to show notifications. Once
+  you allow them it shows the hub's alerts itself (clicking one opens
+  the PR) and the hub stops posting its own while the app is connected.
+  If you don't, the hub keeps notifying as before.
+- **Finding the hub.** It reads `hub.json` from the hub's state directory
+  (`~/.local/state/gh-hud`, or `GH_HUD_STATE_DIR`), and reads it again
+  whenever it loses the hub, so it follows the hub across restarts.
+- **Checks.** `make mac-check` runs the app's checks (`swift run
+  GHHudChecks`; XCTest needs Xcode). `swift run GHHudChecks --live <state
+  dir>` from `macos/` also connects to a running hub.
+- `build/gh-hud.app/Contents/MacOS/GHHud --snapshot menu.png` renders the
+  menu to an image once the hub answers, for screenshots.
+
 ## Agent dispatch
 
 `a` on a row proposes dispatching an autonomous opencode session against a
@@ -900,7 +931,8 @@ Run the same checks locally with:
 make ci      # tidy, proto-check, lint, test, vuln
 make lint    # needs golangci-lint v2 on PATH
 make fmt     # gofmt + goimports
-make proto   # regenerate internal/api/gen from proto/ (pinned buf + plugins)
+make proto   # regenerate the Go and Swift API code from proto/
+make mac     # the Mac app (see "Mac app")
 ```
 
 The hub's API is `proto/ghhud/v1/hub.proto` (Connect-RPC; see

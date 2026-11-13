@@ -1,0 +1,34 @@
+name: Mac app
+
+# Builds the Mac app and runs its checks. Not a required check: hosted
+# macOS runners can queue past any sensible time limit, which must not
+# block a merge. Runs when the app or the API it speaks changes.
+on:
+  push:
+    branches: [master]
+    paths: ["macos/**", "proto/**", "Makefile", ".github/workflows/mac.yml"]
+  pull_request:
+    paths: ["macos/**", "proto/**", "Makefile", ".github/workflows/mac.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  app:
+    name: Mac app
+    runs-on: macos-latest
+    # The limit counts time spent waiting for a runner.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Checks
+        run: make mac-check
+      - name: App bundle (ad hoc signed)
+        run: make mac
