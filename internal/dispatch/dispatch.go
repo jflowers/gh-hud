@@ -587,6 +587,9 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 			return Record{}, err
 		}
 	}
+	if err := d.prepareToolchain(ctx, m, co.Dir); err != nil {
+		return Record{}, err
+	}
 	startHead := strings.TrimSpace(orEmpty(m.Run(ctx, co.Dir, "git", "rev-parse", "HEAD")))
 
 	if d.opts.Runner == "herdr" {
