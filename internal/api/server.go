@@ -22,6 +22,12 @@ type Server struct {
 
 var _ ghhudv1connect.HubServiceHandler = (*Server)(nil)
 
+// notifierMuter is a backend that can stop posting its own notifications
+// while a client shows them natively (*hub.Hub).
+type notifierMuter interface {
+	MuteNotifier() (release func())
+}
+
 // NewHandler returns the HubService's path prefix and its HTTP handler.
 func NewHandler(b hub.Backend, opts ...connect.HandlerOption) (string, http.Handler) {
 	return ghhudv1connect.NewHubServiceHandler(&Server{b: b}, opts...)
@@ -59,11 +65,17 @@ func (s *Server) GetSnapshot(context.Context, *connect.Request[pb.GetSnapshotReq
 // Subscribe streams snapshots and events until the client goes away. The
 // hub publishes every second; a snapshot that differs from the last one
 // sent only in Seq is skipped, so an idle hub sends nothing.
-func (s *Server) Subscribe(ctx context.Context, _ *connect.Request[pb.SubscribeRequest], stream *connect.ServerStream[pb.SubscribeResponse]) error {
+func (s *Server) Subscribe(ctx context.Context, req *connect.Request[pb.SubscribeRequest], stream *connect.ServerStream[pb.SubscribeResponse]) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	if m, ok := s.b.(notifierMuter); ok && req.Msg.GetNativeNotifications() {
+		defer m.MuteNotifier()()
+	}
 	snaps, events := s.b.Subscribe(ctx)
+	// The first snapshot always goes out, even an empty one: over
+	// HTTP/1.1 it is also what delivers the response headers.
 	var last []byte
+	sent := false
 	for {
 		select {
 		case <-ctx.Done():
@@ -77,10 +89,10 @@ func (s *Server) Subscribe(ctx context.Context, _ *connect.Request[pb.SubscribeR
 			if err != nil {
 				return connect.NewError(connect.CodeInternal, err)
 			}
-			if bytes.Equal(key, last) {
+			if sent && bytes.Equal(key, last) {
 				continue
 			}
-			last = key
+			last, sent = key, true
 			if err := stream.Send(&pb.SubscribeResponse{Msg: &pb.SubscribeResponse_Snapshot{Snapshot: p}}); err != nil {
 				return err
 			}

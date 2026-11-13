@@ -385,3 +385,26 @@ func TestSubscriptionEndsWithContext(t *testing.T) {
 	}
 	h.publish() // must not panic on a closed subscriber
 }
+
+func TestMuteNotifier(t *testing.T) {
+	var posted atomic.Int32
+	h := New(Options{Config: testCfg(), Fetch: (&fakeFetcher{}).fetch,
+		Notifier: notify.Func(func(_, _ string) { posted.Add(1) })})
+	_, events := h.Subscribe(t.Context())
+	alert := []Alert{{Type: AlertReady, Ref: "acme/r#1", Text: "ready"}}
+
+	h.post(alert)
+	release := h.MuteNotifier()
+	h.post(alert) // a native client shows it: the hub doesn't
+	release()
+	release() // releasing twice is harmless
+	h.post(alert)
+	if n := posted.Load(); n != 2 {
+		t.Errorf("notifier posted %d, want 2", n)
+	}
+	for i := range 3 {
+		if e := <-events; e.Kind != EventAlert {
+			t.Errorf("event %d = %+v, want an alert", i, e)
+		}
+	}
+}

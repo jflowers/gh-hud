@@ -257,6 +257,20 @@ func TestListenRefusesALiveHub(t *testing.T) {
 	}
 }
 
+// TestEmptyFirstSnapshotIsSent guards against the dedupe swallowing a
+// new hub's first, empty snapshot, which left subscribers waiting.
+func TestEmptyFirstSnapshotIsSent(t *testing.T) {
+	fake := &hubtest.Fake{Snaps: make(chan hub.Snapshot, 1)}
+	fake.Snaps <- hub.Snapshot{}
+	c, _ := serve(t, sockPath(t), fake)
+	snaps, _ := c.Subscribe(t.Context())
+	select {
+	case <-snaps:
+	case <-time.After(5 * time.Second):
+		t.Fatal("empty first snapshot not sent")
+	}
+}
+
 func TestListenRejectsALongPath(t *testing.T) {
 	long := filepath.Join(t.TempDir(), strings.Repeat("d", 100), SocketName)
 	if _, err := ListenUnix(long); err == nil || !strings.Contains(err.Error(), "shorter --state-dir") {

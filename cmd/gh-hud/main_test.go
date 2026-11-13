@@ -85,6 +85,16 @@ ghws_root = "` + filepath.Join(dir, "ghws") + `"
 	if a := attach(sock); a == nil {
 		t.Error("attach found no hub on a serving socket")
 	}
+	// Apps that can't use the socket find the hub in hub.json.
+	var disc api.Discovery
+	waitFor(t, "hub.json", func() bool {
+		var err error
+		disc, err = api.ReadDiscovery(state)
+		return err == nil
+	})
+	if _, err := api.DialTCP(disc).Fetch(t.Context()); err != nil {
+		t.Errorf("hub over TCP: %v", err)
+	}
 
 	out, err := exec.Command(bin, args...).CombinedOutput()
 	var ee *exec.ExitError
@@ -106,7 +116,10 @@ ghws_root = "` + filepath.Join(dir, "ghws") + `"
 	if _, err := os.Stat(sock); !os.IsNotExist(err) {
 		t.Errorf("socket left behind: %v", err)
 	}
-	for _, want := range []string{"hub serving on " + sock, "hub stopped"} {
+	if _, err := os.Stat(filepath.Join(state, api.DiscoveryName)); !os.IsNotExist(err) {
+		t.Errorf("hub.json left behind: %v", err)
+	}
+	for _, want := range []string{"hub serving on " + sock, "apps reach the hub at " + disc.URL, "hub stopped"} {
 		if !strings.Contains(logs.String(), want) {
 			t.Errorf("log missing %q:\n%s", want, logs.String())
 		}
