@@ -929,6 +929,22 @@ active or failed.
 `~/.config/gh-hud/config.toml` (all optional; `--config` picks another path).
 With no `orgs`, searches cover all of GitHub.
 
+The hub checks the file every few seconds (and on `r`) and applies a
+change without a restart, saying what changed:
+`config reloaded: supervisor.enabled false→true, max_concurrent 2→3`.
+- **Needs a restart:** `ghws_root`, `runner`, `[hub]` and `[fleet]`. A
+  reload keeps their old values and says so until you restart the hub.
+  Runs already on a machine you remove carry on; it just gets no new
+  work.
+- **A file that doesn't load** (a typo, a bad value) leaves the hub on
+  the config it has. The error shows in the dashboard's footer, the Mac
+  menu and the serve log until you fix it.
+- **Keys nothing reads** are warned about the same way. A `[table]`
+  header written above top-level settings turns them into the table's
+  keys, so put top-level settings first.
+- **The dashboard's own display settings** (`url_click`, `ref_click`, and
+  the like) are read when it starts.
+
 ```toml
 orgs = ["my-org", "another-org"]  # limit PR/issue searches to these orgs
 refresh_secs = 120         # auto-refresh interval

@@ -46,6 +46,10 @@ type Dispatcher interface {
 	Watch(s dispatch.Session) error
 	WatchRun(r dispatch.Run) error
 	OpenTranscript(r dispatch.Run) error
+
+	// SetOptions applies a reloaded config; it returns the settings that
+	// changed but need a restart (dispatch.Dispatcher.SetOptions).
+	SetOptions(o dispatch.Options) (restart []string)
 }
 
 // Fleet is the part of *fleet.Coordinator the hub drives.
@@ -114,7 +118,14 @@ type Backend interface {
 
 // Options configures a Hub.
 type Options struct {
-	Config *config.Config
+	// Config is the config at start. With ConfigPath the hub watches that
+	// file and applies changes (config.go); read the current one with
+	// Hub.Config.
+	Config     *config.Config
+	ConfigPath string
+	// DispatchOptions builds the dispatcher's options from a reloaded
+	// config; nil leaves the dispatcher as it started.
+	DispatchOptions func(*config.Config) dispatch.Options
 	// Fetch reads GitHub (model.FetchAll in production).
 	Fetch func(ctx context.Context) *model.FetchResult
 	// Dispatcher and Fleet are nil when dispatch / the fleet are off.
@@ -129,6 +140,7 @@ type Options struct {
 	AgentsEvery     time.Duration // agent sessions, runs, slot usage (30s)
 	WorkspacesEvery time.Duration // checkout health, one ssh per worker (2m)
 	PublishEvery    time.Duration // fleet state and pipeline stages (1s)
+	ConfigEvery     time.Duration // how often to look at ConfigPath (5s)
 }
 
 // Default cadences.
@@ -136,6 +148,7 @@ const (
 	DefaultAgentsEvery     = 30 * time.Second
 	DefaultWorkspacesEvery = 2 * time.Minute
 	DefaultPublishEvery    = time.Second
+	DefaultConfigEvery     = 5 * time.Second
 )
 
 // Per-call deadlines, as the TUI used them.
@@ -224,9 +237,15 @@ type Hub struct {
 	subsMu sync.Mutex
 	subs   map[*subscriber]struct{}
 
-	fetchReq, agentsReq, wsReq chan struct{}
-	autoMu                     sync.Mutex
-	autoRunning                bool
+	fetchReq, agentsReq, wsReq, cfgReq chan struct{}
+
+	cfg atomic.Pointer[config.Config] // the config in effect
+	// Only the config loop uses these: ConfigPath when last read, and
+	// whether that read failed.
+	cfgStamp    fileStamp
+	cfgBroken   bool
+	autoMu      sync.Mutex
+	autoRunning bool
 
 	// muted counts clients that show alerts themselves (MuteNotifier).
 	muted atomic.Int32
@@ -251,6 +270,12 @@ func New(opts Options) *Hub {
 	if opts.PublishEvery <= 0 {
 		opts.PublishEvery = DefaultPublishEvery
 	}
+	if opts.ConfigEvery <= 0 {
+		opts.ConfigEvery = DefaultConfigEvery
+	}
+	if opts.Config == nil {
+		opts.Config = config.Default()
+	}
 	h := &Hub{
 		opts:      opts,
 		alerter:   NewAlerter(opts.Config),
@@ -258,11 +283,14 @@ func New(opts Options) *Hub {
 		fetchReq:  make(chan struct{}, 1),
 		agentsReq: make(chan struct{}, 1),
 		wsReq:     make(chan struct{}, 1),
+		cfgReq:    make(chan struct{}, 1),
+	}
+	h.cfg.Store(opts.Config)
+	if opts.ConfigPath != "" {
+		h.cfgStamp = stampOf(opts.ConfigPath)
 	}
 	h.snap.Dispatch = opts.Dispatcher != nil
-	if opts.Config != nil {
-		h.snap.ConfigWarnings = opts.Config.Warnings
-	}
+	h.snap.ConfigWarnings = opts.Config.Warnings
 	if opts.Fleet != nil {
 		fs := opts.Fleet.Snapshot()
 		h.snap.Fleet = &fs
@@ -277,14 +305,13 @@ func (h *Hub) Run(ctx context.Context) {
 	if h.opts.Fleet != nil && h.ownsDispatch() {
 		go h.opts.Fleet.Run(ctx)
 	}
-	every := time.Duration(h.opts.Config.RefreshSecs) * time.Second
-	if every <= 0 {
-		every = time.Duration(config.Default().RefreshSecs) * time.Second
-	}
-	go loop(ctx, every, h.fetchReq, h.fetch)
+	go loop(ctx, h.refreshEvery, h.fetchReq, h.fetch)
 	if h.opts.Dispatcher != nil {
-		go loop(ctx, h.opts.AgentsEvery, h.agentsReq, h.refreshAgents)
-		go loop(ctx, h.opts.WorkspacesEvery, h.wsReq, h.refreshWorkspaces)
+		go loop(ctx, every(h.opts.AgentsEvery), h.agentsReq, h.refreshAgents)
+		go loop(ctx, every(h.opts.WorkspacesEvery), h.wsReq, h.refreshWorkspaces)
+	}
+	if h.opts.ConfigPath != "" {
+		go loop(ctx, every(h.opts.ConfigEvery), h.cfgReq, h.checkConfig)
 	}
 	t := time.NewTicker(h.opts.PublishEvery)
 	defer t.Stop()
@@ -298,12 +325,24 @@ func (h *Hub) Run(ctx context.Context) {
 	}
 }
 
+// refreshEvery is the GitHub cadence from the current config, so a
+// reload changes it from the next wait.
+func (h *Hub) refreshEvery() time.Duration {
+	if d := time.Duration(h.Config().RefreshSecs) * time.Second; d > 0 {
+		return d
+	}
+	return time.Duration(config.Default().RefreshSecs) * time.Second
+}
+
+// every is a fixed interval for loop.
+func every(d time.Duration) func() time.Duration { return func() time.Duration { return d } }
+
 // loop runs fn now, then again every interval after it finishes or when
 // req fires. Requests that arrive while fn runs collapse into one rerun.
-func loop(ctx context.Context, every time.Duration, req <-chan struct{}, fn func(context.Context)) {
+func loop(ctx context.Context, interval func() time.Duration, req <-chan struct{}, fn func(context.Context)) {
 	for {
 		fn(ctx)
-		t := time.NewTimer(every)
+		t := time.NewTimer(interval())
 		select {
 		case <-ctx.Done():
 			t.Stop()
@@ -322,8 +361,13 @@ func poke(ch chan struct{}) {
 	}
 }
 
-// Refresh asks for a GitHub fetch now (coalesced with one in flight).
-func (h *Hub) Refresh(context.Context) error { poke(h.fetchReq); return nil }
+// Refresh asks for a GitHub fetch now (coalesced with one in flight), and
+// looks at the config file now too.
+func (h *Hub) Refresh(context.Context) error {
+	poke(h.fetchReq)
+	poke(h.cfgReq)
+	return nil
+}
 
 // RefreshAgents asks for an agents refresh now.
 func (h *Hub) RefreshAgents(context.Context) error { poke(h.agentsReq); return nil }

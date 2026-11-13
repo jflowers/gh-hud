@@ -107,7 +107,7 @@ func run() int {
 	}
 	sock := filepath.Join(dir, api.SocketName)
 	if serve {
-		return runServe(cfg, client, dir, sock)
+		return runServe(cfg, *configPath, client, dir, sock)
 	}
 
 	if !*inProcess {
@@ -115,7 +115,7 @@ func run() int {
 			return runTUI(cfg, c)
 		}
 	}
-	h, cleanup := buildHub(cfg, client, dir)
+	h, cleanup := buildHub(cfg, *configPath, client, dir)
 	defer cleanup()
 	ctx, stop := context.WithCancel(context.Background())
 	served := make(chan struct{})
@@ -203,14 +203,14 @@ func runTUI(cfg *config.Config, b hub.Backend) int {
 
 // runServe runs the hub with no TUI until SIGINT or SIGTERM, logging its
 // notices and alerts to stderr.
-func runServe(cfg *config.Config, client *gh.Client, dir, sock string) int {
+func runServe(cfg *config.Config, cfgPath string, client *gh.Client, dir, sock string) int {
 	// Claim the socket first: a second hub must not touch the dispatch lock.
 	l, err := api.ListenUnix(sock)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "gh-hud serve:", err)
 		return 1
 	}
-	h, cleanup := buildHub(cfg, client, dir)
+	h, cleanup := buildHub(cfg, cfgPath, client, dir)
 	defer cleanup()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -261,7 +261,9 @@ func logEvents(ctx context.Context, h *hub.Hub) {
 
 // buildHub builds the hub over this machine's dispatcher and fleet (each
 // nil when off or failing to start). cleanup releases the dispatch lock.
-func buildHub(cfg *config.Config, client *gh.Client, stateDir string) (h *hub.Hub, cleanup func()) {
+// buildHub builds the hub, its dispatcher and its fleet from cfg. The hub
+// watches cfgPath and applies what it can of each change.
+func buildHub(cfg *config.Config, cfgPath string, client *gh.Client, stateDir string) (h *hub.Hub, cleanup func()) {
 	cleanup = func() {}
 	idx, idxErr := ghws.Discover(cfg.GhwsRoot)
 	if idxErr != nil {
@@ -273,39 +275,10 @@ func buildHub(cfg *config.Config, client *gh.Client, stateDir string) (h *hub.Hu
 			wsDirs = append(wsDirs, co.Dir)
 		}
 	}
-	machines := make([]dispatch.Machine, 0, len(cfg.Machines))
-	for _, mc := range cfg.Machines {
-		machines = append(machines, dispatch.Machine{
-			Name:     mc.Name,
-			SSH:      mc.SSH,
-			Max:      mc.MaxConcurrent,
-			GhwsRoot: mc.GhwsRoot,
-			Tasks:    mc.Tasks,
-			Enabled:  mc.IsEnabled(),
-			Local:    false,
-			Mode:     mc.DispatchMode,
-		})
+	dispOptions := func(cfg *config.Config) dispatch.Options {
+		return dispatchOptions(cfg, stateDir, wsDirs, idx)
 	}
-	dispOpts := dispatch.Options{
-		Root:          cfg.GhwsRoot,
-		Agent:         cfg.Agent,
-		MaxConcurrent: cfg.MaxConcurrent,
-		BusyWindow:    time.Duration(cfg.BusyWindowSecs) * time.Second,
-		Dirty:         cfg.Dirty,
-		Tasks:         cfg.Dispatch,
-		AutoMerge:     cfg.AutoMerge,
-		Supervisor:    cfg.Supervisor,
-		WatchCmd:      cfg.AgentWatchCmd,
-		Runner:        cfg.Runner,
-		Mode:          cfg.DispatchMode,
-		HerdrWatchCmd: cfg.HerdrWatchCmd,
-		Dirs:          wsDirs,
-		Machines:      machines,
-		LocalIndex:    idx,
-		InstancesOnly: cfg.DispatchInstancesOnly,
-		StateDir:      stateDir,
-		LearningsPR:   cfg.LearningsPR,
-	}
+	dispOpts := dispOptions(cfg)
 	disp, dispErr := dispatch.New(dispOpts)
 	if dispErr != nil {
 		disp = nil
@@ -347,8 +320,11 @@ func buildHub(cfg *config.Config, client *gh.Client, stateDir string) (h *hub.Hu
 	}
 
 	hopts := hub.Options{
-		Config:   cfg,
-		Fetch:    func(ctx context.Context) *model.FetchResult { return model.FetchAll(ctx, client, cfg) },
+		Config:          cfg,
+		ConfigPath:      cfgPath,
+		DispatchOptions: dispOptions,
+		// The current config, so a reload's orgs and repos apply.
+		Fetch:    func(ctx context.Context) *model.FetchResult { return model.FetchAll(ctx, client, h.Config()) },
 		Notifier: notify.OSAScript{},
 	}
 	// Leave nil pointers out: a nil *Dispatcher in an interface is not nil.
@@ -358,7 +334,46 @@ func buildHub(cfg *config.Config, client *gh.Client, stateDir string) (h *hub.Hu
 	if fleetCoord != nil {
 		hopts.Fleet = fleetCoord
 	}
-	return hub.New(hopts), cleanup
+	h = hub.New(hopts)
+	return h, cleanup
+}
+
+// dispatchOptions are the dispatcher's options for cfg; the checkout dirs
+// and the ghws index come from startup (a change to them needs a restart).
+func dispatchOptions(cfg *config.Config, stateDir string, wsDirs []string, idx *ghws.Index) dispatch.Options {
+	machines := make([]dispatch.Machine, 0, len(cfg.Machines))
+	for _, mc := range cfg.Machines {
+		machines = append(machines, dispatch.Machine{
+			Name:     mc.Name,
+			SSH:      mc.SSH,
+			Max:      mc.MaxConcurrent,
+			GhwsRoot: mc.GhwsRoot,
+			Tasks:    mc.Tasks,
+			Enabled:  mc.IsEnabled(),
+			Local:    false,
+			Mode:     mc.DispatchMode,
+		})
+	}
+	return dispatch.Options{
+		Root:          cfg.GhwsRoot,
+		Agent:         cfg.Agent,
+		MaxConcurrent: cfg.MaxConcurrent,
+		BusyWindow:    time.Duration(cfg.BusyWindowSecs) * time.Second,
+		Dirty:         cfg.Dirty,
+		Tasks:         cfg.Dispatch,
+		AutoMerge:     cfg.AutoMerge,
+		Supervisor:    cfg.Supervisor,
+		WatchCmd:      cfg.AgentWatchCmd,
+		Runner:        cfg.Runner,
+		Mode:          cfg.DispatchMode,
+		HerdrWatchCmd: cfg.HerdrWatchCmd,
+		Dirs:          wsDirs,
+		Machines:      machines,
+		LocalIndex:    idx,
+		InstancesOnly: cfg.DispatchInstancesOnly,
+		StateDir:      stateDir,
+		LearningsPR:   cfg.LearningsPR,
+	}
 }
 
 func runOnce(cfg *config.Config, client *gh.Client, width int) int {

@@ -64,6 +64,12 @@ func NewAlerter(cfg *config.Config) *Alerter {
 	}
 }
 
+// SetConfig takes on reloaded notify settings, keeping what it has seen.
+func (a *Alerter) SetConfig(cfg *config.Config) {
+	a.notify = cfg.Notify
+	a.blockedAfter = time.Duration(cfg.BlockedNotifySecs) * time.Second
+}
+
 // Items alerts for each of my PRs that just became ready for a human
 // maintainer review. The first fetch after startup only seeds the seen
 // set, so pre-existing ready PRs stay quiet.
