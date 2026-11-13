@@ -49,6 +49,13 @@ public protocol Ghhud_V1_HubServiceClientInterface: Sendable {
     @available(iOS 13, *)
     func `moveQueued`(request: Ghhud_V1_MoveQueuedRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_MoveQueuedResponse>
 
+    /// Supervisor proposals (Snapshot.cases), by proposal id.
+    @available(iOS 13, *)
+    func `approveProposal`(request: Ghhud_V1_ApproveProposalRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_ApproveProposalResponse>
+
+    @available(iOS 13, *)
+    func `rejectProposal`(request: Ghhud_V1_RejectProposalRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_RejectProposalResponse>
+
     /// Viewers. They open a terminal window on the hub's machine.
     @available(iOS 13, *)
     func `watch`(request: Ghhud_V1_WatchRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_WatchResponse>
@@ -124,6 +131,16 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
     }
 
     @available(iOS 13, *)
+    public func `approveProposal`(request: Ghhud_V1_ApproveProposalRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_ApproveProposalResponse> {
+        return await self.client.unary(path: "/ghhud.v1.HubService/ApproveProposal", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `rejectProposal`(request: Ghhud_V1_RejectProposalRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_RejectProposalResponse> {
+        return await self.client.unary(path: "/ghhud.v1.HubService/RejectProposal", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `watch`(request: Ghhud_V1_WatchRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_WatchResponse> {
         return await self.client.unary(path: "/ghhud.v1.HubService/Watch", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -155,6 +172,8 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
             public static let enqueue = Connect.MethodSpec(name: "Enqueue", service: "ghhud.v1.HubService", type: .unary)
             public static let unqueue = Connect.MethodSpec(name: "Unqueue", service: "ghhud.v1.HubService", type: .unary)
             public static let moveQueued = Connect.MethodSpec(name: "MoveQueued", service: "ghhud.v1.HubService", type: .unary)
+            public static let approveProposal = Connect.MethodSpec(name: "ApproveProposal", service: "ghhud.v1.HubService", type: .unary)
+            public static let rejectProposal = Connect.MethodSpec(name: "RejectProposal", service: "ghhud.v1.HubService", type: .unary)
             public static let watch = Connect.MethodSpec(name: "Watch", service: "ghhud.v1.HubService", type: .unary)
             public static let watchRun = Connect.MethodSpec(name: "WatchRun", service: "ghhud.v1.HubService", type: .unary)
             public static let openTranscript = Connect.MethodSpec(name: "OpenTranscript", service: "ghhud.v1.HubService", type: .unary)
