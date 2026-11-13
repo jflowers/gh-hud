@@ -71,12 +71,20 @@ func ListenUnix(path string) (net.Listener, error) {
 
 // Serve serves b on l until ctx ends. Open subscriptions end with ctx,
 // so shutdown doesn't wait on them.
-func Serve(ctx context.Context, l net.Listener, b hub.Backend) error {
+func Serve(ctx context.Context, l net.Listener, b hub.Backend, opts ...ServeOption) error {
+	var o serveOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
 	mux := http.NewServeMux()
 	path, h := NewHandler(b)
 	mux.Handle(path, h)
+	var handler http.Handler = mux
+	if o.token != "" {
+		handler = requireToken(o.token, mux)
+	}
 	srv := &http.Server{
-		Handler:           mux,
+		Handler:           handler,
 		Protocols:         h2c(true),
 		ReadHeaderTimeout: 10 * time.Second,
 		BaseContext:       func(net.Listener) context.Context { return ctx },

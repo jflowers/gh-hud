@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jflowers/gh-hud/internal/config"
@@ -196,6 +197,9 @@ type Hub struct {
 	fetchReq, agentsReq, wsReq chan struct{}
 	autoMu                     sync.Mutex
 	autoRunning                bool
+
+	// muted counts clients that show alerts themselves (MuteNotifier).
+	muted atomic.Int32
 }
 
 type subscriber struct {
@@ -414,9 +418,21 @@ func (h *Hub) refreshWorkspaces(ctx context.Context) {
 	})
 }
 
+// MuteNotifier stops the hub posting alerts to its Notifier until the
+// returned release is called (once per call). A client that shows alerts
+// natively holds it while subscribed, so you aren't notified twice.
+// Alerts still go to subscribers as events.
+func (h *Hub) MuteNotifier() (release func()) {
+	h.muted.Add(1)
+	var once sync.Once
+	return func() { once.Do(func() { h.muted.Add(-1) }) }
+}
+
 // post sends alerts to the notifier and, as events, to subscribers.
 func (h *Hub) post(alerts []Alert) {
-	Post(h.opts.Notifier, alerts)
+	if h.muted.Load() == 0 {
+		Post(h.opts.Notifier, alerts)
+	}
 	for i := range alerts {
 		h.emit(Event{Kind: EventAlert, Text: alerts[i].Text, Alert: &alerts[i]})
 	}

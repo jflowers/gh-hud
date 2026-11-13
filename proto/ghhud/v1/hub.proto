@@ -58,7 +58,12 @@ message GetSnapshotResponse {
   Snapshot snapshot = 1;
 }
 
-message SubscribeRequest {}
+message SubscribeRequest {
+  // native_notifications says this client shows alerts as notifications
+  // itself, so the hub stops posting its own (osascript) ones while the
+  // subscription lasts. Alerts still arrive as events either way.
+  bool native_notifications = 1;
+}
 
 message SubscribeResponse {
   oneof msg {

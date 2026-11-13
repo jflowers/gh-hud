@@ -100,6 +100,15 @@ can open it).
 - `gh-hud serve` runs the hub with no dashboard and logs its notices and
   alerts to stderr. It refuses to start while another hub serves the
   socket. Run it under launchd to keep a hub up without a terminal.
+- Apps that can't open a unix socket (the Mac app) reach the hub on
+  loopback TCP instead: the hub picks a free port, makes a new random
+  token each time it starts, and writes both to `hub.json` in the state
+  directory (readable only by you). Every request must carry the token;
+  the hub refuses non-loopback addresses. `[hub] listen` sets the address
+  (`"127.0.0.1:0"` by default); `listen = ""` turns TCP off.
+- A client that shows alerts as native notifications says so when it
+  subscribes, and the hub stops posting its own osascript notifications
+  while it's connected, so you aren't notified twice.
 - `gh-hud --no-attach` runs a hub in-process even when one is serving
   (it follows the serving hub's dispatch, read-only); for debugging.
 
@@ -860,6 +869,10 @@ repos = []                 # single owner/name repos covered
 method = "squash"          # squash, merge or rebase
 hold_label = "hold"        # a PR with this label stays open
 update_method = "merge"    # merge train's branch update: merge or rebase
+
+# How apps other than the TUI reach the hub (see "The hub" above).
+[hub]
+listen = "127.0.0.1:0"     # loopback only; "" turns TCP off
 
 # GitOps fleet rollout (see "Fleet rollout (GitOps)" above). Machines need
 # a fleet-apply script on PATH (chezmoi dotfiles checkout).

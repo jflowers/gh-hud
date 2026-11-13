@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -130,11 +131,33 @@ func run() int {
 			fmt.Fprintln(os.Stderr, "hub socket:", err)
 			return
 		}
-		if err := api.Serve(ctx, l, h); err != nil {
-			fmt.Fprintln(os.Stderr, "hub socket:", err)
+		if err := serveHub(ctx, cfg, h, dir, l, nil); err != nil {
+			fmt.Fprintln(os.Stderr, "hub:", err)
 		}
 	}()
 	return runTUI(cfg, h)
+}
+
+// serveHub serves h on the unix socket l and, unless [hub] listen is
+// empty, on loopback TCP for apps that can't use the socket, until ctx
+// ends. A TCP failure is reported but leaves the socket serving.
+func serveHub(ctx context.Context, cfg *config.Config, h *hub.Hub, dir string, l net.Listener, tcpReady func(api.Discovery)) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	tcpDone := make(chan struct{})
+	go func() {
+		defer close(tcpDone)
+		if cfg.Hub.Listen == "" {
+			return
+		}
+		if err := api.ServeTCP(ctx, cfg.Hub.Listen, dir, h, os.Getpid(), tcpReady); err != nil {
+			fmt.Fprintln(os.Stderr, "hub tcp:", err)
+		}
+	}()
+	err := api.Serve(ctx, l, h)
+	cancel() // the socket is gone: stop TCP too
+	<-tcpDone
+	return err
 }
 
 // resolveStateDir applies the default state directory.
@@ -191,7 +214,10 @@ func runServe(cfg *config.Config, client *gh.Client, dir, sock string) int {
 	go h.Run(ctx)
 	go logEvents(ctx, h)
 	log.Printf("gh-hud %s: hub serving on %s (pid %d)", version, sock, os.Getpid())
-	if err := api.Serve(ctx, l, h); err != nil {
+	tcpReady := func(d api.Discovery) {
+		log.Printf("apps reach the hub at %s (token in %s)", d.URL, filepath.Join(dir, api.DiscoveryName))
+	}
+	if err := serveHub(ctx, cfg, h, dir, l, tcpReady); err != nil {
 		log.Printf("serve: %v", err)
 		return 1
 	}

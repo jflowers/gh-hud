@@ -441,9 +441,13 @@ func (x *GetSnapshotResponse) GetSnapshot() *Snapshot {
 }
 
 type SubscribeRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// native_notifications says this client shows alerts as notifications
+	// itself, so the hub stops posting its own (osascript) ones while the
+	// subscription lasts. Alerts still arrive as events either way.
+	NativeNotifications bool `protobuf:"varint,1,opt,name=native_notifications,json=nativeNotifications,proto3" json:"native_notifications,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *SubscribeRequest) Reset() {
@@ -474,6 +478,13 @@ func (x *SubscribeRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use SubscribeRequest.ProtoReflect.Descriptor instead.
 func (*SubscribeRequest) Descriptor() ([]byte, []int) {
 	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *SubscribeRequest) GetNativeNotifications() bool {
+	if x != nil {
+		return x.NativeNotifications
+	}
+	return false
 }
 
 type SubscribeResponse struct {
@@ -3632,8 +3643,9 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x12ghhud/v1/hub.proto\x12\bghhud.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x14\n" +
 	"\x12GetSnapshotRequest\"E\n" +
 	"\x13GetSnapshotResponse\x12.\n" +
-	"\bsnapshot\x18\x01 \x01(\v2\x12.ghhud.v1.SnapshotR\bsnapshot\"\x12\n" +
-	"\x10SubscribeRequest\"u\n" +
+	"\bsnapshot\x18\x01 \x01(\v2\x12.ghhud.v1.SnapshotR\bsnapshot\"E\n" +
+	"\x10SubscribeRequest\x121\n" +
+	"\x14native_notifications\x18\x01 \x01(\bR\x13nativeNotifications\"u\n" +
 	"\x11SubscribeResponse\x120\n" +
 	"\bsnapshot\x18\x01 \x01(\v2\x12.ghhud.v1.SnapshotH\x00R\bsnapshot\x12'\n" +
 	"\x05event\x18\x02 \x01(\v2\x0f.ghhud.v1.EventH\x00R\x05eventB\x05\n" +

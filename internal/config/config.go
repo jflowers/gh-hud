@@ -80,6 +80,18 @@ type Config struct {
 	AutoMerge AutoMergeConfig `toml:"auto_merge"`
 	// Fleet is the GitOps rollout coordinator ([fleet]).
 	Fleet FleetConfig `toml:"fleet"`
+	// Hub is how other apps reach the hub ([hub]).
+	Hub HubConfig `toml:"hub"`
+}
+
+// HubConfig is how apps other than the TUI reach the hub. The TUI uses
+// the unix socket in the state directory; the Mac app can't, so the hub
+// also listens on loopback TCP behind a per-start token, and writes both
+// to hub.json in the state directory (readable only by you).
+type HubConfig struct {
+	// Listen is the loopback address ("127.0.0.1:0" picks a free port);
+	// "" turns the TCP listener off.
+	Listen string `toml:"listen"`
 }
 
 // Default returns the built-in defaults.
@@ -115,6 +127,7 @@ func Default() *Config {
 		DispatchMode:   "run",
 		Dispatch:       DefaultDispatch(),
 		Fleet:          DefaultFleet(),
+		Hub:            HubConfig{Listen: "127.0.0.1:0"},
 
 		BlockedNotifySecs: 180,
 	}
