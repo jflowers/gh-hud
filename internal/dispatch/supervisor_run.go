@@ -423,17 +423,21 @@ type supervisorSpec struct {
 	Model     string // provider/model, or "" for opencode's default
 	Title     string
 	Prompt    string
+	Session   string // continue this opencode session (a retry); "" starts one
 }
 
 // supervisorShell starts opencode with the model keys from agent-env and
-// without the bot token. The prompt is $1.
+// without the bot token. The prompt is $1; HUD_SUPERVISOR_SESSION continues
+// an earlier run's session (a retry), HUD_SUPERVISOR_MODEL picks the model.
 // agent-env holds plain KEY=value lines, so set -a exports them to opencode.
 const supervisorShell = `if [ -r "$HOME/.config/agent-env" ]; then set -a; . "$HOME/.config/agent-env"; set +a; fi
 unset ` + botTokenVar + ` GH_TOKEN
-if [ -n "$HUD_SUPERVISOR_MODEL" ]; then
-	exec opencode run --agent ` + supervisorAgentName + ` --format json --title "$HUD_SUPERVISOR_TITLE" --model "$HUD_SUPERVISOR_MODEL" "$1"
-fi
-exec opencode run --agent ` + supervisorAgentName + ` --format json --title "$HUD_SUPERVISOR_TITLE" "$1"
+set -- "$1" --agent ` + supervisorAgentName + ` --format json --title "$HUD_SUPERVISOR_TITLE"
+if [ -n "$HUD_SUPERVISOR_MODEL" ]; then set -- "$@" --model "$HUD_SUPERVISOR_MODEL"; fi
+if [ -n "$HUD_SUPERVISOR_SESSION" ]; then set -- "$@" --session "$HUD_SUPERVISOR_SESSION"; fi
+prompt=$1
+shift
+exec opencode run "$@" "$prompt"
 `
 
 // runOpencodeSupervisor runs opencode headless. Stdin is the null device:
@@ -446,6 +450,7 @@ func runOpencodeSupervisor(ctx context.Context, spec supervisorSpec) ([]byte, er
 		"OPENCODE_DISABLE_PROJECT_CONFIG=1",
 		"HUD_SUPERVISOR_MODEL="+spec.Model,
 		"HUD_SUPERVISOR_TITLE="+spec.Title,
+		"HUD_SUPERVISOR_SESSION="+spec.Session,
 	)
 	cmd.WaitDelay = 5 * time.Second
 	var out bytes.Buffer
@@ -461,33 +466,10 @@ func runOpencodeSupervisor(ctx context.Context, spec supervisorSpec) ([]byte, er
 // askSupervisor runs the agent and returns its proposal, checked against
 // the case as it stands. A refused answer gets one retry that says why.
 func (d *Dispatcher) askSupervisor(ctx context.Context, c Case, brief, id string) (Decision, string, error) {
-	base := filepath.Join(d.opts.StateDir, supervisorDir)
-	cfgDir := filepath.Join(base, "opencode")
-	work := filepath.Join(base, "work")
-	logs := filepath.Join(base, "runs")
-	for _, dir := range []string{filepath.Join(cfgDir, "agents"), work, logs} {
-		if err := os.MkdirAll(dir, 0o700); err != nil {
-			return Decision{}, "", err
-		}
-	}
-	agentFile := filepath.Join(cfgDir, "agents", supervisorAgentName+".md")
-	if old, err := os.ReadFile(agentFile); err != nil || !bytes.Equal(old, supervisorAgentMD) {
-		if !writeAtomic(agentFile, supervisorAgentMD) {
-			return Decision{}, "", errors.New("can't write the supervisor agent")
-		}
-	}
-	run := d.supervisorRun
-	if run == nil {
-		run = runOpencodeSupervisor
-	}
-	logPath := filepath.Join(logs, time.Now().UTC().Format("20060102T150405")+"-"+id+".jsonl")
-	prompt := brief
-	var lastErr error
-	for attempt := 1; attempt <= 2; attempt++ {
-		out, err := run(ctx, supervisorSpec{Dir: work, ConfigDir: cfgDir, Model: d.opts.Supervisor.Model,
-			Title: "gh-hud supervisor: " + c.Repo + " " + c.Check, Prompt: prompt})
-		appendLog(logPath, out)
-		dec, perr := parseProposal(out)
+	var dec Decision
+	logPath, err := d.askAgent(ctx, "gh-hud supervisor: "+c.Repo+" "+c.Check, brief, id, func(out []byte) error {
+		var perr error
+		dec, perr = parseProposal(out)
 		if perr == nil && dec.Case != c.ID {
 			perr = fmt.Errorf("the proposal names case %q, not %q", dec.Case, c.ID)
 		}
@@ -499,9 +481,48 @@ func (d *Dispatcher) askSupervisor(ctx context.Context, c Case, brief, id string
 				perr = tp.checkDecision(dec, openPRs(tp.items))
 			}
 		}
+		return perr
+	})
+	if err != nil {
+		return Decision{}, logPath, err
+	}
+	return dec, logPath, nil
+}
+
+// askAgent runs the read-only hud-supervisor agent on a brief until check
+// accepts its output, at most twice: a refused answer gets one retry that
+// says why. It returns the run's log path.
+func (d *Dispatcher) askAgent(ctx context.Context, title, brief, id string, check func(out []byte) error) (string, error) {
+	base := filepath.Join(d.opts.StateDir, supervisorDir)
+	cfgDir := filepath.Join(base, "opencode")
+	work := filepath.Join(base, "work")
+	logs := filepath.Join(base, "runs")
+	for _, dir := range []string{filepath.Join(cfgDir, "agents"), work, logs} {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return "", err
+		}
+	}
+	agentFile := filepath.Join(cfgDir, "agents", supervisorAgentName+".md")
+	if old, err := os.ReadFile(agentFile); err != nil || !bytes.Equal(old, supervisorAgentMD) {
+		if !writeAtomic(agentFile, supervisorAgentMD) {
+			return "", errors.New("can't write the supervisor agent")
+		}
+	}
+	run := d.supervisorRun
+	if run == nil {
+		run = runOpencodeSupervisor
+	}
+	logPath := filepath.Join(logs, time.Now().UTC().Format("20060102T150405")+"-"+id+".jsonl")
+	defer pruneLogs(logs)
+	prompt, session := brief, ""
+	var lastErr error
+	for attempt := 1; attempt <= 2; attempt++ {
+		out, err := run(ctx, supervisorSpec{Dir: work, ConfigDir: cfgDir, Model: d.opts.Supervisor.Model,
+			Title: title, Prompt: prompt, Session: session})
+		appendLog(logPath, out)
+		perr := check(out)
 		if perr == nil {
-			pruneLogs(logs)
-			return dec, logPath, nil
+			return logPath, nil
 		}
 		if err != nil {
 			perr = fmt.Errorf("%w (run: %w)", perr, err)
@@ -510,15 +531,35 @@ func (d *Dispatcher) askSupervisor(ctx context.Context, c Case, brief, id string
 		if ctx.Err() != nil {
 			break
 		}
-		prompt = brief + "\n\n## Your previous answer was refused\n" + perr.Error() +
+		refusal := "## Your previous answer was refused\n" + perr.Error() +
 			"\nAnswer again: end with exactly one fenced json block holding one allowed answer.\n"
+		// Retry in the same session, so the agent keeps what it found; a
+		// run that left no session starts over with the whole brief.
+		if session = agentSession(out); session != "" {
+			prompt = refusal
+		} else {
+			prompt = brief + "\n\n" + refusal
+		}
 	}
-	pruneLogs(logs)
-	return Decision{}, logPath, lastErr
+	return logPath, lastErr
+}
+
+// agentSession is the opencode session id an `opencode run --format json`
+// stream reports.
+func agentSession(out []byte) string {
+	for _, line := range bytes.Split(out, []byte("\n")) {
+		var ev struct {
+			SessionID string `json:"sessionID"`
+		}
+		if json.Unmarshal(line, &ev) == nil && ev.SessionID != "" {
+			return ev.SessionID
+		}
+	}
+	return ""
 }
 
 func appendLog(path string, out []byte) {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600) //nolint:gosec // the state dir plus a timestamp and a hex id
 	if err != nil {
 		return
 	}
@@ -541,6 +582,21 @@ func pruneLogs(dir string) {
 // parseProposal finds the proposal in an `opencode run --format json`
 // stream: the last fenced json block in the agent's text.
 func parseProposal(out []byte) (Decision, error) {
+	block, err := agentJSON(out)
+	if err != nil {
+		return Decision{}, err
+	}
+	var dec Decision
+	if err := json.Unmarshal([]byte(block), &dec); err != nil {
+		return Decision{}, fmt.Errorf("the json block doesn't parse: %w", err)
+	}
+	dec.By, dec.Facts, dec.Decided = "", CaseFacts{}, time.Time{}
+	return dec, nil
+}
+
+// agentJSON is the last fenced json block in an `opencode run --format
+// json` stream's text, or why there is none.
+func agentJSON(out []byte) (string, error) {
 	var text strings.Builder
 	var runErr string
 	for _, line := range bytes.Split(out, []byte("\n")) {
@@ -569,17 +625,11 @@ func parseProposal(out []byte) (Decision, error) {
 	block, ok := lastJSONBlock(text.String())
 	if !ok {
 		if runErr != "" {
-			return Decision{}, fmt.Errorf("the run failed: %s", clip(runErr, 160))
+			return "", fmt.Errorf("the run failed: %s", clip(runErr, 160))
 		}
-		return Decision{}, errors.New("the answer has no fenced json block")
+		return "", errors.New("the answer has no fenced json block")
 	}
-	var dec Decision
-	dec.Facts = CaseFacts{}
-	if err := json.Unmarshal([]byte(block), &dec); err != nil {
-		return Decision{}, fmt.Errorf("the json block doesn't parse: %w", err)
-	}
-	dec.By, dec.Facts, dec.Decided = "", CaseFacts{}, time.Time{}
-	return dec, nil
+	return block, nil
 }
 
 func lastJSONBlock(s string) (string, bool) {

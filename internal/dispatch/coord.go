@@ -84,6 +84,7 @@ func (d *Dispatcher) owns() bool {
 	d.loadQueueLocked()
 	d.loadDecisionsLocked()
 	d.loadProposalsLocked()
+	d.loadEpicsLocked()
 	d.mu.Unlock()
 	return true
 }
@@ -136,6 +137,9 @@ func (d *Dispatcher) refreshFollowerLocked() {
 	}
 	if st, err := os.Stat(filepath.Join(d.opts.StateDir, proposalsName)); err == nil && !st.ModTime().Equal(d.proposalsMod) {
 		d.loadProposalsLocked()
+	}
+	if st, err := os.Stat(filepath.Join(d.opts.StateDir, epicsName)); err == nil && !st.ModTime().Equal(d.epicsMod) {
+		d.loadEpicsLocked()
 	}
 	st, err := os.Stat(filepath.Join(d.opts.StateDir, "state.json"))
 	if err != nil || st.ModTime().Equal(d.stateMod) {

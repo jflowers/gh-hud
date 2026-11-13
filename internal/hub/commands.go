@@ -151,6 +151,47 @@ func (h *Hub) RejectProposal(_ context.Context, id string) error {
 	return nil
 }
 
+// EnrollEpic adds an epic and starts reading it; it returns the epic's ref.
+func (h *Hub) EnrollEpic(_ context.Context, target string) (string, error) {
+	d, err := h.disp()
+	if err != nil {
+		return "", err
+	}
+	ref, err := d.EnrollEpic(target)
+	if err != nil {
+		return ref, err
+	}
+	h.publish()
+	return ref, nil
+}
+
+// ApproveEpic approves an epic's plan.
+func (h *Hub) ApproveEpic(_ context.Context, ref, planID string) error {
+	return h.epicCmd(func(d Dispatcher) error { return d.ApproveEpic(ref, planID) })
+}
+
+// DropEpic stops tracking an epic.
+func (h *Hub) DropEpic(_ context.Context, ref string) error {
+	return h.epicCmd(func(d Dispatcher) error { return d.DropEpic(ref) })
+}
+
+// RereadEpic reads an epic again.
+func (h *Hub) RereadEpic(_ context.Context, ref string) error {
+	return h.epicCmd(func(d Dispatcher) error { return d.RereadEpic(ref) })
+}
+
+func (h *Hub) epicCmd(f func(Dispatcher) error) error {
+	d, err := h.disp()
+	if err != nil {
+		return err
+	}
+	if err := f(d); err != nil {
+		return err
+	}
+	h.publish()
+	return nil
+}
+
 // Unqueue removes a task from your queue.
 func (h *Hub) Unqueue(_ context.Context, task dispatch.Task, ref string) error {
 	d, err := h.disp()

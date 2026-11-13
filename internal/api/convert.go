@@ -13,6 +13,7 @@ import (
 
 	pb "github.com/jflowers/gh-hud/internal/api/gen/ghhud/v1"
 	"github.com/jflowers/gh-hud/internal/dispatch"
+	"github.com/jflowers/gh-hud/internal/epic"
 	"github.com/jflowers/gh-hud/internal/fleet"
 	"github.com/jflowers/gh-hud/internal/hub"
 	"github.com/jflowers/gh-hud/internal/model"
@@ -108,6 +109,7 @@ func SnapshotToPB(s hub.Snapshot) *pb.Snapshot {
 		Plan:              mapSlice(s.Plan, planRowToPB),
 		Queue:             mapSlice(s.Queue, queueEntryToPB),
 		Cases:             mapSlice(s.Cases, caseToPB),
+		Epics:             mapSlice(s.Epics, epicToPB),
 		Workspaces:        mapSlice(s.Workspaces, checkoutToPB),
 		WorkspacesAt:      ts(s.WorkspacesAt),
 		WorkspacesLoading: s.WorkspacesLoading,
@@ -143,6 +145,7 @@ func SnapshotFromPB(p *pb.Snapshot) hub.Snapshot {
 		Plan:              mapSlice(p.GetPlan(), planRowFromPB),
 		Queue:             mapSlice(p.GetQueue(), queueEntryFromPB),
 		Cases:             mapSlice(p.GetCases(), caseFromPB),
+		Epics:             mapSlice(p.GetEpics(), epicFromPB),
 		Workspaces:        mapSlice(p.GetWorkspaces(), checkoutFromPB),
 		WorkspacesAt:      fromTS(p.GetWorkspacesAt()),
 		WorkspacesLoading: p.GetWorkspacesLoading(),
@@ -509,6 +512,37 @@ func proposalToPB(p dispatch.Proposal) *pb.Proposal {
 func proposalFromPB(p *pb.Proposal) dispatch.Proposal {
 	return dispatch.Proposal{ID: p.GetId(), Decision: decisionFromPB(p.GetDecision()), Status: dispatch.ProposalStatus(p.GetStatus()),
 		Created: fromTS(p.GetCreated()), NoAnswer: p.GetNoAnswer(), Note: p.GetNote(), Log: p.GetLog()}
+}
+
+func epicToPB(e epic.Epic) *pb.Epic {
+	out := &pb.Epic{Ref: e.Ref, Url: e.URL, Title: e.Title, Enrolled: ts(e.Enrolled), State: string(e.State),
+		Error: e.Error, Approved: tsPtr(e.Approved), ApprovedPlan: e.ApprovedPlan, CheckedAt: ts(e.CheckedAt), Log: e.Log}
+	if p := e.Plan; p != nil {
+		out.Plan = &pb.EpicPlan{Id: p.ID, Sources: p.Sources, Nodes: mapSlice(p.Nodes, epicNodeToPB), Rules: p.Rules,
+			Skipped: p.Skipped, Created: ts(p.Created), BodyHash: p.BodyHash, Stale: p.Stale}
+	}
+	return out
+}
+
+func epicFromPB(p *pb.Epic) epic.Epic {
+	e := epic.Epic{Ref: p.GetRef(), URL: p.GetUrl(), Title: p.GetTitle(), Enrolled: fromTS(p.GetEnrolled()),
+		State: epic.State(p.GetState()), Error: p.GetError(), Approved: fromTSPtr(p.GetApproved()),
+		ApprovedPlan: p.GetApprovedPlan(), CheckedAt: fromTS(p.GetCheckedAt()), Log: p.GetLog()}
+	if pp := p.GetPlan(); pp != nil {
+		e.Plan = &epic.Plan{ID: pp.GetId(), Sources: pp.GetSources(), Nodes: mapSlice(pp.GetNodes(), epicNodeFromPB),
+			Rules: pp.GetRules(), Skipped: pp.GetSkipped(), Created: fromTS(pp.GetCreated()), BodyHash: pp.GetBodyHash(), Stale: pp.GetStale()}
+	}
+	return e
+}
+
+func epicNodeToPB(n epic.Node) *pb.EpicNode {
+	return &pb.EpicNode{Ref: n.Ref, Title: n.Title, Phase: n.Phase, After: n.After, Gate: n.Gate, Source: n.Source,
+		State: string(n.State), Note: n.Note, Pr: int64(n.PR)}
+}
+
+func epicNodeFromPB(p *pb.EpicNode) epic.Node {
+	return epic.Node{Ref: p.GetRef(), Title: p.GetTitle(), Phase: p.GetPhase(), After: p.GetAfter(), Gate: p.GetGate(),
+		Source: p.GetSource(), State: epic.NodeState(p.GetState()), Note: p.GetNote(), PR: int(p.GetPr())}
 }
 
 func queueEntryToPB(e dispatch.QueueEntry) *pb.QueueEntry {

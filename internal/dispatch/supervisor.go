@@ -403,5 +403,6 @@ func (d *Dispatcher) superviseAndRebuild(items []model.Item) []string {
 		d.updateTrain(items)
 		d.writeCases()
 	}
-	return append(msgs, d.superviseRuns()...)
+	msgs = append(msgs, d.superviseRuns()...)
+	return append(msgs, d.epicPass()...)
 }

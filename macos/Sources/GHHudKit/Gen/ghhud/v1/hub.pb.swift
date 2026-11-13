@@ -681,6 +681,100 @@ public nonisolated struct Ghhud_V1_RejectProposalResponse: Sendable {
   public init() {}
 }
 
+public nonisolated struct Ghhud_V1_EnrollEpicRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// an issue URL or owner/repo#N
+  public var target: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Ghhud_V1_EnrollEpicResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var ref: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Ghhud_V1_ApproveEpicRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var ref: String = String()
+
+  /// the plan seen; empty approves the current one
+  public var planID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Ghhud_V1_ApproveEpicResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Ghhud_V1_DropEpicRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var ref: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Ghhud_V1_DropEpicResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Ghhud_V1_RereadEpicRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var ref: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Ghhud_V1_RereadEpicResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public nonisolated struct Ghhud_V1_WatchRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -901,6 +995,12 @@ public nonisolated struct Ghhud_V1_Snapshot: @unchecked Sendable {
   public var cases: [Ghhud_V1_Case] {
     get {_storage._cases}
     set {_uniqueStorage()._cases = newValue}
+  }
+
+  /// epics are the enrolled epics with their plans and status.
+  public var epics: [Ghhud_V1_Epic] {
+    get {_storage._epics}
+    set {_uniqueStorage()._epics = newValue}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -1768,6 +1868,160 @@ public nonisolated struct Ghhud_V1_Proposal: @unchecked Sendable {
   public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+/// Epic is an enrolled epic (epic.Epic).
+public nonisolated struct Ghhud_V1_Epic: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var ref: String {
+    get {_storage._ref}
+    set {_uniqueStorage()._ref = newValue}
+  }
+
+  public var url: String {
+    get {_storage._url}
+    set {_uniqueStorage()._url = newValue}
+  }
+
+  public var title: String {
+    get {_storage._title}
+    set {_uniqueStorage()._title = newValue}
+  }
+
+  public var enrolled: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_storage._enrolled ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_uniqueStorage()._enrolled = newValue}
+  }
+  /// Returns true if `enrolled` has been explicitly set.
+  public var hasEnrolled: Bool {_storage._enrolled != nil}
+  /// Clears the value of `enrolled`. Subsequent reads from it will return its default value.
+  public mutating func clearEnrolled() {_uniqueStorage()._enrolled = nil}
+
+  /// open set: reading, planned, approved, error
+  public var state: String {
+    get {_storage._state}
+    set {_uniqueStorage()._state = newValue}
+  }
+
+  public var error: String {
+    get {_storage._error}
+    set {_uniqueStorage()._error = newValue}
+  }
+
+  public var plan: Ghhud_V1_EpicPlan {
+    get {_storage._plan ?? Ghhud_V1_EpicPlan()}
+    set {_uniqueStorage()._plan = newValue}
+  }
+  /// Returns true if `plan` has been explicitly set.
+  public var hasPlan: Bool {_storage._plan != nil}
+  /// Clears the value of `plan`. Subsequent reads from it will return its default value.
+  public mutating func clearPlan() {_uniqueStorage()._plan = nil}
+
+  /// unset until approved
+  public var approved: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_storage._approved ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_uniqueStorage()._approved = newValue}
+  }
+  /// Returns true if `approved` has been explicitly set.
+  public var hasApproved: Bool {_storage._approved != nil}
+  /// Clears the value of `approved`. Subsequent reads from it will return its default value.
+  public mutating func clearApproved() {_uniqueStorage()._approved = nil}
+
+  public var approvedPlan: String {
+    get {_storage._approvedPlan}
+    set {_uniqueStorage()._approvedPlan = newValue}
+  }
+
+  public var checkedAt: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_storage._checkedAt ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_uniqueStorage()._checkedAt = newValue}
+  }
+  /// Returns true if `checkedAt` has been explicitly set.
+  public var hasCheckedAt: Bool {_storage._checkedAt != nil}
+  /// Clears the value of `checkedAt`. Subsequent reads from it will return its default value.
+  public mutating func clearCheckedAt() {_uniqueStorage()._checkedAt = nil}
+
+  /// the planner run's output on the hub's machine
+  public var log: String {
+    get {_storage._log}
+    set {_uniqueStorage()._log = newValue}
+  }
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+/// EpicPlan is an epic read as a graph.
+public nonisolated struct Ghhud_V1_EpicPlan: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var id: String = String()
+
+  /// open set: prose, blocked_by
+  public var sources: [String] = []
+
+  public var nodes: [Ghhud_V1_EpicNode] = []
+
+  public var rules: [String] = []
+
+  public var skipped: [String] = []
+
+  public var created: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_created ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_created = newValue}
+  }
+  /// Returns true if `created` has been explicitly set.
+  public var hasCreated: Bool {self._created != nil}
+  /// Clears the value of `created`. Subsequent reads from it will return its default value.
+  public mutating func clearCreated() {self._created = nil}
+
+  public var bodyHash: String = String()
+
+  public var stale: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _created: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+}
+
+/// EpicNode is one piece of an epic.
+public nonisolated struct Ghhud_V1_EpicNode: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var ref: String = String()
+
+  public var title: String = String()
+
+  public var phase: String = String()
+
+  public var after: [String] = []
+
+  public var gate: String = String()
+
+  public var source: String = String()
+
+  /// open set: done, dropped, in_progress, ready, waiting, gated, blocked, unknown
+  public var state: String = String()
+
+  public var note: String = String()
+
+  public var pr: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
 }
 
 /// CheckoutHealth is whether a ghws checkout can take a dispatch.
@@ -2773,6 +3027,218 @@ nonisolated extension Ghhud_V1_RejectProposalResponse: SwiftProtobuf.Message, Sw
   }
 }
 
+nonisolated extension Ghhud_V1_EnrollEpicRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".EnrollEpicRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}target\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.target) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.target.isEmpty {
+      try visitor.visitSingularStringField(value: self.target, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_EnrollEpicRequest, rhs: Ghhud_V1_EnrollEpicRequest) -> Bool {
+    if lhs.target != rhs.target {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_EnrollEpicResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".EnrollEpicResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.ref) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.ref.isEmpty {
+      try visitor.visitSingularStringField(value: self.ref, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_EnrollEpicResponse, rhs: Ghhud_V1_EnrollEpicResponse) -> Bool {
+    if lhs.ref != rhs.ref {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_ApproveEpicRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ApproveEpicRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{3}plan_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.ref) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.planID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.ref.isEmpty {
+      try visitor.visitSingularStringField(value: self.ref, fieldNumber: 1)
+    }
+    if !self.planID.isEmpty {
+      try visitor.visitSingularStringField(value: self.planID, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_ApproveEpicRequest, rhs: Ghhud_V1_ApproveEpicRequest) -> Bool {
+    if lhs.ref != rhs.ref {return false}
+    if lhs.planID != rhs.planID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_ApproveEpicResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ApproveEpicResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_ApproveEpicResponse, rhs: Ghhud_V1_ApproveEpicResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_DropEpicRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DropEpicRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.ref) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.ref.isEmpty {
+      try visitor.visitSingularStringField(value: self.ref, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_DropEpicRequest, rhs: Ghhud_V1_DropEpicRequest) -> Bool {
+    if lhs.ref != rhs.ref {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_DropEpicResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DropEpicResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_DropEpicResponse, rhs: Ghhud_V1_DropEpicResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_RereadEpicRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RereadEpicRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.ref) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.ref.isEmpty {
+      try visitor.visitSingularStringField(value: self.ref, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_RereadEpicRequest, rhs: Ghhud_V1_RereadEpicRequest) -> Bool {
+    if lhs.ref != rhs.ref {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_RereadEpicResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".RereadEpicResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_RereadEpicResponse, rhs: Ghhud_V1_RereadEpicResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 nonisolated extension Ghhud_V1_WatchRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".WatchRequest"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0")
@@ -2971,7 +3437,7 @@ nonisolated extension Ghhud_V1_FleetControlResponse: SwiftProtobuf.Message, Swif
 
 nonisolated extension Ghhud_V1_Snapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Snapshot"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}seq\0\u{1}result\0\u{3}fetched_at\0\u{1}fetching\0\u{3}fetch_error\0\u{1}dispatch\0\u{1}follower\0\u{1}sessions\0\u{1}runs\0\u{1}usage\0\u{3}agents_at\0\u{1}stages\0\u{1}plan\0\u{1}queue\0\u{1}workspaces\0\u{3}workspaces_at\0\u{3}workspaces_loading\0\u{1}fleet\0\u{1}cases\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}seq\0\u{1}result\0\u{3}fetched_at\0\u{1}fetching\0\u{3}fetch_error\0\u{1}dispatch\0\u{1}follower\0\u{1}sessions\0\u{1}runs\0\u{1}usage\0\u{3}agents_at\0\u{1}stages\0\u{1}plan\0\u{1}queue\0\u{1}workspaces\0\u{3}workspaces_at\0\u{3}workspaces_loading\0\u{1}fleet\0\u{1}cases\0\u{1}epics\0")
 
   fileprivate class _StorageClass {
     var _seq: UInt64 = 0
@@ -2993,6 +3459,7 @@ nonisolated extension Ghhud_V1_Snapshot: SwiftProtobuf.Message, SwiftProtobuf._M
     var _workspacesLoading: Bool = false
     var _fleet: Ghhud_V1_FleetSnapshot? = nil
     var _cases: [Ghhud_V1_Case] = []
+    var _epics: [Ghhud_V1_Epic] = []
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3022,6 +3489,7 @@ nonisolated extension Ghhud_V1_Snapshot: SwiftProtobuf.Message, SwiftProtobuf._M
       _workspacesLoading = source._workspacesLoading
       _fleet = source._fleet
       _cases = source._cases
+      _epics = source._epics
     }
   }
 
@@ -3059,6 +3527,7 @@ nonisolated extension Ghhud_V1_Snapshot: SwiftProtobuf.Message, SwiftProtobuf._M
         case 17: try { try decoder.decodeSingularBoolField(value: &_storage._workspacesLoading) }()
         case 18: try { try decoder.decodeSingularMessageField(value: &_storage._fleet) }()
         case 19: try { try decoder.decodeRepeatedMessageField(value: &_storage._cases) }()
+        case 20: try { try decoder.decodeRepeatedMessageField(value: &_storage._epics) }()
         default: break
         }
       }
@@ -3128,6 +3597,9 @@ nonisolated extension Ghhud_V1_Snapshot: SwiftProtobuf.Message, SwiftProtobuf._M
       if !_storage._cases.isEmpty {
         try visitor.visitRepeatedMessageField(value: _storage._cases, fieldNumber: 19)
       }
+      if !_storage._epics.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._epics, fieldNumber: 20)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3156,6 +3628,7 @@ nonisolated extension Ghhud_V1_Snapshot: SwiftProtobuf.Message, SwiftProtobuf._M
         if _storage._workspacesLoading != rhs_storage._workspacesLoading {return false}
         if _storage._fleet != rhs_storage._fleet {return false}
         if _storage._cases != rhs_storage._cases {return false}
+        if _storage._epics != rhs_storage._epics {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -4571,6 +5044,285 @@ nonisolated extension Ghhud_V1_Proposal: SwiftProtobuf.Message, SwiftProtobuf._M
       }
       if !storagesAreEqual {return false}
     }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".Epic"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}url\0\u{1}title\0\u{1}enrolled\0\u{1}state\0\u{1}error\0\u{1}plan\0\u{1}approved\0\u{3}approved_plan\0\u{3}checked_at\0\u{1}log\0")
+
+  fileprivate class _StorageClass {
+    var _ref: String = String()
+    var _url: String = String()
+    var _title: String = String()
+    var _enrolled: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+    var _state: String = String()
+    var _error: String = String()
+    var _plan: Ghhud_V1_EpicPlan? = nil
+    var _approved: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+    var _approvedPlan: String = String()
+    var _checkedAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+    var _log: String = String()
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _ref = source._ref
+      _url = source._url
+      _title = source._title
+      _enrolled = source._enrolled
+      _state = source._state
+      _error = source._error
+      _plan = source._plan
+      _approved = source._approved
+      _approvedPlan = source._approvedPlan
+      _checkedAt = source._checkedAt
+      _log = source._log
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._ref) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._url) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._title) }()
+        case 4: try { try decoder.decodeSingularMessageField(value: &_storage._enrolled) }()
+        case 5: try { try decoder.decodeSingularStringField(value: &_storage._state) }()
+        case 6: try { try decoder.decodeSingularStringField(value: &_storage._error) }()
+        case 7: try { try decoder.decodeSingularMessageField(value: &_storage._plan) }()
+        case 8: try { try decoder.decodeSingularMessageField(value: &_storage._approved) }()
+        case 9: try { try decoder.decodeSingularStringField(value: &_storage._approvedPlan) }()
+        case 10: try { try decoder.decodeSingularMessageField(value: &_storage._checkedAt) }()
+        case 11: try { try decoder.decodeSingularStringField(value: &_storage._log) }()
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._ref.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._ref, fieldNumber: 1)
+      }
+      if !_storage._url.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._url, fieldNumber: 2)
+      }
+      if !_storage._title.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._title, fieldNumber: 3)
+      }
+      try { if let v = _storage._enrolled {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+      } }()
+      if !_storage._state.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._state, fieldNumber: 5)
+      }
+      if !_storage._error.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._error, fieldNumber: 6)
+      }
+      try { if let v = _storage._plan {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
+      } }()
+      try { if let v = _storage._approved {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
+      } }()
+      if !_storage._approvedPlan.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._approvedPlan, fieldNumber: 9)
+      }
+      try { if let v = _storage._checkedAt {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+      } }()
+      if !_storage._log.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._log, fieldNumber: 11)
+      }
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_Epic, rhs: Ghhud_V1_Epic) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._ref != rhs_storage._ref {return false}
+        if _storage._url != rhs_storage._url {return false}
+        if _storage._title != rhs_storage._title {return false}
+        if _storage._enrolled != rhs_storage._enrolled {return false}
+        if _storage._state != rhs_storage._state {return false}
+        if _storage._error != rhs_storage._error {return false}
+        if _storage._plan != rhs_storage._plan {return false}
+        if _storage._approved != rhs_storage._approved {return false}
+        if _storage._approvedPlan != rhs_storage._approvedPlan {return false}
+        if _storage._checkedAt != rhs_storage._checkedAt {return false}
+        if _storage._log != rhs_storage._log {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_EpicPlan: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".EpicPlan"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}sources\0\u{1}nodes\0\u{1}rules\0\u{1}skipped\0\u{1}created\0\u{3}body_hash\0\u{1}stale\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 2: try { try decoder.decodeRepeatedStringField(value: &self.sources) }()
+      case 3: try { try decoder.decodeRepeatedMessageField(value: &self.nodes) }()
+      case 4: try { try decoder.decodeRepeatedStringField(value: &self.rules) }()
+      case 5: try { try decoder.decodeRepeatedStringField(value: &self.skipped) }()
+      case 6: try { try decoder.decodeSingularMessageField(value: &self._created) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.bodyHash) }()
+      case 8: try { try decoder.decodeSingularBoolField(value: &self.stale) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    if !self.sources.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.sources, fieldNumber: 2)
+    }
+    if !self.nodes.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.nodes, fieldNumber: 3)
+    }
+    if !self.rules.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.rules, fieldNumber: 4)
+    }
+    if !self.skipped.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.skipped, fieldNumber: 5)
+    }
+    try { if let v = self._created {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+    } }()
+    if !self.bodyHash.isEmpty {
+      try visitor.visitSingularStringField(value: self.bodyHash, fieldNumber: 7)
+    }
+    if self.stale != false {
+      try visitor.visitSingularBoolField(value: self.stale, fieldNumber: 8)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_EpicPlan, rhs: Ghhud_V1_EpicPlan) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.sources != rhs.sources {return false}
+    if lhs.nodes != rhs.nodes {return false}
+    if lhs.rules != rhs.rules {return false}
+    if lhs.skipped != rhs.skipped {return false}
+    if lhs._created != rhs._created {return false}
+    if lhs.bodyHash != rhs.bodyHash {return false}
+    if lhs.stale != rhs.stale {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".EpicNode"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}title\0\u{1}phase\0\u{1}after\0\u{1}gate\0\u{1}source\0\u{1}state\0\u{1}note\0\u{1}pr\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.ref) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.title) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.phase) }()
+      case 4: try { try decoder.decodeRepeatedStringField(value: &self.after) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.gate) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.source) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.state) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.note) }()
+      case 9: try { try decoder.decodeSingularInt64Field(value: &self.pr) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.ref.isEmpty {
+      try visitor.visitSingularStringField(value: self.ref, fieldNumber: 1)
+    }
+    if !self.title.isEmpty {
+      try visitor.visitSingularStringField(value: self.title, fieldNumber: 2)
+    }
+    if !self.phase.isEmpty {
+      try visitor.visitSingularStringField(value: self.phase, fieldNumber: 3)
+    }
+    if !self.after.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.after, fieldNumber: 4)
+    }
+    if !self.gate.isEmpty {
+      try visitor.visitSingularStringField(value: self.gate, fieldNumber: 5)
+    }
+    if !self.source.isEmpty {
+      try visitor.visitSingularStringField(value: self.source, fieldNumber: 6)
+    }
+    if !self.state.isEmpty {
+      try visitor.visitSingularStringField(value: self.state, fieldNumber: 7)
+    }
+    if !self.note.isEmpty {
+      try visitor.visitSingularStringField(value: self.note, fieldNumber: 8)
+    }
+    if self.pr != 0 {
+      try visitor.visitSingularInt64Field(value: self.pr, fieldNumber: 9)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_EpicNode, rhs: Ghhud_V1_EpicNode) -> Bool {
+    if lhs.ref != rhs.ref {return false}
+    if lhs.title != rhs.title {return false}
+    if lhs.phase != rhs.phase {return false}
+    if lhs.after != rhs.after {return false}
+    if lhs.gate != rhs.gate {return false}
+    if lhs.source != rhs.source {return false}
+    if lhs.state != rhs.state {return false}
+    if lhs.note != rhs.note {return false}
+    if lhs.pr != rhs.pr {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

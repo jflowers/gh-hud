@@ -71,6 +71,14 @@ const (
 	// HubServiceRejectProposalProcedure is the fully-qualified name of the HubService's RejectProposal
 	// RPC.
 	HubServiceRejectProposalProcedure = "/ghhud.v1.HubService/RejectProposal"
+	// HubServiceEnrollEpicProcedure is the fully-qualified name of the HubService's EnrollEpic RPC.
+	HubServiceEnrollEpicProcedure = "/ghhud.v1.HubService/EnrollEpic"
+	// HubServiceApproveEpicProcedure is the fully-qualified name of the HubService's ApproveEpic RPC.
+	HubServiceApproveEpicProcedure = "/ghhud.v1.HubService/ApproveEpic"
+	// HubServiceDropEpicProcedure is the fully-qualified name of the HubService's DropEpic RPC.
+	HubServiceDropEpicProcedure = "/ghhud.v1.HubService/DropEpic"
+	// HubServiceRereadEpicProcedure is the fully-qualified name of the HubService's RereadEpic RPC.
+	HubServiceRereadEpicProcedure = "/ghhud.v1.HubService/RereadEpic"
 	// HubServiceWatchProcedure is the fully-qualified name of the HubService's Watch RPC.
 	HubServiceWatchProcedure = "/ghhud.v1.HubService/Watch"
 	// HubServiceWatchRunProcedure is the fully-qualified name of the HubService's WatchRun RPC.
@@ -105,6 +113,11 @@ type HubServiceClient interface {
 	// Supervisor proposals (Snapshot.cases), by proposal id.
 	ApproveProposal(context.Context, *connect.Request[v1.ApproveProposalRequest]) (*connect.Response[v1.ApproveProposalResponse], error)
 	RejectProposal(context.Context, *connect.Request[v1.RejectProposalRequest]) (*connect.Response[v1.RejectProposalResponse], error)
+	// Epics (Snapshot.epics), by ref (owner/repo#N).
+	EnrollEpic(context.Context, *connect.Request[v1.EnrollEpicRequest]) (*connect.Response[v1.EnrollEpicResponse], error)
+	ApproveEpic(context.Context, *connect.Request[v1.ApproveEpicRequest]) (*connect.Response[v1.ApproveEpicResponse], error)
+	DropEpic(context.Context, *connect.Request[v1.DropEpicRequest]) (*connect.Response[v1.DropEpicResponse], error)
+	RereadEpic(context.Context, *connect.Request[v1.RereadEpicRequest]) (*connect.Response[v1.RereadEpicResponse], error)
 	// Viewers. They open a terminal window on the hub's machine.
 	Watch(context.Context, *connect.Request[v1.WatchRequest]) (*connect.Response[v1.WatchResponse], error)
 	WatchRun(context.Context, *connect.Request[v1.WatchRunRequest]) (*connect.Response[v1.WatchRunResponse], error)
@@ -197,6 +210,30 @@ func NewHubServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(hubServiceMethods.ByName("RejectProposal")),
 			connect.WithClientOptions(opts...),
 		),
+		enrollEpic: connect.NewClient[v1.EnrollEpicRequest, v1.EnrollEpicResponse](
+			httpClient,
+			baseURL+HubServiceEnrollEpicProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("EnrollEpic")),
+			connect.WithClientOptions(opts...),
+		),
+		approveEpic: connect.NewClient[v1.ApproveEpicRequest, v1.ApproveEpicResponse](
+			httpClient,
+			baseURL+HubServiceApproveEpicProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("ApproveEpic")),
+			connect.WithClientOptions(opts...),
+		),
+		dropEpic: connect.NewClient[v1.DropEpicRequest, v1.DropEpicResponse](
+			httpClient,
+			baseURL+HubServiceDropEpicProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("DropEpic")),
+			connect.WithClientOptions(opts...),
+		),
+		rereadEpic: connect.NewClient[v1.RereadEpicRequest, v1.RereadEpicResponse](
+			httpClient,
+			baseURL+HubServiceRereadEpicProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("RereadEpic")),
+			connect.WithClientOptions(opts...),
+		),
 		watch: connect.NewClient[v1.WatchRequest, v1.WatchResponse](
 			httpClient,
 			baseURL+HubServiceWatchProcedure,
@@ -238,6 +275,10 @@ type hubServiceClient struct {
 	moveQueued      *connect.Client[v1.MoveQueuedRequest, v1.MoveQueuedResponse]
 	approveProposal *connect.Client[v1.ApproveProposalRequest, v1.ApproveProposalResponse]
 	rejectProposal  *connect.Client[v1.RejectProposalRequest, v1.RejectProposalResponse]
+	enrollEpic      *connect.Client[v1.EnrollEpicRequest, v1.EnrollEpicResponse]
+	approveEpic     *connect.Client[v1.ApproveEpicRequest, v1.ApproveEpicResponse]
+	dropEpic        *connect.Client[v1.DropEpicRequest, v1.DropEpicResponse]
+	rereadEpic      *connect.Client[v1.RereadEpicRequest, v1.RereadEpicResponse]
 	watch           *connect.Client[v1.WatchRequest, v1.WatchResponse]
 	watchRun        *connect.Client[v1.WatchRunRequest, v1.WatchRunResponse]
 	openTranscript  *connect.Client[v1.OpenTranscriptRequest, v1.OpenTranscriptResponse]
@@ -304,6 +345,26 @@ func (c *hubServiceClient) RejectProposal(ctx context.Context, req *connect.Requ
 	return c.rejectProposal.CallUnary(ctx, req)
 }
 
+// EnrollEpic calls ghhud.v1.HubService.EnrollEpic.
+func (c *hubServiceClient) EnrollEpic(ctx context.Context, req *connect.Request[v1.EnrollEpicRequest]) (*connect.Response[v1.EnrollEpicResponse], error) {
+	return c.enrollEpic.CallUnary(ctx, req)
+}
+
+// ApproveEpic calls ghhud.v1.HubService.ApproveEpic.
+func (c *hubServiceClient) ApproveEpic(ctx context.Context, req *connect.Request[v1.ApproveEpicRequest]) (*connect.Response[v1.ApproveEpicResponse], error) {
+	return c.approveEpic.CallUnary(ctx, req)
+}
+
+// DropEpic calls ghhud.v1.HubService.DropEpic.
+func (c *hubServiceClient) DropEpic(ctx context.Context, req *connect.Request[v1.DropEpicRequest]) (*connect.Response[v1.DropEpicResponse], error) {
+	return c.dropEpic.CallUnary(ctx, req)
+}
+
+// RereadEpic calls ghhud.v1.HubService.RereadEpic.
+func (c *hubServiceClient) RereadEpic(ctx context.Context, req *connect.Request[v1.RereadEpicRequest]) (*connect.Response[v1.RereadEpicResponse], error) {
+	return c.rereadEpic.CallUnary(ctx, req)
+}
+
 // Watch calls ghhud.v1.HubService.Watch.
 func (c *hubServiceClient) Watch(ctx context.Context, req *connect.Request[v1.WatchRequest]) (*connect.Response[v1.WatchResponse], error) {
 	return c.watch.CallUnary(ctx, req)
@@ -347,6 +408,11 @@ type HubServiceHandler interface {
 	// Supervisor proposals (Snapshot.cases), by proposal id.
 	ApproveProposal(context.Context, *connect.Request[v1.ApproveProposalRequest]) (*connect.Response[v1.ApproveProposalResponse], error)
 	RejectProposal(context.Context, *connect.Request[v1.RejectProposalRequest]) (*connect.Response[v1.RejectProposalResponse], error)
+	// Epics (Snapshot.epics), by ref (owner/repo#N).
+	EnrollEpic(context.Context, *connect.Request[v1.EnrollEpicRequest]) (*connect.Response[v1.EnrollEpicResponse], error)
+	ApproveEpic(context.Context, *connect.Request[v1.ApproveEpicRequest]) (*connect.Response[v1.ApproveEpicResponse], error)
+	DropEpic(context.Context, *connect.Request[v1.DropEpicRequest]) (*connect.Response[v1.DropEpicResponse], error)
+	RereadEpic(context.Context, *connect.Request[v1.RereadEpicRequest]) (*connect.Response[v1.RereadEpicResponse], error)
 	// Viewers. They open a terminal window on the hub's machine.
 	Watch(context.Context, *connect.Request[v1.WatchRequest]) (*connect.Response[v1.WatchResponse], error)
 	WatchRun(context.Context, *connect.Request[v1.WatchRunRequest]) (*connect.Response[v1.WatchRunResponse], error)
@@ -435,6 +501,30 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(hubServiceMethods.ByName("RejectProposal")),
 		connect.WithHandlerOptions(opts...),
 	)
+	hubServiceEnrollEpicHandler := connect.NewUnaryHandler(
+		HubServiceEnrollEpicProcedure,
+		svc.EnrollEpic,
+		connect.WithSchema(hubServiceMethods.ByName("EnrollEpic")),
+		connect.WithHandlerOptions(opts...),
+	)
+	hubServiceApproveEpicHandler := connect.NewUnaryHandler(
+		HubServiceApproveEpicProcedure,
+		svc.ApproveEpic,
+		connect.WithSchema(hubServiceMethods.ByName("ApproveEpic")),
+		connect.WithHandlerOptions(opts...),
+	)
+	hubServiceDropEpicHandler := connect.NewUnaryHandler(
+		HubServiceDropEpicProcedure,
+		svc.DropEpic,
+		connect.WithSchema(hubServiceMethods.ByName("DropEpic")),
+		connect.WithHandlerOptions(opts...),
+	)
+	hubServiceRereadEpicHandler := connect.NewUnaryHandler(
+		HubServiceRereadEpicProcedure,
+		svc.RereadEpic,
+		connect.WithSchema(hubServiceMethods.ByName("RereadEpic")),
+		connect.WithHandlerOptions(opts...),
+	)
 	hubServiceWatchHandler := connect.NewUnaryHandler(
 		HubServiceWatchProcedure,
 		svc.Watch,
@@ -485,6 +575,14 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 			hubServiceApproveProposalHandler.ServeHTTP(w, r)
 		case HubServiceRejectProposalProcedure:
 			hubServiceRejectProposalHandler.ServeHTTP(w, r)
+		case HubServiceEnrollEpicProcedure:
+			hubServiceEnrollEpicHandler.ServeHTTP(w, r)
+		case HubServiceApproveEpicProcedure:
+			hubServiceApproveEpicHandler.ServeHTTP(w, r)
+		case HubServiceDropEpicProcedure:
+			hubServiceDropEpicHandler.ServeHTTP(w, r)
+		case HubServiceRereadEpicProcedure:
+			hubServiceRereadEpicHandler.ServeHTTP(w, r)
 		case HubServiceWatchProcedure:
 			hubServiceWatchHandler.ServeHTTP(w, r)
 		case HubServiceWatchRunProcedure:
@@ -548,6 +646,22 @@ func (UnimplementedHubServiceHandler) ApproveProposal(context.Context, *connect.
 
 func (UnimplementedHubServiceHandler) RejectProposal(context.Context, *connect.Request[v1.RejectProposalRequest]) (*connect.Response[v1.RejectProposalResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.RejectProposal is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) EnrollEpic(context.Context, *connect.Request[v1.EnrollEpicRequest]) (*connect.Response[v1.EnrollEpicResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.EnrollEpic is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) ApproveEpic(context.Context, *connect.Request[v1.ApproveEpicRequest]) (*connect.Response[v1.ApproveEpicResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.ApproveEpic is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) DropEpic(context.Context, *connect.Request[v1.DropEpicRequest]) (*connect.Response[v1.DropEpicResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.DropEpic is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) RereadEpic(context.Context, *connect.Request[v1.RereadEpicRequest]) (*connect.Response[v1.RereadEpicResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.RereadEpic is not implemented"))
 }
 
 func (UnimplementedHubServiceHandler) Watch(context.Context, *connect.Request[v1.WatchRequest]) (*connect.Response[v1.WatchResponse], error) {

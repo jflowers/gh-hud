@@ -579,6 +579,53 @@ one run per set of facts. An approved, rejected or applied proposal holds
 off another run until the case's PRs or main's commit change. Proposals
 are kept in `proposals.json`.
 
+### Epics
+
+An epic is an issue that tracks a larger piece of work done through other
+issues. gh-hud reads one as a plan and keeps each piece's status current:
+
+```
+gh-hud epic https://github.com/acme/app/issues/100   # enroll it; reading takes a few minutes
+gh-hud epic list                                     # plans, pieces and status
+gh-hud epic approve acme/app#100                     # approve the current plan
+gh-hud epic reread acme/app#100                      # read it again
+gh-hud epic drop acme/app#100                        # stop tracking it
+```
+
+These talk to the running hub. The Plan tab shows each epic, its pieces
+still to do (ready and in progress first), and `E` approves the plan that
+waits for you.
+
+- **Reading.** gh-hud doesn't count on one format. It merges what it finds:
+  - **Prose.** The read-only supervisor agent (see "The supervisor
+    agent") reads the body and the issues and PRs it mentions. It proposes
+    the pieces, their phases, what each waits on, gates only a person can
+    clear (say, "a second refresh proves repetition"), and the rules every
+    piece must respect. gh-hud refuses refs the body doesn't mention, PRs
+    as pieces, and cycles. A refused answer is retried once, in the same
+    agent session, with the reason.
+  - **Blocked-by links** between the pieces, from GitHub.
+
+  Sub-issues and task lists are the next sources to add.
+- **Status** comes from GitHub on every refresh, never from the body's
+  checkboxes:
+
+  | Mark | State | Meaning |
+  |---|---|---|
+  | ✓ | done | Closed as completed, or merged. |
+  | ✗ | dropped | Closed without being completed. |
+  | ▸ | in progress | An open PR closes it. |
+  | ● | ready | Nothing it waits on is left. |
+  | ◌ | waiting | It waits on another piece. |
+  | ⏸ | gated | It waits on a condition only you can clear. |
+  | ! | blocked | It waits on a piece that was dropped. |
+- **Approving** a plan is consent to start its ready pieces, within the
+  epic's caps. Starting them comes in the next step of #22. A plan has an
+  ID, so you approve the plan you saw. If the epic's body changes, the
+  plan is marked stale until you reread it.
+
+Epics are kept in `epics.json` in the state dir.
+
 ## Configuring dispatch
 
 Dispatch is configured in three layers, all in `config.toml`:

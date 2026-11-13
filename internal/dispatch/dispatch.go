@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/jflowers/gh-hud/internal/config"
+	"github.com/jflowers/gh-hud/internal/epic"
 	"github.com/jflowers/gh-hud/internal/gh"
 	"github.com/jflowers/gh-hud/internal/ghws"
 	"github.com/jflowers/gh-hud/internal/model"
@@ -276,6 +277,17 @@ type Dispatcher struct {
 	// supervisorRun runs one supervisor agent and returns its output; a
 	// test hook (nil uses runOpencodeSupervisor).
 	supervisorRun func(ctx context.Context, spec supervisorSpec) ([]byte, error)
+	// epics are the enrolled epics (epics.go), guarded by mu; epicsMod is
+	// epics.json's mtime, epicReading the epics being read, epicChecking a
+	// status refresh in flight.
+	epics        []epic.Epic
+	epicsMod     time.Time
+	epicReading  map[string]bool
+	epicChecking bool
+	epicNotes    []string
+	// ghQuery runs a GraphQL query and decodes its data (a hook for tests;
+	// nil uses gh).
+	ghQuery func(ctx context.Context, query string, out any) error
 }
 
 // agentSnapshot is one machine's live herdr agent list.
@@ -368,6 +380,7 @@ func New(opts Options) (*Dispatcher, error) {
 	d.loadQueueLocked()
 	d.loadDecisionsLocked()
 	d.loadProposalsLocked()
+	d.loadEpicsLocked()
 	d.acquireOwnership()
 	return d, nil
 }
