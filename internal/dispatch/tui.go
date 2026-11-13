@@ -42,13 +42,13 @@ const (
 // modeFor resolves the dispatch mode on m: the machine's own mode, else
 // the top-level one. TUI mode needs the herdr runner.
 func (d *Dispatcher) modeFor(m Machine) string {
-	if d.opts.Runner != "herdr" {
+	if d.o().Runner != "herdr" {
 		return modeRun
 	}
 	if m.Mode != "" {
 		return m.Mode
 	}
-	return d.opts.Mode
+	return d.o().Mode
 }
 
 // agentArgs builds the opencode argv passed after herdr's "--". A TUI

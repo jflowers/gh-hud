@@ -60,7 +60,7 @@ func (d *Dispatcher) Enqueue(task Task, it model.Item) error {
 	if !slices.Contains(MenuTasks(it), task) {
 		return fmt.Errorf("%s doesn't apply to %s", task, it.Ref())
 	}
-	if tc, ok := d.opts.Tasks[string(task)]; !ok || tc.Command == "" {
+	if tc, ok := d.o().Tasks[string(task)]; !ok || tc.Command == "" {
 		return fmt.Errorf("no command configured for task %q", task)
 	}
 	e := QueueEntry{Ref: it.Ref(), Task: task, Title: it.Title, Added: time.Now()}
@@ -79,7 +79,7 @@ func (d *Dispatcher) Enqueue(task Task, it model.Item) error {
 func (d *Dispatcher) QueueChoices(it model.Item) []Task {
 	var out []Task
 	for _, t := range MenuTasks(it) {
-		if tc, ok := d.opts.Tasks[string(t)]; ok && tc.Command != "" {
+		if tc, ok := d.o().Tasks[string(t)]; ok && tc.Command != "" {
 			out = append(out, t)
 		}
 	}
@@ -160,7 +160,7 @@ func (d *Dispatcher) queueRefused(e QueueEntry, err error) bool {
 }
 
 func (d *Dispatcher) loadQueueLocked() {
-	path := filepath.Join(d.opts.StateDir, queueName)
+	path := filepath.Join(d.o().StateDir, queueName)
 	if st, err := os.Stat(path); err == nil {
 		d.queueMod = st.ModTime()
 	}
@@ -185,7 +185,7 @@ func (d *Dispatcher) saveQueueLocked() {
 	if err != nil {
 		return
 	}
-	path := filepath.Join(d.opts.StateDir, queueName)
+	path := filepath.Join(d.o().StateDir, queueName)
 	tmp := path + ".tmp"
 	if os.WriteFile(tmp, data, 0o600) != nil || os.Rename(tmp, path) != nil {
 		return

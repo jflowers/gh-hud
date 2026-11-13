@@ -77,7 +77,7 @@ func (d *Dispatcher) Workspaces(ctx context.Context) []CheckoutHealth {
 	}
 
 	machines := []Machine{d.localMachine()}
-	if d.opts.Runner == "herdr" {
+	if d.o().Runner == "herdr" {
 		machines = append(machines, d.remoteMachines()...)
 	}
 	results := make([][]CheckoutHealth, len(machines))
@@ -86,7 +86,7 @@ func (d *Dispatcher) Workspaces(ctx context.Context) []CheckoutHealth {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			ix := d.opts.LocalIndex
+			ix := d.o().LocalIndex
 			if !m.Local {
 				ix = d.remoteIndex(ctx, m)
 			}
@@ -111,7 +111,7 @@ func (d *Dispatcher) Workspaces(ctx context.Context) []CheckoutHealth {
 func (d *Dispatcher) machineWorkspaces(ctx context.Context, m Machine, ix *ghws.Index) []CheckoutHealth {
 	var cos []ghws.Checkout
 	for _, co := range ix.Checkouts() {
-		if d.opts.InstancesOnly && !co.Instance {
+		if d.o().InstancesOnly && !co.Instance {
 			continue
 		}
 		cos = append(cos, co)
