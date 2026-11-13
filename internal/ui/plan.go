@@ -7,11 +7,13 @@ package ui
 // order things start.
 //
 // Above the rows are the open cases (a check failing on several of your
-// PRs) with what the supervisor is doing about them.
+// PRs) with what the supervisor is doing about them, and the enrolled
+// epics with their pieces still to do.
 //
 // Keys: + queues the row's task, J/K move a queued task later/earlier,
 // x removes it, a opens the agent menu, enter opens the PR, Y/N approve or
-// reject the supervisor's proposal for the selected PR's case.
+// reject the supervisor's proposal for the selected PR's case, E approves
+// the epic plan waiting for approval.
 
 import (
 	"fmt"
@@ -23,6 +25,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/jflowers/gh-hud/internal/dispatch"
+	"github.com/jflowers/gh-hud/internal/epic"
 	"github.com/jflowers/gh-hud/internal/model"
 )
 
@@ -128,7 +131,7 @@ func (m *Model) planView() string {
 		"  " + padPlain("#", plPosW, true) + " " + padPlain("task", plTaskW, false) + " " +
 			padPlain("item", plRefW, false) + " " + padPlain("title", titleW, false) + " " + "status")}
 
-	cases := m.caseLines(w)
+	cases := append(m.caseLines(w), m.epicLines(w)...)
 
 	// Lay the rows out with group headings, then scroll to keep the
 	// selection in view.
@@ -201,6 +204,10 @@ func (m *Model) planFooter() string {
 			return lipgloss.NewStyle().Foreground(cRed).Render(" ✗ " + m.statusMsg)
 		}
 		return lipgloss.NewStyle().Foreground(cGreen).Render(" ✓ " + m.statusMsg)
+	}
+	if m.epicWaiting() != nil {
+		return chips(m.width, "E", "approve epic plan", "j/k", "move", "+", "queue", "x", "unqueue",
+			"a", "agent", "enter", "open", "esc", "dashboard")
 	}
 	if m.pendingCount() > 0 {
 		return chips(m.width, "Y", "approve", "N", "reject", "j/k", "move", "+", "queue", "x", "unqueue",
@@ -333,6 +340,18 @@ func (m *Model) handlePlanKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.sync()
 			m.flash("rejected; " + c.Repo + " " + c.Check + " stays with you")
 		}
+	case "E":
+		e := m.epicWaiting()
+		if e == nil {
+			m.flash("no epic plan waits for approval (gh-hud epic list)")
+			break
+		}
+		if err := m.backend.ApproveEpic(ctx(), e.Ref, e.Plan.ID); err != nil {
+			m.flash("approve failed: " + err.Error())
+		} else {
+			m.sync()
+			m.flash("approved the plan for " + e.Ref)
+		}
 	case "x", "delete", "backspace":
 		if !have || cur.Queued == 0 {
 			break
@@ -433,4 +452,91 @@ func caseReason(d dispatch.Decision) string {
 		return fmt.Sprintf("fix in #%d", d.FixPR)
 	}
 	return "escalated: " + strings.Join(strings.Fields(d.Summary), " ")
+}
+
+// epicWaiting is the one epic whose plan waits for approval, or nil when
+// none or several do (gh-hud epic approve picks among several).
+func (m *Model) epicWaiting() *epic.Epic {
+	var found *epic.Epic
+	for i := range m.epics {
+		e := &m.epics[i]
+		if e.State == epic.StatePlanned && e.Plan != nil && !e.Plan.Stale {
+			if found != nil {
+				return nil
+			}
+			found = e
+		}
+	}
+	return found
+}
+
+// epicShown is how many open pieces an epic lists before "+N more".
+const epicShown = 6
+
+var epicMark = map[epic.NodeState]string{
+	epic.NodeDone: "✓", epic.NodeDropped: "✗", epic.NodeInProgress: "▸", epic.NodeReady: "●",
+	epic.NodeWaiting: "◌", epic.NodeGated: "⏸", epic.NodeBlocked: "!", epic.NodeUnknown: "?",
+}
+
+// epicLines draws the enrolled epics: a line each, then their pieces still
+// to do, ready and in progress first.
+func (m *Model) epicLines(w int) []string {
+	if len(m.epics) == 0 {
+		return nil
+	}
+	dim := lipgloss.NewStyle().Foreground(cDim)
+	fg := lipgloss.NewStyle().Foreground(cFg)
+	out := []string{dim.Render("  ── epics " + strings.Repeat("─", max(w-12, 0)))}
+	for _, e := range m.epics {
+		head := "  ◆ " + truncatePlain(e.Ref+"  "+e.Title, max(w/2, 30))
+		status, color := epicStatus(e)
+		out = append(out, fg.Render(head)+"   "+lipgloss.NewStyle().Foreground(color).Render(truncatePlain(status, max(w-width(head)-3, 10))))
+		if e.Plan == nil {
+			continue
+		}
+		repo, _, _ := epic.ParseRef(e.Ref)
+		var open []epic.Node
+		for _, n := range e.Plan.Nodes {
+			if n.State != epic.NodeDone && n.State != epic.NodeDropped {
+				open = append(open, n)
+			}
+		}
+		rank := map[epic.NodeState]int{epic.NodeReady: 0, epic.NodeInProgress: 1, epic.NodeGated: 2, epic.NodeBlocked: 3, epic.NodeWaiting: 4, epic.NodeUnknown: 5}
+		slices.SortStableFunc(open, func(a, b epic.Node) int { return rank[a.State] - rank[b.State] })
+		for i, n := range open {
+			if i == epicShown {
+				out = append(out, dim.Render(fmt.Sprintf("      +%d more (gh-hud epic list)", len(open)-epicShown)))
+				break
+			}
+			line := fmt.Sprintf("      %s %s %s", epicMark[n.State], epic.Short(repo, n.Ref), n.Title)
+			if n.Note != "" {
+				line += "  · " + n.Note
+			}
+			style := dim
+			if n.State == epic.NodeReady || n.State == epic.NodeInProgress {
+				style = fg
+			}
+			out = append(out, style.Render(truncatePlain(line, max(w-2, 10))))
+		}
+	}
+	return out
+}
+
+// epicStatus is an epic's line: where its plan stands and its counts.
+func epicStatus(e epic.Epic) (string, lipgloss.Color) {
+	switch e.State {
+	case epic.StateReading:
+		return "reading the plan…", cTeal
+	case epic.StateError:
+		return "can't read it: " + e.Error, cRed
+	}
+	c := e.Counts()
+	counts := fmt.Sprintf("%d/%d done, %d ready, %d in progress", c[epic.NodeDone], len(e.Plan.Nodes), c[epic.NodeReady], c[epic.NodeInProgress])
+	switch {
+	case e.Plan.Stale:
+		return "the epic changed: reread it · " + counts, cOrange
+	case e.State == epic.StatePlanned:
+		return "plan waits for you: E approves · " + counts, cOrange
+	}
+	return "approved · " + counts, cGreen
 }

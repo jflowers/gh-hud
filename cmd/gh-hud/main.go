@@ -45,6 +45,9 @@ func main() {
 //     stops the hub; attached clients wait for the next one.
 func run() int {
 	args := os.Args[1:]
+	if len(args) > 0 && args[0] == "epic" {
+		return runEpic(args[1:], os.Stdout, os.Stderr)
+	}
 	serve := len(args) > 0 && args[0] == "serve"
 	if serve {
 		args = args[1:]
@@ -59,7 +62,7 @@ func run() int {
 		inProcess  = flag.Bool("no-attach", false, "run a hub in this process even when one is serving (it then only follows)")
 	)
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "usage: gh-hud [flags]        the dashboard\n       gh-hud serve [flags]  the hub alone, on its socket\n\nflags:\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "usage: gh-hud [flags]        the dashboard\n       gh-hud serve [flags]  the hub alone, on its socket\n       gh-hud epic …         enroll and manage epics (gh-hud epic for help)\n\nflags:\n")
 		flag.PrintDefaults()
 	}
 	if err := flag.CommandLine.Parse(args); err != nil {

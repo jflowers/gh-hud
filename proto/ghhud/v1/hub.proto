@@ -46,6 +46,12 @@ service HubService {
   rpc ApproveProposal(ApproveProposalRequest) returns (ApproveProposalResponse);
   rpc RejectProposal(RejectProposalRequest) returns (RejectProposalResponse);
 
+  // Epics (Snapshot.epics), by ref (owner/repo#N).
+  rpc EnrollEpic(EnrollEpicRequest) returns (EnrollEpicResponse);
+  rpc ApproveEpic(ApproveEpicRequest) returns (ApproveEpicResponse);
+  rpc DropEpic(DropEpicRequest) returns (DropEpicResponse);
+  rpc RereadEpic(RereadEpicRequest) returns (RereadEpicResponse);
+
   // Viewers. They open a terminal window on the hub's machine.
   rpc Watch(WatchRequest) returns (WatchResponse);
   rpc WatchRun(WatchRunRequest) returns (WatchRunResponse);
@@ -174,6 +180,33 @@ message RejectProposalRequest {
 
 message RejectProposalResponse {}
 
+message EnrollEpicRequest {
+  string target = 1; // an issue URL or owner/repo#N
+}
+
+message EnrollEpicResponse {
+  string ref = 1;
+}
+
+message ApproveEpicRequest {
+  string ref = 1;
+  string plan_id = 2; // the plan seen; empty approves the current one
+}
+
+message ApproveEpicResponse {}
+
+message DropEpicRequest {
+  string ref = 1;
+}
+
+message DropEpicResponse {}
+
+message RereadEpicRequest {
+  string ref = 1;
+}
+
+message RereadEpicResponse {}
+
 message WatchRequest {
   string session_id = 1;
 }
@@ -243,6 +276,8 @@ message Snapshot {
   // cases are what the rules can't settle, with the supervisor's
   // decisions, runs and proposals.
   repeated Case cases = 19;
+  // epics are the enrolled epics with their plans and status.
+  repeated Epic epics = 20;
 }
 
 message FetchResult {
@@ -461,6 +496,46 @@ message Proposal {
   bool no_answer = 5;
   string note = 6;
   string log = 7; // the run's output file on the hub's machine
+}
+
+// Epic is an enrolled epic (epic.Epic).
+message Epic {
+  string ref = 1;
+  string url = 2;
+  string title = 3;
+  google.protobuf.Timestamp enrolled = 4;
+  string state = 5; // open set: reading, planned, approved, error
+  string error = 6;
+  EpicPlan plan = 7;
+  google.protobuf.Timestamp approved = 8; // unset until approved
+  string approved_plan = 9;
+  google.protobuf.Timestamp checked_at = 10;
+  string log = 11; // the planner run's output on the hub's machine
+}
+
+// EpicPlan is an epic read as a graph.
+message EpicPlan {
+  string id = 1;
+  repeated string sources = 2; // open set: prose, blocked_by
+  repeated EpicNode nodes = 3;
+  repeated string rules = 4;
+  repeated string skipped = 5;
+  google.protobuf.Timestamp created = 6;
+  string body_hash = 7;
+  bool stale = 8;
+}
+
+// EpicNode is one piece of an epic.
+message EpicNode {
+  string ref = 1;
+  string title = 2;
+  string phase = 3;
+  repeated string after = 4;
+  string gate = 5;
+  string source = 6;
+  string state = 7; // open set: done, dropped, in_progress, ready, waiting, gated, blocked, unknown
+  string note = 8;
+  int64 pr = 9;
 }
 
 // CheckoutHealth is whether a ghws checkout can take a dispatch.

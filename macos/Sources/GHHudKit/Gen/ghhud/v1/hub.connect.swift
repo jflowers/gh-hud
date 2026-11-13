@@ -56,6 +56,19 @@ public protocol Ghhud_V1_HubServiceClientInterface: Sendable {
     @available(iOS 13, *)
     func `rejectProposal`(request: Ghhud_V1_RejectProposalRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_RejectProposalResponse>
 
+    /// Epics (Snapshot.epics), by ref (owner/repo#N).
+    @available(iOS 13, *)
+    func `enrollEpic`(request: Ghhud_V1_EnrollEpicRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_EnrollEpicResponse>
+
+    @available(iOS 13, *)
+    func `approveEpic`(request: Ghhud_V1_ApproveEpicRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_ApproveEpicResponse>
+
+    @available(iOS 13, *)
+    func `dropEpic`(request: Ghhud_V1_DropEpicRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_DropEpicResponse>
+
+    @available(iOS 13, *)
+    func `rereadEpic`(request: Ghhud_V1_RereadEpicRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_RereadEpicResponse>
+
     /// Viewers. They open a terminal window on the hub's machine.
     @available(iOS 13, *)
     func `watch`(request: Ghhud_V1_WatchRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_WatchResponse>
@@ -141,6 +154,26 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
     }
 
     @available(iOS 13, *)
+    public func `enrollEpic`(request: Ghhud_V1_EnrollEpicRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_EnrollEpicResponse> {
+        return await self.client.unary(path: "/ghhud.v1.HubService/EnrollEpic", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `approveEpic`(request: Ghhud_V1_ApproveEpicRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_ApproveEpicResponse> {
+        return await self.client.unary(path: "/ghhud.v1.HubService/ApproveEpic", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `dropEpic`(request: Ghhud_V1_DropEpicRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_DropEpicResponse> {
+        return await self.client.unary(path: "/ghhud.v1.HubService/DropEpic", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `rereadEpic`(request: Ghhud_V1_RereadEpicRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_RereadEpicResponse> {
+        return await self.client.unary(path: "/ghhud.v1.HubService/RereadEpic", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `watch`(request: Ghhud_V1_WatchRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_WatchResponse> {
         return await self.client.unary(path: "/ghhud.v1.HubService/Watch", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -174,6 +207,10 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
             public static let moveQueued = Connect.MethodSpec(name: "MoveQueued", service: "ghhud.v1.HubService", type: .unary)
             public static let approveProposal = Connect.MethodSpec(name: "ApproveProposal", service: "ghhud.v1.HubService", type: .unary)
             public static let rejectProposal = Connect.MethodSpec(name: "RejectProposal", service: "ghhud.v1.HubService", type: .unary)
+            public static let enrollEpic = Connect.MethodSpec(name: "EnrollEpic", service: "ghhud.v1.HubService", type: .unary)
+            public static let approveEpic = Connect.MethodSpec(name: "ApproveEpic", service: "ghhud.v1.HubService", type: .unary)
+            public static let dropEpic = Connect.MethodSpec(name: "DropEpic", service: "ghhud.v1.HubService", type: .unary)
+            public static let rereadEpic = Connect.MethodSpec(name: "RereadEpic", service: "ghhud.v1.HubService", type: .unary)
             public static let watch = Connect.MethodSpec(name: "Watch", service: "ghhud.v1.HubService", type: .unary)
             public static let watchRun = Connect.MethodSpec(name: "WatchRun", service: "ghhud.v1.HubService", type: .unary)
             public static let openTranscript = Connect.MethodSpec(name: "OpenTranscript", service: "ghhud.v1.HubService", type: .unary)

@@ -11,6 +11,7 @@ import (
 
 	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/dispatch"
+	"github.com/jflowers/gh-hud/internal/epic"
 	"github.com/jflowers/gh-hud/internal/hub"
 	"github.com/jflowers/gh-hud/internal/hub/hubtest"
 	"github.com/jflowers/gh-hud/internal/model"
@@ -146,5 +147,39 @@ func TestPlanShowsCasesAndSettlesProposals(t *testing.T) {
 	key("N")
 	if fake.Called("RejectProposal p1") != 1 {
 		t.Error("N didn't reject p1")
+	}
+}
+
+func TestPlanShowsEpicsAndApproves(t *testing.T) {
+	nodes := []epic.Node{
+		{Ref: "acme/app#101", Title: "first", State: epic.NodeDone},
+		{Ref: "acme/app#103", Title: "third", State: epic.NodeWaiting, Note: "waits on #102"},
+		{Ref: "acme/app#102", Title: "second", State: epic.NodeReady},
+		{Ref: "acme/lib#5", Title: "lib piece", State: epic.NodeGated, Note: "a person signs off"},
+	}
+	fake := &hubtest.Fake{}
+	fake.SetSnap(hub.Snapshot{Seq: 1, Dispatch: true, Res: &model.FetchResult{},
+		Epics: []epic.Epic{{Ref: "acme/app#100", Title: "The epic", State: epic.StatePlanned,
+			Plan: &epic.Plan{ID: "p7", Sources: []string{"prose"}, Nodes: nodes}}}})
+	m := New(config.Default(), fake)
+	m.width, m.height = 160, 30
+	key := func(k string) { m.handleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)}) }
+	key("p")
+	view := ansiRe.ReplaceAllString(m.View(), "")
+	for _, want := range []string{"epics", "acme/app#100  The epic", "plan waits for you: E approves · 1/4 done, 1 ready",
+		"● #102 second", "⏸ lib#5 lib piece  · a person signs off", "◌ #103 third", "E approve epic plan"} {
+		if !strings.Contains(view, want) {
+			t.Errorf("plan view missing %q:\n%s", want, view)
+		}
+	}
+	if strings.Contains(view, "#101 first") {
+		t.Error("done pieces are listed")
+	}
+	if strings.Index(view, "#102 second") > strings.Index(view, "#103 third") {
+		t.Error("ready pieces don't come first")
+	}
+	key("E")
+	if fake.Called("ApproveEpic acme/app#100 p7") != 1 {
+		t.Error("E didn't approve the plan")
 	}
 }

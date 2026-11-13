@@ -11,6 +11,7 @@ import (
 	"github.com/jflowers/gh-hud/internal/clipboard"
 	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/dispatch"
+	"github.com/jflowers/gh-hud/internal/epic"
 	"github.com/jflowers/gh-hud/internal/fleet"
 	"github.com/jflowers/gh-hud/internal/hub"
 	"github.com/jflowers/gh-hud/internal/model"
@@ -69,6 +70,8 @@ type Model struct {
 	// cases are what the rules can't settle, with the supervisor's
 	// proposals (the Plan tab shows them).
 	cases []dispatch.Case
+	// epics are the enrolled epics (the Plan tab shows them).
+	epics []epic.Epic
 
 	res       *model.FetchResult
 	fetching  bool
@@ -199,7 +202,7 @@ func (m *Model) applySnapshot(s hub.Snapshot) {
 	m.agents, m.runs, m.machineUsage, m.follower = s.Sessions, s.Runs, s.Usage, s.Follower
 	m.ws, m.wsAt, m.wsLoading = s.Workspaces, s.WorkspacesAt, s.WorkspacesLoading
 	m.stages, m.plan, m.queue = s.Stages, s.Plan, s.Queue
-	m.cases = s.Cases
+	m.cases, m.epics = s.Cases, s.Epics
 	m.dispatchOn, m.fleetOn = s.Dispatch, s.Fleet != nil
 	if s.Fleet != nil {
 		m.fleetSnap = *s.Fleet

@@ -20,13 +20,14 @@ import (
 // instead of calling it here.
 func TestUIStaysAClient(t *testing.T) {
 	const mod = "github.com/jflowers/gh-hud/internal/"
-	// Internal packages the UI may import. dispatch, fleet and model are
-	// here for their data types and pure helpers only; forbidden below
-	// is everything that does work.
+	// Internal packages the UI may import. dispatch, epic, fleet and model
+	// are here for their data types and pure helpers only (epic does no
+	// I/O at all); forbidden below is everything that does work.
 	allowed := map[string]bool{
 		mod + "clipboard": true, // local to the viewer's machine
 		mod + "config":    true,
 		mod + "dispatch":  true,
+		mod + "epic":      true,
 		mod + "fleet":     true,
 		mod + "hub":       true,
 		mod + "model":     true,

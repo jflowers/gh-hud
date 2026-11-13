@@ -185,6 +185,23 @@ func (s *Server) RejectProposal(ctx context.Context, req *connect.Request[pb.Rej
 	return reply(&pb.RejectProposalResponse{}, s.b.RejectProposal(ctx, req.Msg.GetId()))
 }
 
+func (s *Server) EnrollEpic(ctx context.Context, req *connect.Request[pb.EnrollEpicRequest]) (*connect.Response[pb.EnrollEpicResponse], error) {
+	ref, err := s.b.EnrollEpic(ctx, req.Msg.GetTarget())
+	return reply(&pb.EnrollEpicResponse{Ref: ref}, err)
+}
+
+func (s *Server) ApproveEpic(ctx context.Context, req *connect.Request[pb.ApproveEpicRequest]) (*connect.Response[pb.ApproveEpicResponse], error) {
+	return reply(&pb.ApproveEpicResponse{}, s.b.ApproveEpic(ctx, req.Msg.GetRef(), req.Msg.GetPlanId()))
+}
+
+func (s *Server) DropEpic(ctx context.Context, req *connect.Request[pb.DropEpicRequest]) (*connect.Response[pb.DropEpicResponse], error) {
+	return reply(&pb.DropEpicResponse{}, s.b.DropEpic(ctx, req.Msg.GetRef()))
+}
+
+func (s *Server) RereadEpic(ctx context.Context, req *connect.Request[pb.RereadEpicRequest]) (*connect.Response[pb.RereadEpicResponse], error) {
+	return reply(&pb.RereadEpicResponse{}, s.b.RereadEpic(ctx, req.Msg.GetRef()))
+}
+
 func (s *Server) MoveQueued(ctx context.Context, req *connect.Request[pb.MoveQueuedRequest]) (*connect.Response[pb.MoveQueuedResponse], error) {
 	i, err := s.b.MoveQueued(ctx, dispatch.Task(req.Msg.GetTask()), req.Msg.GetRef(), int(req.Msg.GetDelta()))
 	if err != nil {

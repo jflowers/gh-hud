@@ -286,6 +286,37 @@ func (c *Client) RejectProposal(ctx context.Context, id string) error {
 	return fromConnect(err)
 }
 
+func (c *Client) EnrollEpic(ctx context.Context, target string) (string, error) {
+	ctx, cancel := withDeadline(ctx, callTimeout)
+	defer cancel()
+	resp, err := c.rpc.EnrollEpic(ctx, connect.NewRequest(&pb.EnrollEpicRequest{Target: target}))
+	if err != nil {
+		return "", fromConnect(err)
+	}
+	return resp.Msg.GetRef(), nil
+}
+
+func (c *Client) ApproveEpic(ctx context.Context, ref, planID string) error {
+	ctx, cancel := withDeadline(ctx, callTimeout)
+	defer cancel()
+	_, err := c.rpc.ApproveEpic(ctx, connect.NewRequest(&pb.ApproveEpicRequest{Ref: ref, PlanId: planID}))
+	return fromConnect(err)
+}
+
+func (c *Client) DropEpic(ctx context.Context, ref string) error {
+	ctx, cancel := withDeadline(ctx, callTimeout)
+	defer cancel()
+	_, err := c.rpc.DropEpic(ctx, connect.NewRequest(&pb.DropEpicRequest{Ref: ref}))
+	return fromConnect(err)
+}
+
+func (c *Client) RereadEpic(ctx context.Context, ref string) error {
+	ctx, cancel := withDeadline(ctx, callTimeout)
+	defer cancel()
+	_, err := c.rpc.RereadEpic(ctx, connect.NewRequest(&pb.RereadEpicRequest{Ref: ref}))
+	return fromConnect(err)
+}
+
 func (c *Client) Unqueue(ctx context.Context, task dispatch.Task, ref string) error {
 	ctx, cancel := withDeadline(ctx, callTimeout)
 	defer cancel()

@@ -9,6 +9,7 @@ import (
 
 	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/dispatch"
+	"github.com/jflowers/gh-hud/internal/epic"
 	"github.com/jflowers/gh-hud/internal/fleet"
 	"github.com/jflowers/gh-hud/internal/model"
 	"github.com/jflowers/gh-hud/internal/notify"
@@ -27,6 +28,11 @@ type Dispatcher interface {
 	Plan(items []model.Item, runs []dispatch.Run) []dispatch.PlanRow
 	Queue() []dispatch.QueueEntry
 	Cases() []dispatch.Case
+	Epics() []epic.Epic
+	EnrollEpic(target string) (string, error)
+	ApproveEpic(ref, planID string) error
+	DropEpic(ref string) error
+	RereadEpic(ref string) error
 	Approve(id string) error
 	Reject(id string) error
 
@@ -85,6 +91,14 @@ type Backend interface {
 	// Supervisor proposals, by proposal ID (Snapshot.Cases).
 	ApproveProposal(ctx context.Context, id string) error
 	RejectProposal(ctx context.Context, id string) error
+
+	// Epics, by ref (owner/repo#N). EnrollEpic takes a URL or a ref and
+	// returns the ref; ApproveEpic approves the plan with planID ("" for
+	// the current one).
+	EnrollEpic(ctx context.Context, target string) (string, error)
+	ApproveEpic(ctx context.Context, ref, planID string) error
+	DropEpic(ctx context.Context, ref string) error
+	RereadEpic(ctx context.Context, ref string) error
 
 	// Viewers. They open a terminal window on the hub's machine.
 	Watch(ctx context.Context, sessionID string) error
@@ -164,6 +178,8 @@ type Snapshot struct {
 	// Cases are the open cases the rules can't settle, with the supervisor's
 	// decisions, runs and proposals; nil without a dispatcher.
 	Cases []dispatch.Case
+	// Epics are the enrolled epics with their plans and status.
+	Epics []epic.Epic
 
 	Workspaces        []dispatch.CheckoutHealth
 	WorkspacesAt      time.Time
@@ -473,10 +489,12 @@ func (h *Hub) publish() {
 		plan   []dispatch.PlanRow
 		queue  []dispatch.QueueEntry
 		cases  []dispatch.Case
+		epics  []epic.Epic
 	)
 	if d := h.opts.Dispatcher; d != nil {
 		queue = d.Queue()
 		cases = d.Cases()
+		epics = d.Epics()
 		if cur.Res != nil {
 			stages = make(map[string]dispatch.Stage, len(cur.Res.Items))
 			for _, it := range cur.Res.Items {
@@ -491,7 +509,7 @@ func (h *Hub) publish() {
 	h.snap.Fleet = fs
 	h.snap.Stages = stages
 	h.snap.Plan, h.snap.Queue = plan, queue
-	h.snap.Cases = cases
+	h.snap.Cases, h.snap.Epics = cases, epics
 	snap := h.snap
 	h.mu.Unlock()
 
