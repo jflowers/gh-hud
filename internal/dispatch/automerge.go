@@ -77,7 +77,7 @@ func autoMergeAction(it model.Item, cfg config.AutoMergeConfig) mergeAction {
 // every refresh.
 func (d *Dispatcher) AutoMerge(ctx context.Context, items []model.Item) []string {
 	d.updateTrain(items)
-	cfg := d.opts.AutoMerge
+	cfg := d.o().AutoMerge
 	if !cfg.Enabled || !d.owns() {
 		return nil
 	}

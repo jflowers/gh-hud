@@ -255,9 +255,15 @@ type Dispatcher struct {
 	claims   map[string]string // ref|… and dir|… → the dispatch holding them
 	stateMod time.Time         // state.json mtime at the last load or save
 	ownMu    sync.Mutex
-	lock     *os.File   // held dispatch.lock; nil in a follower
-	autoMu   sync.Mutex // one auto pass at a time
-	train    *trainPlan // guarded by mu: merge order from the latest refresh (train.go)
+	// optsMu guards opts, which SetOptions swaps on a config reload; read
+	// it through o(). retired are machines a reload removed, kept so runs
+	// already on them stay reachable.
+	optsMu  sync.RWMutex
+	retired []Machine
+
+	lock   *os.File   // held dispatch.lock; nil in a follower
+	autoMu sync.Mutex // one auto pass at a time
+	train  *trainPlan // guarded by mu: merge order from the latest refresh (train.go)
 	// baseBroke is guarded by mu: repo → checks seen failing on its base
 	// branch that some PR of yours still fails (train.go noteBaseLocked).
 	baseBroke map[string]map[string]bool
@@ -302,8 +308,8 @@ type indexEntry struct {
 	at time.Time
 }
 
-// New builds a Dispatcher, defaulting unset options and loading state.
-func New(opts Options) (*Dispatcher, error) {
+// normalizeOptions fills in the defaults of unset options.
+func normalizeOptions(opts *Options) error {
 	if opts.Agent == "" {
 		opts.Agent = "autonomy"
 	}
@@ -321,12 +327,9 @@ func New(opts Options) (*Dispatcher, error) {
 	if opts.StateDir == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return nil, err
+			return err
 		}
 		opts.StateDir = filepath.Join(home, ".local", "state", "gh-hud")
-	}
-	if err := os.MkdirAll(filepath.Join(opts.StateDir, "logs"), 0o700); err != nil {
-		return nil, fmt.Errorf("state dir: %w", err)
 	}
 	if opts.WatchCmd == "" {
 		opts.WatchCmd = "/Applications/Ghostty.app/Contents/MacOS/ghostty -e tail -n 200 -f {log}"
@@ -354,6 +357,17 @@ func New(opts Options) (*Dispatcher, error) {
 		if m.Mode != modeRun && m.Mode != modeTUI {
 			m.Mode = ""
 		}
+	}
+	return nil
+}
+
+// New builds a Dispatcher, defaulting unset options and loading state.
+func New(opts Options) (*Dispatcher, error) {
+	if err := normalizeOptions(&opts); err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(filepath.Join(opts.StateDir, "logs"), 0o700); err != nil {
+		return nil, fmt.Errorf("state dir: %w", err)
 	}
 	dirs := make([]string, 0, len(opts.Dirs))
 	seenDir := map[string]bool{}
@@ -387,7 +401,7 @@ func New(opts Options) (*Dispatcher, error) {
 
 // Configured reports the command template configured for task, if any.
 func (d *Dispatcher) Configured(task Task) (string, bool) {
-	tc, ok := d.opts.Tasks[string(task)]
+	tc, ok := d.o().Tasks[string(task)]
 	return tc.Command, ok && tc.Command != ""
 }
 
@@ -443,7 +457,7 @@ func (d *Dispatcher) DispatchIn(ctx context.Context, task Task, it model.Item, m
 
 // taskCommand resolves the configured command and record title for task.
 func (d *Dispatcher) taskCommand(task Task, it model.Item) (string, []string, string, error) {
-	tc, ok := d.opts.Tasks[string(task)]
+	tc, ok := d.o().Tasks[string(task)]
 	if !ok || tc.Command == "" {
 		return "", nil, "", fmt.Errorf("no command configured for task %q", task)
 	}
@@ -512,7 +526,7 @@ func recordLive(r Record, agents []herdrAgent) bool {
 // checks run against the target machine; the ref must not be live on any
 // other machine (cross-machine dedupe).
 func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item, m Machine, co ghws.Checkout, name string, args []string, title string, auto bool) (Record, error) {
-	if !m.Local && d.opts.Runner != "herdr" {
+	if !m.Local && d.o().Runner != "herdr" {
 		return Record{}, fmt.Errorf("remote dispatch requires runner = %q", "herdr")
 	}
 	ref := it.Ref()
@@ -535,7 +549,7 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 	// cached snapshot can lag an agent that just exited (cross-machine
 	// accounting below tolerates the lag).
 	agents := snaps[m.key()].agents
-	if d.opts.Runner == "herdr" {
+	if d.o().Runner == "herdr" {
 		if fresh, _, err := herdrAgents(ctx, m); err == nil {
 			agents = fresh
 		}
@@ -568,7 +582,7 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 	// session scan below bootstraps opencode in the checkout, and a first
 	// bootstrap installs .opencode plugin deps, which can rewrite tracked
 	// files (package-lock.json) and make the checkout look dirty.
-	if d.opts.Dirty == "refuse" {
+	if d.o().Dirty == "refuse" {
 		if err := d.refuseDirty(ctx, m, co.Dir); err != nil {
 			return Record{}, err
 		}
@@ -582,7 +596,7 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 			}
 		}
 		for _, r := range rs {
-			if r.Directory == co.Dir && !ours[r.Title] && time.Since(time.UnixMilli(r.Updated)) < d.opts.BusyWindow {
+			if r.Directory == co.Dir && !ours[r.Title] && time.Since(time.UnixMilli(r.Updated)) < d.o().BusyWindow {
 				return Record{}, fmt.Errorf("busy: opencode session active in %s", co.Workspace)
 			}
 		}
@@ -602,7 +616,7 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 	}
 	startHead := strings.TrimSpace(orEmpty(m.Run(ctx, co.Dir, "git", "rev-parse", "HEAD")))
 
-	if d.opts.Runner == "herdr" {
+	if d.o().Runner == "herdr" {
 		rec, err := d.dispatchHerdr(ctx, task, it, m, co, name, args, title, stash, auto)
 		if !errors.Is(err, errHerdrDown) {
 			if err == nil {
@@ -648,12 +662,12 @@ func (d *Dispatcher) setStartHead(rec Record, head string) Record {
 // dispatchLocal launches a detached local opencode run (the fallback
 // runner when herdr is unavailable).
 func (d *Dispatcher) dispatchLocal(task Task, it model.Item, co ghws.Checkout, name string, args []string, title, stash string, auto bool) (Record, error) {
-	logPath := filepath.Join(d.opts.StateDir, "logs", fmt.Sprintf("%d-%s-%s.log", time.Now().Unix(), task, sanitize(it.Ref())))
+	logPath := filepath.Join(d.o().StateDir, "logs", fmt.Sprintf("%d-%s-%s.log", time.Now().Unix(), task, sanitize(it.Ref())))
 	f, err := os.Create(logPath)
 	if err != nil {
 		return Record{}, fmt.Errorf("create log: %w", err)
 	}
-	argv := append([]string{"run", "--agent", d.opts.Agent, "--title", title, "--command", name}, args...)
+	argv := append([]string{"run", "--agent", d.o().Agent, "--title", title, "--command", name}, args...)
 	cmd := exec.Command(opencodeBinary(), argv...)
 	if runsAsBot(task, it) {
 		cmd = botCommand(opencodeBinary(), argv)
@@ -741,7 +755,7 @@ func (d *Dispatcher) dispatchHerdr(ctx context.Context, task Task, it model.Item
 		return Record{}, fmt.Errorf("herdr pane ready: %w", err)
 	}
 	mode := d.modeFor(m)
-	tail := agentArgs(mode, d.opts.Agent, title, name, args)
+	tail := agentArgs(mode, d.o().Agent, title, name, args)
 	agentName := herdrAgentName(task, it.Num)
 	if err := herdrAgentStart(ctx, m, agentName, paneID, tail); err != nil {
 		// Registration can time out even though the command was typed and
@@ -789,7 +803,7 @@ func (d *Dispatcher) dispatchHerdr(ctx context.Context, task Task, it model.Item
 // human-readable messages, one per dispatch or notice.
 func (d *Dispatcher) AutoDispatch(ctx context.Context, items []model.Item) []string {
 	d.updateTrain(items)
-	if d.opts.LocalIndex == nil && len(d.remoteMachines()) == 0 {
+	if d.o().LocalIndex == nil && len(d.remoteMachines()) == 0 {
 		return nil
 	}
 	if !d.autoMu.TryLock() {
@@ -857,11 +871,11 @@ func (d *Dispatcher) MenuChoices(it model.Item) []MenuChoice {
 	v := d.cachedView()
 	var out []MenuChoice
 	for _, task := range MenuTasks(it) {
-		tc, ok := d.opts.Tasks[string(task)]
+		tc, ok := d.o().Tasks[string(task)]
 		if !ok || tc.Command == "" {
 			continue
 		}
-		cs := candidates(v, task, it.Ref(), it.Repo, it.HeadBranch, d.opts.InstancesOnly)
+		cs := candidates(v, task, it.Ref(), it.Repo, it.HeadBranch, d.o().InstancesOnly)
 		if len(cs) == 0 {
 			continue
 		}
@@ -888,8 +902,8 @@ func (d *Dispatcher) MachineUsage(ctx context.Context) []MachineUsage {
 			live[r.Machine]++
 		}
 	}
-	out := []MachineUsage{{Name: "local", Used: live[""], Max: d.opts.MaxConcurrent, OK: true}}
-	for _, m := range d.opts.Machines {
+	out := []MachineUsage{{Name: "local", Used: live[""], Max: d.o().MaxConcurrent, OK: true}}
+	for _, m := range d.o().Machines {
 		out = append(out, MachineUsage{
 			Name: m.Name,
 			Used: live[m.Name],
@@ -903,13 +917,13 @@ func (d *Dispatcher) MachineUsage(ctx context.Context) []MachineUsage {
 // localMachine is the hub machine; its slot count is the top-level
 // max_concurrent.
 func (d *Dispatcher) localMachine() Machine {
-	return Machine{Name: "local", Max: d.opts.MaxConcurrent, GhwsRoot: d.opts.Root, Enabled: true, Local: true}
+	return Machine{Name: "local", Max: d.o().MaxConcurrent, GhwsRoot: d.o().Root, Enabled: true, Local: true}
 }
 
 // remoteMachines returns the enabled remote machines in config order.
 func (d *Dispatcher) remoteMachines() []Machine {
 	var out []Machine
-	for _, m := range d.opts.Machines {
+	for _, m := range d.o().Machines {
 		if m.Enabled {
 			out = append(out, m)
 		}
@@ -919,7 +933,14 @@ func (d *Dispatcher) remoteMachines() []Machine {
 
 // machineFor resolves a record/session Machine field back to a Machine.
 func (d *Dispatcher) machineFor(name string) Machine {
-	for _, m := range d.opts.Machines {
+	for _, m := range d.o().Machines {
+		if m.Name == name {
+			return m
+		}
+	}
+	d.optsMu.RLock()
+	defer d.optsMu.RUnlock()
+	for _, m := range d.retired {
 		if m.Name == name {
 			return m
 		}
@@ -929,7 +950,7 @@ func (d *Dispatcher) machineFor(name string) Machine {
 
 // candidates returns ranked placements for the item (see scheduler.go).
 func (d *Dispatcher) candidates(ctx context.Context, task Task, it model.Item) []placement {
-	return candidates(d.buildState(ctx), task, it.Ref(), it.Repo, it.HeadBranch, d.opts.InstancesOnly)
+	return candidates(d.buildState(ctx), task, it.Ref(), it.Repo, it.HeadBranch, d.o().InstancesOnly)
 }
 
 // buildState assembles the scheduler's view: live records, reachability,
@@ -978,9 +999,9 @@ func (d *Dispatcher) cachedViewBase(snaps map[string]agentSnapshot, reach map[st
 		liveRefMachines: map[string]map[string]bool{},
 		liveDirs:        map[string]map[string]bool{},
 		draining:        d.drainSnapshot(),
-		index:           map[string]*ghws.Index{"": d.opts.LocalIndex},
+		index:           map[string]*ghws.Index{"": d.o().LocalIndex},
 	}
-	if d.opts.Runner != "herdr" {
+	if d.o().Runner != "herdr" {
 		v.remotes = nil // remote dispatch requires the herdr runner
 	}
 	for _, r := range d.snapshot() {
@@ -1060,13 +1081,13 @@ func listSessions(ctx context.Context, m Machine, dir string) ([]rawSession, err
 // of every checkout of that repo (each carries its own directory). One
 // listing per checkout took over a minute on a hub with ~100 checkouts.
 func (d *Dispatcher) sessionScanDirs() []string {
-	ix := d.opts.LocalIndex
+	ix := d.o().LocalIndex
 	if ix == nil {
-		return d.opts.Dirs
+		return d.o().Dirs
 	}
 	seen := map[string]bool{}
 	var out []string
-	for _, dir := range d.opts.Dirs {
+	for _, dir := range d.o().Dirs {
 		repo := ix.RepoFor(dir)
 		if repo != "" {
 			if seen[repo] {
@@ -1129,13 +1150,13 @@ func (d *Dispatcher) scanDir(ctx context.Context, m Machine, dir string) ([]rawS
 // checkout that shares it), after a run started or finished there.
 func (d *Dispatcher) invalidateScan(dir string) {
 	repo := ""
-	if ix := d.opts.LocalIndex; ix != nil {
+	if ix := d.o().LocalIndex; ix != nil {
 		repo = ix.RepoFor(dir)
 	}
 	d.scanMu.Lock()
 	defer d.scanMu.Unlock()
 	for k := range d.scans {
-		if samePath(k, dir) || (repo != "" && d.opts.LocalIndex.RepoFor(k) == repo) {
+		if samePath(k, dir) || (repo != "" && d.o().LocalIndex.RepoFor(k) == repo) {
 			delete(d.scans, k)
 		}
 	}
@@ -1198,7 +1219,7 @@ func (d *Dispatcher) Sessions(ctx context.Context) ([]Session, error) {
 		return nil, fmt.Errorf("opencode session list failed in all %d workspace dirs", errs)
 	}
 	recs := d.snapshot()
-	prefix := d.opts.Root
+	prefix := d.o().Root
 	if prefix != "" {
 		prefix = normPath(prefix)
 	}
@@ -1395,7 +1416,7 @@ func (d *Dispatcher) Watch(s Session) error {
 	if s.Log == "" {
 		return fmt.Errorf("no log for this session (not dispatched by gh-hud)")
 	}
-	cmdStr := d.opts.WatchCmd
+	cmdStr := d.o().WatchCmd
 	cmdStr = strings.ReplaceAll(cmdStr, "{log}", s.Log)
 	cmdStr = strings.ReplaceAll(cmdStr, "{session}", s.ID)
 	cmdStr = strings.ReplaceAll(cmdStr, "{dir}", s.Directory)
@@ -1412,7 +1433,7 @@ func (d *Dispatcher) watchHerdr(s Session) error {
 		defer cancel()
 		_, _ = herdrRun(ctx, m, "workspace", "focus", s.WSID)
 	}
-	cmdStr := d.opts.HerdrWatchCmd
+	cmdStr := d.o().HerdrWatchCmd
 	cmdStr = strings.ReplaceAll(cmdStr, "{workspace}", s.WSID)
 	cmdStr = strings.ReplaceAll(cmdStr, "{pane}", s.PaneID)
 	if !m.Local {
@@ -1473,11 +1494,11 @@ func (d *Dispatcher) preflight(ctx context.Context, m Machine, dir string, task 
 		// With dirty = refuse, dispatchCore already checked before the
 		// session scan; anything here appeared since (e.g. a lockfile the
 		// scan's opencode bootstrap rewrote) and still refuses.
-		switch d.opts.Dirty {
+		switch d.o().Dirty {
 		case "stash", "stash-tracked":
 			stash = fmt.Sprintf("gh-hud/%s/%s/%d", task, sanitize(ref), time.Now().Unix())
 			args := []string{"stash", "push", "-m", stash}
-			if d.opts.Dirty == "stash" {
+			if d.o().Dirty == "stash" {
 				args = append(args, "-u")
 			}
 			if _, err := git(args...); err != nil {
@@ -1519,7 +1540,7 @@ func (d *Dispatcher) snapshot() []Record {
 }
 
 func (d *Dispatcher) loadState() {
-	path := filepath.Join(d.opts.StateDir, "state.json")
+	path := filepath.Join(d.o().StateDir, "state.json")
 	if st, err := os.Stat(path); err == nil {
 		d.stateMod = st.ModTime()
 	}
@@ -1547,7 +1568,7 @@ func (d *Dispatcher) saveStateLocked() {
 	if err != nil {
 		return
 	}
-	path := filepath.Join(d.opts.StateDir, "state.json")
+	path := filepath.Join(d.o().StateDir, "state.json")
 	_ = os.WriteFile(path, data, 0o600)
 	if st, err := os.Stat(path); err == nil {
 		d.stateMod = st.ModTime()

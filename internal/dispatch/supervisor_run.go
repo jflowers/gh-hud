@@ -172,7 +172,7 @@ func (d *Dispatcher) superviseRuns() []string {
 		return !ok || !p.Decision.Facts.equal(c.CaseFacts)
 	})
 	changed := len(d.proposals) != n
-	if d.opts.Supervisor.Enabled {
+	if d.o().Supervisor.Enabled {
 		for _, c := range cases {
 			if len(d.supRunning) >= supervisorMaxRunning {
 				break
@@ -199,7 +199,7 @@ func (d *Dispatcher) superviseRuns() []string {
 
 // runCase runs the supervisor on one case and files its proposal.
 func (d *Dispatcher) runCase(c Case, brief string) {
-	timeout := time.Duration(d.opts.Supervisor.TimeoutSecs) * time.Second
+	timeout := time.Duration(d.o().Supervisor.TimeoutSecs) * time.Second
 	if timeout <= 0 {
 		timeout = 10 * time.Minute
 	}
@@ -220,7 +220,7 @@ func (d *Dispatcher) runCase(c Case, brief string) {
 	dec.Facts = c.CaseFacts
 	p.Decision = dec
 
-	apply := dec.Kind == DecideEscalate || d.opts.Supervisor.Mode == "act"
+	apply := dec.Kind == DecideEscalate || d.o().Supervisor.Mode == "act"
 	if apply {
 		p.Status = ProposalApplied
 		if aerr := d.acceptDecision(dec); aerr != nil {
@@ -493,7 +493,7 @@ func (d *Dispatcher) askSupervisor(ctx context.Context, c Case, brief, id string
 // accepts its output, at most twice: a refused answer gets one retry that
 // says why. It returns the run's log path.
 func (d *Dispatcher) askAgent(ctx context.Context, title, brief, id string, check func(out []byte) error) (string, error) {
-	base := filepath.Join(d.opts.StateDir, supervisorDir)
+	base := filepath.Join(d.o().StateDir, supervisorDir)
 	cfgDir := filepath.Join(base, "opencode")
 	work := filepath.Join(base, "work")
 	logs := filepath.Join(base, "runs")
@@ -517,7 +517,7 @@ func (d *Dispatcher) askAgent(ctx context.Context, title, brief, id string, chec
 	prompt, session := brief, ""
 	var lastErr error
 	for attempt := 1; attempt <= 2; attempt++ {
-		out, err := run(ctx, supervisorSpec{Dir: work, ConfigDir: cfgDir, Model: d.opts.Supervisor.Model,
+		out, err := run(ctx, supervisorSpec{Dir: work, ConfigDir: cfgDir, Model: d.o().Supervisor.Model,
 			Title: title, Prompt: prompt, Session: session})
 		appendLog(logPath, out)
 		perr := check(out)
@@ -649,7 +649,7 @@ func lastJSONBlock(s string) (string, bool) {
 // proposals.json
 
 func (d *Dispatcher) loadProposalsLocked() {
-	path := filepath.Join(d.opts.StateDir, proposalsName)
+	path := filepath.Join(d.o().StateDir, proposalsName)
 	if st, err := os.Stat(path); err == nil {
 		d.proposalsMod = st.ModTime()
 	}
@@ -674,7 +674,7 @@ func (d *Dispatcher) saveProposalsLocked() {
 	if err != nil {
 		return
 	}
-	path := filepath.Join(d.opts.StateDir, proposalsName)
+	path := filepath.Join(d.o().StateDir, proposalsName)
 	if writeAtomic(path, data) {
 		if st, err := os.Stat(path); err == nil {
 			d.proposalsMod = st.ModTime()

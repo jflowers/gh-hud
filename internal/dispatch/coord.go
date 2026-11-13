@@ -51,7 +51,7 @@ func (d *Dispatcher) acquireOwnership() bool {
 	if d.lock != nil {
 		return true
 	}
-	path := filepath.Join(d.opts.StateDir, lockName)
+	path := filepath.Join(d.o().StateDir, lockName)
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600)
 	if err != nil {
 		return false
@@ -95,7 +95,7 @@ func (d *Dispatcher) Owner() (bool, string) {
 	if d.owns() {
 		return true, ""
 	}
-	data, err := os.ReadFile(filepath.Join(d.opts.StateDir, lockName))
+	data, err := os.ReadFile(filepath.Join(d.o().StateDir, lockName))
 	if err != nil {
 		return false, ""
 	}
@@ -129,19 +129,19 @@ func (d *Dispatcher) refreshFollowerLocked() {
 	if owner {
 		return
 	}
-	if st, err := os.Stat(filepath.Join(d.opts.StateDir, queueName)); err == nil && !st.ModTime().Equal(d.queueMod) {
+	if st, err := os.Stat(filepath.Join(d.o().StateDir, queueName)); err == nil && !st.ModTime().Equal(d.queueMod) {
 		d.loadQueueLocked()
 	}
-	if st, err := os.Stat(filepath.Join(d.opts.StateDir, decisionsName)); err == nil && !st.ModTime().Equal(d.decisionsMod) {
+	if st, err := os.Stat(filepath.Join(d.o().StateDir, decisionsName)); err == nil && !st.ModTime().Equal(d.decisionsMod) {
 		d.loadDecisionsLocked()
 	}
-	if st, err := os.Stat(filepath.Join(d.opts.StateDir, proposalsName)); err == nil && !st.ModTime().Equal(d.proposalsMod) {
+	if st, err := os.Stat(filepath.Join(d.o().StateDir, proposalsName)); err == nil && !st.ModTime().Equal(d.proposalsMod) {
 		d.loadProposalsLocked()
 	}
-	if st, err := os.Stat(filepath.Join(d.opts.StateDir, epicsName)); err == nil && !st.ModTime().Equal(d.epicsMod) {
+	if st, err := os.Stat(filepath.Join(d.o().StateDir, epicsName)); err == nil && !st.ModTime().Equal(d.epicsMod) {
 		d.loadEpicsLocked()
 	}
-	st, err := os.Stat(filepath.Join(d.opts.StateDir, "state.json"))
+	st, err := os.Stat(filepath.Join(d.o().StateDir, "state.json"))
 	if err != nil || st.ModTime().Equal(d.stateMod) {
 		return
 	}
@@ -322,7 +322,7 @@ func stageOf(it model.Item, runs []Run, tasks map[string]config.TaskConfig, am c
 // Stage reports a PR's stage in the auto pipeline from the given runs
 // (as Runs returns them). No I/O.
 func (d *Dispatcher) Stage(it model.Item, runs []Run) Stage {
-	return stageOf(it, runs, d.opts.Tasks, d.opts.AutoMerge, d.trainSnapshot(), time.Now())
+	return stageOf(it, runs, d.o().Tasks, d.o().AutoMerge, d.trainSnapshot(), time.Now())
 }
 
 // Holds reports whether a PR has an agent step running or still to come,
