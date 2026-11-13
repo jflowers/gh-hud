@@ -7,6 +7,10 @@ import "context"
 // machines are removed from agent placement (pickMachines) but stay visible
 // in the sessions panel and status line.
 
+// drainAgents fetches a machine's herdr agent list for LiveOn when the
+// scheduler does not poll that machine; a variable so tests can stub herdr.
+var drainAgents = herdrAgents
+
 // drainKey normalizes a machine name to the Record.Machine key ("local" and
 // "" both name the hub).
 func drainKey(name string) string {
@@ -52,6 +56,11 @@ func (d *Dispatcher) drainSnapshot() map[string]bool {
 // working or blocked in its panes. ok is false when the machine's agent list
 // could not be fetched (the caller should keep waiting). The local machine
 // without the herdr runner has no herdr agents by construction.
+//
+// A machine with enabled = false still gets fleet rollouts but is never in
+// the scheduler's agent snapshot (agentsSnapshot polls enabled remotes
+// only), so its herdr is asked directly; reading the missing snapshot entry
+// as "unreachable" would hold its drain forever.
 func (d *Dispatcher) LiveOn(ctx context.Context, name string) (records, agents int, ok bool) {
 	key := drainKey(name)
 	m := d.localMachine()
@@ -68,7 +77,12 @@ func (d *Dispatcher) LiveOn(ctx context.Context, name string) (records, agents i
 		}
 	}
 	snaps := d.agentsSnapshot(ctx)
-	snap := snaps[m.key()]
+	snap, polled := snaps[m.key()]
+	if !polled {
+		if list, _, err := drainAgents(ctx, m); err == nil {
+			snap = agentSnapshot{agents: list, ok: true}
+		}
+	}
 	for _, r := range d.snapshot() {
 		if r.Machine == m.key() && recordLive(r, snap.agents) {
 			records++

@@ -645,7 +645,7 @@ worker reached over ssh:
 | `max_concurrent` | 2 | agents gh-hud runs there at once |
 | `ghws_root` | `~/Projects/github` | ghws root on that machine |
 | `tasks` | all | allowlist of tasks the machine accepts, e.g. `["review", "ci"]` |
-| `enabled` | true | `false` takes the machine out of placement and polling |
+| `enabled` | true | `false` takes the machine out of placement and polling; fleet rollouts still reach it (a drain asks its herdr directly) |
 | `dispatch_mode` | top-level | `run` (headless) or `tui` for agents on this machine |
 
 Placement ranks the machines that qualify for a dispatch (enabled,
@@ -847,7 +847,8 @@ target — shown in the view and notified once per sha.
 
 Per machine the rollout walks: `current` → `draining` (marked so the
 dispatch scheduler places no new agents there; waits for live gh-hud
-records and working/blocked herdr agents to hit zero, notifying once after
+records and working/blocked herdr agents to hit zero, asking a machine's herdr
+directly when it has `enabled = false`, notifying once after
 `max_wait` but never forcing) → `applying` (`fleet-apply <sha>`, 30m
 timeout, cancellable) → `verifying` (`fleet-apply --check` plus `--status`
 == target) → `current`, undrain, next machine. A failure records the last
