@@ -86,6 +86,10 @@ func planStatus(r dispatch.PlanRow) (string, lipgloss.Color) {
 			return r.Note, cRed
 		}
 	}
+	if r.Epic != "" && (r.Stage.Kind == dispatch.StageNext || r.Stage.Kind == dispatch.StageRunning) {
+		what := map[dispatch.StageKind]string{dispatch.StageNext: "next free slot", dispatch.StageRunning: "running"}[r.Stage.Kind]
+		return what + " · epic " + r.Epic, map[dispatch.StageKind]lipgloss.Color{dispatch.StageNext: cGreen, dispatch.StageRunning: cTeal}[r.Stage.Kind]
+	}
 	switch r.Stage.Kind {
 	case dispatch.StageNext:
 		return "next free slot", cGreen

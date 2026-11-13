@@ -363,6 +363,7 @@ func dispatchOptions(cfg *config.Config, stateDir string, wsDirs []string, idx *
 		Tasks:         cfg.Dispatch,
 		AutoMerge:     cfg.AutoMerge,
 		Supervisor:    cfg.Supervisor,
+		Epics:         cfg.Epics,
 		WatchCmd:      cfg.AgentWatchCmd,
 		Runner:        cfg.Runner,
 		Mode:          cfg.DispatchMode,

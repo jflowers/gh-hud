@@ -208,6 +208,9 @@ type PlanRow struct {
 	// Missing is set on a queued row whose PR wasn't in the latest refresh
 	// (merged, closed, or a section failed to load).
 	Missing bool
+	// Epic is the epic (owner/repo#N) a piece's row comes from; such a
+	// row's Item is the piece's issue (epic_run.go).
+	Epic string
 }
 
 // Starts reports whether the next pass tries to start this row.
@@ -278,6 +281,7 @@ func (d *Dispatcher) Plan(items []model.Item, runs []Run) []PlanRow {
 		}
 		auto = append(auto, PlanRow{Item: it, Task: st.Task, Stage: st})
 	}
+	auto = append(auto, d.epicRows(runs, queued, seen)...)
 	slices.SortStableFunc(auto, func(a, b PlanRow) int { return order[a.Stage.Kind] - order[b.Stage.Kind] })
 	return append(rows, auto...)
 }

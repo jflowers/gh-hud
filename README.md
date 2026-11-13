@@ -636,9 +636,37 @@ waits for you.
   | ⏸ | gated | It waits on a condition only you can clear. |
   | ! | blocked | It waits on a piece that was dropped. |
 - **Approving** a plan is consent to start its ready pieces, within the
-  epic's caps. Starting them comes in the next step of #22. A plan has an
-  ID, so you approve the plan you saw. If the epic's body changes, the
-  plan is marked stale until you reread it.
+  epic's caps. A plan has an ID, so you approve the plan you saw. If the
+  epic's body changes, the plan is marked stale and nothing more starts
+  until you reread it and approve the new plan.
+
+**Running an approved epic.** Its pieces get rows in the Plan tab, and the
+auto pass starts them like any other step:
+
+- **Next.** A ready piece is next (`next free slot · epic acme/app#100`)
+  while fewer than `max_active` of the epic's pieces are active. Active
+  means an agent is on it or a PR for it is open. Past that, it waits
+  (`epic: 2 active (max 2)`).
+- **What a piece runs.** The `issue` task. With `/uf.run-pipeline-plan`,
+  gh-hud writes a one-item plan file for the piece in `/tmp/gh-hud-epics/`
+  on the machine that takes it, and passes that instead of `#N`. The
+  item's description carries the epic's title, the piece's phase and the
+  epic's rules, so the agent knows the constraints. It also skips the
+  command's question about how to group bare issues.
+- **Once a PR opens,** the piece leaves the epic's rows and the PR goes
+  through the usual pipeline: ci, feedback, review, the merge train. The
+  piece is done when its issue closes.
+- **When it stops.** A piece gets `max_runs` runs after approval. After a
+  run that left no PR, the next one waits 15 minutes (`epic: ran, no PR
+  yet`). Once out of runs it's yours (`epic: 2 runs, still no PR`). Gated
+  and blocked pieces need you too. A piece that can't start says why once:
+  `epic acme/app#100: acme/app#2 didn't start: …`.
+
+```toml
+[epics]
+max_active = 2   # pieces of one epic active at once
+max_runs = 2     # runs per piece before it's left to you
+```
 
 Epics are kept in `epics.json` in the state dir.
 

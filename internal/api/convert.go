@@ -443,6 +443,7 @@ func planRowToPB(r dispatch.PlanRow) *pb.PlanRow {
 		Queued:  int64(r.Queued),
 		Note:    r.Note,
 		Missing: r.Missing,
+		Epic:    r.Epic,
 	}
 }
 
@@ -452,6 +453,7 @@ func planRowFromPB(p *pb.PlanRow) dispatch.PlanRow {
 		Queued:  int(p.GetQueued()),
 		Note:    p.GetNote(),
 		Missing: p.GetMissing(),
+		Epic:    p.GetEpic(),
 	}
 	if p.GetItem() != nil {
 		r.Item = ItemFromPB(p.GetItem())
