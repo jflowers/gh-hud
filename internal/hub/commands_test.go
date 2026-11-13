@@ -39,6 +39,12 @@ func (d *fakeDisp) Plan(items []model.Item, _ []dispatch.Run) []dispatch.PlanRow
 	return rows
 }
 
+func (d *fakeDisp) Cases() []dispatch.Case { return nil }
+
+func (d *fakeDisp) Approve(id string) error { d.record("Approve %s", id); return nil }
+
+func (d *fakeDisp) Reject(id string) error { d.record("Reject %s", id); return nil }
+
 func (d *fakeDisp) Queue() []dispatch.QueueEntry {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -263,5 +269,19 @@ func TestQueueWithRealDispatcher(t *testing.T) {
 	}
 	if len(s.Plan) < 2 || s.Plan[0].Item.Ref() != "acme/r#2" || s.Plan[0].Queued != 1 {
 		t.Errorf("plan = %+v", s.Plan)
+	}
+}
+
+func TestProposalCommands(t *testing.T) {
+	d := &fakeDisp{owner: true}
+	h := withItems(t, d)
+	if err := h.ApproveProposal(t.Context(), "p1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.RejectProposal(t.Context(), "p2"); err != nil {
+		t.Fatal(err)
+	}
+	if calls := d.Calls(); !slices.Contains(calls, "Approve p1") || !slices.Contains(calls, "Reject p2") {
+		t.Errorf("calls = %v", calls)
 	}
 }

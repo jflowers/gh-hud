@@ -177,6 +177,14 @@ func (s *Server) Unqueue(ctx context.Context, req *connect.Request[pb.UnqueueReq
 	return reply(&pb.UnqueueResponse{}, err)
 }
 
+func (s *Server) ApproveProposal(ctx context.Context, req *connect.Request[pb.ApproveProposalRequest]) (*connect.Response[pb.ApproveProposalResponse], error) {
+	return reply(&pb.ApproveProposalResponse{}, s.b.ApproveProposal(ctx, req.Msg.GetId()))
+}
+
+func (s *Server) RejectProposal(ctx context.Context, req *connect.Request[pb.RejectProposalRequest]) (*connect.Response[pb.RejectProposalResponse], error) {
+	return reply(&pb.RejectProposalResponse{}, s.b.RejectProposal(ctx, req.Msg.GetId()))
+}
+
 func (s *Server) MoveQueued(ctx context.Context, req *connect.Request[pb.MoveQueuedRequest]) (*connect.Response[pb.MoveQueuedResponse], error) {
 	i, err := s.b.MoveQueued(ctx, dispatch.Task(req.Msg.GetTask()), req.Msg.GetRef(), int(req.Msg.GetDelta()))
 	if err != nil {

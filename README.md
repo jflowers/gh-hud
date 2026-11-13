@@ -530,6 +530,55 @@ the group, or main's commit. A PR with a failure of its own still gets its
 `ci` agent whatever the decision. The fix PR must be one gh-hud can see,
 which means it's yours, waiting on your review, or mentions you.
 
+### The supervisor agent
+
+gh-hud can answer cases itself. With the supervisor on, the owning gh-hud
+starts a headless, read-only opencode run whenever a case opens with no
+decision:
+
+```toml
+[supervisor]
+enabled = true
+mode = "propose"   # or "act"
+model = ""         # provider/model; empty uses opencode's default
+timeout_secs = 600
+```
+
+- **Where it runs.** On the hub's machine, outside the slots, one run at a
+  time, in an empty folder under the state dir (`supervisor/work`).
+- **What it can do.** It runs as the `hud-supervisor` agent, which gh-hud
+  ships and writes to `supervisor/opencode/agents/`. gh-hud points
+  `OPENCODE_CONFIG_DIR` there and turns off project config, so the agent is
+  the same whatever repo the case is in. Its tools are denied by default:
+  it can read files and run read-only `gh pr`, `gh run` and
+  `gh issue view` commands, and nothing else. Your global opencode config,
+  plugins and guards still load.
+- **Keys.** The shell that starts it loads `~/.config/agent-env` for the
+  model keys, then unsets `UF_DIVISOR_GH_TOKEN` and `GH_TOKEN`.
+  Key values never pass through gh-hud.
+- **The brief.** The run gets the case's facts: the repo, the check, the
+  failing PRs and whether main fails it too. It also gets the other open PRs
+  gh-hud sees in the repo, and the two answers allowed. It ends with one
+  fenced json block.
+- **Checking the answer.** gh-hud checks the answer like a decision from
+  the inbox. If it's refused, the agent gets one retry that says why. After
+  that, gh-hud escalates for it: "the supervisor found no answer". Run
+  logs are kept in `supervisor/runs/`.
+
+What happens to an answer:
+
+- An **escalation** applies at once. It only changes what the PRs say.
+- A **`link_fix`** in `propose` mode waits for you. The case's PRs show
+  `▸you: ci approve: fix in #1031?`. The Plan tab lists the case with the
+  evidence, and `Y` approves or `N` rejects it. Other clients use the hub's
+  `ApproveProposal` and `RejectProposal` calls. In `act` mode it applies as
+  soon as it passes gh-hud's check.
+
+While a run is going, the PRs show `▸ci supervisor looking`. A case gets
+one run per set of facts. An approved, rejected or applied proposal holds
+off another run until the case's PRs or main's commit change. Proposals
+are kept in `proposals.json`.
+
 ## Configuring dispatch
 
 Dispatch is configured in three layers, all in `config.toml`:

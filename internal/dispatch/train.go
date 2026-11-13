@@ -51,6 +51,11 @@ type trainPlan struct {
 	// fix PRs they put first (supervisor.go).
 	live map[string]Decision
 	prio map[string]bool
+	// items are the refresh the plan was built from; sup is the supervisor
+	// agent's state by case id (supervisor_run.go). The plan is never
+	// changed in place: a supervisor update swaps in a copy.
+	items []model.Item
+	sup   map[string]supState
 }
 
 // approved reports whether a PR has the approvals its base branch needs.
@@ -203,7 +208,9 @@ func (d *Dispatcher) updateTrain(items []model.Item) {
 		prev = d.train.head
 	}
 	d.train = buildTrain(items, prev)
+	d.train.items = items
 	d.train.applyDecisions(items, d.decisions)
+	d.train.sup = d.supStatesLocked()
 	d.noteBaseLocked()
 	d.train.rearm = map[string][]string{}
 	cfg := d.opts.AutoMerge

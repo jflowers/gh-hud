@@ -208,6 +208,8 @@ type Options struct {
 	LearningsPR bool
 	// AutoMerge says where to turn on auto-merge (automerge.go).
 	AutoMerge config.AutoMergeConfig
+	// Supervisor configures the supervisor agent (supervisor_run.go).
+	Supervisor config.SupervisorConfig
 }
 
 // Dispatcher launches and tracks agent sessions.
@@ -264,6 +266,16 @@ type Dispatcher struct {
 	// guarded by mu; decisionsMod is decisions.json's mtime.
 	decisions    []Decision
 	decisionsMod time.Time
+	// proposals are the supervisor agent's answers (supervisor_run.go),
+	// guarded by mu; proposalsMod is proposals.json's mtime and supRunning
+	// the cases with a run in flight.
+	proposals    []Proposal
+	proposalsMod time.Time
+	supRunning   map[string]bool
+	supNotes     []string
+	// supervisorRun runs one supervisor agent and returns its output; a
+	// test hook (nil uses runOpencodeSupervisor).
+	supervisorRun func(ctx context.Context, spec supervisorSpec) ([]byte, error)
 }
 
 // agentSnapshot is one machine's live herdr agent list.
@@ -355,6 +367,7 @@ func New(opts Options) (*Dispatcher, error) {
 	d.loadState()
 	d.loadQueueLocked()
 	d.loadDecisionsLocked()
+	d.loadProposalsLocked()
 	d.acquireOwnership()
 	return d, nil
 }

@@ -111,3 +111,40 @@ func TestPlanRefKeepsNumber(t *testing.T) {
 		t.Errorf("planRef = %q", got)
 	}
 }
+
+func TestPlanShowsCasesAndSettlesProposals(t *testing.T) {
+	a := model.Item{Kind: model.KindPR, Cats: model.CatMy, Repo: "acme/r", Num: 1, Title: "feat: one", URL: "u1"}
+	fake := &hubtest.Fake{}
+	prop := &dispatch.Proposal{ID: "p1", Status: dispatch.ProposalPending,
+		Decision: dispatch.Decision{Case: "shared_failure|acme/r|OSV", Kind: dispatch.DecideLinkFix, FixPR: 9, Summary: "#9 bumps the dependency"}}
+	fake.SetSnap(hub.Snapshot{Seq: 1, Dispatch: true,
+		Res: &model.FetchResult{Items: []model.Item{a}},
+		Plan: []dispatch.PlanRow{{Item: a, Task: dispatch.TaskCI,
+			Stage: dispatch.Stage{Kind: dispatch.StageNeedsYou, Task: dispatch.TaskCI, Reason: "approve: fix in #9?"}}},
+		Cases: []dispatch.Case{
+			{ID: "shared_failure|acme/r|OSV", Kind: dispatch.CaseSharedFailure, Repo: "acme/r", Check: "OSV",
+				CaseFacts: dispatch.CaseFacts{PRs: []int{1, 2}, OnBase: true}, Proposal: prop},
+			{ID: "shared_failure|acme/r|Lint", Kind: dispatch.CaseSharedFailure, Repo: "acme/r", Check: "Lint",
+				CaseFacts: dispatch.CaseFacts{PRs: []int{3, 4}}, Supervising: true},
+		},
+	})
+	m := New(config.Default(), fake)
+	m.width, m.height = 160, 30
+	key := func(k string) { m.handleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)}) }
+	key("p")
+	view := ansiRe.ReplaceAllString(m.View(), "")
+	for _, want := range []string{"cases", "acme/r OSV  2 PRs, main too", "supervisor proposes fix in #9: Y approve · N reject",
+		"#9 bumps the dependency", "acme/r Lint  2 PRs", "supervisor looking", "Y approve"} {
+		if !strings.Contains(view, want) {
+			t.Errorf("plan view missing %q:\n%s", want, view)
+		}
+	}
+	key("Y")
+	if fake.Called("ApproveProposal p1") != 1 {
+		t.Error("Y didn't approve p1")
+	}
+	key("N")
+	if fake.Called("RejectProposal p1") != 1 {
+		t.Error("N didn't reject p1")
+	}
+}

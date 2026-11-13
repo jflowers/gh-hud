@@ -107,6 +107,7 @@ func SnapshotToPB(s hub.Snapshot) *pb.Snapshot {
 		AgentsAt:          ts(s.AgentsAt),
 		Plan:              mapSlice(s.Plan, planRowToPB),
 		Queue:             mapSlice(s.Queue, queueEntryToPB),
+		Cases:             mapSlice(s.Cases, caseToPB),
 		Workspaces:        mapSlice(s.Workspaces, checkoutToPB),
 		WorkspacesAt:      ts(s.WorkspacesAt),
 		WorkspacesLoading: s.WorkspacesLoading,
@@ -141,6 +142,7 @@ func SnapshotFromPB(p *pb.Snapshot) hub.Snapshot {
 		AgentsAt:          fromTS(p.GetAgentsAt()),
 		Plan:              mapSlice(p.GetPlan(), planRowFromPB),
 		Queue:             mapSlice(p.GetQueue(), queueEntryFromPB),
+		Cases:             mapSlice(p.GetCases(), caseFromPB),
 		Workspaces:        mapSlice(p.GetWorkspaces(), checkoutFromPB),
 		WorkspacesAt:      fromTS(p.GetWorkspacesAt()),
 		WorkspacesLoading: p.GetWorkspacesLoading(),
@@ -453,6 +455,60 @@ func planRowFromPB(p *pb.PlanRow) dispatch.PlanRow {
 		r.Stage = stageFromPB(p.GetStage())
 	}
 	return r
+}
+
+func caseToPB(c dispatch.Case) *pb.Case {
+	out := &pb.Case{Id: c.ID, Kind: string(c.Kind), Repo: c.Repo, Check: c.Check,
+		Facts: factsToPB(c.CaseFacts), Supervising: c.Supervising}
+	if c.Decision != nil {
+		out.Decision = decisionToPB(*c.Decision)
+	}
+	if c.Proposal != nil {
+		out.Proposal = proposalToPB(*c.Proposal)
+	}
+	return out
+}
+
+func caseFromPB(p *pb.Case) dispatch.Case {
+	c := dispatch.Case{ID: p.GetId(), Kind: dispatch.CaseKind(p.GetKind()), Repo: p.GetRepo(), Check: p.GetCheck(),
+		CaseFacts: factsFromPB(p.GetFacts()), Supervising: p.GetSupervising()}
+	if p.GetDecision() != nil {
+		d := decisionFromPB(p.GetDecision())
+		c.Decision = &d
+	}
+	if p.GetProposal() != nil {
+		pr := proposalFromPB(p.GetProposal())
+		c.Proposal = &pr
+	}
+	return c
+}
+
+func factsToPB(f dispatch.CaseFacts) *pb.CaseFacts {
+	return &pb.CaseFacts{Prs: mapSlice(f.PRs, func(n int) int64 { return int64(n) }), OnBase: f.OnBase, BaseOid: f.BaseOID}
+}
+
+func factsFromPB(p *pb.CaseFacts) dispatch.CaseFacts {
+	return dispatch.CaseFacts{PRs: mapSlice(p.GetPrs(), func(n int64) int { return int(n) }), OnBase: p.GetOnBase(), BaseOID: p.GetBaseOid()}
+}
+
+func decisionToPB(d dispatch.Decision) *pb.Decision {
+	return &pb.Decision{CaseId: d.Case, Kind: string(d.Kind), FixPr: int64(d.FixPR), Summary: d.Summary,
+		Options: d.Options, By: d.By, Facts: factsToPB(d.Facts), Decided: ts(d.Decided)}
+}
+
+func decisionFromPB(p *pb.Decision) dispatch.Decision {
+	return dispatch.Decision{Case: p.GetCaseId(), Kind: dispatch.DecisionKind(p.GetKind()), FixPR: int(p.GetFixPr()),
+		Summary: p.GetSummary(), Options: p.GetOptions(), By: p.GetBy(), Facts: factsFromPB(p.GetFacts()), Decided: fromTS(p.GetDecided())}
+}
+
+func proposalToPB(p dispatch.Proposal) *pb.Proposal {
+	return &pb.Proposal{Id: p.ID, Decision: decisionToPB(p.Decision), Status: string(p.Status), Created: ts(p.Created),
+		NoAnswer: p.NoAnswer, Note: p.Note, Log: p.Log}
+}
+
+func proposalFromPB(p *pb.Proposal) dispatch.Proposal {
+	return dispatch.Proposal{ID: p.GetId(), Decision: decisionFromPB(p.GetDecision()), Status: dispatch.ProposalStatus(p.GetStatus()),
+		Created: fromTS(p.GetCreated()), NoAnswer: p.GetNoAnswer(), Note: p.GetNote(), Log: p.GetLog()}
 }
 
 func queueEntryToPB(e dispatch.QueueEntry) *pb.QueueEntry {

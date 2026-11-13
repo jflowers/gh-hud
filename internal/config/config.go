@@ -78,6 +78,9 @@ type Config struct {
 	Dispatch          map[string]TaskConfig `toml:"dispatch"`
 	// AutoMerge turns on GitHub auto-merge for your PRs ([auto_merge]).
 	AutoMerge AutoMergeConfig `toml:"auto_merge"`
+	// Supervisor starts a read-only agent on cases the rules can't settle
+	// ([supervisor]).
+	Supervisor SupervisorConfig `toml:"supervisor"`
 	// Fleet is the GitOps rollout coordinator ([fleet]).
 	Fleet FleetConfig `toml:"fleet"`
 	// Hub is how other apps reach the hub ([hub]).
@@ -131,6 +134,21 @@ func Default() *Config {
 
 		BlockedNotifySecs: 180,
 	}
+}
+
+// SupervisorConfig turns on the supervisor agent: when the rules open a
+// case (a check failing on several of your PRs), gh-hud starts a headless,
+// read-only opencode run that investigates and proposes a decision.
+type SupervisorConfig struct {
+	Enabled bool `toml:"enabled"`
+	// Mode is "propose" (default): a proposal waits for you to approve it;
+	// or "act": a proposal that passes gh-hud's checks applies at once.
+	Mode string `toml:"mode"`
+	// Model is the opencode model, provider/model; empty uses opencode's
+	// default.
+	Model string `toml:"model"`
+	// TimeoutSecs bounds one run (default 600).
+	TimeoutSecs int `toml:"timeout_secs"`
 }
 
 // AutoMergeConfig says where gh-hud turns on GitHub auto-merge for your own
@@ -318,6 +336,16 @@ func Load(path string) (*Config, error) {
 	case "squash", "merge", "rebase":
 	default:
 		return nil, fmt.Errorf("auto_merge method %q: want squash, merge or rebase", cfg.AutoMerge.Method)
+	}
+	switch cfg.Supervisor.Mode {
+	case "":
+		cfg.Supervisor.Mode = "propose"
+	case "propose", "act":
+	default:
+		return nil, fmt.Errorf("supervisor mode %q: want propose or act", cfg.Supervisor.Mode)
+	}
+	if cfg.Supervisor.TimeoutSecs <= 0 {
+		cfg.Supervisor.TimeoutSecs = 600
 	}
 	if cfg.AutoMerge.HoldLabel == "" {
 		cfg.AutoMerge.HoldLabel = "hold"
