@@ -65,6 +65,12 @@ const (
 	HubServiceUnqueueProcedure = "/ghhud.v1.HubService/Unqueue"
 	// HubServiceMoveQueuedProcedure is the fully-qualified name of the HubService's MoveQueued RPC.
 	HubServiceMoveQueuedProcedure = "/ghhud.v1.HubService/MoveQueued"
+	// HubServiceApproveProposalProcedure is the fully-qualified name of the HubService's
+	// ApproveProposal RPC.
+	HubServiceApproveProposalProcedure = "/ghhud.v1.HubService/ApproveProposal"
+	// HubServiceRejectProposalProcedure is the fully-qualified name of the HubService's RejectProposal
+	// RPC.
+	HubServiceRejectProposalProcedure = "/ghhud.v1.HubService/RejectProposal"
 	// HubServiceWatchProcedure is the fully-qualified name of the HubService's Watch RPC.
 	HubServiceWatchProcedure = "/ghhud.v1.HubService/Watch"
 	// HubServiceWatchRunProcedure is the fully-qualified name of the HubService's WatchRun RPC.
@@ -96,6 +102,9 @@ type HubServiceClient interface {
 	Enqueue(context.Context, *connect.Request[v1.EnqueueRequest]) (*connect.Response[v1.EnqueueResponse], error)
 	Unqueue(context.Context, *connect.Request[v1.UnqueueRequest]) (*connect.Response[v1.UnqueueResponse], error)
 	MoveQueued(context.Context, *connect.Request[v1.MoveQueuedRequest]) (*connect.Response[v1.MoveQueuedResponse], error)
+	// Supervisor proposals (Snapshot.cases), by proposal id.
+	ApproveProposal(context.Context, *connect.Request[v1.ApproveProposalRequest]) (*connect.Response[v1.ApproveProposalResponse], error)
+	RejectProposal(context.Context, *connect.Request[v1.RejectProposalRequest]) (*connect.Response[v1.RejectProposalResponse], error)
 	// Viewers. They open a terminal window on the hub's machine.
 	Watch(context.Context, *connect.Request[v1.WatchRequest]) (*connect.Response[v1.WatchResponse], error)
 	WatchRun(context.Context, *connect.Request[v1.WatchRunRequest]) (*connect.Response[v1.WatchRunResponse], error)
@@ -176,6 +185,18 @@ func NewHubServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(hubServiceMethods.ByName("MoveQueued")),
 			connect.WithClientOptions(opts...),
 		),
+		approveProposal: connect.NewClient[v1.ApproveProposalRequest, v1.ApproveProposalResponse](
+			httpClient,
+			baseURL+HubServiceApproveProposalProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("ApproveProposal")),
+			connect.WithClientOptions(opts...),
+		),
+		rejectProposal: connect.NewClient[v1.RejectProposalRequest, v1.RejectProposalResponse](
+			httpClient,
+			baseURL+HubServiceRejectProposalProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("RejectProposal")),
+			connect.WithClientOptions(opts...),
+		),
 		watch: connect.NewClient[v1.WatchRequest, v1.WatchResponse](
 			httpClient,
 			baseURL+HubServiceWatchProcedure,
@@ -205,20 +226,22 @@ func NewHubServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 
 // hubServiceClient implements HubServiceClient.
 type hubServiceClient struct {
-	getSnapshot    *connect.Client[v1.GetSnapshotRequest, v1.GetSnapshotResponse]
-	subscribe      *connect.Client[v1.SubscribeRequest, v1.SubscribeResponse]
-	refresh        *connect.Client[v1.RefreshRequest, v1.RefreshResponse]
-	menuChoices    *connect.Client[v1.MenuChoicesRequest, v1.MenuChoicesResponse]
-	dispatch       *connect.Client[v1.DispatchRequest, v1.DispatchResponse]
-	reinspect      *connect.Client[v1.ReinspectRequest, v1.ReinspectResponse]
-	queueChoices   *connect.Client[v1.QueueChoicesRequest, v1.QueueChoicesResponse]
-	enqueue        *connect.Client[v1.EnqueueRequest, v1.EnqueueResponse]
-	unqueue        *connect.Client[v1.UnqueueRequest, v1.UnqueueResponse]
-	moveQueued     *connect.Client[v1.MoveQueuedRequest, v1.MoveQueuedResponse]
-	watch          *connect.Client[v1.WatchRequest, v1.WatchResponse]
-	watchRun       *connect.Client[v1.WatchRunRequest, v1.WatchRunResponse]
-	openTranscript *connect.Client[v1.OpenTranscriptRequest, v1.OpenTranscriptResponse]
-	fleetControl   *connect.Client[v1.FleetControlRequest, v1.FleetControlResponse]
+	getSnapshot     *connect.Client[v1.GetSnapshotRequest, v1.GetSnapshotResponse]
+	subscribe       *connect.Client[v1.SubscribeRequest, v1.SubscribeResponse]
+	refresh         *connect.Client[v1.RefreshRequest, v1.RefreshResponse]
+	menuChoices     *connect.Client[v1.MenuChoicesRequest, v1.MenuChoicesResponse]
+	dispatch        *connect.Client[v1.DispatchRequest, v1.DispatchResponse]
+	reinspect       *connect.Client[v1.ReinspectRequest, v1.ReinspectResponse]
+	queueChoices    *connect.Client[v1.QueueChoicesRequest, v1.QueueChoicesResponse]
+	enqueue         *connect.Client[v1.EnqueueRequest, v1.EnqueueResponse]
+	unqueue         *connect.Client[v1.UnqueueRequest, v1.UnqueueResponse]
+	moveQueued      *connect.Client[v1.MoveQueuedRequest, v1.MoveQueuedResponse]
+	approveProposal *connect.Client[v1.ApproveProposalRequest, v1.ApproveProposalResponse]
+	rejectProposal  *connect.Client[v1.RejectProposalRequest, v1.RejectProposalResponse]
+	watch           *connect.Client[v1.WatchRequest, v1.WatchResponse]
+	watchRun        *connect.Client[v1.WatchRunRequest, v1.WatchRunResponse]
+	openTranscript  *connect.Client[v1.OpenTranscriptRequest, v1.OpenTranscriptResponse]
+	fleetControl    *connect.Client[v1.FleetControlRequest, v1.FleetControlResponse]
 }
 
 // GetSnapshot calls ghhud.v1.HubService.GetSnapshot.
@@ -271,6 +294,16 @@ func (c *hubServiceClient) MoveQueued(ctx context.Context, req *connect.Request[
 	return c.moveQueued.CallUnary(ctx, req)
 }
 
+// ApproveProposal calls ghhud.v1.HubService.ApproveProposal.
+func (c *hubServiceClient) ApproveProposal(ctx context.Context, req *connect.Request[v1.ApproveProposalRequest]) (*connect.Response[v1.ApproveProposalResponse], error) {
+	return c.approveProposal.CallUnary(ctx, req)
+}
+
+// RejectProposal calls ghhud.v1.HubService.RejectProposal.
+func (c *hubServiceClient) RejectProposal(ctx context.Context, req *connect.Request[v1.RejectProposalRequest]) (*connect.Response[v1.RejectProposalResponse], error) {
+	return c.rejectProposal.CallUnary(ctx, req)
+}
+
 // Watch calls ghhud.v1.HubService.Watch.
 func (c *hubServiceClient) Watch(ctx context.Context, req *connect.Request[v1.WatchRequest]) (*connect.Response[v1.WatchResponse], error) {
 	return c.watch.CallUnary(ctx, req)
@@ -311,6 +344,9 @@ type HubServiceHandler interface {
 	Enqueue(context.Context, *connect.Request[v1.EnqueueRequest]) (*connect.Response[v1.EnqueueResponse], error)
 	Unqueue(context.Context, *connect.Request[v1.UnqueueRequest]) (*connect.Response[v1.UnqueueResponse], error)
 	MoveQueued(context.Context, *connect.Request[v1.MoveQueuedRequest]) (*connect.Response[v1.MoveQueuedResponse], error)
+	// Supervisor proposals (Snapshot.cases), by proposal id.
+	ApproveProposal(context.Context, *connect.Request[v1.ApproveProposalRequest]) (*connect.Response[v1.ApproveProposalResponse], error)
+	RejectProposal(context.Context, *connect.Request[v1.RejectProposalRequest]) (*connect.Response[v1.RejectProposalResponse], error)
 	// Viewers. They open a terminal window on the hub's machine.
 	Watch(context.Context, *connect.Request[v1.WatchRequest]) (*connect.Response[v1.WatchResponse], error)
 	WatchRun(context.Context, *connect.Request[v1.WatchRunRequest]) (*connect.Response[v1.WatchRunResponse], error)
@@ -387,6 +423,18 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(hubServiceMethods.ByName("MoveQueued")),
 		connect.WithHandlerOptions(opts...),
 	)
+	hubServiceApproveProposalHandler := connect.NewUnaryHandler(
+		HubServiceApproveProposalProcedure,
+		svc.ApproveProposal,
+		connect.WithSchema(hubServiceMethods.ByName("ApproveProposal")),
+		connect.WithHandlerOptions(opts...),
+	)
+	hubServiceRejectProposalHandler := connect.NewUnaryHandler(
+		HubServiceRejectProposalProcedure,
+		svc.RejectProposal,
+		connect.WithSchema(hubServiceMethods.ByName("RejectProposal")),
+		connect.WithHandlerOptions(opts...),
+	)
 	hubServiceWatchHandler := connect.NewUnaryHandler(
 		HubServiceWatchProcedure,
 		svc.Watch,
@@ -433,6 +481,10 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 			hubServiceUnqueueHandler.ServeHTTP(w, r)
 		case HubServiceMoveQueuedProcedure:
 			hubServiceMoveQueuedHandler.ServeHTTP(w, r)
+		case HubServiceApproveProposalProcedure:
+			hubServiceApproveProposalHandler.ServeHTTP(w, r)
+		case HubServiceRejectProposalProcedure:
+			hubServiceRejectProposalHandler.ServeHTTP(w, r)
 		case HubServiceWatchProcedure:
 			hubServiceWatchHandler.ServeHTTP(w, r)
 		case HubServiceWatchRunProcedure:
@@ -488,6 +540,14 @@ func (UnimplementedHubServiceHandler) Unqueue(context.Context, *connect.Request[
 
 func (UnimplementedHubServiceHandler) MoveQueued(context.Context, *connect.Request[v1.MoveQueuedRequest]) (*connect.Response[v1.MoveQueuedResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.MoveQueued is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) ApproveProposal(context.Context, *connect.Request[v1.ApproveProposalRequest]) (*connect.Response[v1.ApproveProposalResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.ApproveProposal is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) RejectProposal(context.Context, *connect.Request[v1.RejectProposalRequest]) (*connect.Response[v1.RejectProposalResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.RejectProposal is not implemented"))
 }
 
 func (UnimplementedHubServiceHandler) Watch(context.Context, *connect.Request[v1.WatchRequest]) (*connect.Response[v1.WatchResponse], error) {

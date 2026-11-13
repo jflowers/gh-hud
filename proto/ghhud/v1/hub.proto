@@ -42,6 +42,10 @@ service HubService {
   rpc Unqueue(UnqueueRequest) returns (UnqueueResponse);
   rpc MoveQueued(MoveQueuedRequest) returns (MoveQueuedResponse);
 
+  // Supervisor proposals (Snapshot.cases), by proposal id.
+  rpc ApproveProposal(ApproveProposalRequest) returns (ApproveProposalResponse);
+  rpc RejectProposal(RejectProposalRequest) returns (RejectProposalResponse);
+
   // Viewers. They open a terminal window on the hub's machine.
   rpc Watch(WatchRequest) returns (WatchResponse);
   rpc WatchRun(WatchRunRequest) returns (WatchRunResponse);
@@ -158,6 +162,18 @@ message MoveQueuedResponse {
   int64 index = 1; // 0 is first
 }
 
+message ApproveProposalRequest {
+  string id = 1;
+}
+
+message ApproveProposalResponse {}
+
+message RejectProposalRequest {
+  string id = 1;
+}
+
+message RejectProposalResponse {}
+
 message WatchRequest {
   string session_id = 1;
 }
@@ -223,6 +239,10 @@ message Snapshot {
   bool workspaces_loading = 17;
 
   FleetSnapshot fleet = 18; // unset when the fleet is off
+
+  // cases are what the rules can't settle, with the supervisor's
+  // decisions, runs and proposals.
+  repeated Case cases = 19;
 }
 
 message FetchResult {
@@ -399,6 +419,48 @@ message QueueEntry {
   string title = 3;
   google.protobuf.Timestamp added = 4;
   string last_error = 5;
+}
+
+// Case is something the rules can't settle (dispatch.Case).
+message Case {
+  string id = 1;   // kind|repo|check
+  string kind = 2; // open set: shared_failure
+  string repo = 3;
+  string check = 4;
+  CaseFacts facts = 5;
+  Decision decision = 6; // the live decision; unset when undecided
+  bool supervising = 7;  // a supervisor run is looking at it
+  Proposal proposal = 8; // a proposal waiting for you
+}
+
+// CaseFacts are what a case looked like.
+message CaseFacts {
+  repeated int64 prs = 1;
+  bool on_base = 2;
+  string base_oid = 3;
+}
+
+// Decision settles a case (dispatch.Decision).
+message Decision {
+  string case_id = 1;
+  string kind = 2; // open set: link_fix, escalate
+  int64 fix_pr = 3;
+  string summary = 4;
+  repeated string options = 5;
+  string by = 6;
+  CaseFacts facts = 7;
+  google.protobuf.Timestamp decided = 8;
+}
+
+// Proposal is the supervisor agent's answer to a case.
+message Proposal {
+  string id = 1;
+  Decision decision = 2;
+  string status = 3; // open set: pending, approved, rejected, applied, refused
+  google.protobuf.Timestamp created = 4;
+  bool no_answer = 5;
+  string note = 6;
+  string log = 7; // the run's output file on the hub's machine
 }
 
 // CheckoutHealth is whether a ghws checkout can take a dispatch.

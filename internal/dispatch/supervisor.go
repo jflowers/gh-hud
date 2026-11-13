@@ -81,6 +81,10 @@ type Case struct {
 	Check string   `json:"check"`
 	CaseFacts
 	Decision *Decision `json:"decision,omitempty"` // the live decision, if any
+	// Supervising says a supervisor run is looking at the case; Proposal
+	// is its answer waiting for you (supervisor_run.go).
+	Supervising bool      `json:"supervising,omitempty"`
+	Proposal    *Proposal `json:"proposal,omitempty"`
 }
 
 // Decision is a supervisor's answer to a case.
@@ -247,6 +251,9 @@ func (tp *trainPlan) openCases() []Case {
 			if dec, ok := tp.live[c.ID]; ok {
 				c.Decision = &dec
 			}
+			if st, ok := tp.sup[c.ID]; ok {
+				c.Supervising, c.Proposal = st.running, st.pending
+			}
 			out = append(out, c)
 		}
 	}
@@ -388,12 +395,13 @@ func writeAtomic(path string, data []byte) bool {
 }
 
 // superviseAndRebuild runs supervise and, when it accepted a decision,
-// rebuilds the train so the decision applies on this pass.
+// rebuilds the train so the decision applies on this pass. Then it starts
+// supervisor runs on the cases still undecided.
 func (d *Dispatcher) superviseAndRebuild(items []model.Item) []string {
 	msgs, accepted := d.supervise(items)
 	if accepted {
 		d.updateTrain(items)
 		d.writeCases()
 	}
-	return msgs
+	return append(msgs, d.superviseRuns()...)
 }

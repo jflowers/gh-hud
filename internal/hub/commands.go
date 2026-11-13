@@ -125,6 +125,32 @@ func (h *Hub) Enqueue(_ context.Context, task dispatch.Task, url string) (int, e
 	return len(h.Snapshot().Queue), nil
 }
 
+// ApproveProposal applies a supervisor proposal as a decision.
+func (h *Hub) ApproveProposal(_ context.Context, id string) error {
+	d, err := h.disp()
+	if err != nil {
+		return err
+	}
+	if err := d.Approve(id); err != nil {
+		return err
+	}
+	h.publish()
+	return nil
+}
+
+// RejectProposal drops a supervisor proposal.
+func (h *Hub) RejectProposal(_ context.Context, id string) error {
+	d, err := h.disp()
+	if err != nil {
+		return err
+	}
+	if err := d.Reject(id); err != nil {
+		return err
+	}
+	h.publish()
+	return nil
+}
+
 // Unqueue removes a task from your queue.
 func (h *Hub) Unqueue(_ context.Context, task dispatch.Task, ref string) error {
 	d, err := h.disp()

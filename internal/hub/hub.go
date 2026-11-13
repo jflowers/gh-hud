@@ -26,6 +26,9 @@ type Dispatcher interface {
 	Stage(it model.Item, runs []dispatch.Run) dispatch.Stage
 	Plan(items []model.Item, runs []dispatch.Run) []dispatch.PlanRow
 	Queue() []dispatch.QueueEntry
+	Cases() []dispatch.Case
+	Approve(id string) error
+	Reject(id string) error
 
 	MenuChoices(it model.Item) []dispatch.MenuChoice
 	Dispatch(ctx context.Context, task dispatch.Task, it model.Item, auto bool) (dispatch.Record, error)
@@ -78,6 +81,10 @@ type Backend interface {
 	Enqueue(ctx context.Context, task dispatch.Task, url string) (int, error)
 	Unqueue(ctx context.Context, task dispatch.Task, ref string) error
 	MoveQueued(ctx context.Context, task dispatch.Task, ref string, delta int) (int, error)
+
+	// Supervisor proposals, by proposal ID (Snapshot.Cases).
+	ApproveProposal(ctx context.Context, id string) error
+	RejectProposal(ctx context.Context, id string) error
 
 	// Viewers. They open a terminal window on the hub's machine.
 	Watch(ctx context.Context, sessionID string) error
@@ -154,6 +161,9 @@ type Snapshot struct {
 	// dispatcher.
 	Plan  []dispatch.PlanRow
 	Queue []dispatch.QueueEntry
+	// Cases are the open cases the rules can't settle, with the supervisor's
+	// decisions, runs and proposals; nil without a dispatcher.
+	Cases []dispatch.Case
 
 	Workspaces        []dispatch.CheckoutHealth
 	WorkspacesAt      time.Time
@@ -462,9 +472,11 @@ func (h *Hub) publish() {
 		stages map[string]dispatch.Stage
 		plan   []dispatch.PlanRow
 		queue  []dispatch.QueueEntry
+		cases  []dispatch.Case
 	)
 	if d := h.opts.Dispatcher; d != nil {
 		queue = d.Queue()
+		cases = d.Cases()
 		if cur.Res != nil {
 			stages = make(map[string]dispatch.Stage, len(cur.Res.Items))
 			for _, it := range cur.Res.Items {
@@ -479,6 +491,7 @@ func (h *Hub) publish() {
 	h.snap.Fleet = fs
 	h.snap.Stages = stages
 	h.snap.Plan, h.snap.Queue = plan, queue
+	h.snap.Cases = cases
 	snap := h.snap
 	h.mu.Unlock()
 

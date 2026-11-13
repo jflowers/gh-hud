@@ -288,6 +288,7 @@ func buildHub(cfg *config.Config, client *gh.Client, stateDir string) (h *hub.Hu
 		Dirty:         cfg.Dirty,
 		Tasks:         cfg.Dispatch,
 		AutoMerge:     cfg.AutoMerge,
+		Supervisor:    cfg.Supervisor,
 		WatchCmd:      cfg.AgentWatchCmd,
 		Runner:        cfg.Runner,
 		Mode:          cfg.DispatchMode,

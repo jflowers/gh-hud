@@ -117,6 +117,14 @@ func (f *Fake) Enqueue(_ context.Context, task dispatch.Task, url string) (int, 
 	return f.Pos, nil
 }
 
+func (f *Fake) ApproveProposal(_ context.Context, id string) error {
+	return f.call("ApproveProposal %s", id)
+}
+
+func (f *Fake) RejectProposal(_ context.Context, id string) error {
+	return f.call("RejectProposal %s", id)
+}
+
 func (f *Fake) Unqueue(_ context.Context, task dispatch.Task, ref string) error {
 	return f.call("Unqueue %s %s", task, ref)
 }

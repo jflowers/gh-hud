@@ -272,6 +272,20 @@ func (c *Client) Enqueue(ctx context.Context, task dispatch.Task, url string) (i
 	return int(resp.Msg.GetPosition()), nil
 }
 
+func (c *Client) ApproveProposal(ctx context.Context, id string) error {
+	ctx, cancel := withDeadline(ctx, callTimeout)
+	defer cancel()
+	_, err := c.rpc.ApproveProposal(ctx, connect.NewRequest(&pb.ApproveProposalRequest{Id: id}))
+	return fromConnect(err)
+}
+
+func (c *Client) RejectProposal(ctx context.Context, id string) error {
+	ctx, cancel := withDeadline(ctx, callTimeout)
+	defer cancel()
+	_, err := c.rpc.RejectProposal(ctx, connect.NewRequest(&pb.RejectProposalRequest{Id: id}))
+	return fromConnect(err)
+}
+
 func (c *Client) Unqueue(ctx context.Context, task dispatch.Task, ref string) error {
 	ctx, cancel := withDeadline(ctx, callTimeout)
 	defer cancel()

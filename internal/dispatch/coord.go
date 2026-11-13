@@ -83,6 +83,7 @@ func (d *Dispatcher) owns() bool {
 	d.loadState()
 	d.loadQueueLocked()
 	d.loadDecisionsLocked()
+	d.loadProposalsLocked()
 	d.mu.Unlock()
 	return true
 }
@@ -132,6 +133,9 @@ func (d *Dispatcher) refreshFollowerLocked() {
 	}
 	if st, err := os.Stat(filepath.Join(d.opts.StateDir, decisionsName)); err == nil && !st.ModTime().Equal(d.decisionsMod) {
 		d.loadDecisionsLocked()
+	}
+	if st, err := os.Stat(filepath.Join(d.opts.StateDir, proposalsName)); err == nil && !st.ModTime().Equal(d.proposalsMod) {
+		d.loadProposalsLocked()
 	}
 	st, err := os.Stat(filepath.Join(d.opts.StateDir, "state.json"))
 	if err != nil || st.ModTime().Equal(d.stateMod) {
@@ -264,6 +268,9 @@ func stageOf(it model.Item, runs []Run, tasks map[string]config.TaskConfig, am c
 					return Stage{Kind: StageWait, Task: task, Reason: dec.stageReason()}
 				}
 				return Stage{Kind: StageNeedsYou, Task: task, Reason: dec.stageReason()}
+			}
+			if st, ok := tp.supervising(it); ok {
+				return st
 			}
 			return Stage{Kind: StageNeedsYou, Task: task, Reason: g.reason()}
 		}

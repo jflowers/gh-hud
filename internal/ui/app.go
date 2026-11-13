@@ -66,6 +66,9 @@ type Model struct {
 	stages map[string]dispatch.Stage
 	plan   []dispatch.PlanRow
 	queue  []dispatch.QueueEntry
+	// cases are what the rules can't settle, with the supervisor's
+	// proposals (the Plan tab shows them).
+	cases []dispatch.Case
 
 	res       *model.FetchResult
 	fetching  bool
@@ -196,6 +199,7 @@ func (m *Model) applySnapshot(s hub.Snapshot) {
 	m.agents, m.runs, m.machineUsage, m.follower = s.Sessions, s.Runs, s.Usage, s.Follower
 	m.ws, m.wsAt, m.wsLoading = s.Workspaces, s.WorkspacesAt, s.WorkspacesLoading
 	m.stages, m.plan, m.queue = s.Stages, s.Plan, s.Queue
+	m.cases = s.Cases
 	m.dispatchOn, m.fleetOn = s.Dispatch, s.Fleet != nil
 	if s.Fleet != nil {
 		m.fleetSnap = *s.Fleet

@@ -6,11 +6,16 @@ package ui
 // same plan the auto pass walks (dispatch.Plan), so the order shown is the
 // order things start.
 //
+// Above the rows are the open cases (a check failing on several of your
+// PRs) with what the supervisor is doing about them.
+//
 // Keys: + queues the row's task, J/K move a queued task later/earlier,
-// x removes it, a opens the agent menu, enter opens the PR.
+// x removes it, a opens the agent menu, enter opens the PR, Y/N approve or
+// reject the supervisor's proposal for the selected PR's case.
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -123,6 +128,8 @@ func (m *Model) planView() string {
 		"  " + padPlain("#", plPosW, true) + " " + padPlain("task", plTaskW, false) + " " +
 			padPlain("item", plRefW, false) + " " + padPlain("title", titleW, false) + " " + "status")}
 
+	cases := m.caseLines(w)
+
 	// Lay the rows out with group headings, then scroll to keep the
 	// selection in view.
 	type line struct {
@@ -166,6 +173,7 @@ func (m *Model) planView() string {
 		body = append(body, line{comment.Render("    nothing queued, due, running or waiting"), -1})
 	}
 
+	lines = append(lines, cases...)
 	avail := max(m.height-len(lines)-1, 1)
 	start := 0
 	if len(body) > avail {
@@ -193,6 +201,10 @@ func (m *Model) planFooter() string {
 			return lipgloss.NewStyle().Foreground(cRed).Render(" ✗ " + m.statusMsg)
 		}
 		return lipgloss.NewStyle().Foreground(cGreen).Render(" ✓ " + m.statusMsg)
+	}
+	if m.pendingCount() > 0 {
+		return chips(m.width, "Y", "approve", "N", "reject", "j/k", "move", "+", "queue", "x", "unqueue",
+			"a", "agent", "enter", "open", "esc", "dashboard")
 	}
 	return chips(m.width, "j/k", "move", "+", "queue", "J/K", "later/earlier", "x", "unqueue",
 		"a", "agent", "enter", "open", "0-9", "tabs", "esc", "dashboard")
@@ -299,6 +311,28 @@ func (m *Model) handlePlanKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.sync()
 			m.planSel = i
 		}
+	case "Y", "N":
+		c, ok := m.proposalFor(cur, have)
+		if !ok {
+			m.flash("no proposal to settle: select a PR that says approve")
+			break
+		}
+		id := c.Proposal.ID
+		if msg.String() == "Y" {
+			if err := m.backend.ApproveProposal(ctx(), id); err != nil {
+				m.flash("approve failed: " + err.Error())
+			} else {
+				m.sync()
+				m.flash("approved: " + c.Proposal.Decision.Summary)
+			}
+			break
+		}
+		if err := m.backend.RejectProposal(ctx(), id); err != nil {
+			m.flash("reject failed: " + err.Error())
+		} else {
+			m.sync()
+			m.flash("rejected; " + c.Repo + " " + c.Check + " stays with you")
+		}
 	case "x", "delete", "backspace":
 		if !have || cur.Queued == 0 {
 			break
@@ -324,4 +358,79 @@ func (m *Model) queueTask(task dispatch.Task, it model.Item) int {
 	m.sync()
 	m.flash(fmt.Sprintf("queued %s %s (#%d): p shows the plan", task, it.Ref(), pos))
 	return pos
+}
+
+// pendingCount is how many supervisor proposals wait for you.
+func (m *Model) pendingCount() int {
+	n := 0
+	for _, c := range m.cases {
+		if c.Proposal != nil {
+			n++
+		}
+	}
+	return n
+}
+
+// proposalFor is the case whose proposal Y/N settle: the selected PR's,
+// else the only one waiting.
+func (m *Model) proposalFor(cur dispatch.PlanRow, have bool) (dispatch.Case, bool) {
+	var only []dispatch.Case
+	for _, c := range m.cases {
+		if c.Proposal == nil {
+			continue
+		}
+		only = append(only, c)
+		if have && cur.Item.Repo == c.Repo && (slices.Contains(c.PRs, cur.Item.Num) || cur.Item.Num == c.Proposal.Decision.FixPR) {
+			return c, true
+		}
+	}
+	if len(only) == 1 {
+		return only[0], true
+	}
+	return dispatch.Case{}, false
+}
+
+// caseLines draws the open cases above the plan rows; none when there
+// are none.
+func (m *Model) caseLines(w int) []string {
+	if len(m.cases) == 0 {
+		return nil
+	}
+	dim := lipgloss.NewStyle().Foreground(cDim)
+	fg := lipgloss.NewStyle().Foreground(cFg)
+	out := []string{dim.Render("  ── cases " + strings.Repeat("─", max(w-12, 0)))}
+	for _, c := range m.cases {
+		where := fmt.Sprintf("%d PRs", len(c.PRs))
+		if c.OnBase {
+			where += ", main too"
+		}
+		head := "  ⚑ " + truncatePlain(c.Repo+" "+c.Check, 44) + "  " + where
+		status, color := caseStatus(c)
+		room := max(w-width(head)-3, 10)
+		out = append(out, fg.Render(head)+"   "+lipgloss.NewStyle().Foreground(color).Render(truncatePlain(status, room)))
+		if c.Proposal != nil && c.Proposal.Decision.Summary != "" {
+			out = append(out, dim.Render("      "+truncatePlain(strings.Join(strings.Fields(c.Proposal.Decision.Summary), " "), max(w-8, 10))))
+		}
+	}
+	return out
+}
+
+// caseStatus is what a case's supervisor line says.
+func caseStatus(c dispatch.Case) (string, lipgloss.Color) {
+	switch {
+	case c.Proposal != nil:
+		return "supervisor proposes " + caseReason(c.Proposal.Decision) + ": Y approve · N reject", cOrange
+	case c.Decision != nil:
+		return caseReason(*c.Decision) + " (" + c.Decision.By + ")", cDim
+	case c.Supervising:
+		return "supervisor looking…", cTeal
+	}
+	return "needs you", cOrange
+}
+
+func caseReason(d dispatch.Decision) string {
+	if d.Kind == dispatch.DecideLinkFix {
+		return fmt.Sprintf("fix in #%d", d.FixPR)
+	}
+	return "escalated: " + strings.Join(strings.Fields(d.Summary), " ")
 }
