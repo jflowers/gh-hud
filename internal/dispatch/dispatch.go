@@ -147,6 +147,11 @@ type Record struct {
 	Cleaned      bool       `json:"cleaned,omitempty"`       // returned to the default branch
 	InspectError string     `json:"inspect_error,omitempty"` // inspection could not run
 	InspectedAt  *time.Time `json:"inspected_at,omitempty"`
+	// Unread: the outcome couldn't be read because the machine didn't
+	// answer; it's read again later (reread.go), RereadTries times so far.
+	Unread      bool       `json:"unread,omitempty"`
+	RereadTries int        `json:"reread_tries,omitempty"`
+	RereadAfter *time.Time `json:"reread_after,omitempty"`
 }
 
 // Session is an opencode session running under the ghws root, joined with
