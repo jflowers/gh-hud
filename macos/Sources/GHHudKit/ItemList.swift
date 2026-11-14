@@ -67,6 +67,8 @@ public struct ItemRow: Identifiable, Equatable, Sendable {
         case ready
         /// The next move is yours (yellow).
         case yourMove
+        /// An agent's next step waits on you (orange).
+        case needsYou
     }
 
     public let id: String // the URL
@@ -89,15 +91,25 @@ public struct ItemRow: Identifiable, Equatable, Sendable {
     public let lastActor: String
     public let updated: Date?
     public let labels: [String]
+    /// The item's newest agent run, while it's worth showing.
+    public let run: RunTag?
+    /// What the agents do with it next, if anything.
+    public let stage: StageTag?
+    /// The newest run on the item, shown or not: Watch, Re-check and the
+    /// transcript act on it.
+    public let latestRun: RunRef?
 
     /// "owner/repo#N", or the URL when the item has no number.
     public var ref: String { num > 0 ? "\(repo)#\(num)" : id }
 
-    public init(_ it: Ghhud_V1_Item, me: String) {
+    public init(_ it: Ghhud_V1_Item, me: String, run r: Ghhud_V1_Run? = nil, stage st: Ghhud_V1_Stage? = nil,
+                now: Date = Date()) {
         id = it.url
         url = URL(string: it.url)
         kind = Self.kind(it)
-        if it.isIn(.readyForMaintainer) {
+        if st?.kind == "you" {
+            marker = .needsYou
+        } else if it.isIn(.readyForMaintainer) {
             marker = .ready
         } else if it.waitingOn == "me" {
             marker = .yourMove
@@ -118,6 +130,9 @@ public struct ItemRow: Identifiable, Equatable, Sendable {
         lastActor = !me.isEmpty && it.lastActor == me ? "you" : it.lastActor
         updated = it.hasUpdatedAt ? it.updatedAt.date : nil
         labels = it.labels
+        run = r.flatMap { RunTag($0, now: now) }
+        stage = st.flatMap(StageTag.init)
+        latestRun = r.map(RunRef.init)
     }
 
     /// The kind badge, as the TUI picks it.
@@ -151,18 +166,145 @@ public struct ItemRow: Identifiable, Equatable, Sendable {
     }
 }
 
+/// An agent run on a row: "fix ● 5m", the TUI's run tag.
+public struct RunTag: Equatable, Sendable {
+    public let task: String
+    public let status: String
+    public let tone: Tone
+    public let at: Date
+
+    /// Shown while the run is live, for a day after it succeeded, and for
+    /// a week after it failed or left work behind (until a newer run).
+    public init?(_ r: Ghhud_V1_Run, now: Date = Date()) {
+        let end = r.hasFinishedAt ? r.finishedAt.date : r.startedAt.date
+        let age = now.timeIntervalSince(end)
+        switch r.status {
+        case "running", "blocked": break
+        case "failed", "left-work": if age >= 7 * 86400 { return nil }
+        default: if age >= 86400 { return nil }
+        }
+        task = r.task
+        status = r.status
+        at = end
+        switch r.status {
+        case "running": tone = .pending
+        case "blocked", "left-work": tone = .warn
+        case "ok": tone = .good
+        case "failed": tone = .bad
+        default: tone = .muted
+        }
+    }
+
+    /// The status in words, as the TUI says it.
+    public var words: String { Self.words(status) }
+
+    public static func words(_ status: String) -> String {
+        switch status {
+        case "running": return "running"
+        case "blocked": return "blocked, needs input"
+        case "ok": return "succeeded"
+        case "failed": return "failed"
+        case "left-work": return "left work behind"
+        default: return "outcome unknown"
+        }
+    }
+
+    /// "fix ● 5m".
+    public func text(now: Date = Date()) -> String {
+        "\(task) \(Self.glyph(status)) \(ItemList.age(at, now: now))"
+    }
+
+    static func glyph(_ status: String) -> String {
+        switch status {
+        case "running": return "●"
+        case "blocked": return "◆"
+        case "ok": return "✓"
+        case "failed": return "✗"
+        case "left-work": return "!"
+        default: return "?"
+        }
+    }
+}
+
+/// What the agents do with an item next: "▸review", "▸merge", "▸you: …".
+public struct StageTag: Equatable, Sendable {
+    public let text: String
+    public let tone: Tone
+
+    public init?(_ st: Ghhud_V1_Stage) {
+        switch st.kind {
+        case "next":
+            text = "▸" + st.task
+            tone = .muted
+        case "wait":
+            let why = st.reason.isEmpty || st.reason == "cooldown" ? "wait" : st.reason
+            text = "▸\(st.task) \(why)"
+            tone = .muted
+        case "you":
+            text = "▸you: \(st.task) \(st.reason)".trimmingCharacters(in: .whitespaces)
+            tone = .warn
+        case "merge":
+            text = st.reason.isEmpty ? "▸merge" : "▸merge \(st.reason)"
+            tone = .good
+        default:
+            return nil
+        }
+    }
+}
+
+/// The run the run commands act on.
+public struct RunRef: Equatable, Sendable {
+    public let id: String
+    public let task: String
+    /// Running or blocked: there is a pane to watch.
+    public let live: Bool
+    /// Finished: its outcome can be inspected again.
+    public let finished: Bool
+    /// It has an opencode session to open.
+    public let hasTranscript: Bool
+
+    public init(_ r: Ghhud_V1_Run) {
+        id = r.id
+        task = r.task
+        live = r.status == "running" || r.status == "blocked"
+        finished = r.hasFinishedAt
+        hasTranscript = !r.sessionID.isEmpty
+    }
+}
+
 public enum ItemList {
     /// The rows a filter and a search show, in the hub's order (most
     /// pressing first). The search matches repo, title and ref, ignoring
     /// case, like the TUI's /.
-    public static func rows(_ s: Ghhud_V1_Snapshot, filter: ItemFilter, query: String = "") -> [ItemRow] {
+    public static func rows(_ s: Ghhud_V1_Snapshot, filter: ItemFilter, query: String = "",
+                            now: Date = Date()) -> [ItemRow] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        let runs = latestRuns(s)
         return s.result.items
             .filter { filter.matches($0) }
             .filter { it in
                 q.isEmpty || "\(it.repo) \(it.title) \(it.ref)".lowercased().contains(q)
             }
-            .map { ItemRow($0, me: s.result.user) }
+            .map { it in
+                ItemRow(it, me: s.result.user, run: runs[it.ref], stage: s.stages[it.url], now: now)
+            }
+    }
+
+    /// Each ref's newest run (the hub sends runs newest first).
+    public static func latestRuns(_ s: Ghhud_V1_Snapshot) -> [String: Ghhud_V1_Run] {
+        var out: [String: Ghhud_V1_Run] = [:]
+        for r in s.runs where out[r.ref] == nil {
+            out[r.ref] = r
+        }
+        return out
+    }
+
+    /// Why commands are off, or nil when they work: the hub has no
+    /// dispatcher, or another gh-hud owns dispatch.
+    public static func commandsOff(_ s: Ghhud_V1_Snapshot) -> String? {
+        if !s.dispatch { return "Dispatch is off on the hub" }
+        if !s.follower.isEmpty { return "Read-only: gh-hud pid \(s.follower) owns dispatch" }
+        return nil
     }
 
     /// How many items each filter shows (before searching).

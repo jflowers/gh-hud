@@ -234,6 +234,86 @@ do {
     check(ages == ["now", "5m", "3h", "2d", "1w", "2mo"], "ages \(ages)")
 }
 
+// MARK: agent tags and commands
+
+do {
+    let now = Date(timeIntervalSince1970: 2_000_000)
+    func ts(_ ago: TimeInterval) -> Google_Protobuf_Timestamp {
+        Google_Protobuf_Timestamp(date: now.addingTimeInterval(-ago))
+    }
+    func run(_ id: String, _ ref: String, _ status: String, started: TimeInterval, finished: TimeInterval? = nil,
+             session: String = "") -> Ghhud_V1_Run {
+        var r = Ghhud_V1_Run()
+        r.id = id
+        r.ref = ref
+        r.task = "fix"
+        r.status = status
+        r.startedAt = ts(started)
+        if let finished { r.finishedAt = ts(finished) }
+        r.sessionID = session
+        return r
+    }
+
+    var s = Ghhud_V1_Snapshot()
+    s.result.user = "me"
+    var a = item(1, Category.mine.rawValue | Category.readyForMaintainer.rawValue, title: "a", updated: 0)
+    a.url = "https://github.com/acme/r/pull/1"
+    let b = item(2, Category.mine.rawValue, title: "b", updated: 0)
+    let c = item(3, Category.mine.rawValue, title: "c", updated: 0)
+    a.waitingOn = "me"
+    s.result.items = [a, b, c]
+    // newest first: #1's live run hides its older failure
+    s.runs = [
+        run("r3", "acme/r#1", "running", started: 300, session: "ses_1"),
+        run("r1", "acme/r#1", "failed", started: 9000, finished: 8000),
+        run("r2", "acme/r#2", "ok", started: 3 * 86400, finished: 2 * 86400),
+    ]
+    var you = Ghhud_V1_Stage()
+    you.kind = "you"
+    you.task = "merge"
+    you.reason = "approve?"
+    s.stages = [a.url: you]
+    var next = Ghhud_V1_Stage()
+    next.kind = "next"
+    next.task = "review"
+    s.stages[c.url] = next
+
+    check(ItemList.latestRuns(s)["acme/r#1"]?.id == "r3", "the newest run per ref wins")
+    let rows = ItemList.rows(s, filter: .all, now: now)
+    check(rows[0].marker == .needsYou, "a stage waiting on you outranks ready: \(String(describing: rows[0].marker))")
+    check(rows[0].run?.text(now: now) == "fix ● 5m" && rows[0].run?.tone == .pending, "live run tag \(rows[0].run?.text(now: now) ?? "nil")")
+    check(rows[0].stage?.text == "▸you: merge approve?" && rows[0].stage?.tone == .warn, "you stage \(rows[0].stage?.text ?? "nil")")
+    check(rows[0].latestRun == RunRef(s.runs[0]) && rows[0].latestRun!.live && !rows[0].latestRun!.finished
+          && rows[0].latestRun!.hasTranscript, "live run commands")
+    check(rows[1].run == nil, "a success over a day old has no tag")
+    check(rows[1].latestRun?.id == "r2" && rows[1].latestRun!.finished && !rows[1].latestRun!.live,
+          "but its run can still be re-checked")
+    check(rows[2].run == nil && rows[2].latestRun == nil && rows[2].stage?.text == "▸review", "no runs, next stage")
+
+    check(RunTag(run("x", "r", "failed", started: 6 * 86400, finished: 6 * 86400), now: now) != nil, "a failure keeps its tag for a week")
+    check(RunTag(run("x", "r", "left-work", started: 8 * 86400, finished: 8 * 86400), now: now) == nil, "but not longer")
+    check(RunTag(run("x", "r", "blocked", started: 30 * 86400), now: now)?.tone == .warn, "a blocked run always shows")
+    check(RunTag.words("left-work") == "left work behind" && RunTag.words("weird") == "outcome unknown", "run words")
+
+    var wait = Ghhud_V1_Stage()
+    wait.kind = "wait"
+    wait.task = "fix"
+    wait.reason = "cooldown"
+    check(StageTag(wait)?.text == "▸fix wait", "a cooldown reads wait")
+    wait.reason = "ci running"
+    check(StageTag(wait)?.text == "▸fix ci running", "other waits say why")
+    var merge = Ghhud_V1_Stage()
+    merge.kind = "merge"
+    check(StageTag(merge)?.text == "▸merge" && StageTag(merge)?.tone == .good, "merge stage")
+    check(StageTag(Ghhud_V1_Stage()) == nil, "no stage, no tag")
+
+    check(ItemList.commandsOff(s) == "Dispatch is off on the hub", "commands need dispatch")
+    s.dispatch = true
+    check(ItemList.commandsOff(s) == nil, "commands on")
+    s.follower = "123"
+    check(ItemList.commandsOff(s) == "Read-only: gh-hud pid 123 owns dispatch", "a follower hub refuses commands")
+}
+
 // MARK: summary and links
 
 do {
@@ -293,6 +373,29 @@ if let i = CommandLine.arguments.firstIndex(of: "--live"), i + 1 < CommandLine.a
         let err = await conn.approve(.epic(ref: "acme/widgets#30", planID: "old-plan"))
         check(err != nil, "live: an old plan is refused: \(err ?? "nil")")
         if let err { print("live: hub said: \(err)") }
+    }
+    // `--commands` (only against the scratch fake hub in build/fakehub):
+    // the item commands round trip, with the fake's canned answers.
+    if connected, CommandLine.arguments.contains("--commands") {
+        let url = "https://github.com/acme/widgets/pull/398"
+        let menu = await conn.menuChoices(url: url)
+        check((try? menu.get())?.map(\.target) == ["chai:ws-3", "ws-1"], "live: menu choices \(menu)")
+        let rec = await conn.dispatch(task: "fix", url: url)
+        check((try? rec.get())?.workspace == "ws-3" && (try? rec.get())?.machine == "chai", "live: dispatch \(rec)")
+        let opts = await conn.queueChoices(url: url)
+        check((try? opts.get()) == ["fix", "review"], "live: queue choices \(opts)")
+        let pos = await conn.enqueue(task: "review", url: url)
+        check((try? pos.get()) == 2, "live: enqueue \(pos)")
+        let watched = await conn.watchRun(id: "run-live")
+        check(watched == nil, "live: watch run: \(watched ?? "")")
+        let again = await conn.reinspect(id: "run-done")
+        check((try? again.get())?.status == "ok", "live: re-check \(again)")
+        let tr = await conn.openTranscript(id: "run-live")
+        check(tr == nil, "live: transcript: \(tr ?? "")")
+        let rows = ItemList.rows(conn.snapshot, filter: .all)
+        let live = rows.first { $0.num == 398 }
+        check(live?.run?.status == "running" && live?.latestRun?.id == "run-live", "live: the running row's tag")
+        check(ItemList.commandsOff(conn.snapshot) == nil, "live: commands on")
     }
     conn.stop()
 }

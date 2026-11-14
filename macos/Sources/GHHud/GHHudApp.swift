@@ -67,9 +67,11 @@ enum SnapshotMode {
 }
 
 extension SnapshotMode {
-    /// `GHHud --snapshot-window out.png [--filter review] [--search text]`
-    /// opens the dashboard window, waits for the hub, and draws the window
-    /// (the real AppKit views, table and toolbar included) to a PNG.
+    /// `GHHud --snapshot-window out.png [--filter review] [--search text]
+    /// [--select N [--agent | --queue]]` opens the dashboard window, waits
+    /// for the hub, and draws the window (the real AppKit views, table and
+    /// toolbar included) to a PNG. --select selects the row numbered N;
+    /// --agent or --queue then opens its sheet, drawn to out-sheet.png.
     @MainActor
     static func windowIfAsked() {
         let args = CommandLine.arguments
@@ -84,7 +86,8 @@ extension SnapshotMode {
         conn.start()
         let app = NSApplication.shared
         app.setActivationPolicy(.accessory)
-        let host = NSHostingController(rootView: DashboardView(conn: conn, filter: filter, query: arg("--search") ?? ""))
+        let ui = DashboardState(pane: .items(filter), query: arg("--search") ?? "")
+        let host = NSHostingController(rootView: DashboardView(conn: conn, state: ui))
         host.sceneBridgingOptions = [.toolbars, .title]
         let win = NSWindow(contentViewController: host)
         win.styleMask = [.titled, .closable, .resizable, .miniaturizable, .fullSizeContentView]
@@ -94,7 +97,21 @@ extension SnapshotMode {
             for _ in 0..<150 where conn.status != .connected {
                 try? await Task.sleep(for: .milliseconds(100))
             }
-            try? await Task.sleep(for: .milliseconds(800)) // let the table lay out
+            if let n = arg("--select").flatMap(Int.init),
+               let row = ItemList.rows(conn.snapshot, filter: filter, query: ui.query).first(where: { $0.num == n }) {
+                ui.selection = [row.id]
+                if args.contains("--agent") || args.contains("--queue") {
+                    ui.sheet = AgentRequest(row: row, queue: args.contains("--queue"))
+                }
+            }
+            try? await Task.sleep(for: .milliseconds(1200)) // let the table (and sheet) lay out
+            if let sheet = win.attachedSheet, let view = sheet.contentView?.superview,
+               let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+                view.cacheDisplay(in: view.bounds, to: rep)
+                let sheetOut = out.deletingPathExtension().appendingPathExtension("sheet.png")
+                try? rep.representation(using: .png, properties: [:])?.write(to: sheetOut)
+                print("wrote \(sheetOut.path)")
+            }
             guard let frame = win.contentView?.superview,
                   let rep = frame.bitmapImageRepForCachingDisplay(in: frame.bounds)
             else {
