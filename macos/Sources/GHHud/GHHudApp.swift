@@ -72,7 +72,7 @@ extension SnapshotMode {
     /// for the hub, and draws the window (the real AppKit views, table and
     /// toolbar included) to a PNG. --select selects the row numbered N;
     /// --agent or --queue then opens its sheet, drawn to out-sheet.png.
-    /// `--pane plan|agents|workspaces [--pick N]` shows that pane instead, with
+    /// `--pane plan|agents|workspaces|fleet [--pick N]` shows that pane instead, with
     /// its Nth row (from 0) selected; --enroll opens the Enroll Epic sheet.
     @MainActor
     static func windowIfAsked() {
@@ -90,6 +90,7 @@ extension SnapshotMode {
         app.setActivationPolicy(.accessory)
         let pane: Pane = switch arg("--pane") {
         case "plan": .plan
+        case "fleet": .fleet
         case "agents": .agents
         case "workspaces": .workspaces
         default: .items(filter)
