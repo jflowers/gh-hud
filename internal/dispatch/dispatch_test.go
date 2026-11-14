@@ -177,6 +177,9 @@ func newTestDispatcher(t *testing.T, dirty string) *Dispatcher {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Cleanups run last-in first-out: wait for background epic work (a
+	// reread a test's body change set off) before the temp dirs go.
+	t.Cleanup(d.epicWork.Wait)
 	return d
 }
 

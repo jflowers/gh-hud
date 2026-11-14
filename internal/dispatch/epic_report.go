@@ -91,7 +91,8 @@ func (d *Dispatcher) epicReviewsLocked() {
 			changed = true
 			if sup {
 				d.epicReviewing[n.Ref] = true
-				go d.reviewPiece(cloneEpic(*e), n, rec, rep)
+				ce := cloneEpic(*e)
+				d.goEpic(func() { d.reviewPiece(ce, n, rec, rep) })
 			}
 		}
 	}
