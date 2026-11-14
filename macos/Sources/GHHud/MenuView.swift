@@ -87,7 +87,7 @@ struct MenuView: View {
                                 if rendering {
                                     RowLabel(row: row, highlighted: false)
                                     if let a = row.approval {
-                                        Text(a.rejectable ? "Approve · Reject" : "Approve")
+                                        Text(a.rejectable ? a.verb + " · Reject" : a.verb)
                                             .font(.caption).foregroundStyle(.tint)
                                             .padding(.horizontal, 6)
                                     }
@@ -157,7 +157,7 @@ struct ApprovalButtons: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Button("Approve") { run { await conn.approve(approval) } }
+            Button(approval.verb) { run { await conn.approve(approval) } }
             if approval.rejectable {
                 Button("Reject") { run { await conn.reject(approval) } }
             }

@@ -138,6 +138,48 @@ do {
           "only proposals reject")
 }
 
+// MARK: epic gates
+
+do {
+    func node(_ ref: String, _ state: String, gate: String = "", cleared: Bool = false) -> Ghhud_V1_EpicNode {
+        var n = Ghhud_V1_EpicNode()
+        n.ref = ref
+        n.title = "piece " + ref
+        n.state = state
+        n.gate = gate
+        n.cleared = cleared
+        return n
+    }
+    var approved = Ghhud_V1_Epic()
+    approved.ref = "acme/r#200"
+    approved.state = "approved"
+    approved.plan.id = "plan-2"
+    approved.plan.nodes = [
+        node("acme/r#201", "gated", gate: "after the 2.0 release"),
+        node("acme/r#202", "waiting", gate: "after QA signs off"), // still waits on a piece
+        node("acme/r#203", "ready", gate: "done already", cleared: true),
+        node("acme/r#204", "done"),
+    ]
+    var planned = approved
+    planned.ref = "acme/r#300"
+    planned.state = "planned" // offered whole as a plan, not gate by gate
+    var s = Ghhud_V1_Snapshot()
+    s.epics = [approved, planned]
+
+    let a = Attention(s)
+    check(a.sections.map(\.id) == ["epics", "gates"], "gate sections \(a.sections.map(\.id))")
+    let g = a.sections.last?.rows ?? []
+    check(g.count == 1, "one gate to clear, got \(g.count)")
+    check(g.first?.approval == .gate(ref: "acme/r#200", piece: "acme/r#201"),
+          "gate approval \(String(describing: g.first?.approval))")
+    check(g.first?.title == "after the 2.0 release", "gate title is the condition: \(g.first?.title ?? "")")
+    check(g.first?.detail == "acme/r#201 · piece acme/r#201 · epic acme/r#200", "gate detail \(g.first?.detail ?? "")")
+    check(g.first?.url?.absoluteString == "https://github.com/acme/r/issues/201", "gate links its piece")
+    check(Approval.gate(ref: "a/b#1", piece: "a/b#2").verb == "Clear" && Approval.epic(ref: "a/b#1", planID: "p").verb == "Approve",
+          "gates clear, the rest approve")
+    check(!Approval.gate(ref: "a/b#1", piece: "a/b#2").rejectable, "a gate isn't rejected")
+}
+
 // MARK: summary and links
 
 do {

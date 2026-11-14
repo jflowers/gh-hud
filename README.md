@@ -159,13 +159,15 @@ The hub reads its config when it starts: restart it after editing
 ## Mac app
 
 A menu bar app that shows what needs you, from the hub: agents waiting on
-you, supervisor proposals and epic plans awaiting your approval, reviews
-requested of you, and your PRs ready for a maintainer. The icon shows the
-count; the menu lists them (click one to open it on GitHub) with the
-hub's state and a Refresh button. A proposal has Approve and Reject
-buttons and an epic plan has Approve, the same as `Y`/`N` and `E` in the
+you, supervisor proposals and epic plans awaiting your approval, gates on
+approved epics that only you can clear, reviews requested of you, and your
+PRs ready for a maintainer. The icon shows the count; the menu lists them
+(click one to open it on GitHub) with the hub's state and a Refresh
+button. A proposal has Approve and Reject buttons, an epic plan has
+Approve and a gate has Clear, the same as `Y`/`N`, `E` and `C` in the
 dashboard's plan tab. A plan that went stale isn't offered: the hub reads
-the epic again first. Its source is in
+the epic again first. A gate is offered once everything its piece waits
+on is done. Its source is in
 `macos/` and it needs a hub running (see "The hub") with TCP on, which is
 the default.
 

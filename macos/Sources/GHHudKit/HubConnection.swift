@@ -82,6 +82,11 @@ public final class HubConnection {
             req.ref = ref
             req.planID = planID
             return Self.why(await client.approveEpic(request: req, headers: hub.authHeaders))
+        case .gate(let ref, let piece):
+            var req = Ghhud_V1_ClearEpicGateRequest()
+            req.ref = ref
+            req.piece = piece
+            return Self.why(await client.clearEpicGate(request: req, headers: hub.authHeaders))
         }
     }
 
