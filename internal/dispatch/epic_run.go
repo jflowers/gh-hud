@@ -79,7 +79,8 @@ func pieceRuns(ref string, since time.Time, runs []Run, now time.Time) (mine []R
 // need you. skip holds refs the plan already shows.
 func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool) []PlanRow {
 	now := time.Now()
-	maxActive, maxRuns := d.opts.Epics.MaxActive, d.opts.Epics.MaxRuns
+	ep := d.o().Epics
+	maxActive, maxRuns := ep.MaxActive, ep.MaxRuns
 	if maxActive <= 0 {
 		maxActive = 2
 	}
