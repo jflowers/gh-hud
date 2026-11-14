@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -152,6 +153,14 @@ func TestBotReviewDue(t *testing.T) {
 	review := func(login, oid string) string {
 		return `{"author":{"login":"` + login + `"},"commit":{"oid":"` + oid + `"}}`
 	}
+	// at is a review at 10:mm on Nov 14.
+	at := func(login, state, oid string, mm int) string {
+		commit := "null"
+		if oid != "" {
+			commit = `{"oid":"` + oid + `"}`
+		}
+		return fmt.Sprintf(`{"author":{"login":%q},"state":%q,"submittedAt":"2026-11-14T10:%02d:00Z","commit":%s}`, login, state, mm, commit)
+	}
 	cases := []struct {
 		name    string
 		reviews string
@@ -164,7 +173,19 @@ func TestBotReviewDue(t *testing.T) {
 		{"someone else reviewed head", review("jflowers", "head"), true},
 		{"older then head", review("uf-divisor", "old") + "," + review("uf-divisor", "head"), false},
 		{"review without a commit", `{"author":{"login":"uf-divisor"},"commit":null}`, true},
+		// Changes requested on the head commit, then answered without a push.
+		{"changes requested, not answered", at("uf-divisor", "CHANGES_REQUESTED", "head", 10), false},
+		{"changes requested, then my replies", at("uf-divisor", "CHANGES_REQUESTED", "head", 10) + "," + at("me", "COMMENTED", "", 11), true},
+		{"my replies came before it", at("me", "COMMENTED", "", 9) + "," + at("uf-divisor", "CHANGES_REQUESTED", "head", 10), false},
+		{"someone else replied", at("uf-divisor", "CHANGES_REQUESTED", "head", 10) + "," + at("other", "COMMENTED", "", 11), false},
+		{"re-reviewed after my replies", at("uf-divisor", "CHANGES_REQUESTED", "head", 10) + "," + at("me", "COMMENTED", "", 11) + "," + at("uf-divisor", "CHANGES_REQUESTED", "head", 12), false},
+		{"approved, then I commented", at("uf-divisor", "APPROVED", "head", 10) + "," + at("me", "COMMENTED", "", 11), false},
 	}
+	cases = append(cases, struct {
+		name    string
+		reviews string
+		want    bool
+	}{"changes requested, then my comment", at("uf-divisor", "CHANGES_REQUESTED", "head", 10) + `]},"comments":{"nodes":[{"author":{"login":"me"},"createdAt":"2026-11-14T10:20:00Z"}`, true})
 	for _, tc := range cases {
 		var n prNode
 		raw := `{"headRefOid":"head","reviews":{"nodes":[` + tc.reviews + `]}}`
