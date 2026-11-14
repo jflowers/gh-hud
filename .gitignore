@@ -1,6 +1,5 @@
 /gh-hud
 .DS_Store
-/.tools/
 /build/
 /macos/.build/
 /macos/.swiftpm/
