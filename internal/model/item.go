@@ -121,13 +121,16 @@ type Item struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
-	CI        CIState // overall checks
-	CC        CIState // codecov/patch
-	Review    string  // human review emoji
-	Bot       string  // bot review emoji
-	Merge     string  // "⚠️" conflict, " " ok, "?" unknown
-	Thread    int     // unresolved review threads opened by humans
-	BotThread int     // unresolved review threads opened by bots
+	CI     CIState // overall checks
+	CC     CIState // codecov/patch
+	Review string  // human review emoji
+	Bot    string  // bot review emoji
+	Merge  string  // "⚠️" conflict, " " ok, "?" unknown
+	Thread int     // unresolved review threads opened by humans
+	// ThreadOpen counts the Thread ones whose last comment isn't mine:
+	// the ones still to answer.
+	ThreadOpen int
+	BotThread  int // unresolved review threads opened by bots
 
 	LastActor string // last non-bot human to act
 	// WaitingOn is "me" when the ball is in my court, "them" when the

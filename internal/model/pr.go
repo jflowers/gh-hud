@@ -76,7 +76,7 @@ query($searchQuery: String!, $limit: Int!) {
           nodes { author { login } createdAt }
         }
         reviewThreads(first: 100) {
-          nodes { isResolved comments(first: 1) { nodes { author { login } } } }
+          nodes { isResolved comments(first: 1) { nodes { author { login } } } last: comments(last: 1) { nodes { author { login } } } }
         }
         reviewRequests(first: 10) {
           nodes {
@@ -193,6 +193,11 @@ type prNode struct {
 					Author author `json:"author"`
 				} `json:"nodes"`
 			} `json:"comments"`
+			Last struct {
+				Nodes []struct {
+					Author author `json:"author"`
+				} `json:"nodes"`
+			} `json:"last"`
 		} `json:"nodes"`
 	} `json:"reviewThreads"`
 	Requests struct {
@@ -373,8 +378,13 @@ func BuildPRItem(n prNode, me string, bots *BotFilter) Item {
 		}
 		if opener != "" && bots.IsBot(opener) {
 			it.BotThread++
-		} else {
-			it.Thread++
+			continue
+		}
+		it.Thread++
+		// A thread whose last word is mine has been answered: it stays open
+		// for the reviewer, but there's nothing new in it for me.
+		if last := t.Last.Nodes; me == "" || len(last) == 0 || last[0].Author.Login != me {
+			it.ThreadOpen++
 		}
 	}
 

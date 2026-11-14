@@ -214,3 +214,20 @@ func TestAutoMergeWaitsForPipeline(t *testing.T) {
 		t.Errorf("review done: msgs=%v calls=%d", msgs, calls)
 	}
 }
+
+// Feedback waits once every open thread's last comment is mine: a run that
+// answered the review doesn't start another to answer its own replies.
+func TestFeedbackSkipsAnsweredThreads(t *testing.T) {
+	it := model.Item{Kind: model.KindPR, Cats: model.CatMy, Repo: "acme/r", Num: 5, Review: "❌", Thread: 4, WaitingOn: "them"}
+	if got := pipelineTasks(it, queueTasks()); len(got) != 0 {
+		t.Errorf("answered: %v", got)
+	}
+	it.ThreadOpen = 1
+	if got := pipelineTasks(it, queueTasks()); len(got) != 1 || got[0] != TaskFeedback {
+		t.Errorf("one to answer: %v", got)
+	}
+	it.ThreadOpen, it.WaitingOn = 0, "me"
+	if got := pipelineTasks(it, queueTasks()); len(got) != 1 || got[0] != TaskFeedback {
+		t.Errorf("reviewer acted after me: %v", got)
+	}
+}
