@@ -740,7 +740,7 @@ Dispatch is configured in three layers, all in `config.toml`:
 
 | Layer | Where | Decides |
 |---|---|---|
-| Tasks | `[dispatch.<task>]` | what each task runs (`command`), whether it starts itself (`auto`), and for which orgs (`orgs`) and items (`mine`) |
+| Tasks | `[dispatch.<task>]` | what each task runs (`command`), whether it starts itself (`auto`), and for which orgs (`orgs`) and items (`mine`); `[[dispatch.issue.by_label]]` gives labelled issues their own command |
 | Machines | top level (the hub) and `[[machines]]` (workers) | where agents may run, how many at once, which tasks each machine accepts, and how agents run there |
 | Checkouts | ghws `@` instances on each machine | which repos a machine can take work for at all |
 
@@ -883,6 +883,29 @@ auto = true
 [dispatch.issue]
 command = "/my-implement-issue #{num}"
 ```
+
+**A different command for labelled issues.** Some issues ask for a
+different workflow, not a feature: a scheduled `dewey-distill` issue should
+run `/dewey-distill-auto`, not the implementation pipeline. Per-label rules
+on the `issue` task replace its command, and can turn `auto` on for just
+those issues:
+
+```toml
+[dispatch.issue]
+command = "/uf.run-pipeline-plan #{num}"   # ordinary issues: on `a` only
+
+[[dispatch.issue.by_label]]
+label = "dewey-distill"                    # matched case-insensitively
+command = "/dewey-distill-auto #{num}"
+auto = true                                # optional; else the task's auto
+```
+
+The first matching rule wins, in config order. `orgs`, `mine` and
+`max_rounds` still come from `[dispatch.issue]`. The Plan tab names the rule
+on the row (`next free slot · dewey-distill`), and the agent menu shows the
+command that will run. Rules on other tasks, or without a label or command,
+stop the config from loading, naming the entry. The issue still has to be in
+your list: assigned to you, mentioning you, or found by one of your searches.
 
 **A hub that stays light, with workers doing the work.** The hub keeps
 one slot for what you start by hand; the workers take most of the load:
@@ -1112,6 +1135,11 @@ max_rounds = 2             # auto runs per PR (negative = no limit)
 [dispatch.issue]           # issues assigned to you or mentioning you; auto
 command = "/uf.run-pipeline-plan #{num}"  # here implements every listed issue
 auto = false
+
+# [[dispatch.issue.by_label]]  # labelled issues run their own command
+# label = "dewey-distill"      # first match wins; case-insensitive
+# command = "/dewey-distill-auto #{num}"
+# auto = true                  # optional; overrides the task's auto
 
 # Turn on GitHub auto-merge for your PRs (see "Auto-merge" above).
 [auto_merge]

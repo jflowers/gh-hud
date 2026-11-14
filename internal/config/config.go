@@ -210,6 +210,62 @@ type TaskConfig struct {
 	// counting runs started by hand. 0 uses the default (see RoundLimit),
 	// negative means no limit.
 	MaxRounds int `toml:"max_rounds"`
+	// ByLabel overrides the command (and optionally auto) for items with
+	// a label; the first matching rule wins. Only [dispatch.issue] takes
+	// it, e.g. a scheduled dewey-distill issue runs /dewey-distill-auto.
+	ByLabel []LabelRule `toml:"by_label"`
+}
+
+// LabelRule is one [[dispatch.<task>.by_label]] entry.
+type LabelRule struct {
+	Label   string `toml:"label"`   // matched case-insensitively
+	Command string `toml:"command"` // replaces the task's command
+	// Auto, when set, replaces the task's auto for matching items, so
+	// scheduled issues can auto-dispatch while the rest stay manual.
+	Auto *bool `toml:"auto"`
+}
+
+// ForLabels is the task config for an item with labels: the first
+// by_label rule that matches replaces the command and, when it sets one,
+// auto. It returns the rule's label ("" when none matched).
+func (tc TaskConfig) ForLabels(labels []string) (TaskConfig, string) {
+	for _, r := range tc.ByLabel {
+		for _, l := range labels {
+			if !strings.EqualFold(l, r.Label) {
+				continue
+			}
+			out := tc
+			out.ByLabel = nil
+			out.Command = r.Command
+			if r.Auto != nil {
+				out.Auto = *r.Auto
+			}
+			return out, r.Label
+		}
+	}
+	return tc, ""
+}
+
+// checkByLabel rejects by_label rules that can't work, naming the entry.
+func checkByLabel(tasks map[string]TaskConfig) error {
+	for task, tc := range tasks {
+		if len(tc.ByLabel) > 0 && task != "issue" {
+			return fmt.Errorf("[[dispatch.%s.by_label]]: per-label commands are only for [dispatch.issue]", task)
+		}
+		for i, r := range tc.ByLabel {
+			where := fmt.Sprintf("[[dispatch.%s.by_label]] #%d", task, i+1)
+			if r.Label != "" {
+				where += fmt.Sprintf(" (label %q)", r.Label)
+			}
+			switch {
+			case strings.TrimSpace(r.Label) == "":
+				return fmt.Errorf("%s: label is empty", where)
+			case strings.TrimSpace(r.Command) == "":
+				return fmt.Errorf("%s: command is empty", where)
+			}
+		}
+	}
+	return nil
 }
 
 // defaultRounds caps review and feedback, which feed each other: every
@@ -447,6 +503,9 @@ func Load(path string) (*Config, error) {
 				cfg.Dispatch[k] = tc
 			}
 		}
+	}
+	if err := checkByLabel(cfg.Dispatch); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	if err := fillFleet(&cfg.Fleet, cfg.Machines); err != nil {
 		return nil, err

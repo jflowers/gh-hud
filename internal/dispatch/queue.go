@@ -60,7 +60,7 @@ func (d *Dispatcher) Enqueue(task Task, it model.Item) error {
 	if !slices.Contains(MenuTasks(it), task) {
 		return fmt.Errorf("%s doesn't apply to %s", task, it.Ref())
 	}
-	if tc, ok := d.o().Tasks[string(task)]; !ok || tc.Command == "" {
+	if _, _, ok := taskConfig(d.o().Tasks, task, it); !ok {
 		return fmt.Errorf("no command configured for task %q", task)
 	}
 	e := QueueEntry{Ref: it.Ref(), Task: task, Title: it.Title, Added: time.Now()}
@@ -79,7 +79,7 @@ func (d *Dispatcher) Enqueue(task Task, it model.Item) error {
 func (d *Dispatcher) QueueChoices(it model.Item) []Task {
 	var out []Task
 	for _, t := range MenuTasks(it) {
-		if tc, ok := d.o().Tasks[string(t)]; ok && tc.Command != "" {
+		if _, _, ok := taskConfig(d.o().Tasks, t, it); ok {
 			out = append(out, t)
 		}
 	}
@@ -211,6 +211,9 @@ type PlanRow struct {
 	// Epic is the epic (owner/repo#N) a piece's row comes from; such a
 	// row's Item is the piece's issue (epic_run.go).
 	Epic string
+	// Rule is the by_label rule (its label) that picks the row's command,
+	// e.g. "dewey-distill"; "" for the task's own command.
+	Rule string
 }
 
 // Starts reports whether the next pass tries to start this row.
@@ -283,7 +286,13 @@ func (d *Dispatcher) Plan(items []model.Item, runs []Run) []PlanRow {
 	}
 	auto = append(auto, d.epicRows(runs, queued, seen)...)
 	slices.SortStableFunc(auto, func(a, b PlanRow) int { return order[a.Stage.Kind] - order[b.Stage.Kind] })
-	return append(rows, auto...)
+	rows = append(rows, auto...)
+	for i := range rows {
+		if rows[i].Task != "" {
+			_, rows[i].Rule, _ = taskConfig(d.o().Tasks, rows[i].Task, rows[i].Item)
+		}
+	}
+	return rows
 }
 
 // splitRef parses "owner/repo#N".

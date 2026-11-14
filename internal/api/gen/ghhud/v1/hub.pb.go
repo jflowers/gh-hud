@@ -3597,6 +3597,7 @@ type PlanRow struct {
 	Note          string                 `protobuf:"bytes,5,opt,name=note,proto3" json:"note,omitempty"`
 	Missing       bool                   `protobuf:"varint,6,opt,name=missing,proto3" json:"missing,omitempty"` // queued, but not in the latest refresh
 	Epic          string                 `protobuf:"bytes,7,opt,name=epic,proto3" json:"epic,omitempty"`        // the epic a piece's row comes from (owner/repo#N)
+	Rule          string                 `protobuf:"bytes,8,opt,name=rule,proto3" json:"rule,omitempty"`        // the by_label rule (its label) that picks the command
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3676,6 +3677,13 @@ func (x *PlanRow) GetMissing() bool {
 func (x *PlanRow) GetEpic() string {
 	if x != nil {
 		return x.Epic
+	}
+	return ""
+}
+
+func (x *PlanRow) GetRule() string {
+	if x != nil {
+		return x.Rule
 	}
 	return ""
 }
@@ -5350,7 +5358,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x05Stage\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x12\n" +
 	"\x04task\x18\x02 \x01(\tR\x04task\x12\x16\n" +
-	"\x06reason\x18\x03 \x01(\tR\x06reason\"\xc2\x01\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"\xd6\x01\n" +
 	"\aPlanRow\x12\"\n" +
 	"\x04item\x18\x01 \x01(\v2\x0e.ghhud.v1.ItemR\x04item\x12\x12\n" +
 	"\x04task\x18\x02 \x01(\tR\x04task\x12%\n" +
@@ -5358,7 +5366,8 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x06queued\x18\x04 \x01(\x03R\x06queued\x12\x12\n" +
 	"\x04note\x18\x05 \x01(\tR\x04note\x12\x18\n" +
 	"\amissing\x18\x06 \x01(\bR\amissing\x12\x12\n" +
-	"\x04epic\x18\a \x01(\tR\x04epic\"\x99\x01\n" +
+	"\x04epic\x18\a \x01(\tR\x04epic\x12\x12\n" +
+	"\x04rule\x18\b \x01(\tR\x04rule\"\x99\x01\n" +
 	"\n" +
 	"QueueEntry\x12\x10\n" +
 	"\x03ref\x18\x01 \x01(\tR\x03ref\x12\x12\n" +

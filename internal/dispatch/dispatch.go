@@ -74,6 +74,17 @@ func InferTasks(it model.Item) []Task {
 	return tasks
 }
 
+// taskConfig is task's config for it, its by_label rule applied (rule is
+// the matching label, "" for none); ok is false when there's no command.
+func taskConfig(tasks map[string]config.TaskConfig, task Task, it model.Item) (tc config.TaskConfig, rule string, ok bool) {
+	tc, ok = tasks[string(task)]
+	if !ok {
+		return tc, "", false
+	}
+	tc, rule = tc.ForLabels(it.Labels)
+	return tc, rule, tc.Command != ""
+}
+
 // autoWants reports whether a task's auto settings cover the item: auto
 // on, the repo owner in orgs, the item yours when mine is set, and not a
 // chore PR. Chores can still be dispatched by hand.
@@ -488,8 +499,8 @@ func (d *Dispatcher) DispatchIn(ctx context.Context, task Task, it model.Item, m
 
 // taskCommand resolves the configured command and record title for task.
 func (d *Dispatcher) taskCommand(task Task, it model.Item) (string, []string, string, error) {
-	tc, ok := d.o().Tasks[string(task)]
-	if !ok || tc.Command == "" {
+	tc, _, ok := taskConfig(d.o().Tasks, task, it)
+	if !ok {
 		return "", nil, "", fmt.Errorf("no command configured for task %q", task)
 	}
 	name, args, err := splitCommand(tc.Command, it.Num)
@@ -919,8 +930,8 @@ func (d *Dispatcher) MenuChoices(it model.Item) []MenuChoice {
 	v := d.cachedView()
 	var out []MenuChoice
 	for _, task := range MenuTasks(it) {
-		tc, ok := d.o().Tasks[string(task)]
-		if !ok || tc.Command == "" {
+		tc, _, ok := taskConfig(d.o().Tasks, task, it)
+		if !ok {
 			continue
 		}
 		cs := candidates(v, task, it.Ref(), it.Repo, it.HeadBranch, d.o().InstancesOnly)

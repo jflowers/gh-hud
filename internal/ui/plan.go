@@ -156,6 +156,9 @@ func (m *Model) planView() string {
 			num = fmt.Sprint(pos)
 		}
 		status, sc := planStatus(r)
+		if r.Rule != "" {
+			status += " · " + r.Rule // a label rule's command runs, not the task's
+		}
 		task := string(r.Task)
 		if task == "" {
 			task = "—"
