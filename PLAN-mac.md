@@ -91,4 +91,8 @@ in the menu bar, native notifications, and later a full window.
       sessions on request; checkout health with what blocks the next
       run. Refresh targets the pane (`REFRESH_TARGET_AGENTS`,
       `_WORKSPACES`).
-   4. Plan and queue, epics; then the fleet.
+   4. *(done)* The Plan pane: cases with their proposals, epics (approve,
+      reread, drop, clear a gate, enroll), and the plan rows grouped as
+      the TUI groups them, with the queue commands (`MoveQueued`,
+      `Unqueue`, `Enqueue`).
+   5. The fleet.

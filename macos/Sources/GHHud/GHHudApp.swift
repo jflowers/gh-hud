@@ -72,8 +72,8 @@ extension SnapshotMode {
     /// for the hub, and draws the window (the real AppKit views, table and
     /// toolbar included) to a PNG. --select selects the row numbered N;
     /// --agent or --queue then opens its sheet, drawn to out-sheet.png.
-    /// `--pane agents|workspaces [--pick N]` shows that pane instead, with
-    /// its Nth row (from 0) selected.
+    /// `--pane plan|agents|workspaces [--pick N]` shows that pane instead, with
+    /// its Nth row (from 0) selected; --enroll opens the Enroll Epic sheet.
     @MainActor
     static func windowIfAsked() {
         let args = CommandLine.arguments
@@ -89,6 +89,7 @@ extension SnapshotMode {
         let app = NSApplication.shared
         app.setActivationPolicy(.accessory)
         let pane: Pane = switch arg("--pane") {
+        case "plan": .plan
         case "agents": .agents
         case "workspaces": .workspaces
         default: .items(filter)
@@ -104,8 +105,12 @@ extension SnapshotMode {
             for _ in 0..<150 where conn.status != .connected {
                 try? await Task.sleep(for: .milliseconds(100))
             }
+            if args.contains("--enroll") { ui.enrolling = true }
             if let n = arg("--pick").flatMap(Int.init) {
-                if pane == .agents {
+                if pane == .plan {
+                    let rows = PlanList.groups(conn.snapshot).flatMap(\.rows)
+                    if n < rows.count { ui.planSelection = rows[n].id }
+                } else if pane == .agents {
                     let rows = AgentList.rows(conn.snapshot, showStale: false)
                     if n < rows.count { ui.agentSelection = rows[n].id }
                 } else if pane == .workspaces {

@@ -3,9 +3,10 @@ import GHHudKit
 import SwiftUI
 
 /// What the window shows: a filter over the items, or one of the hub's
-/// panes. (The plan and the fleet join them.)
+/// panes. (The fleet joins them.)
 enum Pane: Hashable {
     case items(ItemFilter)
+    case plan
     case agents
     case workspaces
 }
@@ -23,6 +24,9 @@ final class DashboardState: ObservableObject {
     @Published var agentSelection: AgentRow.ID?
     @Published var workspaceSelection: WorkspaceRow.ID?
     @Published var showStale = false
+    @Published var planSelection: PlanItem.ID?
+    @Published var dropping: EpicRow?
+    @Published var enrolling = false
 
     init(pane: Pane?, query: String) {
         self.pane = pane
@@ -61,6 +65,7 @@ struct DashboardView: View {
         .navigationSubtitle(subtitle)
         .toolbar {
             if case .items = ui.pane { itemTools }
+            if ui.pane == .plan { PlanTools(conn: conn, ui: ui) }
             if ui.pane == .agents {
                 ToolbarItem {
                     Toggle(isOn: $ui.showStale) {
@@ -151,6 +156,7 @@ struct DashboardView: View {
 
     private var title: String {
         switch ui.pane {
+        case .plan: return "Plan"
         case .agents: return "Agents"
         case .workspaces: return "Workspaces"
         default: return filter.title
@@ -182,6 +188,8 @@ struct DashboardView: View {
     @ViewBuilder
     private var pane: some View {
         switch ui.pane {
+        case .plan:
+            PlanPane(conn: conn, ui: ui)
         case .agents:
             AgentsPane(conn: conn, ui: ui)
         case .workspaces:
@@ -221,6 +229,10 @@ struct Sidebar: View {
             }
             if conn.snapshot.dispatch {
                 Section("Hub") {
+                    Label("Plan", systemImage: "list.number")
+                        .help("What agents start next, your queue, cases and epics")
+                        .badge(PlanList.starting(conn.snapshot))
+                        .tag(Pane.plan)
                     Label("Agents", systemImage: "person.2")
                         .help("Agent sessions and runs")
                         .badge(AgentList.running(conn.snapshot))

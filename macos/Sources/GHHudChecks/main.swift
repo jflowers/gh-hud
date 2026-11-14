@@ -399,6 +399,108 @@ do {
     check(!WorkspaceList.stale(s, now: now), "not while a read is under way")
 }
 
+// MARK: plan
+
+do {
+    func row(_ num: Int64, task: String, kind: String = "", reason: String = "", queued: Int64 = 0, note: String = "",
+             missing: Bool = false, epic: String = "") -> Ghhud_V1_PlanRow {
+        var r = Ghhud_V1_PlanRow()
+        r.item = item(num, 0, title: "t\(num)", updated: 0)
+        r.task = task
+        r.stage.kind = kind
+        r.stage.reason = reason
+        r.queued = queued
+        r.note = note
+        r.missing = missing
+        r.epic = epic
+        return r
+    }
+    var s = Ghhud_V1_Snapshot()
+    s.plan = [
+        row(1, task: "fix", kind: "running", queued: 1, note: "running"),
+        row(2, task: "review", queued: 2, note: "next free slot"),
+        row(3, task: "fix", queued: 3, note: "no free checkout"),
+        row(4, task: "fix", queued: 4, note: "not in the latest refresh", missing: true),
+        row(5, task: "review", kind: "next"),
+        row(6, task: "implement", kind: "next", epic: "acme/r#50"),
+        row(7, task: "fix", kind: "wait", reason: "CI running"),
+        row(8, task: "implement", kind: "you", reason: "gate: after QA", epic: "acme/r#50"),
+        row(9, task: "", kind: "merge"),
+    ]
+    let gs = PlanList.groups(s)
+    check(gs.map(\.title) == ["Your queue", "Auto, next", "Waiting", "Needs you", "Merging"], "plan groups \(gs.map(\.title))")
+    let rows = gs.flatMap(\.rows)
+    check(rows.map(\.position) == [1, 2, 3, 4, 5, 6, nil, nil, nil], "start order \(rows.map(\.position))")
+    check(rows.map(\.tone) == [.muted, .good, .bad, .muted, .good, .good, .muted, .warn, .good], "plan tones")
+    check(rows[5].status == "next free slot · epic acme/r#50", "an epic piece says its epic: \(rows[5].status)")
+    check(rows[8].status == "auto-merge on", "merge without a reason")
+    check(rows[3].quiet && rows[6].quiet && rows[8].quiet && !rows[0].quiet, "quiet rows")
+    check(rows[0].queued == 1 && rows[4].queued == nil, "queue places")
+    check(rows[7].gated && !rows[5].gated, "a gate on an epic piece")
+    check(rows[0].ref == "acme/r#1" && rows[0].id == "fix|acme/r#1", "plan ids")
+    check(PlanList.starting(s) == 4, "starting: queued not running or missing, plus next: \(PlanList.starting(s))")
+    var u1 = Ghhud_V1_MachineUsage()
+    u1.name = "local"
+    u1.used = 1
+    u1.max = 2
+    u1.ok = true
+    var u2 = Ghhud_V1_MachineUsage()
+    u2.name = "oak"
+    s.usage = [u1, u2]
+    check(PlanList.summary(s) == "4 start next · slots local 1/2, oak —", "summary \(PlanList.summary(s))")
+    s.follower = "9"
+    check(PlanList.summary(s).hasSuffix(" · read-only"), "a follower says read-only")
+
+    var c = Ghhud_V1_Case()
+    c.id = "k"
+    c.repo = "acme/r"
+    c.check = "lint"
+    c.facts.prs = [1, 2]
+    c.facts.onBase = true
+    c.proposal.id = "p"
+    c.proposal.decision.kind = "link_fix"
+    c.proposal.decision.fixPr = 9
+    c.proposal.decision.summary = "#9  fixes\nit"
+    let cr = CaseRow(c)
+    check(cr.title == "acme/r lint" && cr.scope == "2 PRs, main too", "case title \(cr.title) \(cr.scope)")
+    check(cr.status == "supervisor proposes fix in #9" && cr.proposal == "p" && cr.summary == "#9 fixes it", "case proposal")
+    c.proposal.status = "applied"
+    c.decision.kind = "escalate"
+    c.decision.summary = "flaky runner"
+    c.decision.by = "supervisor"
+    let decided = CaseRow(c)
+    check(decided.proposal == nil && decided.status == "escalated: flaky runner (supervisor)", "decided case \(decided.status)")
+    c.clearDecision()
+    c.supervising = true
+    check(CaseRow(c).status == "supervisor looking…", "supervising case")
+
+    func node(_ ref: String, _ state: String, gate: String = "") -> Ghhud_V1_EpicNode {
+        var n = Ghhud_V1_EpicNode()
+        n.ref = ref
+        n.state = state
+        n.gate = gate
+        return n
+    }
+    var e = Ghhud_V1_Epic()
+    e.ref = "acme/r#50"
+    e.state = "approved"
+    e.plan.id = "p1"
+    e.plan.nodes = [node("acme/r#51", "done"), node("acme/r#52", "waiting"), node("acme/r#53", "gated", gate: "after QA"),
+                    node("acme/lib#4", "ready"), node("other/x#1", "running"), node("acme/r#54", "dropped")]
+    let er = EpicRow(e)
+    check(er.status == "approved · 1/6 done, 1 running, 1 ready, 0 in progress", "epic status \(er.status)")
+    check(er.open.map(\.short) == ["other/x#1", "lib#4", "#53", "#52"], "open pieces, running first: \(er.open.map(\.short))")
+    check(er.open[2].clearable && !er.open[3].clearable && er.planToApprove == nil, "approved: gates clear, no plan to approve")
+    e.state = "planned"
+    check(EpicRow(e).planToApprove == "p1" && !EpicRow(e).open[2].clearable, "planned: approve the plan, gates wait")
+    e.plan.stale = true
+    check(EpicRow(e).planToApprove == nil && EpicRow(e).status.hasPrefix("the epic changed"), "stale plan")
+    e.state = "error"
+    e.error = "no such issue"
+    check(EpicRow(e).status == "can't read it: no such issue" && EpicRow(e).tone == .bad, "epic error")
+    check(EpicRow.mark("gated") == "⏸" && EpicRow.mark("in_progress") == "▸", "piece marks")
+}
+
 // MARK: summary and links
 
 do {
@@ -489,6 +591,18 @@ if let i = CommandLine.arguments.firstIndex(of: "--live"), i + 1 < CommandLine.a
         let agents = AgentList.rows(conn.snapshot, showStale: false)
         check(agents.map(\.status) == ["running", "left work", "blocked"], "live: agent rows \(agents.map(\.status))")
         check(WorkspaceList.ready(conn.snapshot) == 2, "live: ready checkouts")
+        let un = await conn.unqueue(task: "fix", ref: "acme/api#70")
+        check(un == nil, "live: unqueue: \(un ?? "")")
+        let mv = await conn.moveQueued(task: "review", ref: "acme/widgets#401", by: -1)
+        check((try? mv.get()) == 2, "live: move queued \(mv)")
+        let en = await conn.enrollEpic("acme/widgets#60")
+        check((try? en.get()) == "acme/widgets#60", "live: enroll \(en)")
+        let rr = await conn.rereadEpic("acme/widgets#30")
+        let dr = await conn.dropEpic("acme/widgets#60")
+        check(rr == nil && dr == nil, "live: reread and drop: \(rr ?? "") \(dr ?? "")")
+        let groups = PlanList.groups(conn.snapshot)
+        check(groups.map(\.title) == ["Your queue", "Auto, next", "Waiting", "Needs you", "Merging"], "live: plan groups")
+        check(PlanList.starting(conn.snapshot) == 3, "live: starting \(PlanList.starting(conn.snapshot))")
     }
     conn.stop()
 }
