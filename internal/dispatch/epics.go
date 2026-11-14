@@ -231,7 +231,7 @@ func (d *Dispatcher) epicPass() []string {
 	}
 	if due && !d.epicChecking {
 		d.epicChecking = true
-		go d.checkEpics()
+		d.goEpic(d.checkEpics)
 	}
 	d.epicReviewsLocked()
 	return notes
@@ -242,7 +242,16 @@ func (d *Dispatcher) startEpicReadLocked(ref string) {
 		d.epicReading = map[string]bool{}
 	}
 	d.epicReading[ref] = true
-	go d.readEpic(ref)
+	d.goEpic(func() { d.readEpic(ref) })
+}
+
+// goEpic runs f in the background, tracked by epicWork.
+func (d *Dispatcher) goEpic(f func()) {
+	d.epicWork.Add(1)
+	go func() {
+		defer d.epicWork.Done()
+		f()
+	}()
 }
 
 // ---------------------------------------------------------------------------
