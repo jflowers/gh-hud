@@ -4,6 +4,11 @@ modules:
 lint:
   use:
     - STANDARD
+# make proto-breaking (and CI on pull requests) checks proto/ against the
+# base branch: the Mac app and other clients can run an older build than
+# the hub, so a change must not break the binary wire format, or the JSON
+# names a JSON client would use. Generated code is regenerated with every
+# change, so source-level rules (FILE, PACKAGE) don't apply.
 breaking:
   use:
-    - FILE
+    - WIRE_JSON

@@ -8,7 +8,7 @@ GOVULNCHECK_VERSION ?= v1.9.0
 BUF_VERSION ?= v1.75.0
 BUF := go run github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
 
-.PHONY: all build test lint fmt tidy vuln proto proto-check ci mac mac-notarize mac-check
+.PHONY: all build test lint fmt tidy vuln proto proto-check proto-breaking ci mac mac-notarize mac-check
 
 all: build
 
@@ -35,6 +35,13 @@ vuln:
 proto:
 	$(BUF) lint
 	$(BUF) generate
+
+# proto-breaking fails when proto/ breaks clients built from
+# BREAKING_AGAINST (a buf input: a directory, or .git#branch=NAME; by
+# default your local master).
+BREAKING_AGAINST ?= .git\#branch=master
+proto-breaking:
+	$(BUF) breaking --against '$(BREAKING_AGAINST)'
 
 # proto-check fails when the generated code is out of date.
 proto-check: proto
