@@ -501,6 +501,53 @@ do {
     check(EpicRow.mark("gated") == "⏸" && EpicRow.mark("in_progress") == "▸", "piece marks")
 }
 
+// MARK: fleet
+
+do {
+    func machine(_ name: String, _ state: String, reachable: Bool = true, applied: String = "aaa",
+                 waited: Int64 = 0, error: String = "") -> Ghhud_V1_FleetMachine {
+        var m = Ghhud_V1_FleetMachine()
+        m.name = name
+        m.state = state
+        m.reachable = reachable
+        m.appliedShort = applied
+        m.waited.seconds = waited
+        m.lastError = error
+        return m
+    }
+    var s = Ghhud_V1_Snapshot()
+    check(FleetList.rows(s).isEmpty, "no fleet, no rows")
+    s.fleet.targetShort = "bbb"
+    s.fleet.machines = [
+        machine("local", "current", applied: "bbb"),
+        machine("chai", "draining", waited: 200),
+        machine("oak", "unreachable", reachable: false, error: "ssh:\nno route"),
+        machine("elm", "pending", reachable: false, applied: ""),
+    ]
+    var u = Ghhud_V1_MachineUsage()
+    u.name = "chai"
+    u.used = 1
+    u.max = 2
+    u.ok = true
+    s.usage = [u]
+    let rows = FleetList.rows(s)
+    check(rows.map(\.applied) == ["bbb", "aaa → bbb", "aaa → bbb", "— → bbb"], "applied \(rows.map(\.applied))")
+    check(rows.map(\.reach) == ["yes", "yes", "no", "unknown"], "reach \(rows.map(\.reach))")
+    check(rows.map(\.tone) == [.good, .pending, .warn, .muted], "fleet tones")
+    check(rows[1].slots == "1/2" && rows[0].slots == "—", "slots")
+    check(rows[1].waited == 200 && rows[0].waited == nil, "waited only while draining")
+    check(rows[2].error == "ssh: no route", "errors on one line: \(rows[2].error)")
+    check(FleetList.progress(s) == "1/4", "progress")
+    check(FleetList.state(s.fleet) == ("up to date", .good), "idle fleet")
+    s.fleet.active = true
+    check(FleetList.state(s.fleet).0 == "rolling out", "active fleet")
+    s.fleet.paused = true
+    check(FleetList.state(s.fleet).0 == "paused", "paused outranks active")
+    s.fleet.failed = "oak"
+    check(FleetList.state(s.fleet) == ("failed on oak", .bad), "failed outranks paused")
+    check(FleetList.ciTone("no checks") == .warn && FleetList.ciTone("green") == .good && FleetList.ciTone("") == .muted, "CI tones")
+}
+
 // MARK: summary and links
 
 do {
@@ -603,6 +650,11 @@ if let i = CommandLine.arguments.firstIndex(of: "--live"), i + 1 < CommandLine.a
         let groups = PlanList.groups(conn.snapshot)
         check(groups.map(\.title) == ["Your queue", "Auto, next", "Waiting", "Needs you", "Merging"], "live: plan groups")
         check(PlanList.starting(conn.snapshot) == 3, "live: starting \(PlanList.starting(conn.snapshot))")
+        for a in [Ghhud_V1_FleetAction.pause, .resume, .applyNow, .skipWait, .retry] {
+            let err = await conn.fleet(a)
+            check(err == nil, "live: fleet \(a): \(err ?? "")")
+        }
+        check(FleetList.rows(conn.snapshot).map(\.state) == ["current", "draining", "unreachable"], "live: fleet rows")
     }
     conn.stop()
 }

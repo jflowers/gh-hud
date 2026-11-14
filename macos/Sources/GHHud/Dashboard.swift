@@ -3,12 +3,13 @@ import GHHudKit
 import SwiftUI
 
 /// What the window shows: a filter over the items, or one of the hub's
-/// panes. (The fleet joins them.)
+/// panes.
 enum Pane: Hashable {
     case items(ItemFilter)
     case plan
     case agents
     case workspaces
+    case fleet
 }
 
 /// The window's own state. Not @State (a macro only Xcode ships): see
@@ -27,6 +28,7 @@ final class DashboardState: ObservableObject {
     @Published var planSelection: PlanItem.ID?
     @Published var dropping: EpicRow?
     @Published var enrolling = false
+    @Published var confirmSkipWait = false
 
     init(pane: Pane?, query: String) {
         self.pane = pane
@@ -66,6 +68,7 @@ struct DashboardView: View {
         .toolbar {
             if case .items = ui.pane { itemTools }
             if ui.pane == .plan { PlanTools(conn: conn, ui: ui) }
+            if ui.pane == .fleet { FleetTools(conn: conn, ui: ui) }
             if ui.pane == .agents {
                 ToolbarItem {
                     Toggle(isOn: $ui.showStale) {
@@ -157,6 +160,7 @@ struct DashboardView: View {
     private var title: String {
         switch ui.pane {
         case .plan: return "Plan"
+        case .fleet: return "Fleet"
         case .agents: return "Agents"
         case .workspaces: return "Workspaces"
         default: return filter.title
@@ -190,6 +194,8 @@ struct DashboardView: View {
         switch ui.pane {
         case .plan:
             PlanPane(conn: conn, ui: ui)
+        case .fleet:
+            FleetPane(conn: conn, ui: ui)
         case .agents:
             AgentsPane(conn: conn, ui: ui)
         case .workspaces:
@@ -241,6 +247,14 @@ struct Sidebar: View {
                         .help("Checkouts a dispatch could use")
                         .badge(WorkspaceList.ready(conn.snapshot))
                         .tag(Pane.workspaces)
+                }
+            }
+            if conn.snapshot.hasFleet {
+                Section("Fleet") {
+                    Label("Rollout", systemImage: "shippingbox")
+                        .help("The GitOps rollout across your machines")
+                        .badge(Text(FleetList.progress(conn.snapshot)))
+                        .tag(Pane.fleet)
                 }
             }
         }

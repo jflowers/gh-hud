@@ -206,6 +206,13 @@ branch, commits on no remote) below. Opening it reads the checkouts again
 when they're over 30 seconds old, and Refresh (⌘R) refreshes whichever
 pane is showing.
 
+When the fleet is on, **Rollout** (the TUI's `F`) shows the target commit
+and its CI, whether the rollout is moving, paused, blocked or failed, and
+each machine's state, the commit it has, its agent slots, how long it has
+waited for agents to drain and its last error. The toolbar pauses or
+resumes the rollout, applies now, skips the drain wait (after asking),
+and retries the failed machine.
+
 Its source is in `macos/` and it needs a hub running (see "The hub") with
 TCP on, which is the default.
 

@@ -69,7 +69,7 @@ in the menu bar, native notifications, and later a full window.
    the row. `GHHudChecks --live <dir> --approve` exercises this against a
    scratch hub. Gates on approved epics (`EpicNode.state == "gated"`)
    follow as their own section with Clear (`ClearEpicGate`).
-3. **3c, the window.** The dashboard's tabs as a native window: the list
+3. **3c, the window.** *(done)* The dashboard's tabs as a native window: the list
    with filters and search, agents, workspaces, the plan and your queue,
    and the fleet, with the same commands as the TUI (dispatch, queue,
    watch, re-check, fleet controls). In slices:
@@ -95,4 +95,6 @@ in the menu bar, native notifications, and later a full window.
       reread, drop, clear a gate, enroll), and the plan rows grouped as
       the TUI groups them, with the queue commands (`MoveQueued`,
       `Unqueue`, `Enqueue`).
-   5. The fleet.
+   5. *(done)* The fleet: the rollout's target, CI and state, a row per
+      machine, and Pause/Resume, Apply Now, Skip Wait (confirmed) and
+      Retry (`FleetControl`).

@@ -177,6 +177,15 @@ public final class HubConnection {
         return Self.why(await client.rereadEpic(request: req, headers: hub.authHeaders))
     }
 
+    /// Drives the fleet rollout: pause, resume, apply now, skip the drain
+    /// wait, or retry the failed machine.
+    public func fleet(_ action: Ghhud_V1_FleetAction) async -> String? {
+        guard let hub, let client = commands else { return "not connected" }
+        var req = Ghhud_V1_FleetControlRequest()
+        req.action = action
+        return Self.why(await client.fleetControl(request: req, headers: hub.authHeaders))
+    }
+
     /// Opens a terminal attached to an agent session's pane.
     public func watch(sessionID: String) async -> String? {
         guard let hub, let client = commands else { return "not connected" }
