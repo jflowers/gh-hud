@@ -26,8 +26,11 @@ in the menu bar, native notifications, and later a full window.
   subscribes, reconnects with backoff, and re-reads `hub.json` when the
   hub restarts (its token changes), and view-model logic that is
   testable without UI.
-- `GHHud` (executable): a SwiftUI `MenuBarExtra` app (`LSUIElement`, no
-  Dock icon) over `GHHudKit`.
+- `GHHud` (executable): a SwiftUI app over `GHHudKit`: a `MenuBarExtra`
+  and the dashboard `Window`. It began menu bar only (`LSUIElement`); with
+  the window it's a regular app, in the Dock and ⌘-Tab, that opens the
+  dashboard at launch and on a Dock click. The icon is drawn by
+  `macos/Resources/make-icon.swift` (`make mac-icon`).
 - Codegen: `buf generate` with the Swift plugins (swift-protobuf and
   connect-swift), output committed under `macos/Sources/GHHudKit/Gen`,
   and covered by `make proto-check`.

@@ -2,12 +2,14 @@ import AppKit
 import GHHudKit
 import SwiftUI
 
-/// The menu bar app: what needs you, from the hub, at a glance.
+/// The app: what needs you, from the hub, at a glance in the menu bar, and
+/// the dashboard in a window. It's a regular app, in the Dock and ⌘-Tab.
 @main
 struct GHHudApp: App {
     // Not @State: SwiftUI's @State is a macro that only Xcode ships, and
     // this app builds with the Command Line Tools. The App is created once.
     private let model: AppModel
+    @NSApplicationDelegateAdaptor private var delegate: AppDelegate
 
     init() {
         SnapshotMode.runIfAsked() // never returns when asked
@@ -170,11 +172,48 @@ final class AppModel {
     }
 }
 
+/// Opens the dashboard window from outside SwiftUI's views (the app
+/// delegate). SwiftUI only hands openWindow to views, so the menu bar label,
+/// the one view that exists from launch, passes it on.
+@MainActor
+final class DashboardOpener {
+    static let shared = DashboardOpener()
+    private var openWindow: OpenWindowAction?
+
+    /// Takes openWindow from a view; the first time, at launch, it opens
+    /// the dashboard.
+    func take(_ action: OpenWindowAction) {
+        let first = openWindow == nil
+        openWindow = action
+        if first { open() }
+    }
+
+    func open() {
+        if let openWindow { DashboardView.open(openWindow) }
+    }
+}
+
+/// Clicking the Dock icon with no window showing opens the dashboard.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        if !hasVisibleWindows {
+            MainActor.assumeIsolated { DashboardOpener.shared.open() }
+        }
+        return true
+    }
+}
+
 /// The menu bar icon: a count when something needs you.
 struct MenuLabel: View {
     let conn: HubConnection
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
+        icon.onAppear { DashboardOpener.shared.take(openWindow) }
+    }
+
+    @ViewBuilder
+    private var icon: some View {
         switch conn.status {
         case .connected where conn.attention.count > 0:
             HStack(spacing: 2) {

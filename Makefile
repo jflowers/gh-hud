@@ -8,7 +8,7 @@ GOVULNCHECK_VERSION ?= v1.9.0
 BUF_VERSION ?= v1.75.0
 BUF := go run github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
 
-.PHONY: all build test lint fmt tidy vuln proto proto-check proto-breaking ci mac mac-notarize mac-check
+.PHONY: all build test lint fmt tidy vuln proto proto-check proto-breaking ci mac mac-notarize mac-check mac-icon
 
 all: build
 
@@ -62,8 +62,9 @@ MAC_VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo 
 mac:
 	cd macos && swift build -c release --product GHHud
 	rm -rf $(MAC_APP)
-	mkdir -p $(MAC_APP)/Contents/MacOS
+	mkdir -p $(MAC_APP)/Contents/MacOS $(MAC_APP)/Contents/Resources
 	cp macos/.build/release/GHHud $(MAC_APP)/Contents/MacOS/GHHud
+	cp macos/Resources/AppIcon.icns $(MAC_APP)/Contents/Resources/
 	sed 's/VERSION/$(MAC_VERSION)/g' macos/Resources/Info.plist > $(MAC_APP)/Contents/Info.plist
 	codesign --force --options runtime $(if $(MAC_SIGN_ID),--timestamp,--timestamp=none) --sign "$(if $(MAC_SIGN_ID),$(MAC_SIGN_ID),-)" $(MAC_APP)
 	codesign --verify --strict $(MAC_APP)
@@ -83,3 +84,9 @@ mac-notarize:
 
 mac-check:
 	cd macos && swift run GHHudChecks
+
+# mac-icon redraws macos/Resources/AppIcon.icns from make-icon.swift.
+mac-icon:
+	rm -rf build/AppIcon.iconset
+	swift macos/Resources/make-icon.swift build/AppIcon.iconset
+	iconutil -c icns build/AppIcon.iconset -o macos/Resources/AppIcon.icns

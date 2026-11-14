@@ -158,7 +158,9 @@ The hub reads its config when it starts: restart it after editing
 
 ## Mac app
 
-A menu bar app that shows what needs you, from the hub: agents waiting on
+A Mac app, in the Dock and ⌘-Tab, with the dashboard in a window (it
+opens at launch and when you click the Dock icon) and a menu bar icon
+that shows what needs you, from the hub: agents waiting on
 you, supervisor proposals and epic plans awaiting your approval, gates on
 approved epics that only you can clear, reviews requested of you, and your
 PRs ready for a maintainer. The icon shows the count; the menu lists them
@@ -169,7 +171,7 @@ dashboard's plan tab. A plan that went stale isn't offered: the hub reads
 the epic again first. A gate is offered once everything its piece waits
 on is done.
 
-**Dashboard** in the menu opens a window with the dashboard's items: the
+**Dashboard** in the menu (or the Dock icon) opens a window with the dashboard's items: the
 filters (all, review requested, mine, issues, CI, inbox, ready, agent
 queue) down the side with their counts, and the items as a table with
 the same columns as the TUI. The search field matches repo, title and
