@@ -525,6 +525,10 @@ func epicToPB(e epic.Epic) *pb.Epic {
 		out.Plan = &pb.EpicPlan{Id: p.ID, Sources: p.Sources, Nodes: mapSlice(p.Nodes, epicNodeToPB), Rules: p.Rules,
 			Skipped: p.Skipped, Created: ts(p.Created), BodyHash: p.BodyHash, Stale: p.Stale}
 	}
+	out.Reports = mapSlice(e.Reports, func(r epic.Report) *pb.EpicReport {
+		return &pb.EpicReport{Piece: r.Piece, RunId: r.RunID, On: r.On, Status: r.Status, Finished: ts(r.Finished),
+			Summary: r.Summary, Reason: r.Reason, Verdict: r.Verdict, Why: r.Why, Hint: r.Hint, Log: r.Log}
+	})
 	return out
 }
 
@@ -536,6 +540,10 @@ func epicFromPB(p *pb.Epic) epic.Epic {
 		e.Plan = &epic.Plan{ID: pp.GetId(), Sources: pp.GetSources(), Nodes: mapSlice(pp.GetNodes(), epicNodeFromPB),
 			Rules: pp.GetRules(), Skipped: pp.GetSkipped(), Created: fromTS(pp.GetCreated()), BodyHash: pp.GetBodyHash(), Stale: pp.GetStale()}
 	}
+	e.Reports = mapSlice(p.GetReports(), func(r *pb.EpicReport) epic.Report {
+		return epic.Report{Piece: r.GetPiece(), RunID: r.GetRunId(), On: r.GetOn(), Status: r.GetStatus(), Finished: fromTS(r.GetFinished()),
+			Summary: r.GetSummary(), Reason: r.GetReason(), Verdict: r.GetVerdict(), Why: r.GetWhy(), Hint: r.GetHint(), Log: r.GetLog()}
+	})
 	return e
 }
 

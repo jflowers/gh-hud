@@ -1986,11 +1986,65 @@ public nonisolated struct Ghhud_V1_Epic: @unchecked Sendable {
     set {_uniqueStorage()._log = newValue}
   }
 
+  /// the latest report of each piece whose run left no PR
+  public var reports: [Ghhud_V1_EpicReport] {
+    get {_storage._reports}
+    set {_uniqueStorage()._reports = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+/// EpicReport is what a piece's run that left no PR did, and the
+/// supervisor's verdict on it (epic.Report).
+public nonisolated struct Ghhud_V1_EpicReport: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var piece: String = String()
+
+  public var runID: String = String()
+
+  /// where it ran
+  public var on: String = String()
+
+  /// open set: ok, failed, left-work, unknown
+  public var status: String = String()
+
+  public var finished: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_finished ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_finished = newValue}
+  }
+  /// Returns true if `finished` has been explicitly set.
+  public var hasFinished: Bool {self._finished != nil}
+  /// Clears the value of `finished`. Subsequent reads from it will return its default value.
+  public mutating func clearFinished() {self._finished = nil}
+
+  /// the agent's last message, clipped
+  public var summary: String = String()
+
+  public var reason: String = String()
+
+  /// open set: "" (reviewing), retry, human, unreviewed
+  public var verdict: String = String()
+
+  public var why: String = String()
+
+  public var hint: String = String()
+
+  /// the review's log on the hub's machine
+  public var log: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _finished: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
 }
 
 /// EpicPlan is an epic read as a graph.
@@ -5156,7 +5210,7 @@ nonisolated extension Ghhud_V1_Proposal: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Epic"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}url\0\u{1}title\0\u{1}enrolled\0\u{1}state\0\u{1}error\0\u{1}plan\0\u{1}approved\0\u{3}approved_plan\0\u{3}checked_at\0\u{1}log\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}url\0\u{1}title\0\u{1}enrolled\0\u{1}state\0\u{1}error\0\u{1}plan\0\u{1}approved\0\u{3}approved_plan\0\u{3}checked_at\0\u{1}log\0\u{1}reports\0")
 
   fileprivate class _StorageClass {
     var _ref: String = String()
@@ -5170,6 +5224,7 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _approvedPlan: String = String()
     var _checkedAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
     var _log: String = String()
+    var _reports: [Ghhud_V1_EpicReport] = []
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5191,6 +5246,7 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _approvedPlan = source._approvedPlan
       _checkedAt = source._checkedAt
       _log = source._log
+      _reports = source._reports
     }
   }
 
@@ -5220,6 +5276,7 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 9: try { try decoder.decodeSingularStringField(value: &_storage._approvedPlan) }()
         case 10: try { try decoder.decodeSingularMessageField(value: &_storage._checkedAt) }()
         case 11: try { try decoder.decodeSingularStringField(value: &_storage._log) }()
+        case 12: try { try decoder.decodeRepeatedMessageField(value: &_storage._reports) }()
         default: break
         }
       }
@@ -5265,6 +5322,9 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
       if !_storage._log.isEmpty {
         try visitor.visitSingularStringField(value: _storage._log, fieldNumber: 11)
       }
+      if !_storage._reports.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._reports, fieldNumber: 12)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -5285,10 +5345,95 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._approvedPlan != rhs_storage._approvedPlan {return false}
         if _storage._checkedAt != rhs_storage._checkedAt {return false}
         if _storage._log != rhs_storage._log {return false}
+        if _storage._reports != rhs_storage._reports {return false}
         return true
       }
       if !storagesAreEqual {return false}
     }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_EpicReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".EpicReport"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}piece\0\u{3}run_id\0\u{1}on\0\u{1}status\0\u{1}finished\0\u{1}summary\0\u{1}reason\0\u{1}verdict\0\u{1}why\0\u{1}hint\0\u{1}log\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.piece) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.runID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.on) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.status) }()
+      case 5: try { try decoder.decodeSingularMessageField(value: &self._finished) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.summary) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.reason) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.verdict) }()
+      case 9: try { try decoder.decodeSingularStringField(value: &self.why) }()
+      case 10: try { try decoder.decodeSingularStringField(value: &self.hint) }()
+      case 11: try { try decoder.decodeSingularStringField(value: &self.log) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.piece.isEmpty {
+      try visitor.visitSingularStringField(value: self.piece, fieldNumber: 1)
+    }
+    if !self.runID.isEmpty {
+      try visitor.visitSingularStringField(value: self.runID, fieldNumber: 2)
+    }
+    if !self.on.isEmpty {
+      try visitor.visitSingularStringField(value: self.on, fieldNumber: 3)
+    }
+    if !self.status.isEmpty {
+      try visitor.visitSingularStringField(value: self.status, fieldNumber: 4)
+    }
+    try { if let v = self._finished {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
+    } }()
+    if !self.summary.isEmpty {
+      try visitor.visitSingularStringField(value: self.summary, fieldNumber: 6)
+    }
+    if !self.reason.isEmpty {
+      try visitor.visitSingularStringField(value: self.reason, fieldNumber: 7)
+    }
+    if !self.verdict.isEmpty {
+      try visitor.visitSingularStringField(value: self.verdict, fieldNumber: 8)
+    }
+    if !self.why.isEmpty {
+      try visitor.visitSingularStringField(value: self.why, fieldNumber: 9)
+    }
+    if !self.hint.isEmpty {
+      try visitor.visitSingularStringField(value: self.hint, fieldNumber: 10)
+    }
+    if !self.log.isEmpty {
+      try visitor.visitSingularStringField(value: self.log, fieldNumber: 11)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_EpicReport, rhs: Ghhud_V1_EpicReport) -> Bool {
+    if lhs.piece != rhs.piece {return false}
+    if lhs.runID != rhs.runID {return false}
+    if lhs.on != rhs.on {return false}
+    if lhs.status != rhs.status {return false}
+    if lhs._finished != rhs._finished {return false}
+    if lhs.summary != rhs.summary {return false}
+    if lhs.reason != rhs.reason {return false}
+    if lhs.verdict != rhs.verdict {return false}
+    if lhs.why != rhs.why {return false}
+    if lhs.hint != rhs.hint {return false}
+    if lhs.log != rhs.log {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

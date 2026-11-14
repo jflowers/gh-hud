@@ -104,6 +104,43 @@ type Epic struct {
 	CheckedAt    time.Time  `json:"checked_at"` // last status refresh
 	// Log is the planner run's output on the hub's machine.
 	Log string `json:"log,omitempty"`
+	// Reports are the latest run report of each piece whose run ended
+	// without a PR.
+	Reports []Report `json:"reports,omitempty"`
+}
+
+// Verdicts on a piece's run that left no PR.
+const (
+	VerdictReviewing = ""           // the supervisor is looking at it
+	VerdictRetry     = "retry"      // another run can get it done
+	VerdictHuman     = "human"      // it needs a person before another run
+	VerdictNone      = "unreviewed" // no supervisor, or its review failed
+)
+
+// Report is what a piece's run that left no PR did, and what the
+// supervisor makes of it.
+type Report struct {
+	Piece    string    `json:"piece"`  // owner/repo#N
+	RunID    string    `json:"run_id"` // the run it's about
+	On       string    `json:"on"`     // where it ran
+	Status   string    `json:"status"` // ok, failed, left-work, unknown
+	Finished time.Time `json:"finished"`
+	Summary  string    `json:"summary,omitempty"` // the agent's last message, clipped
+	Reason   string    `json:"reason,omitempty"`  // why it failed, if known
+	Verdict  string    `json:"verdict,omitempty"`
+	Why      string    `json:"why,omitempty"`  // the verdict's reason
+	Hint     string    `json:"hint,omitempty"` // for the next run
+	Log      string    `json:"log,omitempty"`  // the review's log
+}
+
+// Report is the latest report on a piece, if any.
+func (e Epic) Report(piece string) (Report, bool) {
+	for _, r := range e.Reports {
+		if r.Piece == piece {
+			return r, true
+		}
+	}
+	return Report{}, false
 }
 
 // Counts tallies an epic's nodes by state.

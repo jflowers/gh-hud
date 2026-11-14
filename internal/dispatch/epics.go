@@ -79,6 +79,7 @@ func cloneEpic(e epic.Epic) epic.Epic {
 		t := *e.Approved
 		e.Approved = &t
 	}
+	e.Reports = slices.Clone(e.Reports)
 	return e
 }
 
@@ -232,6 +233,7 @@ func (d *Dispatcher) epicPass() []string {
 		d.epicChecking = true
 		go d.checkEpics()
 	}
+	d.epicReviewsLocked()
 	return notes
 }
 

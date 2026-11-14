@@ -665,10 +665,25 @@ auto pass starts them like any other step:
 - **Once a PR opens,** the piece leaves the epic's rows and the PR goes
   through the usual pipeline: ci, feedback, review, the merge train. The
   piece is done when its issue closes.
-- **When it stops.** A piece gets `max_runs` runs after approval. After a
-  run that left no PR, the next one waits 15 minutes (`epic: ran, no PR
-  yet`). Once out of runs it's yours (`epic: 2 runs, still no PR`). Gated
-  and blocked pieces need you too. A piece that can't start says why once:
+- **When a run leaves no PR.** gh-hud keeps a report of the run: where it
+  ran, its status, the agent's last message and why it failed.
+  `gh-hud epic list` shows it under the piece. It waits until GitHub has
+  been asked about the piece since the run ended, so a PR the run opened
+  is seen first. Then, with the supervisor on, it asks the read-only
+  supervisor agent for a verdict:
+  - **retry:** another run can get it done. The next run starts without
+    waiting, and its plan file carries what went wrong and the
+    supervisor's hint.
+  - **human:** a person has to act first (a question only you can answer,
+    a decision, a permission, an unclear issue). The piece needs you
+    (`epic: <why>`). A run you start on it yourself (`a` in the Plan tab),
+    or a PR for it, moves it on.
+
+  Without the supervisor, or when its review fails, the next run waits 15
+  minutes (`epic: ran, no PR yet`).
+- **When it stops.** A piece gets `max_runs` runs after approval. Once out
+  of runs it's yours (`epic: 2 runs, still no PR`). Gated and blocked
+  pieces need you too. A piece that can't start says why once:
   `epic acme/app#100: acme/app#2 didn't start: …`.
 
 ```toml

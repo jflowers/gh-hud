@@ -12,7 +12,10 @@ package dispatch
 //     of the bare ref: the item carries the epic's goal and rules, which a
 //     bare ref can't.
 //   - A piece gets [epics] max_runs runs after approval; then it's yours.
-//     After a run that left no PR, the next one waits epicRetryAfter.
+//     A run that left no PR gets a report and the supervisor's verdict
+//     (epic_report.go): retry starts the next run with its hint, human
+//     makes the piece yours. Without a supervisor the next run waits
+//     epicRetryAfter.
 //
 // A piece with an open PR leaves the epic's rows: its PR goes through the
 // usual pipeline (ci, feedback, review, the merge train). It's done when
@@ -87,6 +90,7 @@ func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool) []PlanRo
 	if maxRuns <= 0 {
 		maxRuns = 2
 	}
+	sup := d.o().Supervisor.Enabled
 	var rows []PlanRow
 	for _, e := range d.approvedEpics() {
 		type piece struct {
@@ -109,6 +113,13 @@ func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool) []PlanRo
 				continue
 			}
 			row := PlanRow{Item: epicItem(n), Task: TaskIssue, Epic: e.Ref}
+			var last *Run
+			if len(p.runs) > 0 {
+				last = &p.runs[0]
+			}
+			rep, reported := pieceReport(e, n.Ref, last)
+			ended := last != nil && !p.live
+			retry := reported && rep.Verdict == epic.VerdictRetry // the review was the pause
 			switch {
 			case p.live:
 				row.Stage = Stage{Kind: StageRunning, Task: TaskIssue}
@@ -118,9 +129,13 @@ func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool) []PlanRo
 				row.Stage = Stage{Kind: StageNeedsYou, Task: TaskIssue, Reason: n.Note}
 			case n.State != epic.NodeReady:
 				continue // done, dropped, in progress (its PR has rows), waiting
+			case reported && rep.Verdict == epic.VerdictHuman:
+				row.Stage = Stage{Kind: StageNeedsYou, Task: TaskIssue, Reason: "epic: " + rep.Why}
 			case len(p.runs) >= maxRuns:
 				row.Stage = Stage{Kind: StageNeedsYou, Task: TaskIssue, Reason: fmt.Sprintf("epic: %d runs, still no PR", len(p.runs))}
-			case len(p.runs) > 0 && p.runs[0].FinishedAt != nil && now.Sub(*p.runs[0].FinishedAt) < epicRetryAfter:
+			case ended && sup && (!reported || rep.Verdict == epic.VerdictReviewing):
+				row.Stage = Stage{Kind: StageWait, Task: TaskIssue, Reason: "epic: ran, no PR; reviewing the run"}
+			case !retry && len(p.runs) > 0 && p.runs[0].FinishedAt != nil && now.Sub(*p.runs[0].FinishedAt) < epicRetryAfter:
 				row.Stage = Stage{Kind: StageWait, Task: TaskIssue, Reason: "epic: ran, no PR yet"}
 			case d.reserved(n.Ref):
 				row.Stage = Stage{Kind: StageRunning, Task: TaskIssue}
@@ -231,6 +246,13 @@ func piecePlan(e epic.Epic, n epic.Node) string {
 		desc += ", " + oneLine(n.Phase)
 	}
 	desc += ". Do only this issue; the epic's other pieces are separate runs."
+	if rep, ok := e.Report(n.Ref); ok && rep.Verdict == epic.VerdictRetry {
+		desc += fmt.Sprintf(" A previous run (on %s) ended without a PR; the supervisor's read: %s", rep.On, strings.TrimSuffix(oneLine(rep.Why), "."))
+		if rep.Hint != "" {
+			desc += ". Next time: " + strings.TrimSuffix(oneLine(rep.Hint), ".")
+		}
+		desc += "."
+	}
 	if len(e.Plan.Rules) > 0 {
 		var rules []string
 		for _, r := range e.Plan.Rules {
@@ -261,23 +283,34 @@ func EpicsWithRuns(es []epic.Epic, runs []Run) []epic.Epic {
 				continue
 			}
 			mine, live := pieceRuns(n.Ref, *e.Approved, runs, now)
-			switch {
-			case live:
-				on := mine[0].Machine
-				for _, r := range mine {
-					if r.FinishedAt == nil {
-						on = r.Machine
+			if live {
+				r := mine[0]
+				for _, m := range mine {
+					if m.FinishedAt == nil {
+						r = m
 						break
 					}
 				}
-				if on == "" {
-					on = "local"
+				n.State, n.Note = epic.NodeRunning, "on "+runOn(r.Machine, r.Workspace)
+				continue
+			}
+			if len(mine) == 0 {
+				continue
+			}
+			ran := "ran once, no PR"
+			if len(mine) > 1 {
+				ran = fmt.Sprintf("ran %d times, no PR", len(mine))
+			}
+			n.Note = ran
+			if rep, ok := pieceReport(*e, n.Ref, &mine[0]); ok {
+				switch rep.Verdict {
+				case epic.VerdictReviewing:
+					n.Note = ran + "; reviewing the run"
+				case epic.VerdictRetry:
+					n.Note = ran + "; retry: " + rep.Why
+				case epic.VerdictHuman:
+					n.Note = ran + "; needs you: " + rep.Why
 				}
-				n.State, n.Note = epic.NodeRunning, "on "+on
-			case len(mine) == 1:
-				n.Note = "ran once, no PR"
-			case len(mine) > 1:
-				n.Note = fmt.Sprintf("ran %d times, no PR", len(mine))
 			}
 		}
 	}

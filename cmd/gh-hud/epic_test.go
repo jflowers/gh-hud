@@ -44,3 +44,18 @@ func TestRunEpicUsage(t *testing.T) {
 		t.Errorf("code %d: %s", code, errb.String())
 	}
 }
+
+func TestPrintReport(t *testing.T) {
+	var b bytes.Buffer
+	ended := time.Date(2026, 11, 14, 13, 2, 0, 0, time.Local)
+	printReport(&b, epic.Report{Status: "failed", On: "lap1:app@oak", Finished: ended, Reason: "MessageAbortedError: Aborted",
+		Summary: "All tests pass.\nRunning the gate:", Verdict: epic.VerdictRetry, Why: "It was interrupted.", Hint: "Rerun the gate."})
+	for _, want := range []string{
+		"last run: failed on lap1:app@oak, ended Nov 14 13:02: MessageAbortedError: Aborted",
+		"agent: All tests pass. Running the gate:", "supervisor: retry — It was interrupted.", "hint for the next run: Rerun the gate.",
+	} {
+		if !strings.Contains(b.String(), want) {
+			t.Errorf("missing %q in:\n%s", want, b.String())
+		}
+	}
+}

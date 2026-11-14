@@ -524,6 +524,23 @@ message Epic {
   string approved_plan = 9;
   google.protobuf.Timestamp checked_at = 10;
   string log = 11; // the planner run's output on the hub's machine
+  repeated EpicReport reports = 12; // the latest report of each piece whose run left no PR
+}
+
+// EpicReport is what a piece's run that left no PR did, and the
+// supervisor's verdict on it (epic.Report).
+message EpicReport {
+  string piece = 1;
+  string run_id = 2;
+  string on = 3; // where it ran
+  string status = 4; // open set: ok, failed, left-work, unknown
+  google.protobuf.Timestamp finished = 5;
+  string summary = 6; // the agent's last message, clipped
+  string reason = 7;
+  string verdict = 8; // open set: "" (reviewing), retry, human, unreviewed
+  string why = 9;
+  string hint = 10;
+  string log = 11; // the review's log on the hub's machine
 }
 
 // EpicPlan is an epic read as a graph.
