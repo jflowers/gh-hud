@@ -288,12 +288,13 @@ type Dispatcher struct {
 	// epics are the enrolled epics (epics.go), guarded by mu; epicsMod is
 	// epics.json's mtime, epicReading the epics being read, epicChecking a
 	// status refresh in flight.
-	epics        []epic.Epic
-	epicsMod     time.Time
-	epicReading  map[string]bool
-	epicChecking bool
-	epicNotes    []string
-	epicFailed   map[string]string // piece ref → the start error last announced
+	epics         []epic.Epic
+	epicsMod      time.Time
+	epicReading   map[string]bool
+	epicChecking  bool
+	epicNotes     []string
+	epicFailed    map[string]string // piece ref → the start error last announced
+	epicReviewing map[string]bool   // pieces whose last run the supervisor is reviewing
 	// ghQuery runs a GraphQL query and decodes its data (a hook for tests;
 	// nil uses gh).
 	ghQuery func(ctx context.Context, query string, out any) error

@@ -122,6 +122,37 @@ func runEpic(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// printReport shows a piece's last run that left no PR, and the
+// supervisor's verdict.
+func printReport(w io.Writer, r epic.Report) {
+	run := fmt.Sprintf("      last run: %s on %s, ended %s", r.Status, r.On, r.Finished.Local().Format("Jan 2 15:04"))
+	if r.Reason != "" {
+		run += ": " + r.Reason
+	}
+	fmt.Fprintln(w, run)
+	if r.Summary != "" {
+		last := strings.Fields(r.Summary)
+		s := strings.Join(last, " ")
+		if len(s) > 160 {
+			s = s[:159] + "…"
+		}
+		fmt.Fprintf(w, "        agent: %s\n", s)
+	}
+	switch r.Verdict {
+	case epic.VerdictReviewing:
+		fmt.Fprintln(w, "        supervisor: reviewing the run")
+	case epic.VerdictRetry, epic.VerdictHuman:
+		fmt.Fprintf(w, "        supervisor: %s — %s\n", r.Verdict, r.Why)
+		if r.Hint != "" {
+			fmt.Fprintf(w, "        hint for the next run: %s\n", r.Hint)
+		}
+	case epic.VerdictNone:
+		if r.Why != "" {
+			fmt.Fprintf(w, "        supervisor: %s\n", r.Why)
+		}
+	}
+}
+
 // epicMark is a node state's mark in listings.
 var epicMark = map[epic.NodeState]string{
 	epic.NodeDone: "✓", epic.NodeDropped: "✗", epic.NodeInProgress: "▸", epic.NodeRunning: "▶", epic.NodeReady: "●",
@@ -182,6 +213,9 @@ func printEpics(w io.Writer, epics []epic.Epic) {
 				line += "  (gate cleared)"
 			}
 			fmt.Fprintln(w, line)
+			if r, ok := e.Report(n.Ref); ok && n.State != epic.NodeDone && n.State != epic.NodeDropped {
+				printReport(w, r)
+			}
 		}
 		for _, r := range p.Rules {
 			fmt.Fprintf(w, "  rule: %s\n", r)
