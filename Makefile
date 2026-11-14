@@ -2,15 +2,11 @@
 # Tool versions match CI; lint uses the golangci-lint on your PATH.
 
 GOVULNCHECK_VERSION ?= v1.9.0
-# The API codegen toolchain (make proto). protoc-gen-go must match the
-# google.golang.org/protobuf version in go.mod, and protoc-gen-connect-go
-# the connectrpc.com/connect version.
+# The API codegen toolchain (make proto). buf runs at this version; the Go
+# plugins are tool directives in go.mod (go tool), so they always match the
+# protobuf and connect libraries the code builds against.
 BUF_VERSION ?= v1.75.0
-PROTOC_GEN_GO_VERSION ?= v1.36.12
-PROTOC_GEN_CONNECT_GO_VERSION ?= v1.21.1
-
-TOOLS := $(CURDIR)/.tools
-export PATH := $(TOOLS):$(PATH)
+BUF := go run github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
 
 .PHONY: all build test lint fmt tidy vuln proto proto-check ci mac mac-notarize mac-check
 
@@ -37,11 +33,8 @@ vuln:
 
 # proto regenerates internal/api/gen from proto/ (after buf lint).
 proto:
-	GOBIN=$(TOOLS) go install github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
-	GOBIN=$(TOOLS) go install google.golang.org/protobuf/cmd/protoc-gen-go@$(PROTOC_GEN_GO_VERSION)
-	GOBIN=$(TOOLS) go install connectrpc.com/connect/cmd/protoc-gen-connect-go@$(PROTOC_GEN_CONNECT_GO_VERSION)
-	$(TOOLS)/buf lint
-	$(TOOLS)/buf generate
+	$(BUF) lint
+	$(BUF) generate
 
 # proto-check fails when the generated code is out of date.
 proto-check: proto
