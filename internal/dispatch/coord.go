@@ -220,8 +220,8 @@ const autoCooldown = 30 * time.Minute
 func pipelineTasks(it model.Item, tasks map[string]config.TaskConfig) []Task {
 	var out []Task
 	for _, t := range InferTasks(it) {
-		tc, ok := tasks[string(t)]
-		if !ok || tc.Command == "" || !autoWants(tc, it) {
+		tc, _, ok := taskConfig(tasks, t, it)
+		if !ok || !autoWants(tc, it) {
 			continue
 		}
 		if t == TaskFeedback && it.ThreadOpen == 0 && it.WaitingOn != "me" {
@@ -279,7 +279,7 @@ func stageOf(it model.Item, runs []Run, tasks map[string]config.TaskConfig, am c
 			return Stage{Kind: StageNeedsYou, Task: task, Reason: g.reason()}
 		}
 	}
-	tc := tasks[string(task)]
+	tc, _, _ := taskConfig(tasks, task, it)
 	n := 0
 	var last *Run
 	for i := range ofRef {

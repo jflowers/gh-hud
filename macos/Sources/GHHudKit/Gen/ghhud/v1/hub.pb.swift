@@ -1685,6 +1685,9 @@ public nonisolated struct Ghhud_V1_PlanRow: Sendable {
   /// the epic a piece's row comes from (owner/repo#N)
   public var epic: String = String()
 
+  /// the by_label rule (its label) that picks the command
+  public var rule: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -4765,7 +4768,7 @@ nonisolated extension Ghhud_V1_Stage: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 nonisolated extension Ghhud_V1_PlanRow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".PlanRow"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}item\0\u{1}task\0\u{1}stage\0\u{1}queued\0\u{1}note\0\u{1}missing\0\u{1}epic\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}item\0\u{1}task\0\u{1}stage\0\u{1}queued\0\u{1}note\0\u{1}missing\0\u{1}epic\0\u{1}rule\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4780,6 +4783,7 @@ nonisolated extension Ghhud_V1_PlanRow: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 5: try { try decoder.decodeSingularStringField(value: &self.note) }()
       case 6: try { try decoder.decodeSingularBoolField(value: &self.missing) }()
       case 7: try { try decoder.decodeSingularStringField(value: &self.epic) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.rule) }()
       default: break
       }
     }
@@ -4811,6 +4815,9 @@ nonisolated extension Ghhud_V1_PlanRow: SwiftProtobuf.Message, SwiftProtobuf._Me
     if !self.epic.isEmpty {
       try visitor.visitSingularStringField(value: self.epic, fieldNumber: 7)
     }
+    if !self.rule.isEmpty {
+      try visitor.visitSingularStringField(value: self.rule, fieldNumber: 8)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4822,6 +4829,7 @@ nonisolated extension Ghhud_V1_PlanRow: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.note != rhs.note {return false}
     if lhs.missing != rhs.missing {return false}
     if lhs.epic != rhs.epic {return false}
+    if lhs.rule != rhs.rule {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

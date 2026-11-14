@@ -446,6 +446,7 @@ func planRowToPB(r dispatch.PlanRow) *pb.PlanRow {
 		Note:    r.Note,
 		Missing: r.Missing,
 		Epic:    r.Epic,
+		Rule:    r.Rule,
 	}
 }
 
@@ -456,6 +457,7 @@ func planRowFromPB(p *pb.PlanRow) dispatch.PlanRow {
 		Note:    p.GetNote(),
 		Missing: p.GetMissing(),
 		Epic:    p.GetEpic(),
+		Rule:    p.GetRule(),
 	}
 	if p.GetItem() != nil {
 		r.Item = ItemFromPB(p.GetItem())
