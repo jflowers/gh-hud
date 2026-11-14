@@ -314,6 +314,91 @@ do {
     check(ItemList.commandsOff(s) == "Read-only: gh-hud pid 123 owns dispatch", "a follower hub refuses commands")
 }
 
+// MARK: agents and workspaces
+
+do {
+    let now = Date(timeIntervalSince1970: 3_000_000)
+    func session(_ id: String, task: String = "", ref: String = "", runID: String = "", running: Bool = false,
+                 updated: TimeInterval) -> Ghhud_V1_Session {
+        var se = Ghhud_V1_Session()
+        se.id = id
+        se.title = "title " + id
+        se.task = task
+        se.ref = ref
+        se.runID = runID
+        se.running = running
+        se.updatedAt = Google_Protobuf_Timestamp(date: now.addingTimeInterval(-updated))
+        return se
+    }
+    var s = Ghhud_V1_Snapshot()
+    var it = item(7, Category.mine.rawValue, title: "Seven", updated: 0)
+    it.repo = "acme/r"
+    s.result.items = [it]
+    var run = Ghhud_V1_Run()
+    run.id = "run-1"
+    run.status = "left-work"
+    run.startedAt = Google_Protobuf_Timestamp(date: now.addingTimeInterval(-3900))
+    run.finishedAt = Google_Protobuf_Timestamp(date: now.addingTimeInterval(-600))
+    s.runs = [run]
+    var blocked = session("s-blocked", updated: 10)
+    blocked.blocked = true
+    blocked.machine = "chai"
+    s.sessions = [
+        session("s-run", task: "fix", ref: "acme/r#7", runID: "run-1", updated: 600),
+        blocked,
+        session("s-live", running: true, updated: 3 * 86400),
+        session("s-old", updated: 3 * 86400),
+    ]
+    let rows = AgentList.rows(s, showStale: false, now: now)
+    check(rows.map(\.id) == ["s-run", "s-blocked", "s-live"], "stale sessions hidden: \(rows.map(\.id))")
+    check(AgentList.rows(s, showStale: true, now: now).count == 4, "shown on asking")
+    check(rows[0].name == "acme/r#7  Seven" && rows[0].status == "left work" && rows[0].tone == .warn,
+          "a dispatch reads its run: \(rows[0].name) \(rows[0].status)")
+    check(rows[0].took.map(AgentList.duration) == "55m" && rows[0].run?.id == "run-1", "took \(String(describing: rows[0].took))")
+    check(rows[1].status == "blocked" && rows[1].machine == "chai" && rows[1].name == "title s-blocked", "blocked session")
+    check(rows[2].status == "running" && rows[2].tone == .pending && rows[2].machine == "local", "running session")
+    check(AgentList.running(s) == 1, "running count")
+    check([45, 720, 3900].map { AgentList.duration(TimeInterval($0)) } == ["45s", "12m", "1h05"], "durations")
+
+    func health(_ ws: String, _ change: (inout Ghhud_V1_CheckoutHealth) -> Void) -> Ghhud_V1_CheckoutHealth {
+        var h = Ghhud_V1_CheckoutHealth()
+        h.workspace = ws
+        h.repo = "acme/r"
+        h.dir = "/w/" + ws
+        h.branch = "main"
+        h.defaultBranch = "main"
+        change(&h)
+        return h
+    }
+    s.workspaces = [
+        health("ready") { $0.behind = 3 },
+        health("busy") { $0.busy = "acme/r#12"; $0.machine = "chai" },
+        health("dirty") { $0.dirty = ["M a.go", "?? b.go"]; $0.ahead = 1; $0.behind = 0; $0.stashes = 1 },
+        health("diverged") { $0.ahead = 2; $0.behind = 1; $0.localOnly = ["feat\t2", "wip\t1"] },
+        health("lost") { $0.noUpstream = true; $0.ahead = -1; $0.behind = -1 },
+        health("broken") { $0.error = "ssh: no route" },
+        health("elsewhere") { $0.branch = "feat" },
+    ]
+    let ws = WorkspaceList.rows(s)
+    check(ws.map(\.state) == ["ready", "running #12", "2 uncommitted", "main diverged", "no upstream remote", "ssh: no route", "ready"],
+          "workspace states \(ws.map(\.state))")
+    check(ws.map(\.tone) == [.good, .pending, .bad, .bad, .warn, .bad, .good], "workspace tones")
+    check(ws.map(\.sync) == ["↓3", "=", "↑1", "↓1 ↑2", "—", "=", "="], "sync \(ws.map(\.sync))")
+    check(ws[1].place == "chai:busy" && ws[0].place == "ready" && ws[1].machine == "chai", "places")
+    check(ws[2].notes == "1 stash" && ws[3].notes == "3 local-only", "notes \(ws[2].notes) / \(ws[3].notes)")
+    check(ws[0].explanation == "A run here fast-forwards main to upstream.", "ready explanation")
+    check(ws[6].explanation == "A run here switches to main and fast-forwards it.", "other branch explanation")
+    check(ws[2].explanation == "A run here is refused until these are committed or discarded.", "dirty explanation")
+    check(ws[3].explanation == "main can't fast-forward to upstream/main.", "diverged explanation")
+    check(WorkspaceList.ready(s) == 2, "ready count")
+    check(WorkspaceList.stale(s, now: now), "never read is stale")
+    s.workspacesAt = Google_Protobuf_Timestamp(date: now.addingTimeInterval(-10))
+    check(!WorkspaceList.stale(s, now: now), "read 10s ago is fresh")
+    s.workspacesAt = Google_Protobuf_Timestamp(date: now.addingTimeInterval(-40))
+    s.workspacesLoading = true
+    check(!WorkspaceList.stale(s, now: now), "not while a read is under way")
+}
+
 // MARK: summary and links
 
 do {
@@ -396,6 +481,14 @@ if let i = CommandLine.arguments.firstIndex(of: "--live"), i + 1 < CommandLine.a
         let live = rows.first { $0.num == 398 }
         check(live?.run?.status == "running" && live?.latestRun?.id == "run-live", "live: the running row's tag")
         check(ItemList.commandsOff(conn.snapshot) == nil, "live: commands on")
+        let w = await conn.watch(sessionID: "ses_live")
+        check(w == nil, "live: watch a session: \(w ?? "")")
+        let ra = await conn.refresh(.agents)
+        let rw = await conn.refresh(.workspaces)
+        check(ra == nil && rw == nil, "live: refresh agents and workspaces: \(ra ?? "") \(rw ?? "")")
+        let agents = AgentList.rows(conn.snapshot, showStale: false)
+        check(agents.map(\.status) == ["running", "left work", "blocked"], "live: agent rows \(agents.map(\.status))")
+        check(WorkspaceList.ready(conn.snapshot) == 2, "live: ready checkouts")
     }
     conn.stop()
 }

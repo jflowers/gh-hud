@@ -186,6 +186,19 @@ a terminal on the hub's machine. A result shows along the bottom of the
 window. The commands are off when the hub has no dispatcher or only
 follows another gh-hud.
 
+With a dispatcher, the sidebar also has **Agents** (the TUI's `6`) and
+**Workspaces** (`9`). Agents lists the sessions and the runs behind them,
+with the selected one's outcome below: where it ran, how long it took,
+the reason it failed, what it left behind or pushed, and its final
+message. Double-click watches a session; the right-click menu re-checks
+its run, opens its transcript or copies its ID or directory. **Show
+Stale** adds sessions idle for over a day. Workspaces lists every
+checkout a dispatch could use and whether the next run could start
+there, with what's in the way (uncommitted files, a diverged default
+branch, commits on no remote) below. Opening it reads the checkouts again
+when they're over 30 seconds old, and Refresh (⌘R) refreshes whichever
+pane is showing.
+
 Its source is in `macos/` and it needs a hub running (see "The hub") with
 TCP on, which is the default.
 

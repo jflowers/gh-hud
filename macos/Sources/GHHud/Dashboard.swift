@@ -2,10 +2,12 @@ import AppKit
 import GHHudKit
 import SwiftUI
 
-/// What the window shows: a filter over the items. (Agents, workspaces,
-/// the plan and the fleet join the sidebar as panes of their own.)
+/// What the window shows: a filter over the items, or one of the hub's
+/// panes. (The plan and the fleet join them.)
 enum Pane: Hashable {
     case items(ItemFilter)
+    case agents
+    case workspaces
 }
 
 /// The window's own state. Not @State (a macro only Xcode ships): see
@@ -18,6 +20,9 @@ final class DashboardState: ObservableObject {
     @Published var refreshError: String?
     @Published var sheet: AgentRequest?
     @Published var notice: Notice?
+    @Published var agentSelection: AgentRow.ID?
+    @Published var workspaceSelection: WorkspaceRow.ID?
+    @Published var showStale = false
 
     init(pane: Pane?, query: String) {
         self.pane = pane
@@ -55,40 +60,77 @@ struct DashboardView: View {
         .navigationTitle(title)
         .navigationSubtitle(subtitle)
         .toolbar {
-            ToolbarItemGroup {
-                let cmds = ItemCommands(conn: conn, ui: ui)
-                let one = selectedRow
-                Button {
-                    if let one { cmds.startAgent(one) }
-                } label: {
-                    Label("Start Agent", systemImage: "play.circle")
+            if case .items = ui.pane { itemTools }
+            if ui.pane == .agents {
+                ToolbarItem {
+                    Toggle(isOn: $ui.showStale) {
+                        Label("Show Stale", systemImage: "clock.arrow.circlepath")
+                    }
+                    .help(ui.showStale ? "Hide sessions idle for over a day" : "Show sessions idle for over a day")
                 }
-                .help(cmds.off ?? (one == nil ? "Select an item to start an agent on" : "Start an agent on \(one!.ref)"))
-                .keyboardShortcut("d", modifiers: .command)
-                .disabled(one == nil || cmds.off != nil)
-                Button {
-                    if let one { cmds.queue(one) }
-                } label: {
-                    Label("Add to Queue", systemImage: "text.badge.plus")
-                }
-                .help(cmds.off ?? (one == nil ? "Select an item to queue" : "Add \(one!.ref) to your queue"))
-                .keyboardShortcut("d", modifiers: [.command, .shift])
-                .disabled(one == nil || cmds.off != nil)
             }
             ToolbarItem {
                 Button {
-                    Task { ui.refreshError = await conn.refresh() }
+                    Task { ui.refreshError = await conn.refresh(refreshTarget) }
                 } label: {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
-                .help(ui.refreshError ?? "Fetch GitHub now")
+                .help(ui.refreshError ?? refreshHelp)
                 .keyboardShortcut("r", modifiers: .command)
-                .disabled(conn.status != .connected || conn.snapshot.fetching)
+                .disabled(conn.status != .connected || refreshing)
             }
         }
         .frame(minWidth: 760, minHeight: 360)
         .sheet(item: $ui.sheet) { req in
             AgentSheet(conn: conn, req: req, ui: ui)
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var itemTools: some ToolbarContent {
+        ToolbarItemGroup {
+            let cmds = ItemCommands(conn: conn, ui: ui)
+            let one = selectedRow
+            Button {
+                if let one { cmds.startAgent(one) }
+            } label: {
+                Label("Start Agent", systemImage: "play.circle")
+            }
+            .help(cmds.off ?? (one == nil ? "Select an item to start an agent on" : "Start an agent on \(one!.ref)"))
+            .keyboardShortcut("d", modifiers: .command)
+            .disabled(one == nil || cmds.off != nil)
+            Button {
+                if let one { cmds.queue(one) }
+            } label: {
+                Label("Add to Queue", systemImage: "text.badge.plus")
+            }
+            .help(cmds.off ?? (one == nil ? "Select an item to queue" : "Add \(one!.ref) to your queue"))
+            .keyboardShortcut("d", modifiers: [.command, .shift])
+            .disabled(one == nil || cmds.off != nil)
+        }
+    }
+
+    private var refreshTarget: Ghhud_V1_RefreshTarget {
+        switch ui.pane {
+        case .agents: return .agents
+        case .workspaces: return .workspaces
+        default: return .github
+        }
+    }
+
+    private var refreshHelp: String {
+        switch ui.pane {
+        case .agents: return "Read the agent sessions and runs now"
+        case .workspaces: return "Read every checkout now"
+        default: return "Fetch GitHub now"
+        }
+    }
+
+    private var refreshing: Bool {
+        switch ui.pane {
+        case .workspaces: return conn.snapshot.workspacesLoading
+        case .agents: return false
+        default: return conn.snapshot.fetching
         }
     }
 
@@ -107,7 +149,13 @@ struct DashboardView: View {
         return .all
     }
 
-    private var title: String { filter.title }
+    private var title: String {
+        switch ui.pane {
+        case .agents: return "Agents"
+        case .workspaces: return "Workspaces"
+        default: return filter.title
+        }
+    }
 
     private var subtitle: String {
         switch conn.status {
@@ -122,14 +170,26 @@ struct DashboardView: View {
         if conn.status != .connected {
             ContentUnavailableView(subtitle, systemImage: "bolt.horizontal.circle")
         } else {
-            let rows = rows
-            ItemTable(rows: rows, cmds: ItemCommands(conn: conn, ui: ui), ui: ui)
-                .searchable(text: $ui.query, placement: .toolbar, prompt: "Repo, title or #N")
+            pane
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     if let n = ui.notice {
                         NoticeBar(notice: n) { ui.notice = nil }
                     }
                 }
+        }
+    }
+
+    @ViewBuilder
+    private var pane: some View {
+        switch ui.pane {
+        case .agents:
+            AgentsPane(conn: conn, ui: ui)
+        case .workspaces:
+            WorkspacesPane(conn: conn, ui: ui)
+        default:
+            let rows = rows
+            ItemTable(rows: rows, cmds: ItemCommands(conn: conn, ui: ui), ui: ui)
+                .searchable(text: $ui.query, placement: .toolbar, prompt: "Repo, title or #N")
                 .overlay {
                     if rows.isEmpty {
                         if ui.query.isEmpty {
@@ -143,7 +203,7 @@ struct DashboardView: View {
     }
 }
 
-/// The filters, with how many items each holds.
+/// The filters, with how many items each holds, and the hub's panes.
 struct Sidebar: View {
     let conn: HubConnection
     @ObservedObject var ui: DashboardState
@@ -157,6 +217,18 @@ struct Sidebar: View {
                         .help(f.title)
                         .badge(counts[f] ?? 0)
                         .tag(Pane.items(f))
+                }
+            }
+            if conn.snapshot.dispatch {
+                Section("Hub") {
+                    Label("Agents", systemImage: "person.2")
+                        .help("Agent sessions and runs")
+                        .badge(AgentList.running(conn.snapshot))
+                        .tag(Pane.agents)
+                    Label("Workspaces", systemImage: "folder")
+                        .help("Checkouts a dispatch could use")
+                        .badge(WorkspaceList.ready(conn.snapshot))
+                        .tag(Pane.workspaces)
                 }
             }
         }

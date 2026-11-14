@@ -186,13 +186,7 @@ public struct RunTag: Equatable, Sendable {
         task = r.task
         status = r.status
         at = end
-        switch r.status {
-        case "running": tone = .pending
-        case "blocked", "left-work": tone = .warn
-        case "ok": tone = .good
-        case "failed": tone = .bad
-        default: tone = .muted
-        }
+        tone = Self.tone(r.status)
     }
 
     /// The status in words, as the TUI says it.

@@ -62,10 +62,10 @@ public final class HubConnection {
     }
 
     /// Asks the hub to refresh GitHub now. Returns why it failed, if it did.
-    public func refresh() async -> String? {
+    public func refresh(_ target: Ghhud_V1_RefreshTarget = .github) async -> String? {
         guard let hub, let client = commands else { return "not connected" }
         var req = Ghhud_V1_RefreshRequest()
-        req.target = .github
+        req.target = target
         return Self.why(await client.refresh(request: req, headers: hub.authHeaders))
     }
 
@@ -131,6 +131,14 @@ public final class HubConnection {
         req.task = task
         req.url = url
         return Self.result(await client.enqueue(request: req, headers: hub.authHeaders)).map(\.position)
+    }
+
+    /// Opens a terminal attached to an agent session's pane.
+    public func watch(sessionID: String) async -> String? {
+        guard let hub, let client = commands else { return "not connected" }
+        var req = Ghhud_V1_WatchRequest()
+        req.sessionID = sessionID
+        return Self.why(await client.watch(request: req, headers: hub.authHeaders))
     }
 
     /// Opens a terminal on the hub's machine attached to a live run.
