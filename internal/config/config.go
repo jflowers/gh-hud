@@ -156,6 +156,21 @@ type SupervisorConfig struct {
 	Model string `toml:"model"`
 	// TimeoutSecs bounds one run (default 600).
 	TimeoutSecs int `toml:"timeout_secs"`
+	// SecondOpinion lets the agent call the auto-question plugin's
+	// second_opinion tool before an answer gh-hud may apply (default true).
+	// Without the plugin there is no such tool and the setting does nothing.
+	SecondOpinion *bool `toml:"second_opinion"`
+	// SecondOpinionModels are the plugin's llm.alternateModels for the
+	// supervisor: used for the second opinion instead of the plugin's
+	// llm.model when that is the supervisor's own model. Empty keeps the
+	// plugin's own settings.
+	SecondOpinionModels []string `toml:"second_opinion_models"`
+}
+
+// SecondOpinionOn reports whether the supervisor may ask for a second
+// opinion.
+func (s SupervisorConfig) SecondOpinionOn() bool {
+	return s.SecondOpinion == nil || *s.SecondOpinion
 }
 
 // EpicsConfig bounds the work gh-hud starts on an approved epic.
@@ -373,6 +388,11 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.Supervisor.TimeoutSecs <= 0 {
 		cfg.Supervisor.TimeoutSecs = 600
+	}
+	for _, m := range cfg.Supervisor.SecondOpinionModels {
+		if strings.TrimSpace(m) == "" {
+			return nil, fmt.Errorf("supervisor second_opinion_models: empty model name")
+		}
 	}
 	if cfg.AutoMerge.HoldLabel == "" {
 		cfg.AutoMerge.HoldLabel = "hold"

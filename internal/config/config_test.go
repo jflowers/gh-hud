@@ -468,3 +468,30 @@ func TestLoadWarnsUnknownKeys(t *testing.T) {
 		})
 	}
 }
+
+func TestSupervisorSecondOpinion(t *testing.T) {
+	load := func(body string) (*Config, error) {
+		path := filepath.Join(t.TempDir(), "config.toml")
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return Load(path)
+	}
+	cfg, err := load("[supervisor]\nenabled = true\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.Supervisor.SecondOpinionOn() || len(cfg.Supervisor.SecondOpinionModels) != 0 {
+		t.Errorf("defaults: %+v", cfg.Supervisor)
+	}
+	cfg, err = load("[supervisor]\nsecond_opinion = false\nsecond_opinion_models = [\"deepseek/deepseek-v4\"]\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Supervisor.SecondOpinionOn() || cfg.Supervisor.SecondOpinionModels[0] != "deepseek/deepseek-v4" {
+		t.Errorf("set: %+v", cfg.Supervisor)
+	}
+	if _, err := load("[supervisor]\nsecond_opinion_models = [\" \"]\n"); err == nil || !strings.Contains(err.Error(), "second_opinion_models") {
+		t.Errorf("blank model: %v", err)
+	}
+}

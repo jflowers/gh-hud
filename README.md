@@ -568,6 +568,8 @@ enabled = true
 mode = "propose"   # or "act"
 model = ""         # provider/model; empty uses opencode's default
 timeout_secs = 600
+second_opinion = true          # default; needs the auto-question plugin
+second_opinion_models = []     # e.g. ["deepseek/deepseek-v4"]; see below
 ```
 
 - **Where it runs.** On the hub's machine, outside the slots, one run at a
@@ -579,6 +581,22 @@ timeout_secs = 600
   it can read files and run read-only `gh pr`, `gh run` and
   `gh issue view` commands, and nothing else. Your global opencode config,
   plugins and guards still load.
+- **Second opinion.** With the
+  [auto-question](https://github.com/jflowers/opencode-auto-question)
+  plugin (0.3.0 or later) in your opencode config, the agent calls its
+  `second_opinion` tool before an answer gh-hud may apply without you: a
+  case's `link_fix`, or a piece's `retry` verdict. It passes the question,
+  the options and only the evidence, never its own reasoning. If the
+  second opinion picks another option or isn't confident, the agent
+  escalates (or answers `human`) and says what each concluded. gh-hud writes
+  `supervisor/opencode/auto-question.jsonc`, which turns the tool on for
+  supervisor runs only, with the plugin's guidance pass off for the
+  supervisor (your global guidance is written for coding agents). The
+  engines, keys and models come from your own auto-question config.
+  `second_opinion_models` become the plugin's
+  `llm.alternateModels` for the `hud-supervisor` agent, used when the
+  plugin's `llm.model` is the supervisor's own model, so the second opinion
+  comes from a different model. `second_opinion = false` turns it off.
 - **Keys.** The shell that starts it loads `~/.config/agent-env` for the
   model keys, then unsets `UF_DIVISOR_GH_TOKEN` and `GH_TOKEN`.
   Key values never pass through gh-hud.
