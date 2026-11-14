@@ -2676,8 +2676,9 @@ type Item struct {
 	Review           string   `protobuf:"bytes,13,opt,name=review,proto3" json:"review,omitempty"`
 	BotReview        string   `protobuf:"bytes,14,opt,name=bot_review,json=botReview,proto3" json:"bot_review,omitempty"`
 	Merge            string   `protobuf:"bytes,15,opt,name=merge,proto3" json:"merge,omitempty"`
-	Threads          int64    `protobuf:"varint,16,opt,name=threads,proto3" json:"threads,omitempty"`                         // unresolved review threads opened by humans
-	BotThreads       int64    `protobuf:"varint,17,opt,name=bot_threads,json=botThreads,proto3" json:"bot_threads,omitempty"` // ... and by bots
+	Threads          int64    `protobuf:"varint,16,opt,name=threads,proto3" json:"threads,omitempty"`                            // unresolved review threads opened by humans
+	BotThreads       int64    `protobuf:"varint,17,opt,name=bot_threads,json=botThreads,proto3" json:"bot_threads,omitempty"`    // ... and by bots
+	ThreadsOpen      int64    `protobuf:"varint,44,opt,name=threads_open,json=threadsOpen,proto3" json:"threads_open,omitempty"` // the human ones whose last comment isn't mine
 	LastActor        string   `protobuf:"bytes,18,opt,name=last_actor,json=lastActor,proto3" json:"last_actor,omitempty"`
 	WaitingOn        string   `protobuf:"bytes,19,opt,name=waiting_on,json=waitingOn,proto3" json:"waiting_on,omitempty"`              // "me", "them" or ""
 	Tagged           bool     `protobuf:"varint,20,opt,name=tagged,proto3" json:"tagged,omitempty"`                                    // you are a requested reviewer or assignee
@@ -2853,6 +2854,13 @@ func (x *Item) GetThreads() int64 {
 func (x *Item) GetBotThreads() int64 {
 	if x != nil {
 		return x.BotThreads
+	}
+	return 0
+}
+
+func (x *Item) GetThreadsOpen() int64 {
+	if x != nil {
+		return x.ThreadsOpen
 	}
 	return 0
 }
@@ -5225,8 +5233,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x04user\x18\x05 \x01(\tR\x04user\"B\n" +
 	"\fSectionError\x12\x18\n" +
 	"\asection\x18\x01 \x01(\tR\asection\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\xe8\n" +
-	"\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x8b\v\n" +
 	"\x04Item\x12&\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x12.ghhud.v1.ItemKindR\x04kind\x12\x1e\n" +
 	"\n" +
@@ -5251,7 +5258,8 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x05merge\x18\x0f \x01(\tR\x05merge\x12\x18\n" +
 	"\athreads\x18\x10 \x01(\x03R\athreads\x12\x1f\n" +
 	"\vbot_threads\x18\x11 \x01(\x03R\n" +
-	"botThreads\x12\x1d\n" +
+	"botThreads\x12!\n" +
+	"\fthreads_open\x18, \x01(\x03R\vthreadsOpen\x12\x1d\n" +
 	"\n" +
 	"last_actor\x18\x12 \x01(\tR\tlastActor\x12\x1d\n" +
 	"\n" +

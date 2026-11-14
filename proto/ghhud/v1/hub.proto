@@ -351,6 +351,7 @@ message Item {
   string merge = 15;
   int64 threads = 16; // unresolved review threads opened by humans
   int64 bot_threads = 17; // ... and by bots
+  int64 threads_open = 44; // the human ones whose last comment isn't mine
 
   string last_actor = 18;
   string waiting_on = 19; // "me", "them" or ""

@@ -1207,6 +1207,12 @@ public nonisolated struct Ghhud_V1_Item: @unchecked Sendable {
     set {_uniqueStorage()._botThreads = newValue}
   }
 
+  /// the human ones whose last comment isn't mine
+  public var threadsOpen: Int64 {
+    get {_storage._threadsOpen}
+    set {_uniqueStorage()._threadsOpen = newValue}
+  }
+
   public var lastActor: String {
     get {_storage._lastActor}
     set {_uniqueStorage()._lastActor = newValue}
@@ -3883,7 +3889,7 @@ nonisolated extension Ghhud_V1_SectionError: SwiftProtobuf.Message, SwiftProtobu
 
 nonisolated extension Ghhud_V1_Item: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Item"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{1}categories\0\u{1}url\0\u{1}repo\0\u{1}num\0\u{1}title\0\u{1}author\0\u{1}draft\0\u{3}created_at\0\u{3}updated_at\0\u{1}ci\0\u{1}codecov\0\u{1}review\0\u{3}bot_review\0\u{1}merge\0\u{1}threads\0\u{3}bot_threads\0\u{3}last_actor\0\u{3}waiting_on\0\u{1}tagged\0\u{3}other_approved\0\u{3}my_approval\0\u{3}bot_review_due\0\u{1}reasons\0\u{3}node_id\0\u{3}head_oid\0\u{3}merge_state\0\u{3}review_decision\0\u{3}required_reviews\0\u{3}auto_merge_on\0\u{3}auto_merge_allowed\0\u{1}labels\0\u{3}failing_checks\0\u{3}checks_required\0\u{3}required_fails\0\u{3}base_failing\0\u{3}base_passing\0\u{3}base_oid\0\u{1}size\0\u{1}files\0\u{3}head_branch\0\u{3}run_branch\0\u{3}run_event\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{1}categories\0\u{1}url\0\u{1}repo\0\u{1}num\0\u{1}title\0\u{1}author\0\u{1}draft\0\u{3}created_at\0\u{3}updated_at\0\u{1}ci\0\u{1}codecov\0\u{1}review\0\u{3}bot_review\0\u{1}merge\0\u{1}threads\0\u{3}bot_threads\0\u{3}last_actor\0\u{3}waiting_on\0\u{1}tagged\0\u{3}other_approved\0\u{3}my_approval\0\u{3}bot_review_due\0\u{1}reasons\0\u{3}node_id\0\u{3}head_oid\0\u{3}merge_state\0\u{3}review_decision\0\u{3}required_reviews\0\u{3}auto_merge_on\0\u{3}auto_merge_allowed\0\u{1}labels\0\u{3}failing_checks\0\u{3}checks_required\0\u{3}required_fails\0\u{3}base_failing\0\u{3}base_passing\0\u{3}base_oid\0\u{1}size\0\u{1}files\0\u{3}head_branch\0\u{3}run_branch\0\u{3}run_event\0\u{3}threads_open\0")
 
   fileprivate class _StorageClass {
     var _kind: Ghhud_V1_ItemKind = .unspecified
@@ -3903,6 +3909,7 @@ nonisolated extension Ghhud_V1_Item: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _merge: String = String()
     var _threads: Int64 = 0
     var _botThreads: Int64 = 0
+    var _threadsOpen: Int64 = 0
     var _lastActor: String = String()
     var _waitingOn: String = String()
     var _tagged: Bool = false
@@ -3956,6 +3963,7 @@ nonisolated extension Ghhud_V1_Item: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _merge = source._merge
       _threads = source._threads
       _botThreads = source._botThreads
+      _threadsOpen = source._threadsOpen
       _lastActor = source._lastActor
       _waitingOn = source._waitingOn
       _tagged = source._tagged
@@ -4043,6 +4051,7 @@ nonisolated extension Ghhud_V1_Item: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 41: try { try decoder.decodeSingularStringField(value: &_storage._headBranch) }()
         case 42: try { try decoder.decodeSingularStringField(value: &_storage._runBranch) }()
         case 43: try { try decoder.decodeSingularStringField(value: &_storage._runEvent) }()
+        case 44: try { try decoder.decodeSingularInt64Field(value: &_storage._threadsOpen) }()
         default: break
         }
       }
@@ -4184,6 +4193,9 @@ nonisolated extension Ghhud_V1_Item: SwiftProtobuf.Message, SwiftProtobuf._Messa
       if !_storage._runEvent.isEmpty {
         try visitor.visitSingularStringField(value: _storage._runEvent, fieldNumber: 43)
       }
+      if _storage._threadsOpen != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._threadsOpen, fieldNumber: 44)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4210,6 +4222,7 @@ nonisolated extension Ghhud_V1_Item: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._merge != rhs_storage._merge {return false}
         if _storage._threads != rhs_storage._threads {return false}
         if _storage._botThreads != rhs_storage._botThreads {return false}
+        if _storage._threadsOpen != rhs_storage._threadsOpen {return false}
         if _storage._lastActor != rhs_storage._lastActor {return false}
         if _storage._waitingOn != rhs_storage._waitingOn {return false}
         if _storage._tagged != rhs_storage._tagged {return false}

@@ -214,8 +214,8 @@ const autoCooldown = 30 * time.Minute
 
 // pipelineTasks is InferTasks narrowed to the tasks auto-dispatch handles
 // for this item, most urgent first. Feedback only counts while there's
-// something to answer: an unresolved human thread, or a reviewer acting
-// after you. A changes-requested decision you already answered waits for
+// something to answer: an unresolved human thread whose last comment isn't
+// yours, or a reviewer acting after you. A changes-requested decision you already answered waits for
 // the reviewer, which is the review step's job.
 func pipelineTasks(it model.Item, tasks map[string]config.TaskConfig) []Task {
 	var out []Task
@@ -224,7 +224,7 @@ func pipelineTasks(it model.Item, tasks map[string]config.TaskConfig) []Task {
 		if !ok || tc.Command == "" || !autoWants(tc, it) {
 			continue
 		}
-		if t == TaskFeedback && it.Thread == 0 && it.WaitingOn != "me" {
+		if t == TaskFeedback && it.ThreadOpen == 0 && it.WaitingOn != "me" {
 			continue
 		}
 		out = append(out, t)
