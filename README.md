@@ -175,6 +175,16 @@ queue) down the side with their counts, and the items as a table with
 the same columns as the TUI. The search field matches repo, title and
 `owner/repo#N`, like `/`. Double-click or Return opens an item on GitHub,
 and the right-click menu opens or copies the links of the selected rows.
+Titles carry the TUI's agent tags (`fix ● 5m`, `▸review`, `▸you: …`).
+
+The agent commands work on the selected item, from the toolbar or the
+right-click menu: **Start Agent…** (⌘D, the TUI's `a`) lists where each
+task can start now and starts the one you pick; **Add to Queue…** (⇧⌘D,
+`+`) queues one. When the item has a run, **Watch**, **Re-check** and
+**Open Transcript** act on its newest run; Watch and the transcript open
+a terminal on the hub's machine. A result shows along the bottom of the
+window. The commands are off when the hub has no dispatcher or only
+follows another gh-hud.
 
 Its source is in `macos/` and it needs a hub running (see "The hub") with
 TCP on, which is the default.

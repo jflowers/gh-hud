@@ -99,6 +99,83 @@ public final class HubConnection {
         return Self.why(await client.rejectProposal(request: req, headers: hub.authHeaders))
     }
 
+    /// Where an agent can start on an item now.
+    public func menuChoices(url: String) async -> Result<[Ghhud_V1_MenuChoice], CommandError> {
+        guard let hub, let client = commands else { return .failure(.notConnected) }
+        var req = Ghhud_V1_MenuChoicesRequest()
+        req.url = url
+        return Self.result(await client.menuChoices(request: req, headers: hub.authHeaders)).map(\.choices)
+    }
+
+    /// Starts an agent task on an item.
+    public func dispatch(task: String, url: String) async -> Result<Ghhud_V1_DispatchResponse, CommandError> {
+        guard let hub, let client = commands else { return .failure(.notConnected) }
+        var req = Ghhud_V1_DispatchRequest()
+        req.task = task
+        req.url = url
+        return Self.result(await client.dispatch(request: req, headers: hub.authHeaders))
+    }
+
+    /// The tasks that can join your queue for an item.
+    public func queueChoices(url: String) async -> Result<[String], CommandError> {
+        guard let hub, let client = commands else { return .failure(.notConnected) }
+        var req = Ghhud_V1_QueueChoicesRequest()
+        req.url = url
+        return Self.result(await client.queueChoices(request: req, headers: hub.authHeaders)).map(\.tasks)
+    }
+
+    /// Adds a task to your queue; the result is its place (1 is first).
+    public func enqueue(task: String, url: String) async -> Result<Int64, CommandError> {
+        guard let hub, let client = commands else { return .failure(.notConnected) }
+        var req = Ghhud_V1_EnqueueRequest()
+        req.task = task
+        req.url = url
+        return Self.result(await client.enqueue(request: req, headers: hub.authHeaders)).map(\.position)
+    }
+
+    /// Opens a terminal on the hub's machine attached to a live run.
+    public func watchRun(id: String) async -> String? {
+        guard let hub, let client = commands else { return "not connected" }
+        var req = Ghhud_V1_WatchRunRequest()
+        req.runID = id
+        return Self.why(await client.watchRun(request: req, headers: hub.authHeaders))
+    }
+
+    /// Inspects a finished run's outcome again; returns the run as it is now.
+    public func reinspect(id: String) async -> Result<Ghhud_V1_Run, CommandError> {
+        guard let hub, let client = commands else { return .failure(.notConnected) }
+        var req = Ghhud_V1_ReinspectRequest()
+        req.runID = id
+        return Self.result(await client.reinspect(request: req, headers: hub.authHeaders)).map(\.run)
+    }
+
+    /// Opens a run's opencode session in a terminal on its machine.
+    public func openTranscript(id: String) async -> String? {
+        guard let hub, let client = commands else { return "not connected" }
+        var req = Ghhud_V1_OpenTranscriptRequest()
+        req.runID = id
+        return Self.why(await client.openTranscript(request: req, headers: hub.authHeaders))
+    }
+
+    /// Why a command failed, in words.
+    public enum CommandError: Error, Equatable, CustomStringConvertible {
+        case notConnected
+        case hub(String)
+
+        public var description: String {
+            switch self {
+            case .notConnected: return "not connected"
+            case .hub(let why): return why
+            }
+        }
+    }
+
+    private static func result<T>(_ resp: ResponseMessage<T>) -> Result<T, CommandError> {
+        if let why = why(resp) { return .failure(.hub(why)) }
+        guard let m = resp.message else { return .failure(.hub("empty answer")) }
+        return .success(m)
+    }
+
     private static func why<T>(_ resp: ResponseMessage<T>) -> String? {
         resp.error.map { $0.message ?? String(describing: $0.code) }
     }

@@ -16,6 +16,8 @@ final class DashboardState: ObservableObject {
     @Published var query: String
     @Published var selection: Set<ItemRow.ID> = []
     @Published var refreshError: String?
+    @Published var sheet: AgentRequest?
+    @Published var notice: Notice?
 
     init(pane: Pane?, query: String) {
         self.pane = pane
@@ -38,9 +40,9 @@ struct DashboardView: View {
     let conn: HubConnection
     @StateObject private var ui: DashboardState
 
-    init(conn: HubConnection, filter: ItemFilter = .all, query: String = "") {
+    init(conn: HubConnection, state: DashboardState? = nil) {
         self.conn = conn
-        _ui = StateObject(wrappedValue: DashboardState(pane: .items(filter), query: query))
+        _ui = StateObject(wrappedValue: state ?? DashboardState(pane: .items(.all), query: ""))
     }
 
     var body: some View {
@@ -53,6 +55,26 @@ struct DashboardView: View {
         .navigationTitle(title)
         .navigationSubtitle(subtitle)
         .toolbar {
+            ToolbarItemGroup {
+                let cmds = ItemCommands(conn: conn, ui: ui)
+                let one = selectedRow
+                Button {
+                    if let one { cmds.startAgent(one) }
+                } label: {
+                    Label("Start Agent", systemImage: "play.circle")
+                }
+                .help(cmds.off ?? (one == nil ? "Select an item to start an agent on" : "Start an agent on \(one!.ref)"))
+                .keyboardShortcut("d", modifiers: .command)
+                .disabled(one == nil || cmds.off != nil)
+                Button {
+                    if let one { cmds.queue(one) }
+                } label: {
+                    Label("Add to Queue", systemImage: "text.badge.plus")
+                }
+                .help(cmds.off ?? (one == nil ? "Select an item to queue" : "Add \(one!.ref) to your queue"))
+                .keyboardShortcut("d", modifiers: [.command, .shift])
+                .disabled(one == nil || cmds.off != nil)
+            }
             ToolbarItem {
                 Button {
                     Task { ui.refreshError = await conn.refresh() }
@@ -60,10 +82,24 @@ struct DashboardView: View {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
                 .help(ui.refreshError ?? "Fetch GitHub now")
+                .keyboardShortcut("r", modifiers: .command)
                 .disabled(conn.status != .connected || conn.snapshot.fetching)
             }
         }
         .frame(minWidth: 760, minHeight: 360)
+        .sheet(item: $ui.sheet) { req in
+            AgentSheet(conn: conn, req: req, ui: ui)
+        }
+    }
+
+    private var rows: [ItemRow] {
+        ItemList.rows(conn.snapshot, filter: filter, query: ui.query)
+    }
+
+    /// The selected row, when exactly one is selected and shown.
+    private var selectedRow: ItemRow? {
+        guard ui.selection.count == 1 else { return nil }
+        return rows.first { ui.selection.contains($0.id) }
     }
 
     private var filter: ItemFilter {
@@ -86,10 +122,16 @@ struct DashboardView: View {
         if conn.status != .connected {
             ContentUnavailableView(subtitle, systemImage: "bolt.horizontal.circle")
         } else {
-            ItemTable(rows: ItemList.rows(conn.snapshot, filter: filter, query: ui.query), ui: ui)
+            let rows = rows
+            ItemTable(rows: rows, cmds: ItemCommands(conn: conn, ui: ui), ui: ui)
                 .searchable(text: $ui.query, placement: .toolbar, prompt: "Repo, title or #N")
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if let n = ui.notice {
+                        NoticeBar(notice: n) { ui.notice = nil }
+                    }
+                }
                 .overlay {
-                    if ItemList.rows(conn.snapshot, filter: filter, query: ui.query).isEmpty {
+                    if rows.isEmpty {
                         if ui.query.isEmpty {
                             ContentUnavailableView("Nothing here", systemImage: "tray")
                         } else {
@@ -137,6 +179,7 @@ struct Sidebar: View {
 /// The items: double-click (or Return) opens one on GitHub.
 struct ItemTable: View {
     let rows: [ItemRow]
+    let cmds: ItemCommands
     @ObservedObject var ui: DashboardState
 
     var body: some View {
@@ -174,6 +217,10 @@ struct ItemTable: View {
         }
         .contextMenu(forSelectionType: ItemRow.ID.self) { ids in
             let picked = rows.filter { ids.contains($0.id) }
+            if picked.count == 1, let r = picked.first {
+                cmds.menu(r)
+                Divider()
+            }
             Button(picked.count > 1 ? "Open \(picked.count) on GitHub" : "Open on GitHub") { open(picked) }
                 .disabled(picked.isEmpty)
             Button(picked.count > 1 ? "Copy \(picked.count) Links" : "Copy Link") { copy(picked) }
@@ -217,6 +264,8 @@ struct MarkerDot: View {
             Image(systemName: "diamond.fill").foregroundStyle(.green).help("Ready for a maintainer")
         case .yourMove:
             Image(systemName: "diamond.fill").foregroundStyle(.yellow).help("Your move")
+        case .needsYou:
+            Image(systemName: "diamond.fill").foregroundStyle(.orange).help("An agent's next step waits on you")
         case nil:
             Color.clear
         }
@@ -295,6 +344,15 @@ struct TitleCell: View {
 
     var body: some View {
         HStack(spacing: 4) {
+            if let run = row.run {
+                Text(run.text())
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(run.tone.color)
+                    .help("\(run.task) \(run.words)")
+            }
+            if let st = row.stage {
+                Text(st.text).font(.caption).foregroundStyle(st.tone.color)
+            }
             if row.draft {
                 Text("draft").font(.caption).foregroundStyle(.secondary)
             }

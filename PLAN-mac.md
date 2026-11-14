@@ -79,7 +79,11 @@ in the menu bar, native notifications, and later a full window.
       `GHHud --snapshot-window out.png [--filter f] [--search q]` draws
       the real window (AppKit's `cacheDisplay`, table and toolbar
       included), since ImageRenderer can't draw a table.
-   2. Commands on items: dispatch (`MenuChoices`, `Dispatch`), queue
-      (`QueueChoices`, `Enqueue`), re-check (`Reinspect`), watch.
+   2. *(done)* Commands on items: Start Agent (`MenuChoices`, then
+      `Dispatch`) and Add to Queue (`QueueChoices`, then `Enqueue`) in a
+      sheet, and Watch (`WatchRun`), Re-check (`Reinspect`) and the
+      transcript on the item's newest run; the run and stage tags on
+      titles. `GHHudChecks --live <dir> --commands` round-trips them
+      against the scratch fake hub.
    3. Agents and workspaces panes.
    4. Plan and queue, epics; then the fleet.
