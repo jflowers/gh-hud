@@ -202,6 +202,10 @@ func (s *Server) RereadEpic(ctx context.Context, req *connect.Request[pb.RereadE
 	return reply(&pb.RereadEpicResponse{}, s.b.RereadEpic(ctx, req.Msg.GetRef()))
 }
 
+func (s *Server) ClearEpicGate(ctx context.Context, req *connect.Request[pb.ClearEpicGateRequest]) (*connect.Response[pb.ClearEpicGateResponse], error) {
+	return reply(&pb.ClearEpicGateResponse{}, s.b.ClearEpicGate(ctx, req.Msg.GetRef(), req.Msg.GetPiece()))
+}
+
 func (s *Server) MoveQueued(ctx context.Context, req *connect.Request[pb.MoveQueuedRequest]) (*connect.Response[pb.MoveQueuedResponse], error) {
 	i, err := s.b.MoveQueued(ctx, dispatch.Task(req.Msg.GetTask()), req.Msg.GetRef(), int(req.Msg.GetDelta()))
 	if err != nil {

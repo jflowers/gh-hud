@@ -69,6 +69,10 @@ public protocol Ghhud_V1_HubServiceClientInterface: Sendable {
     @available(iOS 13, *)
     func `rereadEpic`(request: Ghhud_V1_RereadEpicRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_RereadEpicResponse>
 
+    /// ClearEpicGate says a piece's gate holds: it no longer waits on it.
+    @available(iOS 13, *)
+    func `clearEpicGate`(request: Ghhud_V1_ClearEpicGateRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_ClearEpicGateResponse>
+
     /// Viewers. They open a terminal window on the hub's machine.
     @available(iOS 13, *)
     func `watch`(request: Ghhud_V1_WatchRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_WatchResponse>
@@ -174,6 +178,11 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
     }
 
     @available(iOS 13, *)
+    public func `clearEpicGate`(request: Ghhud_V1_ClearEpicGateRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_ClearEpicGateResponse> {
+        return await self.client.unary(path: "/ghhud.v1.HubService/ClearEpicGate", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `watch`(request: Ghhud_V1_WatchRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_WatchResponse> {
         return await self.client.unary(path: "/ghhud.v1.HubService/Watch", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -211,6 +220,7 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
             public static let approveEpic = Connect.MethodSpec(name: "ApproveEpic", service: "ghhud.v1.HubService", type: .unary)
             public static let dropEpic = Connect.MethodSpec(name: "DropEpic", service: "ghhud.v1.HubService", type: .unary)
             public static let rereadEpic = Connect.MethodSpec(name: "RereadEpic", service: "ghhud.v1.HubService", type: .unary)
+            public static let clearEpicGate = Connect.MethodSpec(name: "ClearEpicGate", service: "ghhud.v1.HubService", type: .unary)
             public static let watch = Connect.MethodSpec(name: "Watch", service: "ghhud.v1.HubService", type: .unary)
             public static let watchRun = Connect.MethodSpec(name: "WatchRun", service: "ghhud.v1.HubService", type: .unary)
             public static let openTranscript = Connect.MethodSpec(name: "OpenTranscript", service: "ghhud.v1.HubService", type: .unary)

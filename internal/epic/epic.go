@@ -49,6 +49,7 @@ const (
 	NodeDone       NodeState = "done"        // closed as completed, or merged
 	NodeDropped    NodeState = "dropped"     // closed without being completed
 	NodeInProgress NodeState = "in_progress" // open, with an open PR that closes it
+	NodeRunning    NodeState = "running"     // an agent is on it, no PR yet (the hub's view, not Refresh's)
 	NodeReady      NodeState = "ready"       // open, nothing it waits on is left
 	NodeWaiting    NodeState = "waiting"     // waits on another piece
 	NodeGated      NodeState = "gated"       // waits on a condition only you can clear
@@ -58,12 +59,14 @@ const (
 
 // Node is one piece of work in an epic.
 type Node struct {
-	Ref    string   `json:"ref"` // owner/repo#N, an issue
-	Title  string   `json:"title,omitempty"`
-	Phase  string   `json:"phase,omitempty"`
-	After  []string `json:"after,omitempty"` // refs it waits on: nodes, or other issues and PRs
-	Gate   string   `json:"gate,omitempty"`  // a condition that isn't an issue or PR
-	Source string   `json:"source,omitempty"`
+	Ref   string   `json:"ref"` // owner/repo#N, an issue
+	Title string   `json:"title,omitempty"`
+	Phase string   `json:"phase,omitempty"`
+	After []string `json:"after,omitempty"` // refs it waits on: nodes, or other issues and PRs
+	Gate  string   `json:"gate,omitempty"`  // a condition that isn't an issue or PR
+	// Cleared says you cleared the gate; it no longer holds the piece.
+	Cleared bool   `json:"cleared,omitempty"`
+	Source  string `json:"source,omitempty"`
 
 	// Status, worked out on each refresh.
 	State NodeState `json:"state,omitempty"`
@@ -174,17 +177,20 @@ func MentionedRefs(repo, body string) []string {
 
 // Answer is what the planner proposes.
 type Answer struct {
-	Nodes []struct {
-		Ref   string   `json:"ref"`
-		Phase string   `json:"phase"`
-		After []string `json:"after"`
-		Gate  string   `json:"gate"`
-	} `json:"nodes"`
-	Rules   []string `json:"rules"`
+	Nodes   []AnswerNode `json:"nodes"`
+	Rules   []string     `json:"rules"`
 	Skipped []struct {
 		Ref string `json:"ref"`
 		Why string `json:"why"`
-	} `json:"skipped"`
+	} `json:"skipped,omitempty"`
+}
+
+// AnswerNode is one piece in the planner's answer.
+type AnswerNode struct {
+	Ref   string   `json:"ref"`
+	Phase string   `json:"phase"`
+	After []string `json:"after"`
+	Gate  string   `json:"gate"`
 }
 
 // Fact is what GitHub says about one ref.
@@ -443,10 +449,29 @@ func Refresh(p *Plan, epicRepo string, facts map[string]Fact) {
 			n.State, n.Note = NodeBlocked, "waits on "+strings.Join(gone, ", ")+" (closed, not done)"
 		case len(waits) > 0:
 			n.State, n.Note = NodeWaiting, "waits on "+strings.Join(waits, ", ")
-		case n.Gate != "":
+		case n.Gate != "" && !n.Cleared:
 			n.State, n.Note = NodeGated, n.Gate
 		default:
 			n.State = NodeReady
+		}
+	}
+}
+
+// CarryCleared keeps the gates you cleared on an earlier plan cleared on
+// a new one, where the same piece has the same gate.
+func CarryCleared(prev, next *Plan) {
+	if prev == nil || next == nil {
+		return
+	}
+	cleared := map[string]string{}
+	for _, n := range prev.Nodes {
+		if n.Cleared {
+			cleared[n.Ref] = n.Gate
+		}
+	}
+	for i := range next.Nodes {
+		if g, ok := cleared[next.Nodes[i].Ref]; ok && g == next.Nodes[i].Gate {
+			next.Nodes[i].Cleared = true
 		}
 	}
 }

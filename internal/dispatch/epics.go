@@ -14,8 +14,12 @@ package dispatch
 //
 // Status comes from GitHub on every refresh, never from the body's
 // checkboxes. Approving a plan is consent to start its ready pieces within
-// the epic's caps; starting them is the next slice. A plan whose epic body
-// changes is marked stale; reread it to get a new plan to approve.
+// the epic's caps (epic_run.go). A plan whose epic body changes is marked
+// stale and read again on its own, with the old plan in the brief so what
+// didn't change keeps its wording: a reread that gives the same plan keeps
+// your approval; a different one waits for it again. A gate only you can
+// clear is cleared with ClearEpicGate, and stays cleared across rereads
+// while the piece has the same gate.
 
 import (
 	"context"
@@ -26,6 +30,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -166,6 +171,47 @@ func (d *Dispatcher) ApproveEpic(ref, planID string) error {
 	return nil
 }
 
+// ClearEpicGate clears a piece's gate: you say the condition holds. piece
+// is owner/repo#N, or #N in the epic's repo.
+func (d *Dispatcher) ClearEpicGate(ref, piece string) error {
+	if !d.owns() {
+		return d.followerErr()
+	}
+	repo, _, _ := epic.ParseRef(ref)
+	if strings.HasPrefix(piece, "#") {
+		piece = repo + piece
+	}
+	if r, n, ok := epic.ParseRef(piece); ok {
+		piece = epic.Ref(r, n)
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	i := slices.IndexFunc(d.epics, func(e epic.Epic) bool { return e.Ref == ref })
+	if i < 0 {
+		return fmt.Errorf("%s isn't enrolled", ref)
+	}
+	e := &d.epics[i]
+	if e.Plan == nil {
+		return fmt.Errorf("%s has no plan yet", ref)
+	}
+	j := slices.IndexFunc(e.Plan.Nodes, func(n epic.Node) bool { return n.Ref == piece })
+	switch {
+	case j < 0:
+		return fmt.Errorf("%s isn't a piece of %s", piece, ref)
+	case e.Plan.Nodes[j].Gate == "":
+		return fmt.Errorf("%s has no gate", piece)
+	case e.Plan.Nodes[j].Cleared:
+		return fmt.Errorf("%s's gate is already cleared", piece)
+	}
+	n := &e.Plan.Nodes[j]
+	n.Cleared = true
+	if n.State == epic.NodeGated {
+		n.State, n.Note = epic.NodeReady, ""
+	}
+	d.saveEpicsLocked()
+	return nil
+}
+
 // epicPass starts the reads and status refreshes that are due, and returns
 // the notes of those that ended. Owner only.
 func (d *Dispatcher) epicPass() []string {
@@ -213,7 +259,16 @@ func (d *Dispatcher) readEpic(ref string) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	plan, iss, log, err := d.planEpic(ctx, ref)
+	d.mu.Lock()
+	var prev *epic.Plan
+	wasApproved := ""
+	if i := slices.IndexFunc(d.epics, func(e epic.Epic) bool { return e.Ref == ref }); i >= 0 && d.epics[i].Plan != nil {
+		prev = cloneEpic(d.epics[i]).Plan
+		wasApproved = d.epics[i].ApprovedPlan
+	}
+	d.mu.Unlock()
+
+	plan, iss, log, err := d.planEpic(ctx, ref, prev)
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -240,14 +295,23 @@ func (d *Dispatcher) readEpic(ref string) {
 		e.State = epic.StatePlanned
 	}
 	c := e.Counts()
-	d.epicNotes = append(d.epicNotes, fmt.Sprintf("epic %s: plan read (%d pieces: %d done, %d ready): approve it in the Plan tab (E) or with gh-hud epic approve %s",
-		ref, len(plan.Nodes), c[epic.NodeDone], c[epic.NodeReady], ref))
+	switch {
+	case wasApproved != "" && wasApproved == plan.ID:
+		d.epicNotes = append(d.epicNotes, fmt.Sprintf("epic %s: read again; the plan is the same, so it stays approved", ref))
+	case wasApproved != "":
+		d.epicNotes = append(d.epicNotes, fmt.Sprintf("epic %s: read again and the plan changed (%d pieces: %d done, %d ready); its pieces wait for you: approve it in the Plan tab (E) or with gh-hud epic approve %s",
+			ref, len(plan.Nodes), c[epic.NodeDone], c[epic.NodeReady], ref))
+	default:
+		d.epicNotes = append(d.epicNotes, fmt.Sprintf("epic %s: plan read (%d pieces: %d done, %d ready): approve it in the Plan tab (E) or with gh-hud epic approve %s",
+			ref, len(plan.Nodes), c[epic.NodeDone], c[epic.NodeReady], ref))
+	}
 	d.saveEpicsLocked()
 }
 
 // planEpic fetches an epic, has the planner read it, checks the answer and
 // fills in links and status.
-func (d *Dispatcher) planEpic(ctx context.Context, ref string) (*epic.Plan, epicIssue, string, error) {
+// prev is the plan it had, if any.
+func (d *Dispatcher) planEpic(ctx context.Context, ref string, prev *epic.Plan) (*epic.Plan, epicIssue, string, error) {
 	iss, err := d.fetchEpicIssue(ctx, ref)
 	if err != nil {
 		return nil, iss, "", err
@@ -261,7 +325,7 @@ func (d *Dispatcher) planEpic(ctx context.Context, ref string) (*epic.Plan, epic
 		mentioned = mentioned[:epicMaxMentions]
 	}
 	facts := d.fetchFacts(ctx, mentioned)
-	brief := epicBrief(ref, iss, mentioned, facts)
+	brief := epicBrief(ref, iss, mentioned, facts, prev)
 	var plan *epic.Plan
 	log, err := d.askAgent(ctx, "gh-hud epic: "+ref, brief, "epic-"+shortHash(ref), func(out []byte) error {
 		block, err := agentJSON(out)
@@ -280,6 +344,7 @@ func (d *Dispatcher) planEpic(ctx context.Context, ref string) (*epic.Plan, epic
 	}
 	// Blocked-by links can point outside what the body mentions.
 	epic.MergeBlockedBy(plan, facts)
+	epic.CarryCleared(prev, plan)
 	var missing []string
 	for _, r := range plan.Refs() {
 		if _, ok := facts[r]; !ok {
@@ -290,9 +355,18 @@ func (d *Dispatcher) planEpic(ctx context.Context, ref string) (*epic.Plan, epic
 		facts[r] = f
 	}
 	epic.Refresh(plan, repo, facts)
-	plan.Created, plan.BodyHash = time.Now(), shortHash(iss.Body)
+	plan.Created, plan.BodyHash = time.Now(), bodyHash(iss.Body)
 	plan.ID = planID(plan)
 	return plan, iss, log, nil
+}
+
+// checkbox matches a task-list box, ticked or not.
+var checkbox = regexp.MustCompile(`(?m)^(\s*[-*+]\s+)\[[ xX]\]`)
+
+// bodyHash hashes an epic's body with its checkboxes unticked: status
+// comes from GitHub, so ticking a box doesn't make the plan stale.
+func bodyHash(body string) string {
+	return shortHash(checkbox.ReplaceAllString(strings.ReplaceAll(body, "\r\n", "\n"), "${1}[ ]"))
 }
 
 func shortHash(s string) string {
@@ -313,7 +387,7 @@ func planID(p *epic.Plan) string {
 }
 
 // epicBrief is the planner's prompt.
-func epicBrief(ref string, iss epicIssue, mentioned []string, facts map[string]epic.Fact) string {
+func epicBrief(ref string, iss epicIssue, mentioned []string, facts map[string]epic.Fact, prev *epic.Plan) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Read the epic %s as a plan\n\n", ref)
 	b.WriteString("An epic is an issue that tracks a larger piece of work done through other\n" +
@@ -345,7 +419,7 @@ func epicBrief(ref string, iss epicIssue, mentioned []string, facts map[string]e
 		}
 		fmt.Fprintf(&b, "- %s [%s, %s] %s\n", r, kind, state, f.Title)
 	}
-	b.WriteString(`
+	fmt.Fprintf(&b, `
 ## How to read it
 - The list above already gives each ref's kind, state and title. Open an
   issue or PR only when the epic's text leaves its place in the order
@@ -366,13 +440,40 @@ func epicBrief(ref string, iss epicIssue, mentioned []string, facts map[string]e
 - Use the refs exactly as listed above (owner/repo#N). Ignore the body's
   checkboxes: gh-hud takes status from GitHub.
 
+%s
 ## Answer
 End with exactly one fenced json block:
 {"nodes": [{"ref": "owner/repo#N", "phase": "<short phase name, e.g. Phase 2, or empty>", "after": ["owner/repo#M"], "gate": "<condition or empty>"}],
  "rules": ["<rule>"],
  "skipped": [{"ref": "owner/repo#N", "why": "<a few words>"}]}
-`)
+`, prevSection(prev, mentioned))
 	return b.String()
+}
+
+// prevSection shows the planner the plan it read last time, so a reread
+// after an edit keeps what didn't change as it was: the same plan keeps
+// your approval.
+func prevSection(prev *epic.Plan, mentioned []string) string {
+	if prev == nil {
+		return ""
+	}
+	var ans epic.Answer
+	for _, n := range prev.Nodes {
+		if n.Source != "" && n.Source != epic.SourceProse {
+			continue // added from blocked-by links, not the planner's
+		}
+		// Edges from blocked-by links come back on their own; the planner
+		// may only name refs the body mentions.
+		after := slices.DeleteFunc(slices.Clone(n.After), func(r string) bool { return !slices.Contains(mentioned, r) })
+		ans.Nodes = append(ans.Nodes, epic.AnswerNode{Ref: n.Ref, Phase: n.Phase, After: after, Gate: n.Gate})
+	}
+	ans.Rules = prev.Rules
+	b, _ := json.MarshalIndent(ans, "", " ")
+	return "\n## The plan you read last time\n" +
+		"The epic has been edited since. Here is your previous answer. Where the\n" +
+		"edit doesn't touch a piece, a phase, a gate or a rule, keep it exactly as it\n" +
+		"was, wording included: an unchanged plan keeps the person's approval.\n" +
+		"Change only what the edit changed.\n```json\n" + string(b) + "\n```\n"
 }
 
 // ---------------------------------------------------------------------------
@@ -402,7 +503,8 @@ func (d *Dispatcher) checkEpics() {
 		epic.Refresh(e.Plan, repo, facts)
 		stale := e.Plan.Stale
 		if iss, err := d.fetchEpicIssue(ctx, e.Ref); err == nil {
-			stale = shortHash(iss.Body) != e.Plan.BodyHash
+			// A raw hash is what plans read before bodyHash existed hold.
+			stale = bodyHash(iss.Body) != e.Plan.BodyHash && shortHash(iss.Body) != e.Plan.BodyHash
 		}
 		results[e.Ref] = result{e.Plan, stale}
 	}
@@ -416,11 +518,15 @@ func (d *Dispatcher) checkEpics() {
 		if !ok || e.Plan == nil || e.Plan.ID != r.plan.ID {
 			continue // reread or dropped meanwhile
 		}
-		if r.stale && !e.Plan.Stale {
-			d.epicNotes = append(d.epicNotes, fmt.Sprintf("epic %s changed since its plan was read: reread it (gh-hud epic reread %s)", e.Ref, e.Ref))
-		}
+		fresh := r.stale && !e.Plan.Stale
 		r.plan.Stale = r.stale
 		e.Plan, e.CheckedAt = r.plan, time.Now()
+		if fresh && !d.epicReading[e.Ref] {
+			// Read it again now; its pieces wait until the read ends.
+			d.epicNotes = append(d.epicNotes, fmt.Sprintf("epic %s changed since its plan was read: reading it again", e.Ref))
+			e.State, e.Error = epic.StateReading, ""
+			d.startEpicReadLocked(e.Ref)
+		}
 	}
 	d.saveEpicsLocked()
 }

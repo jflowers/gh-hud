@@ -605,12 +605,13 @@ gh-hud epic https://github.com/acme/app/issues/100   # enroll it; reading takes 
 gh-hud epic list                                     # plans, pieces and status
 gh-hud epic approve acme/app#100                     # approve the current plan
 gh-hud epic reread acme/app#100                      # read it again
+gh-hud epic clear acme/app#100 #103                  # clear a piece's gate
 gh-hud epic drop acme/app#100                        # stop tracking it
 ```
 
 These talk to the running hub. The Plan tab shows each epic, its pieces
-still to do (ready and in progress first), and `E` approves the plan that
-waits for you.
+still to do (running and ready first). `E` approves the plan that waits
+for you, and `C` clears the gate of the selected piece.
 
 - **Reading.** gh-hud doesn't count on one format. It merges what it finds:
   - **Prose.** The read-only supervisor agent (see "The supervisor
@@ -631,14 +632,22 @@ waits for you.
   | ✓ | done | Closed as completed, or merged. |
   | ✗ | dropped | Closed without being completed. |
   | ▸ | in progress | An open PR closes it. |
+  | ▶ | running | An agent is on it and no PR is open yet (`on chai`). |
   | ● | ready | Nothing it waits on is left. |
   | ◌ | waiting | It waits on another piece. |
   | ⏸ | gated | It waits on a condition only you can clear. |
   | ! | blocked | It waits on a piece that was dropped. |
 - **Approving** a plan is consent to start its ready pieces, within the
-  epic's caps. A plan has an ID, so you approve the plan you saw. If the
-  epic's body changes, the plan is marked stale and nothing more starts
-  until you reread it and approve the new plan.
+  epic's caps. A plan has an ID, so you approve the plan you saw.
+- **Edits.** When the epic's body changes, nothing more starts and gh-hud
+  reads it again on its own. The reader gets its previous plan and keeps
+  what the edit didn't touch as it was. If the new plan is the same, it
+  stays approved and the pieces carry on. If it differs, it waits for your
+  approval again.
+- **Gates.** A gated piece waits until you clear its gate
+  (`gh-hud epic clear`, or `C` in the Plan tab), saying the condition
+  holds. A cleared gate stays cleared across rereads while the piece has
+  the same gate.
 
 **Running an approved epic.** Its pieces get rows in the Plan tab, and the
 auto pass starts them like any other step:

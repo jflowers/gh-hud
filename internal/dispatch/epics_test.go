@@ -247,3 +247,117 @@ func TestFetchFactsFallsBackPerRef(t *testing.T) {
 		t.Errorf("facts = %v, calls = %d", facts, calls)
 	}
 }
+
+// reread waits for an epic's plan to come from a body other than oldHash,
+// and returns it with the notes said meanwhile.
+func reread(t *testing.T, d *Dispatcher, ref, oldHash string) (epic.Epic, string) {
+	t.Helper()
+	var notes []string
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		notes = append(notes, d.AutoMerge(context.Background(), nil)...)
+		d.mu.Lock()
+		busy := d.epicReading[ref]
+		d.mu.Unlock()
+		if e := d.Epics()[0]; !busy && e.Plan != nil && e.Plan.BodyHash != oldHash {
+			notes = append(notes, d.AutoMerge(context.Background(), nil)...)
+			return e, strings.Join(notes, "\n")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatal("no reread")
+	return epic.Epic{}, ""
+}
+
+func editBody(d *Dispatcher, g *fakeGitHub, more string) string {
+	g.mu.Lock()
+	g.body += more
+	g.mu.Unlock()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.epics[0].CheckedAt = time.Time{}
+	return d.epics[0].Plan.BodyHash
+}
+
+func TestEpicRereadsAnEditedEpic(t *testing.T) {
+	changed := strings.Replace(planAnswer, `"Never weaken a guard."`, `"Never weaken a guard.", "Keep it small."`, 1)
+	d, g, f := epicSetup(t, planJSON(planAnswer), planJSON(planAnswer), planJSON(changed))
+	ref, _ := d.EnrollEpic("acme/app#100")
+	e := read(t, d, ref)
+	if err := d.ApproveEpic(ref, e.Plan.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.ClearEpicGate(ref, "acme/lib#5"); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.ClearEpicGate(ref, "#102"); err == nil || !strings.Contains(err.Error(), "no gate") {
+		t.Errorf("cleared a piece with no gate: %v", err)
+	}
+	if err := d.ClearEpicGate(ref, "acme/lib#5"); err == nil {
+		t.Error("cleared twice")
+	}
+	if n := d.Epics()[0].Plan.Nodes[3]; !n.Cleared || n.State != epic.NodeReady {
+		t.Errorf("cleared node = %+v", n)
+	}
+
+	// An edit that leaves the plan as it was keeps the approval and the
+	// cleared gate.
+	e, notes := reread(t, d, ref, editBody(d, g, "\nA typo fixed."))
+	if e.State != epic.StateApproved || e.ApprovedPlan != e.Plan.ID || e.Plan.Stale || !e.Plan.Nodes[3].Cleared {
+		t.Fatalf("after a same-plan reread: %+v", e)
+	}
+	brief := f.calls()[1].Prompt
+	if !strings.Contains(brief, "## The plan you read last time") || !strings.Contains(brief, `"Never weaken a guard."`) {
+		t.Errorf("reread brief lacks the previous plan:\n%s", brief)
+	}
+	if !strings.Contains(notes, "changed since its plan was read: reading it again") || !strings.Contains(notes, "the plan is the same, so it stays approved") {
+		t.Errorf("notes = %s", notes)
+	}
+
+	// An edit that changes it waits for you again.
+	e, notes = reread(t, d, ref, editBody(d, g, "\nKeep it small."))
+	if e.State != epic.StatePlanned || e.ApprovedPlan == e.Plan.ID || len(d.approvedEpics()) != 0 {
+		t.Fatalf("after a changed-plan reread: %+v", e)
+	}
+	if !strings.Contains(notes, "the plan changed") {
+		t.Errorf("notes = %s", notes)
+	}
+}
+
+func TestEpicsWithRuns(t *testing.T) {
+	at := time.Now().Add(-time.Hour)
+	es := []epic.Epic{{Ref: "acme/app#100", State: epic.StateApproved, Approved: &at, ApprovedPlan: "p",
+		Plan: &epic.Plan{ID: "p", Nodes: []epic.Node{
+			{Ref: "acme/app#1", State: epic.NodeReady},
+			{Ref: "acme/app#2", State: epic.NodeReady},
+			{Ref: "acme/app#3", State: epic.NodeReady},
+			{Ref: "acme/app#4", State: epic.NodeWaiting},
+		}}}}
+	done := time.Now().Add(-time.Minute)
+	runs := []Run{
+		{Ref: "acme/app#1", Task: TaskIssue, Machine: "chai", Status: RunRunning, StartedAt: time.Now()},
+		{Ref: "acme/app#2", Task: TaskIssue, Status: RunOK, StartedAt: done, FinishedAt: &done},
+		{Ref: "acme/app#3", Task: TaskIssue, Status: RunRunning, StartedAt: at.Add(-time.Hour)}, // before approval
+	}
+	n := EpicsWithRuns(es, runs)[0].Plan.Nodes
+	if n[0].State != epic.NodeRunning || n[0].Note != "on chai" {
+		t.Errorf("running: %+v", n[0])
+	}
+	if n[1].State != epic.NodeReady || n[1].Note != "ran once, no PR" {
+		t.Errorf("ran: %+v", n[1])
+	}
+	if n[2].State != epic.NodeReady || n[2].Note != "" || n[3].State != epic.NodeWaiting {
+		t.Errorf("others: %+v %+v", n[2], n[3])
+	}
+}
+
+func TestBodyHashIgnoresCheckboxes(t *testing.T) {
+	a := "Phase 1\n- [ ] #1 one\n  * [x] #2 two\r\n"
+	b := "Phase 1\n- [x] #1 one\n  * [ ] #2 two\n"
+	if bodyHash(a) != bodyHash(b) {
+		t.Error("ticking a box changed the hash")
+	}
+	if bodyHash(a) == bodyHash(a+"- [ ] #3 three\n") {
+		t.Error("a new piece didn't change the hash")
+	}
+}

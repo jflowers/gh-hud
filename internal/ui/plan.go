@@ -209,6 +209,9 @@ func (m *Model) planFooter() string {
 		}
 		return lipgloss.NewStyle().Foreground(cGreen).Render(" ✓ " + m.statusMsg)
 	}
+	if rows := m.planRows(); m.planSel < len(rows) && rows[m.planSel].Epic != "" && strings.HasPrefix(rows[m.planSel].Stage.Reason, "gate: ") {
+		return chips(m.width, "C", "clear gate", "j/k", "move", "+", "queue", "a", "agent", "enter", "open", "esc", "dashboard")
+	}
 	if m.epicWaiting() != nil {
 		return chips(m.width, "E", "approve epic plan", "j/k", "move", "+", "queue", "x", "unqueue",
 			"a", "agent", "enter", "open", "esc", "dashboard")
@@ -356,6 +359,17 @@ func (m *Model) handlePlanKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.sync()
 			m.flash("approved the plan for " + e.Ref)
 		}
+	case "C":
+		if !have || cur.Epic == "" || !strings.HasPrefix(cur.Stage.Reason, "gate: ") {
+			m.flash("no gate to clear: select an epic piece that says gate")
+			break
+		}
+		if err := m.backend.ClearEpicGate(ctx(), cur.Epic, cur.Item.Ref()); err != nil {
+			m.flash("clear failed: " + err.Error())
+		} else {
+			m.sync()
+			m.flash("gate cleared on " + cur.Item.Ref())
+		}
 	case "x", "delete", "backspace":
 		if !have || cur.Queued == 0 {
 			break
@@ -478,7 +492,7 @@ func (m *Model) epicWaiting() *epic.Epic {
 const epicShown = 6
 
 var epicMark = map[epic.NodeState]string{
-	epic.NodeDone: "✓", epic.NodeDropped: "✗", epic.NodeInProgress: "▸", epic.NodeReady: "●",
+	epic.NodeDone: "✓", epic.NodeDropped: "✗", epic.NodeInProgress: "▸", epic.NodeRunning: "▶", epic.NodeReady: "●",
 	epic.NodeWaiting: "◌", epic.NodeGated: "⏸", epic.NodeBlocked: "!", epic.NodeUnknown: "?",
 }
 
@@ -505,7 +519,7 @@ func (m *Model) epicLines(w int) []string {
 				open = append(open, n)
 			}
 		}
-		rank := map[epic.NodeState]int{epic.NodeReady: 0, epic.NodeInProgress: 1, epic.NodeGated: 2, epic.NodeBlocked: 3, epic.NodeWaiting: 4, epic.NodeUnknown: 5}
+		rank := map[epic.NodeState]int{epic.NodeRunning: 0, epic.NodeReady: 1, epic.NodeInProgress: 2, epic.NodeGated: 3, epic.NodeBlocked: 4, epic.NodeWaiting: 5, epic.NodeUnknown: 6}
 		slices.SortStableFunc(open, func(a, b epic.Node) int { return rank[a.State] - rank[b.State] })
 		for i, n := range open {
 			if i == epicShown {
@@ -517,7 +531,7 @@ func (m *Model) epicLines(w int) []string {
 				line += "  · " + n.Note
 			}
 			style := dim
-			if n.State == epic.NodeReady || n.State == epic.NodeInProgress {
+			if n.State == epic.NodeReady || n.State == epic.NodeInProgress || n.State == epic.NodeRunning {
 				style = fg
 			}
 			out = append(out, style.Render(truncatePlain(line, max(w-2, 10))))
@@ -535,7 +549,11 @@ func epicStatus(e epic.Epic) (string, lipgloss.Color) {
 		return "can't read it: " + e.Error, cRed
 	}
 	c := e.Counts()
-	counts := fmt.Sprintf("%d/%d done, %d ready, %d in progress", c[epic.NodeDone], len(e.Plan.Nodes), c[epic.NodeReady], c[epic.NodeInProgress])
+	counts := fmt.Sprintf("%d/%d done, ", c[epic.NodeDone], len(e.Plan.Nodes))
+	if c[epic.NodeRunning] > 0 {
+		counts += fmt.Sprintf("%d running, ", c[epic.NodeRunning])
+	}
+	counts += fmt.Sprintf("%d ready, %d in progress", c[epic.NodeReady], c[epic.NodeInProgress])
 	switch {
 	case e.Plan.Stale:
 		return "the epic changed: reread it · " + counts, cOrange

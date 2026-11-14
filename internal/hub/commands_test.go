@@ -57,6 +57,10 @@ func (d *fakeDisp) ApproveEpic(ref, planID string) error {
 func (d *fakeDisp) DropEpic(ref string) error { d.record("DropEpic %s", ref); return nil }
 
 func (d *fakeDisp) RereadEpic(ref string) error { d.record("RereadEpic %s", ref); return nil }
+func (d *fakeDisp) ClearEpicGate(ref, piece string) error {
+	d.record("ClearEpicGate %s %s", ref, piece)
+	return nil
+}
 
 func (d *fakeDisp) Approve(id string) error { d.record("Approve %s", id); return nil }
 
@@ -310,12 +314,12 @@ func TestEpicCommands(t *testing.T) {
 	if ref, err := h.EnrollEpic(ctx, "https://github.com/acme/r/issues/1"); err != nil || ref != "acme/r#1" {
 		t.Fatalf("enroll: %q %v", ref, err)
 	}
-	for _, err := range []error{h.ApproveEpic(ctx, "acme/r#1", "p1"), h.RereadEpic(ctx, "acme/r#1"), h.DropEpic(ctx, "acme/r#1")} {
+	for _, err := range []error{h.ApproveEpic(ctx, "acme/r#1", "p1"), h.RereadEpic(ctx, "acme/r#1"), h.ClearEpicGate(ctx, "acme/r#1", "#2"), h.DropEpic(ctx, "acme/r#1")} {
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
-	for _, c := range []string{"EnrollEpic https://github.com/acme/r/issues/1", "ApproveEpic acme/r#1 p1", "RereadEpic acme/r#1", "DropEpic acme/r#1"} {
+	for _, c := range []string{"EnrollEpic https://github.com/acme/r/issues/1", "ApproveEpic acme/r#1 p1", "RereadEpic acme/r#1", "ClearEpicGate acme/r#1 #2", "DropEpic acme/r#1"} {
 		if !slices.Contains(d.Calls(), c) {
 			t.Errorf("no %q in %v", c, d.Calls())
 		}
