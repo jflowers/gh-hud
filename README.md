@@ -167,9 +167,17 @@ button. A proposal has Approve and Reject buttons, an epic plan has
 Approve and a gate has Clear, the same as `Y`/`N`, `E` and `C` in the
 dashboard's plan tab. A plan that went stale isn't offered: the hub reads
 the epic again first. A gate is offered once everything its piece waits
-on is done. Its source is in
-`macos/` and it needs a hub running (see "The hub") with TCP on, which is
-the default.
+on is done.
+
+**Dashboard** in the menu opens a window with the dashboard's items: the
+filters (all, review requested, mine, issues, CI, inbox, ready, agent
+queue) down the side with their counts, and the items as a table with
+the same columns as the TUI. The search field matches repo, title and
+`owner/repo#N`, like `/`. Double-click or Return opens an item on GitHub,
+and the right-click menu opens or copies the links of the selected rows.
+
+Its source is in `macos/` and it needs a hub running (see "The hub") with
+TCP on, which is the default.
 
 ```
 make mac                                   # build/gh-hud.app, signed ad hoc

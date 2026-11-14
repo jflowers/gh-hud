@@ -11,6 +11,7 @@ struct GHHudApp: App {
 
     init() {
         SnapshotMode.runIfAsked() // never returns when asked
+        SnapshotMode.windowIfAsked() // nor this
         model = AppModel()
     }
 
@@ -21,6 +22,11 @@ struct GHHudApp: App {
             MenuLabel(conn: model.conn)
         }
         .menuBarExtraStyle(.window)
+
+        Window("gh-hud", id: DashboardView.windowID) {
+            DashboardView(conn: model.conn)
+        }
+        .defaultSize(width: 1100, height: 640)
     }
 }
 
@@ -57,6 +63,56 @@ enum SnapshotMode {
             exit(0)
         }
         RunLoop.main.run()
+    }
+}
+
+extension SnapshotMode {
+    /// `GHHud --snapshot-window out.png [--filter review] [--search text]`
+    /// opens the dashboard window, waits for the hub, and draws the window
+    /// (the real AppKit views, table and toolbar included) to a PNG.
+    @MainActor
+    static func windowIfAsked() {
+        let args = CommandLine.arguments
+        func arg(_ name: String) -> String? {
+            guard let i = args.firstIndex(of: name), i + 1 < args.count else { return nil }
+            return args[i + 1]
+        }
+        guard let path = arg("--snapshot-window") else { return }
+        let out = URL(fileURLWithPath: path)
+        let filter = arg("--filter").flatMap(ItemFilter.init(rawValue:)) ?? .all
+        let conn = HubConnection()
+        conn.start()
+        let app = NSApplication.shared
+        app.setActivationPolicy(.accessory)
+        let host = NSHostingController(rootView: DashboardView(conn: conn, filter: filter, query: arg("--search") ?? ""))
+        host.sceneBridgingOptions = [.toolbars, .title]
+        let win = NSWindow(contentViewController: host)
+        win.styleMask = [.titled, .closable, .resizable, .miniaturizable, .fullSizeContentView]
+        win.setContentSize(NSSize(width: 1100, height: 520))
+        win.makeKeyAndOrderFront(nil)
+        Task { @MainActor in
+            for _ in 0..<150 where conn.status != .connected {
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+            try? await Task.sleep(for: .milliseconds(800)) // let the table lay out
+            guard let frame = win.contentView?.superview,
+                  let rep = frame.bitmapImageRepForCachingDisplay(in: frame.bounds)
+            else {
+                FileHandle.standardError.write(Data("snapshot: no window to draw\n".utf8))
+                exit(1)
+            }
+            frame.cacheDisplay(in: frame.bounds, to: rep)
+            do {
+                try rep.representation(using: .png, properties: [:])?.write(to: out)
+            } catch {
+                FileHandle.standardError.write(Data("snapshot: \(error)\n".utf8))
+                exit(1)
+            }
+            print("wrote \(out.path) (\(conn.status))")
+            exit(0)
+        }
+        app.run()
+        exit(0)
     }
 }
 

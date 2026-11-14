@@ -1,0 +1,330 @@
+import AppKit
+import GHHudKit
+import SwiftUI
+
+/// What the window shows: a filter over the items. (Agents, workspaces,
+/// the plan and the fleet join the sidebar as panes of their own.)
+enum Pane: Hashable {
+    case items(ItemFilter)
+}
+
+/// The window's own state. Not @State (a macro only Xcode ships): see
+/// GHHudApp.
+@MainActor
+final class DashboardState: ObservableObject {
+    @Published var pane: Pane?
+    @Published var query: String
+    @Published var selection: Set<ItemRow.ID> = []
+    @Published var refreshError: String?
+
+    init(pane: Pane?, query: String) {
+        self.pane = pane
+        self.query = query
+    }
+}
+
+/// The dashboard window: the TUI's tabs as a sidebar, the items as a table.
+struct DashboardView: View {
+    static let windowID = "dashboard"
+
+    /// Opens (or brings forward) the window. The app has no Dock icon, so
+    /// it has to come to the front itself.
+    @MainActor
+    static func open(_ openWindow: OpenWindowAction) {
+        openWindow(id: windowID)
+        NSApp.activate()
+    }
+
+    let conn: HubConnection
+    @StateObject private var ui: DashboardState
+
+    init(conn: HubConnection, filter: ItemFilter = .all, query: String = "") {
+        self.conn = conn
+        _ui = StateObject(wrappedValue: DashboardState(pane: .items(filter), query: query))
+    }
+
+    var body: some View {
+        NavigationSplitView {
+            Sidebar(conn: conn, ui: ui)
+                .navigationSplitViewColumnWidth(min: 180, ideal: 210)
+        } detail: {
+            detail
+        }
+        .navigationTitle(title)
+        .navigationSubtitle(subtitle)
+        .toolbar {
+            ToolbarItem {
+                Button {
+                    Task { ui.refreshError = await conn.refresh() }
+                } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                }
+                .help(ui.refreshError ?? "Fetch GitHub now")
+                .disabled(conn.status != .connected || conn.snapshot.fetching)
+            }
+        }
+        .frame(minWidth: 760, minHeight: 360)
+    }
+
+    private var filter: ItemFilter {
+        if case .items(let f) = ui.pane { return f }
+        return .all
+    }
+
+    private var title: String { filter.title }
+
+    private var subtitle: String {
+        switch conn.status {
+        case .connecting: return "connecting to the hub…"
+        case .connected: return HubSummary.line(conn.snapshot)
+        case .noHub(let why), .lost(let why): return why
+        }
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+        if conn.status != .connected {
+            ContentUnavailableView(subtitle, systemImage: "bolt.horizontal.circle")
+        } else {
+            ItemTable(rows: ItemList.rows(conn.snapshot, filter: filter, query: ui.query), ui: ui)
+                .searchable(text: $ui.query, placement: .toolbar, prompt: "Repo, title or #N")
+                .overlay {
+                    if ItemList.rows(conn.snapshot, filter: filter, query: ui.query).isEmpty {
+                        if ui.query.isEmpty {
+                            ContentUnavailableView("Nothing here", systemImage: "tray")
+                        } else {
+                            ContentUnavailableView.search(text: ui.query)
+                        }
+                    }
+                }
+        }
+    }
+}
+
+/// The filters, with how many items each holds.
+struct Sidebar: View {
+    let conn: HubConnection
+    @ObservedObject var ui: DashboardState
+
+    var body: some View {
+        let counts = ItemList.counts(conn.snapshot)
+        List(selection: $ui.pane) {
+            Section("Items") {
+                ForEach(ItemFilter.allCases) { f in
+                    Label(f.shortTitle, systemImage: Self.icon(f))
+                        .help(f.title)
+                        .badge(counts[f] ?? 0)
+                        .tag(Pane.items(f))
+                }
+            }
+        }
+    }
+
+    static func icon(_ f: ItemFilter) -> String {
+        switch f {
+        case .all: return "tray.full"
+        case .review: return "eye"
+        case .mine: return "person"
+        case .issues: return "smallcircle.filled.circle"
+        case .ci: return "gearshape.2"
+        case .inbox: return "bell"
+        case .ready: return "checkmark.seal"
+        case .queue: return "sparkles"
+        }
+    }
+}
+
+/// The items: double-click (or Return) opens one on GitHub.
+struct ItemTable: View {
+    let rows: [ItemRow]
+    @ObservedObject var ui: DashboardState
+
+    var body: some View {
+        Table(rows, selection: $ui.selection) {
+            TableColumn("") { r in MarkerDot(marker: r.marker) }
+                .width(10)
+            TableColumn("Kind") { r in KindBadge(kind: r.kind) }
+                .width(min: 44, ideal: 52, max: 64)
+            TableColumn("Status") { r in StatusCluster(row: r) }
+                .width(min: 46, ideal: 50, max: 60)
+            TableColumn("#") { r in
+                Text(r.num > 0 ? "#\(r.num)" : "")
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+            .width(min: 40, ideal: 56, max: 80)
+            TableColumn("Repo") { r in
+                Text(r.repo).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head)
+            }
+            .width(min: 80, ideal: 120, max: 280)
+            TableColumn("Title") { r in TitleCell(row: r) }
+                .width(min: 160, ideal: 250)
+            TableColumn("Threads") { r in ThreadsCell(row: r) }
+                .width(min: 52, ideal: 56, max: 70)
+            TableColumn("Last") { r in
+                Text(r.lastActor).foregroundStyle(r.lastActor == "you" ? .secondary : .primary).lineLimit(1)
+            }
+            .width(min: 50, ideal: 80, max: 160)
+            TableColumn("Age") { r in
+                Text(r.updated.map { ItemList.age($0) } ?? "")
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+            .width(min: 36, ideal: 50, max: 70)
+        }
+        .contextMenu(forSelectionType: ItemRow.ID.self) { ids in
+            let picked = rows.filter { ids.contains($0.id) }
+            Button(picked.count > 1 ? "Open \(picked.count) on GitHub" : "Open on GitHub") { open(picked) }
+                .disabled(picked.isEmpty)
+            Button(picked.count > 1 ? "Copy \(picked.count) Links" : "Copy Link") { copy(picked) }
+                .disabled(picked.isEmpty)
+        } primaryAction: { ids in
+            open(rows.filter { ids.contains($0.id) })
+        }
+    }
+
+    private func open(_ picked: [ItemRow]) {
+        for r in picked {
+            if let u = r.url { NSWorkspace.shared.open(u) }
+        }
+    }
+
+    private func copy(_ picked: [ItemRow]) {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(picked.map(\.id).joined(separator: "\n"), forType: .string)
+    }
+}
+
+extension Tone {
+    var color: Color {
+        switch self {
+        case .good: return .green
+        case .bad: return .red
+        case .warn: return .orange
+        case .pending: return .yellow
+        case .muted: return .secondary
+        }
+    }
+}
+
+struct MarkerDot: View {
+    let marker: ItemRow.Marker?
+
+    var body: some View {
+        switch marker {
+        case .ready:
+            Image(systemName: "diamond.fill").foregroundStyle(.green).help("Ready for a maintainer")
+        case .yourMove:
+            Image(systemName: "diamond.fill").foregroundStyle(.yellow).help("Your move")
+        case nil:
+            Color.clear
+        }
+    }
+}
+
+struct KindBadge: View {
+    let kind: String
+
+    var body: some View {
+        Text(kind)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(color)
+    }
+
+    private var color: Color {
+        switch kind {
+        case "mine": return .blue
+        case "review": return .yellow
+        case "issue": return .green
+        case "ci": return .red
+        default: return .purple
+        }
+    }
+}
+
+/// CI, review and merge, as the TUI's state cluster.
+struct StatusCluster: View {
+    let row: ItemRow
+
+    var body: some View {
+        if row.isPR {
+            HStack(spacing: 3) {
+                glyph(ciSymbol, row.ci, help: "CI")
+                glyph(reviewSymbol, row.review, help: "Review")
+                if row.conflict {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                        .help("Merge conflict")
+                }
+            }
+            .imageScale(.small)
+        }
+    }
+
+    private var ciSymbol: String {
+        switch row.ci {
+        case .good: return "checkmark.circle.fill"
+        case .bad: return "xmark.circle.fill"
+        case .pending: return "circle.dotted.circle"
+        default: return "circle"
+        }
+    }
+
+    private var reviewSymbol: String {
+        switch row.review {
+        case .good: return "hand.thumbsup.fill"
+        case .bad, .warn: return "exclamationmark.bubble.fill"
+        case .pending: return "bubble.left.fill"
+        default: return "bubble.left"
+        }
+    }
+
+    @ViewBuilder
+    private func glyph(_ symbol: String, _ tone: Tone?, help: String) -> some View {
+        if let tone {
+            Image(systemName: symbol).foregroundStyle(tone.color).help(help)
+        } else {
+            Image(systemName: symbol).hidden()
+        }
+    }
+}
+
+struct TitleCell: View {
+    let row: ItemRow
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if row.draft {
+                Text("draft").font(.caption).foregroundStyle(.secondary)
+            }
+            Text(row.title).lineLimit(1)
+            ForEach(row.labels.prefix(3), id: \.self) { l in
+                Text(l)
+                    .font(.caption2)
+                    .padding(.horizontal, 4)
+                    .background(.quaternary, in: Capsule())
+                    .lineLimit(1)
+            }
+        }
+        .help(row.author.isEmpty ? row.ref : "\(row.ref) by \(row.author)")
+    }
+}
+
+/// Unresolved threads: people's in yellow, bots' dimmed.
+struct ThreadsCell: View {
+    let row: ItemRow
+
+    var body: some View {
+        if row.threads > 0 {
+            Label("\(row.threads)", systemImage: "text.bubble")
+                .foregroundStyle(.yellow)
+                .labelStyle(.titleAndIcon)
+                .help("Unresolved threads from people")
+        } else if row.botThreads > 0 {
+            Label("\(row.botThreads)", systemImage: "text.bubble")
+                .foregroundStyle(.secondary)
+                .help("Unresolved threads from bots")
+        }
+    }
+}

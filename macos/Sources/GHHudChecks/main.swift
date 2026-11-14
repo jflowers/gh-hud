@@ -180,6 +180,60 @@ do {
     check(!Approval.gate(ref: "a/b#1", piece: "a/b#2").rejectable, "a gate isn't rejected")
 }
 
+// MARK: item list
+
+do {
+    var s = Ghhud_V1_Snapshot()
+    s.result.user = "me"
+    var mine = item(1, Category.mine.rawValue | Category.readyForMaintainer.rawValue, title: "Fix the parser", updated: 1000)
+    mine.kind = .pr
+    mine.ci = .ok
+    mine.review = "✅"
+    mine.lastActor = "me"
+    var review = item(2, Category.reviewRequested.rawValue, title: "Add widgets", updated: 900, author: "pat")
+    review.kind = .pr
+    review.ci = .fail
+    review.merge = "⚠️"
+    review.waitingOn = "me"
+    review.threads = 2
+    review.repo = "acme/widgets"
+    review.url = "https://github.com/acme/widgets/pull/2"
+    var issue = item(3, Category.issues.rawValue | Category.notifications.rawValue, title: "Crash on start", updated: 800)
+    issue.kind = .issue
+    issue.ci = .blank
+    var run = item(0, Category.ci.rawValue, title: "nightly failed", updated: 700)
+    run.kind = .run
+    run.url = "https://github.com/acme/r/actions/runs/9"
+    s.result.items = [mine, review, issue, run]
+
+    let all = ItemList.rows(s, filter: .all)
+    check(all.map(\.num) == [1, 2, 3, 0], "all rows keep the hub's order: \(all.map(\.num))")
+    check(all.map(\.kind) == ["mine", "review", "issue", "ci"], "kind badges \(all.map(\.kind))")
+    check(all[0].marker == .ready && all[1].marker == .yourMove && all[2].marker == nil, "markers")
+    check(all[0].ci == .good && all[0].review == .good && !all[0].conflict, "mine's status")
+    check(all[1].ci == .bad && all[1].conflict && all[1].threads == 2, "review's status")
+    check(all[2].ci == nil && !all[2].isPR && all[3].isPR, "issues have no status cluster, runs do")
+    check(all[0].lastActor == "you", "your own last action reads you: \(all[0].lastActor)")
+    check(all[3].ref == "https://github.com/acme/r/actions/runs/9", "a numberless row's ref is its URL")
+
+    check(ItemList.rows(s, filter: .review).map(\.num) == [2], "review filter")
+    check(ItemList.rows(s, filter: .inbox).map(\.num) == [3], "inbox filter")
+    check(ItemList.rows(s, filter: .ready).map(\.num) == [1], "ready filter")
+    check(ItemList.rows(s, filter: .queue).isEmpty, "queue filter")
+    check(ItemList.rows(s, filter: .all, query: "WIDGETS").map(\.num) == [2], "search matches the repo, ignoring case")
+    check(ItemList.rows(s, filter: .all, query: "crash").map(\.num) == [3], "search matches the title")
+    check(ItemList.rows(s, filter: .all, query: "acme/r#1").map(\.num) == [1], "search matches the ref")
+    check(ItemList.rows(s, filter: .mine, query: "widgets").isEmpty, "search stays inside the filter")
+    let n = ItemList.counts(s)
+    check(n[.all] == 4 && n[.mine] == 1 && n[.issues] == 1 && n[.ci] == 1 && n[.queue] == 0, "counts \(n)")
+
+    let now = Date(timeIntervalSince1970: 1_000_000)
+    let secs: [TimeInterval] = [0, 300, 10_800, 172_800, 691_200, 6_048_000]
+    let ages = secs
+        .map { ItemList.age(now.addingTimeInterval(-$0), now: now) }
+    check(ages == ["now", "5m", "3h", "2d", "1w", "2mo"], "ages \(ages)")
+}
+
 // MARK: summary and links
 
 do {

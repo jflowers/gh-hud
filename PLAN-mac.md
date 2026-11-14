@@ -72,4 +72,14 @@ in the menu bar, native notifications, and later a full window.
 3. **3c, the window.** The dashboard's tabs as a native window: the list
    with filters and search, agents, workspaces, the plan and your queue,
    and the fleet, with the same commands as the TUI (dispatch, queue,
-   watch, re-check, fleet controls).
+   watch, re-check, fleet controls). In slices:
+   1. *(done)* The window (`Window` scene, opened from the menu), a
+      sidebar of the item filters with counts, the items as a `Table`,
+      search, open and copy. The list logic is `ItemList` in GHHudKit.
+      `GHHud --snapshot-window out.png [--filter f] [--search q]` draws
+      the real window (AppKit's `cacheDisplay`, table and toolbar
+      included), since ImageRenderer can't draw a table.
+   2. Commands on items: dispatch (`MenuChoices`, `Dispatch`), queue
+      (`QueueChoices`, `Enqueue`), re-check (`Reinspect`), watch.
+   3. Agents and workspaces panes.
+   4. Plan and queue, epics; then the fleet.
