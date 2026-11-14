@@ -3,6 +3,7 @@ package dispatch
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -117,10 +118,28 @@ func (m Machine) runScript(ctx context.Context, script string) (string, error) {
 		if msg == "" {
 			msg = err.Error()
 		}
-		return "", fmt.Errorf("ssh %s: %s", m.SSH, msg)
+		msg = fmt.Sprintf("ssh %s: %s", m.SSH, msg)
+		// ssh exits 255 for its own failures (no route, no name, refused,
+		// auth); a timeout kills it. Either way the command never ran.
+		var ee *exec.ExitError
+		if ctx.Err() != nil || errors.As(err, &ee) && ee.ExitCode() == 255 {
+			return "", unreachableError(msg)
+		}
+		return "", errors.New(msg)
 	}
 	return out.String(), nil
 }
+
+// errUnreachable marks an ssh failure where the command never ran on the
+// machine (see unreachableError).
+var errUnreachable = errors.New("machine unreachable")
+
+// unreachableError is an ssh failure to reach the machine; it reads as
+// ssh's message and matches errUnreachable.
+type unreachableError string
+
+func (e unreachableError) Error() string        { return string(e) }
+func (e unreachableError) Is(target error) bool { return target == errUnreachable }
 
 // shellQuote quotes s so a POSIX shell reads it as exactly one word.
 func shellQuote(s string) string {

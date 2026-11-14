@@ -12,6 +12,7 @@ package dispatch
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -128,9 +129,10 @@ func (d *Dispatcher) Runs(ctx context.Context) []Run {
 
 // outcome is what a transcript says about a run.
 type outcome struct {
-	code    *int   // 0 ok / 1 failed; nil when unreadable
-	reason  string // failure detail, or why the outcome is unknown
-	summary string // last assistant text
+	code        *int   // 0 ok / 1 failed; nil when unreadable
+	reason      string // failure detail, or why the outcome is unknown
+	summary     string // last assistant text
+	unreachable bool   // unread because the machine didn't answer
 }
 
 // exportedSession is the slice of `opencode export` the outcome needs.
@@ -252,17 +254,17 @@ func (d *Dispatcher) readOutcome(ctx context.Context, m Machine, dir, id string)
 			break
 		}
 	}
-	return outcome{reason: last.Error()}
+	return outcome{reason: last.Error(), unreachable: errors.Is(last, errUnreachable)}
 }
 
 // findSession finds the opencode session a dispatch created: the oldest
 // session in its checkout created at or after the dispatch, with the
 // dispatch title when the runner set one (headless runs; the TUI takes no
 // --title).
-func findSession(ctx context.Context, m Machine, r Record) string {
+func findSession(ctx context.Context, m Machine, r Record) (string, error) {
 	rs, err := listSessions(ctx, m, r.Dir)
 	if err != nil {
-		return ""
+		return "", err
 	}
 	after := r.StartedAt.Add(-tuiSessionSkew).UnixMilli()
 	id, best := "", int64(0)
@@ -277,7 +279,7 @@ func findSession(ctx context.Context, m Machine, r Record) string {
 			id, best = s.ID, s.Created
 		}
 	}
-	return id
+	return id, nil
 }
 
 // finishRecord records a finished dispatch: outcome and final message from
@@ -290,10 +292,16 @@ func (d *Dispatcher) finishRecord(r Record, exitCode *int, closePane bool) {
 	defer cancel()
 	m := d.machineFor(r.Machine)
 	id := r.SessionID
+	var o outcome
 	if id == "" {
-		id = findSession(ctx, m, r)
+		var err error
+		if id, err = findSession(ctx, m, r); errors.Is(err, errUnreachable) {
+			o = outcome{reason: err.Error(), unreachable: true}
+		}
 	}
-	o := d.readOutcome(ctx, m, r.Dir, id)
+	if !o.unreachable {
+		o = d.readOutcome(ctx, m, r.Dir, id)
+	}
 	if exitCode != nil {
 		if *exitCode != 0 || o.code == nil {
 			o.code = exitCode
@@ -323,6 +331,7 @@ func (d *Dispatcher) finishRecord(r Record, exitCode *int, closePane bool) {
 		} else if *o.code != 0 {
 			rec.FailReason = o.reason
 		}
+		rec.Unread = o.unreachable
 		insp.apply(rec)
 	}
 	d.saveStateLocked()

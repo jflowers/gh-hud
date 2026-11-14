@@ -73,6 +73,9 @@ func (d *Dispatcher) epicReviewsLocked() {
 				continue // never ran, or still running
 			}
 			end := recordEnd(rec)
+			if unread(rec) && time.Since(end) < epicUnreadWait {
+				continue // its machine didn't answer yet; the outcome may still come
+			}
 			if !e.CheckedAt.After(end) {
 				continue // GitHub hasn't been asked since it ended
 			}

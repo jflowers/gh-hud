@@ -186,6 +186,7 @@ func (d *Dispatcher) observeAgents(snaps map[string]agentSnapshot) {
 			go d.finishRecord(*r, nil, phase == tuiFinished)
 		}
 	}
+	d.rereadsLocked(snaps, now)
 	if dirty {
 		d.saveStateLocked()
 	}
@@ -208,7 +209,7 @@ func sameRecord(a, b Record) bool {
 func (d *Dispatcher) resolveTUISession(r Record) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	id := findSession(ctx, d.machineFor(r.Machine), r)
+	id, _ := findSession(ctx, d.machineFor(r.Machine), r)
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	delete(d.tuiBusy, paneKey(r.Machine, r.PaneID))
