@@ -1,0 +1,375 @@
+import AppKit
+import GHHudKit
+import SwiftUI
+
+// The Agents and Workspaces panes: a table with the selected row's detail
+// below it, like the TUI's tabs 6 and 9.
+
+/// Agent sessions and the runs behind them. Double-click watches one.
+struct AgentsPane: View {
+    let conn: HubConnection
+    @ObservedObject var ui: DashboardState
+
+    var body: some View {
+        let rows = AgentList.rows(conn.snapshot, showStale: ui.showStale)
+        let picked = rows.first { ui.agentSelection == $0.id }
+        VSplitView {
+            Table(rows, selection: $ui.agentSelection) {
+                TableColumn("") { r in StatusGlyph(tone: r.tone, active: !r.status.isEmpty) }
+                    .width(12)
+                TableColumn("Task") { r in Text(r.task.isEmpty ? "—" : r.task).foregroundStyle(r.task.isEmpty ? .secondary : .primary) }
+                    .width(min: 44, ideal: 64, max: 100)
+                TableColumn("Agent") { r in Text(r.name).lineLimit(1).foregroundStyle(r.recent ? .primary : .secondary) }
+                    .width(min: 160, ideal: 290)
+                TableColumn("Where") { r in Text(r.machine).foregroundStyle(.secondary) }
+                    .width(min: 40, ideal: 60, max: 100)
+                TableColumn("Workspace") { r in Text(r.workspace.isEmpty ? "—" : r.workspace).foregroundStyle(.secondary).lineLimit(1) }
+                    .width(min: 60, ideal: 130, max: 260)
+                TableColumn("Status") { r in Text(r.status).foregroundStyle(r.tone.color) }
+                    .width(min: 50, ideal: 76, max: 120)
+                TableColumn("Took") { r in
+                    Text(r.took.map(AgentList.duration) ?? "").foregroundStyle(.secondary).monospacedDigit()
+                }
+                .width(min: 36, ideal: 48, max: 64)
+                TableColumn("Age") { r in
+                    Text(r.updated.map { ItemList.age($0) } ?? "").foregroundStyle(.secondary).monospacedDigit()
+                }
+                .width(min: 36, ideal: 44, max: 64)
+            }
+            .contextMenu(forSelectionType: AgentRow.ID.self) { ids in
+                if let r = rows.first(where: { ids.contains($0.id) }) {
+                    menu(r)
+                }
+            } primaryAction: { ids in
+                if let r = rows.first(where: { ids.contains($0.id) }) { watch(r) }
+            }
+            .frame(minHeight: 140)
+            .overlay {
+                if rows.isEmpty {
+                    ContentUnavailableView("No agent sessions", systemImage: "person.2.slash",
+                                           description: Text(ui.showStale ? "" : "Stale sessions are hidden."))
+                }
+            }
+
+            ScrollView {
+                Group {
+                    if let picked {
+                        AgentDetail(row: picked)
+                    } else {
+                        Text("Select a session to see its run.").foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+            }
+            .frame(minHeight: 120, idealHeight: 240)
+        }
+    }
+
+    private var off: String? {
+        conn.status == .connected ? ItemList.commandsOff(conn.snapshot) : "Not connected to the hub"
+    }
+
+    @ViewBuilder
+    private func menu(_ r: AgentRow) -> some View {
+        Button("Watch") { watch(r) }
+            .disabled(off != nil)
+        if let run = r.run {
+            Button("Re-check Run") { recheck(r, run) }
+                .disabled(off != nil || !run.hasFinishedAt)
+            Button("Open Transcript") { transcript(r, run) }
+                .disabled(off != nil || run.sessionID.isEmpty)
+        }
+        Divider()
+        if let url = Links.forRef(r.session.ref) {
+            Button("Open \(r.session.ref) on GitHub") { NSWorkspace.shared.open(url) }
+        }
+        Button("Copy Session ID") { copy(r.id) }
+        if !r.session.directory.isEmpty {
+            Button("Copy Directory") { copy(r.session.directory) }
+        }
+    }
+
+    private func watch(_ r: AgentRow) {
+        Task {
+            if let why = await conn.watch(sessionID: r.id) {
+                ui.say("Can't watch \(r.name): \(why)", bad: true)
+            } else {
+                ui.say("Watching \(r.name) in a terminal")
+            }
+        }
+    }
+
+    private func recheck(_ r: AgentRow, _ run: Ghhud_V1_Run) {
+        ui.say("Re-checking \(run.task) on \(run.ref)…")
+        Task {
+            switch await conn.reinspect(id: run.id) {
+            case .success(let now):
+                ui.say("Re-checked \(run.task) on \(run.ref): \(ItemCommands.outcome(now))")
+            case .failure(let why):
+                ui.say("Can't re-check \(run.task) on \(run.ref): \(why)", bad: true)
+            }
+        }
+    }
+
+    private func transcript(_ r: AgentRow, _ run: Ghhud_V1_Run) {
+        Task {
+            if let why = await conn.openTranscript(id: run.id) {
+                ui.say("Can't open the transcript: \(why)", bad: true)
+            } else {
+                ui.say("Opened transcript \(run.sessionID) on its machine")
+            }
+        }
+    }
+}
+
+func copy(_ text: String) {
+    let pb = NSPasteboard.general
+    pb.clearContents()
+    pb.setString(text, forType: .string)
+}
+
+struct StatusGlyph: View {
+    let tone: Tone
+    let active: Bool
+
+    var body: some View {
+        Image(systemName: active ? "circle.fill" : "circle")
+            .imageScale(.small)
+            .foregroundStyle(active ? tone.color : .secondary)
+    }
+}
+
+/// Labeled facts, the TUI's detail pane fields.
+struct Facts: View {
+    let rows: [(String, String)]
+
+    var body: some View {
+        Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 4) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, f in
+                GridRow {
+                    Text(f.0).foregroundStyle(.secondary).gridColumnAlignment(.trailing)
+                    Text(f.1).textSelection(.enabled)
+                }
+            }
+        }
+    }
+}
+
+/// A session's detail: its run's outcome for a dispatch, the session's
+/// identity otherwise.
+struct AgentDetail: View {
+    let row: AgentRow
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let r = row.run {
+                run(r)
+            } else {
+                let s = row.session
+                Text(s.title.isEmpty ? s.id : s.title).font(.headline).foregroundStyle(row.tone.color)
+                Facts(rows: [
+                    ("status", row.status.isEmpty ? "not running" : row.status),
+                    ("dir", s.directory),
+                    ("session", s.id),
+                    ("updated", row.updated.map(Self.when) ?? ""),
+                ] + (s.note.isEmpty ? [] : [("note", s.note)]))
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func run(_ r: Ghhud_V1_Run) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(RunTag.words(r.status)).font(.headline).foregroundStyle(RunTag.tone(r.status).color)
+            Text("\(r.task) \(r.ref)").foregroundStyle(.secondary)
+        }
+        Facts(rows: runFacts(r))
+        if !r.reason.isEmpty {
+            Label(r.reason, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red).textSelection(.enabled)
+        }
+        if !r.left.isEmpty {
+            section("Left behind", note: "commit, push or discard it, then Re-check", lines: r.left, color: .orange)
+        }
+        if !r.pushed.isEmpty {
+            section("Pushed", note: nil, lines: r.pushed, color: .primary)
+        }
+        if !r.summary.isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Final message").font(.subheadline.weight(.semibold))
+                Text(r.summary).textSelection(.enabled)
+            }
+        } else if r.hasFinishedAt {
+            Text("No final message recorded.").foregroundStyle(.secondary)
+        }
+    }
+
+    private func runFacts(_ r: Ghhud_V1_Run) -> [(String, String)] {
+        var facts = [
+            ("where", "\(r.machine.isEmpty ? "local" : r.machine):\(r.workspace)  \(r.dir)"),
+            ("started", Self.when(r.startedAt.date)),
+        ]
+        if let took = row.took { facts.append(("took", AgentList.duration(took))) }
+        if r.auto { facts.append(("trigger", "auto-dispatch")) }
+        if !r.sessionID.isEmpty { facts.append(("session", r.sessionID)) }
+        if !r.branch.isEmpty {
+            facts.append(("branch", r.branch + (r.cleaned ? "  (returned to the default branch)" : "")))
+        }
+        return facts
+    }
+
+    private func section(_ title: String, note: String?, lines: [String], color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(color)
+                if let note { Text(note).font(.caption).foregroundStyle(.secondary) }
+            }
+            ForEach(lines, id: \.self) { l in
+                Text(l).font(.callout.monospaced()).foregroundStyle(color).textSelection(.enabled)
+            }
+        }
+    }
+
+    static func when(_ d: Date) -> String {
+        d.formatted(.dateTime.month(.abbreviated).day().hour().minute()) + "  (\(ItemList.age(d)) ago)"
+    }
+}
+
+/// Every checkout a dispatch could use, and whether the next run could
+/// start there.
+struct WorkspacesPane: View {
+    let conn: HubConnection
+    @ObservedObject var ui: DashboardState
+
+    var body: some View {
+        let rows = WorkspaceList.rows(conn.snapshot)
+        let picked = rows.first { ui.workspaceSelection == $0.id }
+        VSplitView {
+            Table(rows, selection: $ui.workspaceSelection) {
+                TableColumn("") { r in StatusGlyph(tone: r.tone, active: true) }
+                    .width(12)
+                TableColumn("Where") { r in Text(r.machine).foregroundStyle(.secondary) }
+                    .width(min: 40, ideal: 60, max: 100)
+                TableColumn("Workspace") { r in Text(r.health.workspace).lineLimit(1) }
+                    .width(min: 80, ideal: 130, max: 300)
+                TableColumn("Repo") { r in Text(r.repo).foregroundStyle(.secondary).lineLimit(1) }
+                    .width(min: 60, ideal: 90, max: 200)
+                TableColumn("Branch") { r in
+                    Text(r.health.branch)
+                        .foregroundStyle(r.health.branch == r.health.defaultBranch ? .secondary : .primary)
+                        .lineLimit(1)
+                }
+                .width(min: 60, ideal: 110, max: 260)
+                TableColumn("Sync") { r in Text(r.sync).foregroundStyle(.secondary).monospacedDigit() }
+                    .width(min: 36, ideal: 56, max: 80)
+                TableColumn("State") { r in Text(r.state).foregroundStyle(r.tone.color).lineLimit(1) }
+                    .width(min: 60, ideal: 140, max: 260)
+                TableColumn("Notes") { r in Text(r.notes).foregroundStyle(.secondary).lineLimit(1) }
+                    .width(min: 60, ideal: 160)
+            }
+            .contextMenu(forSelectionType: WorkspaceRow.ID.self) { ids in
+                if let r = rows.first(where: { ids.contains($0.id) }) {
+                    Button("Copy Directory") { copy(r.health.dir) }
+                    if r.machine == "local", !r.health.dir.isEmpty {
+                        Button("Show in Finder") {
+                            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: r.health.dir)
+                        }
+                    }
+                }
+            }
+            .frame(minHeight: 140)
+            .overlay {
+                if rows.isEmpty {
+                    if conn.snapshot.workspacesLoading {
+                        ProgressView("Reading the checkouts…")
+                    } else {
+                        ContentUnavailableView("No checkouts", systemImage: "folder.badge.questionmark")
+                    }
+                }
+            }
+
+            ScrollView {
+                Group {
+                    if let picked {
+                        WorkspaceDetail(row: picked)
+                    } else {
+                        Text("Select a checkout to see why it is or isn't ready.").foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+            }
+            .frame(minHeight: 120, idealHeight: 220)
+        }
+        .task(id: ui.pane) {
+            // Opening the pane reads older checkouts again, as the TUI does.
+            if WorkspaceList.stale(conn.snapshot) {
+                _ = await conn.refresh(.workspaces)
+            }
+        }
+    }
+}
+
+struct WorkspaceDetail: View {
+    let row: WorkspaceRow
+
+    var body: some View {
+        let h = row.health
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(row.place).font(.headline).foregroundStyle(row.tone.color)
+                Text(h.repo).foregroundStyle(.secondary)
+            }
+            if let why = row.explanation {
+                Text("\(row.state.capitalizedFirst). \(why)")
+            } else {
+                Text(row.state.capitalizedFirst + ".")
+            }
+            Facts(rows: facts(h))
+            if !h.dirty.isEmpty {
+                list("Uncommitted (\(h.dirty.count))", h.dirty, color: .orange)
+            }
+            if !h.localOnly.isEmpty {
+                list("Local-only commits: cleaning up loses them",
+                     h.localOnly.map(Self.localOnly), color: .orange)
+            }
+        }
+    }
+
+    /// "branch\tn" as "branch: n commits".
+    static func localOnly(_ line: String) -> String {
+        let parts = line.split(separator: "\t", maxSplits: 1).map(String.init)
+        guard parts.count == 2, let n = Int(parts[1]) else { return line }
+        return "\(parts[0]): \(n) commit\(n == 1 ? "" : "s")"
+    }
+
+    private func facts(_ h: Ghhud_V1_CheckoutHealth) -> [(String, String)] {
+        var facts = [("dir", h.dir)]
+        if !h.branch.isEmpty {
+            let other = !h.defaultBranch.isEmpty && h.defaultBranch != h.branch
+            facts.append(("branch", h.branch + (other ? "   (default \(h.defaultBranch))" : "")))
+        }
+        if h.behind >= 0 {
+            facts.append(("upstream", "\(h.defaultBranch) is \(h.behind) behind, \(h.ahead) ahead of "
+                + "upstream/\(h.defaultBranch) (as of the last fetch)"))
+        }
+        if h.stashes > 0 { facts.append(("stashes", "\(h.stashes)")) }
+        if h.learnings > 0 {
+            facts.append(("learnings", "\(h.learnings) untracked; the next clean run opens the daily chore PR"))
+        }
+        return facts
+    }
+
+    private func list(_ title: String, _ lines: [String], color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(color)
+            ForEach(lines, id: \.self) { l in
+                Text(l).font(.callout.monospaced()).textSelection(.enabled)
+            }
+        }
+    }
+}
+
+extension String {
+    var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
+}

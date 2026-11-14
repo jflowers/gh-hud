@@ -85,5 +85,10 @@ in the menu bar, native notifications, and later a full window.
       transcript on the item's newest run; the run and stage tags on
       titles. `GHHudChecks --live <dir> --commands` round-trips them
       against the scratch fake hub.
-   3. Agents and workspaces panes.
+   3. *(done)* Agents and Workspaces panes in the sidebar, each a table
+      with the selected row's detail below (`VSplitView`): Watch
+      (`Watch`), re-check and transcript on a session's run, stale
+      sessions on request; checkout health with what blocks the next
+      run. Refresh targets the pane (`REFRESH_TARGET_AGENTS`,
+      `_WORKSPACES`).
    4. Plan and queue, epics; then the fleet.

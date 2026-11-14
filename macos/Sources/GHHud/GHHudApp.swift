@@ -72,6 +72,8 @@ extension SnapshotMode {
     /// for the hub, and draws the window (the real AppKit views, table and
     /// toolbar included) to a PNG. --select selects the row numbered N;
     /// --agent or --queue then opens its sheet, drawn to out-sheet.png.
+    /// `--pane agents|workspaces [--pick N]` shows that pane instead, with
+    /// its Nth row (from 0) selected.
     @MainActor
     static func windowIfAsked() {
         let args = CommandLine.arguments
@@ -86,16 +88,30 @@ extension SnapshotMode {
         conn.start()
         let app = NSApplication.shared
         app.setActivationPolicy(.accessory)
-        let ui = DashboardState(pane: .items(filter), query: arg("--search") ?? "")
+        let pane: Pane = switch arg("--pane") {
+        case "agents": .agents
+        case "workspaces": .workspaces
+        default: .items(filter)
+        }
+        let ui = DashboardState(pane: pane, query: arg("--search") ?? "")
         let host = NSHostingController(rootView: DashboardView(conn: conn, state: ui))
         host.sceneBridgingOptions = [.toolbars, .title]
         let win = NSWindow(contentViewController: host)
         win.styleMask = [.titled, .closable, .resizable, .miniaturizable, .fullSizeContentView]
-        win.setContentSize(NSSize(width: 1100, height: 520))
+        win.setContentSize(NSSize(width: 1100, height: pane == .items(filter) ? 520 : 680))
         win.makeKeyAndOrderFront(nil)
         Task { @MainActor in
             for _ in 0..<150 where conn.status != .connected {
                 try? await Task.sleep(for: .milliseconds(100))
+            }
+            if let n = arg("--pick").flatMap(Int.init) {
+                if pane == .agents {
+                    let rows = AgentList.rows(conn.snapshot, showStale: false)
+                    if n < rows.count { ui.agentSelection = rows[n].id }
+                } else if pane == .workspaces {
+                    let rows = WorkspaceList.rows(conn.snapshot)
+                    if n < rows.count { ui.workspaceSelection = rows[n].id }
+                }
             }
             if let n = arg("--select").flatMap(Int.init),
                let row = ItemList.rows(conn.snapshot, filter: filter, query: ui.query).first(where: { $0.num == n }) {
