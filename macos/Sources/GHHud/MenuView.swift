@@ -10,6 +10,7 @@ struct MenuView: View {
     var rendering = false
     // Not @State (a macro only Xcode ships): see GHHudApp.
     @StateObject private var ui = MenuState()
+    @Environment(\.openWindow) private var openWindow
 
     /// Rows shown per section before "and N more".
     private let perSection = 8
@@ -112,6 +113,7 @@ struct MenuView: View {
     private var footer: some View {
         if rendering {
             HStack {
+                Text("Dashboard")
                 Text("Refresh")
                 Spacer()
                 Text("Quit")
@@ -124,6 +126,7 @@ struct MenuView: View {
 
     private var buttons: some View {
         HStack {
+            Button("Dashboard") { DashboardView.open(openWindow) }
             Button("Refresh") {
                 Task { ui.refreshError = await conn.refresh() }
             }
