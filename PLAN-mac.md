@@ -67,7 +67,8 @@ in the menu bar, native notifications, and later a full window.
    the badge. The row goes when the hub's next snapshot no longer has it
    waiting; a refusal (say, a plan replaced since you saw it) shows under
    the row. `GHHudChecks --live <dir> --approve` exercises this against a
-   scratch hub.
+   scratch hub. Gates on approved epics (`EpicNode.state == "gated"`)
+   follow as their own section with Clear (`ClearEpicGate`).
 3. **3c, the window.** The dashboard's tabs as a native window: the list
    with filters and search, agents, workspaces, the plan and your queue,
    and the fleet, with the same commands as the TUI (dispatch, queue,

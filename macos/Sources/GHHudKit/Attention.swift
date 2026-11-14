@@ -27,11 +27,21 @@ public enum Approval: Equatable, Sendable {
     case proposal(id: String)
     /// An epic's plan, approved by the epic's ref and the plan seen.
     case epic(ref: String, planID: String)
+    /// A gate on a piece of an approved epic, cleared by the epic's ref and
+    /// the piece's.
+    case gate(ref: String, piece: String)
 
-    /// Whether it can be rejected (an epic plan is approved or left).
+    /// Whether it can be rejected (an epic plan is approved or left, a
+    /// gate cleared or left).
     public var rejectable: Bool {
         if case .proposal = self { return true }
         return false
+    }
+
+    /// The button that says yes: "Clear" for a gate, "Approve" otherwise.
+    public var verb: String {
+        if case .gate = self { return "Clear" }
+        return "Approve"
     }
 }
 
@@ -72,7 +82,7 @@ public struct Attention: Equatable, Sendable {
     public static let empty = Attention(sections: [], count: 0)
 
     /// What needs you in a snapshot: agents waiting on you, supervisor
-    /// proposals and epic plans to approve, reviews requested of you, and
+    /// proposals and epic plans to approve, epic gates to clear, reviews requested of you, and
     /// your PRs ready for a maintainer. Newest first.
     public init(_ s: Ghhud_V1_Snapshot) {
         let items = s.result.items
@@ -102,6 +112,7 @@ public struct Attention: Equatable, Sendable {
             AttentionSection(id: "blocked", title: "Agents waiting on you", rows: blocked),
             AttentionSection(id: "proposals", title: "Proposals awaiting approval", rows: Self.proposals(s)),
             AttentionSection(id: "epics", title: "Epic plans awaiting approval", rows: Self.epics(s)),
+            AttentionSection(id: "gates", title: "Epic gates only you can clear", rows: Self.gates(s)),
             AttentionSection(id: "review", title: "Review requested", rows: rows(.reviewRequested)),
             AttentionSection(id: "ready", title: "Ready for a maintainer", rows: rows(.readyForMaintainer)),
         ]
@@ -146,6 +157,26 @@ public struct Attention: Equatable, Sendable {
                     url: URL(string: e.url) ?? Links.forRef(e.ref),
                     updated: e.plan.hasCreated ? e.plan.created.date : nil,
                     approval: .epic(ref: e.ref, planID: e.plan.id))
+            }
+    }
+
+    /// Pieces of approved epics held only by a gate: everything they wait
+    /// on is done, and the condition is yours to say holds. A plan waiting
+    /// for approval is offered whole instead.
+    static func gates(_ s: Ghhud_V1_Snapshot) -> [AttentionRow] {
+        s.epics.filter { $0.state == "approved" && $0.hasPlan }
+            .flatMap { e in
+                e.plan.nodes.filter { $0.state == "gated" && !$0.gate.isEmpty && !$0.cleared }
+                    .map { n in
+                        AttentionRow(
+                            id: "gate:" + e.ref + " " + n.ref,
+                            title: n.gate,
+                            detail: [n.ref, n.title, "epic " + e.ref].filter { !$0.isEmpty }
+                                .joined(separator: " · "),
+                            url: Links.forRef(n.ref),
+                            updated: nil,
+                            approval: .gate(ref: e.ref, piece: n.ref))
+                    }
             }
     }
 
