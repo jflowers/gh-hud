@@ -133,6 +133,50 @@ public final class HubConnection {
         return Self.result(await client.enqueue(request: req, headers: hub.authHeaders)).map(\.position)
     }
 
+    /// Takes a task off your queue.
+    public func unqueue(task: String, ref: String) async -> String? {
+        guard let hub, let client = commands else { return "not connected" }
+        var req = Ghhud_V1_UnqueueRequest()
+        req.task = task
+        req.ref = ref
+        return Self.why(await client.unqueue(request: req, headers: hub.authHeaders))
+    }
+
+    /// Moves a queued task later (positive) or earlier; the result is its
+    /// new index (0 first).
+    public func moveQueued(task: String, ref: String, by delta: Int64) async -> Result<Int64, CommandError> {
+        guard let hub, let client = commands else { return .failure(.notConnected) }
+        var req = Ghhud_V1_MoveQueuedRequest()
+        req.task = task
+        req.ref = ref
+        req.delta = delta
+        return Self.result(await client.moveQueued(request: req, headers: hub.authHeaders)).map(\.index)
+    }
+
+    /// Enrolls an epic (an issue URL or owner/repo#N); the result is its ref.
+    public func enrollEpic(_ target: String) async -> Result<String, CommandError> {
+        guard let hub, let client = commands else { return .failure(.notConnected) }
+        var req = Ghhud_V1_EnrollEpicRequest()
+        req.target = target
+        return Self.result(await client.enrollEpic(request: req, headers: hub.authHeaders)).map(\.ref)
+    }
+
+    /// Stops following an epic.
+    public func dropEpic(_ ref: String) async -> String? {
+        guard let hub, let client = commands else { return "not connected" }
+        var req = Ghhud_V1_DropEpicRequest()
+        req.ref = ref
+        return Self.why(await client.dropEpic(request: req, headers: hub.authHeaders))
+    }
+
+    /// Reads an epic again.
+    public func rereadEpic(_ ref: String) async -> String? {
+        guard let hub, let client = commands else { return "not connected" }
+        var req = Ghhud_V1_RereadEpicRequest()
+        req.ref = ref
+        return Self.why(await client.rereadEpic(request: req, headers: hub.authHeaders))
+    }
+
     /// Opens a terminal attached to an agent session's pane.
     public func watch(sessionID: String) async -> String? {
         guard let hub, let client = commands else { return "not connected" }

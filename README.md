@@ -186,8 +186,15 @@ a terminal on the hub's machine. A result shows along the bottom of the
 window. The commands are off when the hub has no dispatcher or only
 follows another gh-hud.
 
-With a dispatcher, the sidebar also has **Agents** (the TUI's `6`) and
-**Workspaces** (`9`). Agents lists the sessions and the runs behind them,
+With a dispatcher, the sidebar also has **Plan** (the TUI's `p`),
+**Agents** (`6`) and **Workspaces** (`9`). Plan shows the open cases
+(Approve or Reject a supervisor's proposal), the enrolled epics (Approve
+Plan, Clear Gate on a gated piece, and Reread or Drop from the epic's
+menu; **Enroll Epic** in the toolbar adds one), then what agents start
+next in order: your queue, the auto steps due, and what's running,
+waiting, needs you or is merging. A queued task moves earlier or later
+(⌥⌘↑/⌥⌘↓) and ⌫ takes it off the queue; the right-click menu also
+queues a row's task, starts an agent or opens the item. Agents lists the sessions and the runs behind them,
 with the selected one's outcome below: where it ran, how long it took,
 the reason it failed, what it left behind or pushed, and its final
 message. Double-click watches a session; the right-click menu re-checks
