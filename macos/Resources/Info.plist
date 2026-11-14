@@ -10,8 +10,8 @@
   <key>CFBundleShortVersionString</key><string>VERSION</string>
   <key>CFBundleVersion</key><string>VERSION</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
-  <!-- Menu bar only: no Dock icon, no app menu. -->
-  <key>LSUIElement</key><true/>
+  <!-- A regular app: in the Dock and ⌘-Tab, with the menu bar extra too. -->
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>NSHumanReadableCopyright</key><string>Apache-2.0</string>
 </dict>
 </plist>

@@ -40,8 +40,8 @@ final class DashboardState: ObservableObject {
 struct DashboardView: View {
     static let windowID = "dashboard"
 
-    /// Opens (or brings forward) the window. The app has no Dock icon, so
-    /// it has to come to the front itself.
+    /// Opens (or brings forward) the window, and brings the app to the
+    /// front: opened from the menu bar, it may not be.
     @MainActor
     static func open(_ openWindow: OpenWindowAction) {
         openWindow(id: windowID)
