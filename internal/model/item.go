@@ -139,7 +139,8 @@ type Item struct {
 	Tagged    bool // I am a requested reviewer or assignee
 	OtherAppr bool // a human maintainer other than me approved
 	MyAppr    bool // my latest review is an approval
-	// BotReviewDue is true while BotLogin hasn't reviewed the head commit.
+	// BotReviewDue is true while BotLogin hasn't reviewed the head commit,
+	// or its review there asked for changes and I've answered since.
 	BotReviewDue bool
 
 	Reasons []string // notification reasons (mention, review, ...)
@@ -221,7 +222,7 @@ func (i Item) IsChore() bool {
 // Someone else's PR also needs a human author who acted last (so I have not
 // reviewed since their latest activity). My own PR only qualifies in
 // BotOrg, where BotLogin can review it, until BotLogin has reviewed the
-// head commit.
+// head commit (again, when it asked for changes and I've answered since).
 func (i Item) ReviewQueueReady(me string, window time.Duration, bots *BotFilter) bool {
 	if i.Kind != KindPR || me == "" || i.Draft || !ciSettled(i.CI) ||
 		i.IsChore() || i.Merge == "⚠️" || time.Since(i.UpdatedAt) > window {

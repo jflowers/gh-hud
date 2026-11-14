@@ -243,13 +243,39 @@ func fetchPRSearch(ctx context.Context, c *gh.Client, search string, limit int) 
 // botReviewDue reports whether the head commit still lacks a BotLogin
 // review. Comparing commits, not times, stops the bot's own review (which
 // bumps updatedAt) from asking for another one.
-func botReviewDue(n prNode) bool {
-	for _, r := range n.Reviews.Nodes {
-		if strings.EqualFold(r.Author.Login, BotLogin) && r.Commit != nil && r.Commit.Oid == n.HeadRefOid {
-			return false
+func botReviewDue(n prNode, me string) bool {
+	var last *reviewNode
+	for i, r := range n.Reviews.Nodes {
+		if !strings.EqualFold(r.Author.Login, BotLogin) {
+			continue
+		}
+		if r.Commit != nil && r.Commit.Oid == n.HeadRefOid {
+			if last == nil || r.Submitted.After(last.Submitted) {
+				last = &n.Reviews.Nodes[i]
+			}
 		}
 	}
-	return true
+	if last == nil {
+		return true // the head commit has no bot review yet
+	}
+	// The bot asked for changes on the head commit and I answered without
+	// pushing (replies, or a comment): its review is due again, or the PR
+	// would wait on a re-review nothing asks for. The task's round limit
+	// still caps how often.
+	if last.State != "CHANGES_REQUESTED" || me == "" {
+		return false
+	}
+	for _, r := range n.Reviews.Nodes {
+		if strings.EqualFold(r.Author.Login, me) && r.Submitted.After(last.Submitted) {
+			return true
+		}
+	}
+	for _, c := range n.Comments.Nodes {
+		if strings.EqualFold(c.Author.Login, me) && c.CreatedAt.After(last.Submitted) {
+			return true
+		}
+	}
+	return false
 }
 
 // requiredReviews is how many approvals the base branch's rules demand,
@@ -356,7 +382,7 @@ func BuildPRItem(n prNode, me string, bots *BotFilter) Item {
 	it.MyAppr = myLatestApproves(human, me)
 	it.OtherAppr = me != "" && n.Author.Login != me && anyApprove(human, me)
 	it.Bot = botReviewCell(ReviewEmoji(bot, ""), n.UpdatedAt)
-	it.BotReviewDue = botReviewDue(n)
+	it.BotReviewDue = botReviewDue(n, me)
 
 	// Merge state.
 	if n.Mergeable == "CONFLICTING" {
