@@ -1206,6 +1206,7 @@ make ci      # tidy, proto-check, lint, test, vuln
 make lint    # needs golangci-lint v2 on PATH
 make fmt     # gofmt + goimports
 make proto   # regenerate the Go and Swift API code from proto/
+make proto-breaking  # check proto/ still works with clients built from master
 make mac     # the Mac app (see "Mac app")
 ```
 

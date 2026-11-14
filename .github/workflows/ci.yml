@@ -36,6 +36,16 @@ jobs:
           git diff --exit-code -- go.mod go.sum
       - name: generated API code is current
         run: make proto-check
+      # Clients (the Mac app, the TUI on another machine) can be older than
+      # the hub, so the API must not break the base branch's wire format.
+      - name: API stays compatible with older clients
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          git worktree add --detach "$RUNNER_TEMP/base" FETCH_HEAD
+          make proto-breaking BREAKING_AGAINST="$RUNNER_TEMP/base"
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
