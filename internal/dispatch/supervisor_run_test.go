@@ -3,6 +3,9 @@ package dispatch
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -248,5 +251,69 @@ func TestParseProposal(t *testing.T) {
 	}
 	if _, err := parseProposal(agentText("```json\n{not json\n```")); err == nil {
 		t.Error("bad json parsed")
+	}
+}
+
+func TestSupervisorConfigDir(t *testing.T) {
+	f := &fakeSupervisor{answers: [][]byte{agentText("done")}}
+	d := supervisedDispatcher(t, "propose", f)
+	d.opts.Supervisor.SecondOpinionModels = []string{"deepseek/deepseek-v4"}
+	if _, err := d.askAgent(context.Background(), "t", "brief", "x", func([]byte) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	cfgDir := f.calls()[0].ConfigDir
+
+	agent, err := os.ReadFile(filepath.Join(cfgDir, "agents", supervisorAgentName+".md"))
+	if err != nil || !strings.Contains(string(agent), "  second_opinion: allow\n") {
+		t.Errorf("agent file lacks second_opinion: allow (%v)", err)
+	}
+
+	// The plugin reads JSONC: a comment line, then the config.
+	aq, err := os.ReadFile(filepath.Join(cfgDir, autoQuestionFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	comment, body, _ := strings.Cut(string(aq), "\n")
+	if !strings.HasPrefix(comment, "// Written by gh-hud") {
+		t.Errorf("first line = %q", comment)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(body), &got); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]any{
+		"secondOpinion": map[string]any{"enabled": true},
+		"profiles": map[string]any{supervisorAgentName: map[string]any{
+			"guidance": map[string]any{"enabled": false},
+			"llm":      map[string]any{"alternateModels": []any{"deepseek/deepseek-v4"}},
+		}},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("auto-question.jsonc = %v", got)
+	}
+
+	// Turning it off rewrites the file; without models the profile only
+	// turns guidance off.
+	off := false
+	d.opts.Supervisor.SecondOpinion = &off
+	d.opts.Supervisor.SecondOpinionModels = nil
+	f.answers = [][]byte{agentText("done")}
+	if _, err := d.askAgent(context.Background(), "t", "brief", "y", func([]byte) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	aq, _ = os.ReadFile(filepath.Join(cfgDir, autoQuestionFile))
+	if _, body, _ = strings.Cut(string(aq), "\n"); strings.TrimSpace(body) != `{
+  "profiles": {
+    "hud-supervisor": {
+      "guidance": {
+        "enabled": false
+      }
+    }
+  },
+  "secondOpinion": {
+    "enabled": false
+  }
+}` {
+		t.Errorf("off: %s", body)
 	}
 }

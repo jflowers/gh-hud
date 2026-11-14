@@ -40,6 +40,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/model"
 )
 
@@ -508,6 +509,13 @@ func (d *Dispatcher) askAgent(ctx context.Context, title, brief, id string, chec
 			return "", errors.New("can't write the supervisor agent")
 		}
 	}
+	aqFile := filepath.Join(cfgDir, autoQuestionFile)
+	aq := supervisorAutoQuestion(d.o().Supervisor)
+	if old, err := os.ReadFile(aqFile); err != nil || !bytes.Equal(old, aq) {
+		if !writeAtomic(aqFile, aq) {
+			return "", errors.New("can't write the supervisor's auto-question config")
+		}
+	}
 	run := d.supervisorRun
 	if run == nil {
 		run = runOpencodeSupervisor
@@ -542,6 +550,31 @@ func (d *Dispatcher) askAgent(ctx context.Context, title, brief, id string, chec
 		}
 	}
 	return logPath, lastErr
+}
+
+// autoQuestionFile is the auto-question plugin's config file in an
+// OPENCODE_CONFIG_DIR. The plugin merges it over the user's global
+// auto-question.jsonc, so it applies to supervisor runs only.
+const autoQuestionFile = "auto-question.jsonc"
+
+// supervisorAutoQuestion is the auto-question config for supervisor runs:
+// the second_opinion tool on or off, and a profile for the supervisor agent.
+// The profile turns off the plugin's guidance pass: the supervisor has no
+// project, and the user's global guidance is written for coding agents (it
+// may say "always proceed"), which would bias an independent check. Its
+// llm.alternateModels are the models to use instead of the supervisor's
+// own. Engines, keys and models come from the user's own config.
+func supervisorAutoQuestion(s config.SupervisorConfig) []byte {
+	profile := map[string]any{"guidance": map[string]any{"enabled": false}}
+	if len(s.SecondOpinionModels) > 0 {
+		profile["llm"] = map[string]any{"alternateModels": s.SecondOpinionModels}
+	}
+	cfg := map[string]any{
+		"secondOpinion": map[string]any{"enabled": s.SecondOpinionOn()},
+		"profiles":      map[string]any{supervisorAgentName: profile},
+	}
+	body, _ := json.MarshalIndent(cfg, "", "  ")
+	return append([]byte("// Written by gh-hud from [supervisor] in config.toml; edits here are overwritten.\n"), append(body, '\n')...)
 }
 
 // agentSession is the opencode session id an `opencode run --format json`

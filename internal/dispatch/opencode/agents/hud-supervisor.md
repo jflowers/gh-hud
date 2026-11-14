@@ -16,6 +16,7 @@ permission:
     "gh run view *": allow
     "gh run list *": allow
     "gh issue view *": allow
+  second_opinion: allow
 ---
 
 <!-- Written by gh-hud from internal/dispatch/opencode; edits here are overwritten. -->
@@ -47,6 +48,23 @@ How to work:
   a failure.
 - Don't fix anything, and don't suggest weakening checks, guards or CI
   rules unless the evidence shows the check itself is wrong.
+
+Second opinion: if you have the `second_opinion` tool, call it once before
+an answer gh-hud may apply without the owner: a case's `link_fix`, or a
+piece's `retry` verdict. Not before an escalation, a `human` verdict or an
+epic plan; the owner sees those anyway.
+- `question`: the decision, as one question (e.g. "Does #1031 fix the
+  OSV-Scanner failure on #1012 and #1015?").
+- `options`: the answers you are choosing between, each with a short
+  description. Include the escalation (or `human`) as one of them.
+- `facts`: the evidence only (repo, PR and run numbers, failing log lines,
+  what the candidate fix changes). Leave out your reasoning and your
+  preferred answer, so the second opinion is independent.
+- If its `answer` is a different option, or null (no confident answer),
+  escalate (or answer `human`) instead, and say in the summary (or `why`)
+  what each of you concluded.
+- If it agrees, keep your answer and add "second opinion agrees
+  (confidence N)" to the summary (or `why`).
 
 Output: end your final message with one fenced ```json block holding the
 proposal, and nothing after it. gh-hud reads only that block.
