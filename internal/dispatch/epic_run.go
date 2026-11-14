@@ -243,3 +243,43 @@ func piecePlan(e epic.Epic, n epic.Node) string {
 }
 
 func oneLine(s string) string { return strings.Join(strings.Fields(s), " ") }
+
+// EpicsWithRuns marks the ready pieces of approved epics that have an
+// agent on them as running, and notes a piece's runs that left no PR, so a
+// listing says what the plan rows say. The hub applies it to what it
+// publishes; Epics stays GitHub's view.
+func EpicsWithRuns(es []epic.Epic, runs []Run) []epic.Epic {
+	now := time.Now()
+	for i := range es {
+		e := &es[i]
+		if e.State != epic.StateApproved || e.Plan == nil || e.Approved == nil || e.ApprovedPlan != e.Plan.ID {
+			continue
+		}
+		for j := range e.Plan.Nodes {
+			n := &e.Plan.Nodes[j]
+			if n.State != epic.NodeReady {
+				continue
+			}
+			mine, live := pieceRuns(n.Ref, *e.Approved, runs, now)
+			switch {
+			case live:
+				on := mine[0].Machine
+				for _, r := range mine {
+					if r.FinishedAt == nil {
+						on = r.Machine
+						break
+					}
+				}
+				if on == "" {
+					on = "local"
+				}
+				n.State, n.Note = epic.NodeRunning, "on "+on
+			case len(mine) == 1:
+				n.Note = "ran once, no PR"
+			case len(mine) > 1:
+				n.Note = fmt.Sprintf("ran %d times, no PR", len(mine))
+			}
+		}
+	}
+	return es
+}

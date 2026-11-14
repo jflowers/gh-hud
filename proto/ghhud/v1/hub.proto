@@ -51,6 +51,8 @@ service HubService {
   rpc ApproveEpic(ApproveEpicRequest) returns (ApproveEpicResponse);
   rpc DropEpic(DropEpicRequest) returns (DropEpicResponse);
   rpc RereadEpic(RereadEpicRequest) returns (RereadEpicResponse);
+  // ClearEpicGate says a piece's gate holds: it no longer waits on it.
+  rpc ClearEpicGate(ClearEpicGateRequest) returns (ClearEpicGateResponse);
 
   // Viewers. They open a terminal window on the hub's machine.
   rpc Watch(WatchRequest) returns (WatchResponse);
@@ -206,6 +208,13 @@ message RereadEpicRequest {
 }
 
 message RereadEpicResponse {}
+
+message ClearEpicGateRequest {
+  string ref = 1;   // the epic
+  string piece = 2; // owner/repo#N, or #N in the epic's repo
+}
+
+message ClearEpicGateResponse {}
 
 message WatchRequest {
   string session_id = 1;
@@ -537,9 +546,10 @@ message EpicNode {
   repeated string after = 4;
   string gate = 5;
   string source = 6;
-  string state = 7; // open set: done, dropped, in_progress, ready, waiting, gated, blocked, unknown
+  string state = 7; // open set: done, dropped, in_progress, running, ready, waiting, gated, blocked, unknown
   string note = 8;
   int64 pr = 9;
+  bool cleared = 10; // you cleared its gate
 }
 
 // CheckoutHealth is whether a ghws checkout can take a dispatch.

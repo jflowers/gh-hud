@@ -195,3 +195,21 @@ func TestPlanEpicRowStatus(t *testing.T) {
 		t.Error(s)
 	}
 }
+
+func TestPlanClearsAGate(t *testing.T) {
+	gate := dispatch.PlanRow{Item: model.Item{Kind: model.KindIssue, Repo: "acme/lib", Num: 5}, Task: dispatch.TaskIssue,
+		Stage: dispatch.Stage{Kind: dispatch.StageNeedsYou, Task: dispatch.TaskIssue, Reason: "gate: a person signs off"}, Epic: "acme/app#100"}
+	fake := &hubtest.Fake{}
+	fake.SetSnap(hub.Snapshot{Seq: 1, Dispatch: true, Res: &model.FetchResult{}, Plan: []dispatch.PlanRow{gate}})
+	m := New(config.Default(), fake)
+	m.width, m.height = 160, 30
+	key := func(k string) { m.handleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)}) }
+	key("p")
+	if view := ansiRe.ReplaceAllString(m.View(), ""); !strings.Contains(view, "C clear gate") {
+		t.Errorf("no C chip:\n%s", view)
+	}
+	key("C")
+	if fake.Called("ClearEpicGate acme/app#100 acme/lib#5") != 1 {
+		t.Error("C didn't clear the gate")
+	}
+}

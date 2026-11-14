@@ -180,3 +180,17 @@ func TestShort(t *testing.T) {
 		t.Error(got)
 	}
 }
+
+func TestClearedGate(t *testing.T) {
+	prev := &Plan{Nodes: []Node{{Ref: "a/b#1", Gate: "sign-off", Cleared: true}, {Ref: "a/b#2", Gate: "x", Cleared: true}}}
+	next := &Plan{Nodes: []Node{{Ref: "a/b#1", Gate: "sign-off"}, {Ref: "a/b#2", Gate: "a new condition"}, {Ref: "a/b#3"}}}
+	CarryCleared(prev, next)
+	if !next.Nodes[0].Cleared || next.Nodes[1].Cleared || next.Nodes[2].Cleared {
+		t.Fatalf("carried: %+v", next.Nodes)
+	}
+	f := map[string]Fact{"a/b#1": {Kind: "Issue", State: "OPEN"}, "a/b#2": {Kind: "Issue", State: "OPEN"}, "a/b#3": {Kind: "Issue", State: "OPEN"}}
+	Refresh(next, "a/b", f)
+	if next.Nodes[0].State != NodeReady || next.Nodes[1].State != NodeGated {
+		t.Errorf("states: %s %s", next.Nodes[0].State, next.Nodes[1].State)
+	}
+}

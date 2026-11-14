@@ -140,6 +140,10 @@ func (f *Fake) DropEpic(_ context.Context, ref string) error { return f.call("Dr
 
 func (f *Fake) RereadEpic(_ context.Context, ref string) error { return f.call("RereadEpic %s", ref) }
 
+func (f *Fake) ClearEpicGate(_ context.Context, ref, piece string) error {
+	return f.call("ClearEpicGate %s %s", ref, piece)
+}
+
 func (f *Fake) Unqueue(_ context.Context, task dispatch.Task, ref string) error {
 	return f.call("Unqueue %s %s", task, ref)
 }

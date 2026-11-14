@@ -317,6 +317,13 @@ func (c *Client) RereadEpic(ctx context.Context, ref string) error {
 	return fromConnect(err)
 }
 
+func (c *Client) ClearEpicGate(ctx context.Context, ref, piece string) error {
+	ctx, cancel := withDeadline(ctx, callTimeout)
+	defer cancel()
+	_, err := c.rpc.ClearEpicGate(ctx, connect.NewRequest(&pb.ClearEpicGateRequest{Ref: ref, Piece: piece}))
+	return fromConnect(err)
+}
+
 func (c *Client) Unqueue(ctx context.Context, task dispatch.Task, ref string) error {
 	ctx, cancel := withDeadline(ctx, callTimeout)
 	defer cancel()

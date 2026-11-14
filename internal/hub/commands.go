@@ -175,6 +175,11 @@ func (h *Hub) DropEpic(_ context.Context, ref string) error {
 	return h.epicCmd(func(d Dispatcher) error { return d.DropEpic(ref) })
 }
 
+// ClearEpicGate clears an epic piece's gate.
+func (h *Hub) ClearEpicGate(_ context.Context, ref, piece string) error {
+	return h.epicCmd(func(d Dispatcher) error { return d.ClearEpicGate(ref, piece) })
+}
+
 // RereadEpic reads an epic again.
 func (h *Hub) RereadEpic(_ context.Context, ref string) error {
 	return h.epicCmd(func(d Dispatcher) error { return d.RereadEpic(ref) })

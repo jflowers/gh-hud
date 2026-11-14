@@ -775,6 +775,32 @@ public nonisolated struct Ghhud_V1_RereadEpicResponse: Sendable {
   public init() {}
 }
 
+public nonisolated struct Ghhud_V1_ClearEpicGateRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// the epic
+  public var ref: String = String()
+
+  /// owner/repo#N, or #N in the epic's repo
+  public var piece: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Ghhud_V1_ClearEpicGateResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public nonisolated struct Ghhud_V1_WatchRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -2022,12 +2048,15 @@ public nonisolated struct Ghhud_V1_EpicNode: Sendable {
 
   public var source: String = String()
 
-  /// open set: done, dropped, in_progress, ready, waiting, gated, blocked, unknown
+  /// open set: done, dropped, in_progress, running, ready, waiting, gated, blocked, unknown
   public var state: String = String()
 
   public var note: String = String()
 
   public var pr: Int64 = 0
+
+  /// you cleared its gate
+  public var cleared: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3244,6 +3273,60 @@ nonisolated extension Ghhud_V1_RereadEpicResponse: SwiftProtobuf.Message, SwiftP
   }
 
   public static func ==(lhs: Ghhud_V1_RereadEpicResponse, rhs: Ghhud_V1_RereadEpicResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_ClearEpicGateRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ClearEpicGateRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}piece\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.ref) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.piece) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.ref.isEmpty {
+      try visitor.visitSingularStringField(value: self.ref, fieldNumber: 1)
+    }
+    if !self.piece.isEmpty {
+      try visitor.visitSingularStringField(value: self.piece, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_ClearEpicGateRequest, rhs: Ghhud_V1_ClearEpicGateRequest) -> Bool {
+    if lhs.ref != rhs.ref {return false}
+    if lhs.piece != rhs.piece {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_ClearEpicGateResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ClearEpicGateResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_ClearEpicGateResponse, rhs: Ghhud_V1_ClearEpicGateResponse) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -5282,7 +5365,7 @@ nonisolated extension Ghhud_V1_EpicPlan: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EpicNode"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}title\0\u{1}phase\0\u{1}after\0\u{1}gate\0\u{1}source\0\u{1}state\0\u{1}note\0\u{1}pr\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}title\0\u{1}phase\0\u{1}after\0\u{1}gate\0\u{1}source\0\u{1}state\0\u{1}note\0\u{1}pr\0\u{1}cleared\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5299,6 +5382,7 @@ nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._M
       case 7: try { try decoder.decodeSingularStringField(value: &self.state) }()
       case 8: try { try decoder.decodeSingularStringField(value: &self.note) }()
       case 9: try { try decoder.decodeSingularInt64Field(value: &self.pr) }()
+      case 10: try { try decoder.decodeSingularBoolField(value: &self.cleared) }()
       default: break
       }
     }
@@ -5332,6 +5416,9 @@ nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._M
     if self.pr != 0 {
       try visitor.visitSingularInt64Field(value: self.pr, fieldNumber: 9)
     }
+    if self.cleared != false {
+      try visitor.visitSingularBoolField(value: self.cleared, fieldNumber: 10)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -5345,6 +5432,7 @@ nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._M
     if lhs.state != rhs.state {return false}
     if lhs.note != rhs.note {return false}
     if lhs.pr != rhs.pr {return false}
+    if lhs.cleared != rhs.cleared {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

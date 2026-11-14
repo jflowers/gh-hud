@@ -33,6 +33,7 @@ type Dispatcher interface {
 	ApproveEpic(ref, planID string) error
 	DropEpic(ref string) error
 	RereadEpic(ref string) error
+	ClearEpicGate(ref, piece string) error
 	Approve(id string) error
 	Reject(id string) error
 
@@ -103,6 +104,7 @@ type Backend interface {
 	ApproveEpic(ctx context.Context, ref, planID string) error
 	DropEpic(ctx context.Context, ref string) error
 	RereadEpic(ctx context.Context, ref string) error
+	ClearEpicGate(ctx context.Context, ref, piece string) error
 
 	// Viewers. They open a terminal window on the hub's machine.
 	Watch(ctx context.Context, sessionID string) error
@@ -545,7 +547,7 @@ func (h *Hub) publish() {
 	if d := h.opts.Dispatcher; d != nil {
 		queue = d.Queue()
 		cases = d.Cases()
-		epics = d.Epics()
+		epics = dispatch.EpicsWithRuns(d.Epics(), cur.Runs)
 		if cur.Res != nil {
 			stages = make(map[string]dispatch.Stage, len(cur.Res.Items))
 			for _, it := range cur.Res.Items {

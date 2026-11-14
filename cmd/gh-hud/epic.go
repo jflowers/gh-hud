@@ -18,7 +18,8 @@ import (
 const epicUsage = `usage: gh-hud epic <url | owner/repo#N>   enroll an epic and read its plan
        gh-hud epic list                     the enrolled epics, their plans and status
        gh-hud epic approve <ref>            approve an epic's current plan
-       gh-hud epic reread <ref>             read an epic again (a new plan needs approving)
+       gh-hud epic reread <ref>             read an epic again (a changed plan needs approving)
+       gh-hud epic clear <ref> <piece>      clear a piece's gate (piece: #N or owner/repo#N)
        gh-hud epic drop <ref>               stop tracking an epic
 `
 
@@ -62,6 +63,23 @@ func runEpic(args []string, stdout, stderr io.Writer) int {
 		return epic.Ref(repo, num), true
 	}
 	switch cmd {
+	case "clear":
+		if len(rest) != 2 {
+			fmt.Fprintln(stderr, "gh-hud epic clear: want the epic and the piece, e.g. gh-hud epic clear acme/app#100 #103")
+			return 2
+		}
+		repo, num, ok := epic.ParseRef(rest[0])
+		if !ok {
+			fmt.Fprintf(stderr, "gh-hud epic clear: %q isn't owner/repo#N or an issue URL\n", rest[0])
+			return 2
+		}
+		ref := epic.Ref(repo, num)
+		if err := c.ClearEpicGate(ctx, ref, rest[1]); err != nil {
+			fmt.Fprintf(stderr, "gh-hud epic clear: %v\n", err)
+			return 1
+		}
+		fmt.Fprintf(stdout, "%s: gate cleared on %s\n", ref, rest[1])
+		return 0
 	case "list", "ls":
 		snap, err := c.Fetch(ctx)
 		if err != nil {
@@ -106,7 +124,7 @@ func runEpic(args []string, stdout, stderr io.Writer) int {
 
 // epicMark is a node state's mark in listings.
 var epicMark = map[epic.NodeState]string{
-	epic.NodeDone: "✓", epic.NodeDropped: "✗", epic.NodeInProgress: "▸", epic.NodeReady: "●",
+	epic.NodeDone: "✓", epic.NodeDropped: "✗", epic.NodeInProgress: "▸", epic.NodeRunning: "▶", epic.NodeReady: "●",
 	epic.NodeWaiting: "◌", epic.NodeGated: "⏸", epic.NodeBlocked: "!", epic.NodeUnknown: "?",
 }
 
@@ -128,8 +146,11 @@ func printEpics(w io.Writer, epics []epic.Epic) {
 			continue
 		}
 		c := e.Counts()
-		fmt.Fprintf(w, "  plan %s from %s: %d pieces, %d done, %d ready, %d in progress, %d waiting",
-			p.ID, strings.Join(p.Sources, "+"), len(p.Nodes), c[epic.NodeDone], c[epic.NodeReady], c[epic.NodeInProgress], c[epic.NodeWaiting])
+		fmt.Fprintf(w, "  plan %s from %s: %d pieces, %d done, %d ready, ", p.ID, strings.Join(p.Sources, "+"), len(p.Nodes), c[epic.NodeDone], c[epic.NodeReady])
+		if c[epic.NodeRunning] > 0 {
+			fmt.Fprintf(w, "%d running, ", c[epic.NodeRunning])
+		}
+		fmt.Fprintf(w, "%d in progress, %d waiting", c[epic.NodeInProgress], c[epic.NodeWaiting])
 		if n := c[epic.NodeGated] + c[epic.NodeBlocked]; n > 0 {
 			fmt.Fprintf(w, ", %d need you", n)
 		}
@@ -153,6 +174,12 @@ func printEpics(w io.Writer, epics []epic.Epic) {
 			line := fmt.Sprintf("    %s %-28s %s", epicMark[n.State], epic.Short(repo, n.Ref), n.Title)
 			if n.Note != "" {
 				line += "  (" + n.Note + ")"
+			}
+			if n.State == epic.NodeGated {
+				line += fmt.Sprintf("  → gh-hud epic clear %s %s", e.Ref, epic.Short(repo, n.Ref))
+			}
+			if n.Cleared {
+				line += "  (gate cleared)"
 			}
 			fmt.Fprintln(w, line)
 		}
