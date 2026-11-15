@@ -209,10 +209,17 @@ terminal, which can include whatever the agent printed. It goes only to
 the hub owner's own devices (4b's check), as everything else does.
 
 The two calls wrap dispatcher internals, which are the merge train's
-(`internal/dispatch`). 4e6 asks that session for two exported methods,
-`(*Dispatcher).PaneText(s Session, lines int)` and
-`(*Dispatcher).Transcript(r Run)`, or for its agreement to add them in
-the 4e6 PR; the hub, the API and the app are this plan's.
+(`internal/dispatch`). Agreed with that session: the 4e6 PR adds
+`(*Dispatcher).PaneText(ctx, s Session, lines int)` and
+`(*Dispatcher).Transcript(ctx, r Run)`, nothing else there, and it
+reviews them. PaneText shares the machine and pane resolution with
+`watchHerdr` and `WatchRun` (so "run finished and its pane is closed"
+can't drift) and clamps lines to 1..2000. Transcript goes through the
+dispatcher's `export` hook, so the existing stubs cover it; an export
+runs to megabytes, so the hub sends the phone only the last messages,
+saying how many it left out. Both are read-only, so a follower hub
+serves them too. "no opencode session linked to this run" stays word
+for word, so every app says the same thing.
 
 **Not in 4e6: answering an agent.** Watch on the Mac attaches a
 read-write terminal, so you can type into a blocked agent there. The
