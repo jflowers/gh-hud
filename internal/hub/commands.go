@@ -81,6 +81,18 @@ func (h *Hub) Dispatch(ctx context.Context, task dispatch.Task, url string) (dis
 	return rec, err
 }
 
+// PruneBranches sweeps the dispatch checkouts for branches whose PR is
+// done; apply deletes them.
+func (h *Hub) PruneBranches(ctx context.Context, apply bool) (dispatch.BranchSweep, error) {
+	d, err := h.disp()
+	if err != nil {
+		return dispatch.BranchSweep{}, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, pruneTimeout)
+	defer cancel()
+	return d.PruneBranches(ctx, apply)
+}
+
 // Reinspect re-runs a finished run's after-run inspection.
 func (h *Hub) Reinspect(ctx context.Context, runID string) (dispatch.Run, error) {
 	d, err := h.disp()

@@ -36,6 +36,12 @@ public protocol Ghhud_V1_HubServiceClientInterface: Sendable {
     @available(iOS 13, *)
     func `reinspect`(request: Ghhud_V1_ReinspectRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_ReinspectResponse>
 
+    /// PruneBranches finds the dispatch checkouts' branches whose PR is
+    /// merged or closed; with apply it deletes them, and their copy in your
+    /// fork (gh-hud branches).
+    @available(iOS 13, *)
+    func `pruneBranches`(request: Ghhud_V1_PruneBranchesRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_PruneBranchesResponse>
+
     /// Your queue of agent tasks.
     @available(iOS 13, *)
     func `queueChoices`(request: Ghhud_V1_QueueChoicesRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_QueueChoicesResponse>
@@ -128,6 +134,11 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
     }
 
     @available(iOS 13, *)
+    public func `pruneBranches`(request: Ghhud_V1_PruneBranchesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_PruneBranchesResponse> {
+        return await self.client.unary(path: "/ghhud.v1.HubService/PruneBranches", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `queueChoices`(request: Ghhud_V1_QueueChoicesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_QueueChoicesResponse> {
         return await self.client.unary(path: "/ghhud.v1.HubService/QueueChoices", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -210,6 +221,7 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
             public static let menuChoices = Connect.MethodSpec(name: "MenuChoices", service: "ghhud.v1.HubService", type: .unary)
             public static let dispatch = Connect.MethodSpec(name: "Dispatch", service: "ghhud.v1.HubService", type: .unary)
             public static let reinspect = Connect.MethodSpec(name: "Reinspect", service: "ghhud.v1.HubService", type: .unary)
+            public static let pruneBranches = Connect.MethodSpec(name: "PruneBranches", service: "ghhud.v1.HubService", type: .unary)
             public static let queueChoices = Connect.MethodSpec(name: "QueueChoices", service: "ghhud.v1.HubService", type: .unary)
             public static let enqueue = Connect.MethodSpec(name: "Enqueue", service: "ghhud.v1.HubService", type: .unary)
             public static let unqueue = Connect.MethodSpec(name: "Unqueue", service: "ghhud.v1.HubService", type: .unary)

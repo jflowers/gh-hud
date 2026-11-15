@@ -22,6 +22,7 @@ const (
 	callTimeout      = 15 * time.Second
 	snapshotTimeout  = 2 * time.Second
 	dispatchDeadline = 3 * time.Minute
+	pruneDeadline    = 6 * time.Minute // the hub allows a sweep 5
 )
 
 // Reconnect backoff for a dropped subscription.
@@ -250,6 +251,16 @@ func (c *Client) Reinspect(ctx context.Context, runID string) (dispatch.Run, err
 		return dispatch.Run{}, fromConnect(err)
 	}
 	return RunFromPB(resp.Msg.GetRun()), nil
+}
+
+func (c *Client) PruneBranches(ctx context.Context, apply bool) (dispatch.BranchSweep, error) {
+	ctx, cancel := withDeadline(ctx, pruneDeadline)
+	defer cancel()
+	resp, err := c.rpc.PruneBranches(ctx, connect.NewRequest(&pb.PruneBranchesRequest{Apply: apply}))
+	if err != nil {
+		return dispatch.BranchSweep{}, fromConnect(err)
+	}
+	return sweepFromPB(resp.Msg), nil
 }
 
 func (c *Client) QueueChoices(ctx context.Context, url string) ([]dispatch.Task, error) {

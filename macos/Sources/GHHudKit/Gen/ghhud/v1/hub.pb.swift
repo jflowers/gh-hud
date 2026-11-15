@@ -532,6 +532,67 @@ public nonisolated struct Ghhud_V1_ReinspectResponse: Sendable {
   fileprivate var _run: Ghhud_V1_Run? = nil
 }
 
+public nonisolated struct Ghhud_V1_PruneBranchesRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var apply: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Ghhud_V1_PruneBranchesResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var local: [Ghhud_V1_BranchPrune] = []
+
+  /// the head repo's copies (repo is the head repo)
+  public var remote: [Ghhud_V1_BranchPrune] = []
+
+  /// branches with an open PR, or none
+  public var kept: Int32 = 0
+
+  public var errors: [String] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// BranchPrune is one branch whose PR is done.
+public nonisolated struct Ghhud_V1_BranchPrune: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// "" is the hub's machine
+  public var machine: String = String()
+
+  public var workspace: String = String()
+
+  public var repo: String = String()
+
+  public var branch: String = String()
+
+  /// owner/repo#N
+  public var pr: String = String()
+
+  /// "merged" or "closed"
+  public var state: String = String()
+
+  /// "pruned", "would prune", or "kept: why"
+  public var action: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public nonisolated struct Ghhud_V1_QueueChoicesRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -2784,6 +2845,141 @@ nonisolated extension Ghhud_V1_ReinspectResponse: SwiftProtobuf.Message, SwiftPr
 
   public static func ==(lhs: Ghhud_V1_ReinspectResponse, rhs: Ghhud_V1_ReinspectResponse) -> Bool {
     if lhs._run != rhs._run {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_PruneBranchesRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PruneBranchesRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}apply\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.apply) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.apply != false {
+      try visitor.visitSingularBoolField(value: self.apply, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_PruneBranchesRequest, rhs: Ghhud_V1_PruneBranchesRequest) -> Bool {
+    if lhs.apply != rhs.apply {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_PruneBranchesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".PruneBranchesResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}local\0\u{1}remote\0\u{1}kept\0\u{1}errors\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.local) }()
+      case 2: try { try decoder.decodeRepeatedMessageField(value: &self.remote) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self.kept) }()
+      case 4: try { try decoder.decodeRepeatedStringField(value: &self.errors) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.local.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.local, fieldNumber: 1)
+    }
+    if !self.remote.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.remote, fieldNumber: 2)
+    }
+    if self.kept != 0 {
+      try visitor.visitSingularInt32Field(value: self.kept, fieldNumber: 3)
+    }
+    if !self.errors.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.errors, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_PruneBranchesResponse, rhs: Ghhud_V1_PruneBranchesResponse) -> Bool {
+    if lhs.local != rhs.local {return false}
+    if lhs.remote != rhs.remote {return false}
+    if lhs.kept != rhs.kept {return false}
+    if lhs.errors != rhs.errors {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_BranchPrune: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".BranchPrune"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machine\0\u{1}workspace\0\u{1}repo\0\u{1}branch\0\u{1}pr\0\u{1}state\0\u{1}action\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.machine) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.workspace) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.repo) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.branch) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.pr) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.state) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.action) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.machine.isEmpty {
+      try visitor.visitSingularStringField(value: self.machine, fieldNumber: 1)
+    }
+    if !self.workspace.isEmpty {
+      try visitor.visitSingularStringField(value: self.workspace, fieldNumber: 2)
+    }
+    if !self.repo.isEmpty {
+      try visitor.visitSingularStringField(value: self.repo, fieldNumber: 3)
+    }
+    if !self.branch.isEmpty {
+      try visitor.visitSingularStringField(value: self.branch, fieldNumber: 4)
+    }
+    if !self.pr.isEmpty {
+      try visitor.visitSingularStringField(value: self.pr, fieldNumber: 5)
+    }
+    if !self.state.isEmpty {
+      try visitor.visitSingularStringField(value: self.state, fieldNumber: 6)
+    }
+    if !self.action.isEmpty {
+      try visitor.visitSingularStringField(value: self.action, fieldNumber: 7)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_BranchPrune, rhs: Ghhud_V1_BranchPrune) -> Bool {
+    if lhs.machine != rhs.machine {return false}
+    if lhs.workspace != rhs.workspace {return false}
+    if lhs.repo != rhs.repo {return false}
+    if lhs.branch != rhs.branch {return false}
+    if lhs.pr != rhs.pr {return false}
+    if lhs.state != rhs.state {return false}
+    if lhs.action != rhs.action {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

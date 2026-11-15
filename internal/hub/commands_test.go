@@ -86,6 +86,13 @@ func (d *fakeDisp) Reinspect(_ context.Context, id string) (dispatch.Run, error)
 	return dispatch.Run{ID: id}, nil
 }
 
+func (d *fakeDisp) PruneBranches(_ context.Context, apply bool) (dispatch.BranchSweep, error) {
+	d.record("PruneBranches %v", apply)
+	return dispatch.BranchSweep{Kept: 1}, nil
+}
+
+func (d *fakeDisp) AutoPruneBranches(context.Context) []string { return nil }
+
 func (d *fakeDisp) QueueChoices(model.Item) []dispatch.Task {
 	return []dispatch.Task{dispatch.TaskReview}
 }

@@ -24,6 +24,7 @@ type Fake struct {
 	QueueOpts []dispatch.Task
 	Record    dispatch.Record
 	Run       dispatch.Run
+	Sweep     dispatch.BranchSweep
 	Pos       int // Enqueue's position and MoveQueued's index
 
 	// Snaps and Events, when set, are what Subscribe returns, so a test
@@ -101,6 +102,13 @@ func (f *Fake) Reinspect(_ context.Context, runID string) (dispatch.Run, error) 
 		return dispatch.Run{}, err
 	}
 	return f.Run, nil
+}
+
+func (f *Fake) PruneBranches(_ context.Context, apply bool) (dispatch.BranchSweep, error) {
+	if err := f.call("PruneBranches %v", apply); err != nil {
+		return dispatch.BranchSweep{}, err
+	}
+	return f.Sweep, nil
 }
 
 func (f *Fake) QueueChoices(_ context.Context, url string) ([]dispatch.Task, error) {

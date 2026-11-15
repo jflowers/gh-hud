@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -72,6 +73,12 @@ func TestCommandsOverSocket(t *testing.T) {
 		Record:    dispatch.Record{Task: dispatch.TaskCI, Ref: "a/r#1", Workspace: "r@oak", Machine: "lap1", Runner: "herdr"},
 		Run:       dispatch.Run{ID: "run1", Status: dispatch.RunOK},
 		Pos:       2,
+		Sweep: dispatch.BranchSweep{
+			Local:  []dispatch.BranchPrune{{Machine: "lap1", Workspace: "r@oak", Repo: "a/r", Branch: "fix/x", PR: "a/r#3", State: "merged", Action: "would prune"}},
+			Remote: []dispatch.BranchPrune{{Repo: "me/r", Branch: "fix/x", PR: "a/r#3", State: "merged", Action: "kept: pushed to after the PR"}},
+			Kept:   4,
+			Errors: []string{"lap2: unreachable"},
+		},
 	}
 	c, _ := serve(t, sockPath(t), fake)
 	ctx := t.Context()
@@ -103,6 +110,11 @@ func TestCommandsOverSocket(t *testing.T) {
 	if run.ID != "run1" || run.Status != dispatch.RunOK {
 		t.Errorf("run = %+v", run)
 	}
+	sweep, err := c.PruneBranches(ctx, false)
+	must(err)
+	if !reflect.DeepEqual(sweep, fake.Sweep) {
+		t.Errorf("sweep = %+v", sweep)
+	}
 	tasks, err := c.QueueChoices(ctx, "u1")
 	must(err)
 	if !slices.Equal(tasks, fake.QueueOpts) {
@@ -126,7 +138,7 @@ func TestCommandsOverSocket(t *testing.T) {
 
 	want := []string{
 		"Refresh", "RefreshAgents", "RefreshWorkspaces",
-		"MenuChoices u1", "Dispatch ci u1", "Reinspect run1", "QueueChoices u1",
+		"MenuChoices u1", "Dispatch ci u1", "Reinspect run1", "PruneBranches false", "QueueChoices u1",
 		"Enqueue review u1", "Unqueue review a/r#1", "MoveQueued review a/r#1 -1",
 		"Watch lap1/s1", "WatchRun run1", "OpenTranscript run1",
 		"FleetPause true", "FleetPause false", "FleetApplyNow", "FleetSkipWait", "FleetRetry",

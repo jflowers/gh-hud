@@ -230,6 +230,8 @@ type Options struct {
 	Supervisor config.SupervisorConfig
 	// Epics bounds the work started on approved epics (epic_run.go).
 	Epics config.EpicsConfig
+	// Branches turns on the hub's own branch pruning (branches.go).
+	Branches config.BranchesConfig
 }
 
 // Dispatcher launches and tracks agent sessions.
@@ -318,6 +320,10 @@ type Dispatcher struct {
 	// ghQuery runs a GraphQL query and decodes its data (a hook for tests;
 	// nil uses gh).
 	ghQuery func(ctx context.Context, query string, out any) error
+	// Guarded by mu (branches.go): a sweep in flight, and when the last
+	// automatic one finished.
+	pruning  bool
+	prunedAt time.Time
 }
 
 // agentSnapshot is one machine's live herdr agent list.
