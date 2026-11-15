@@ -224,6 +224,14 @@ do {
     check(ItemList.rows(s, filter: .all, query: "crash").map(\.num) == [3], "search matches the title")
     check(ItemList.rows(s, filter: .all, query: "acme/r#1").map(\.num) == [1], "search matches the ref")
     check(ItemList.rows(s, filter: .mine, query: "widgets").isEmpty, "search stays inside the filter")
+    func order<K: Comparable>(_ k: KeyPath<ItemRow, K> & Sendable, _ o: SortOrder = .forward) -> [Int] {
+        all.sorted(using: KeyPathComparator(k, order: o)).map(\.num)
+    }
+    check(order(\.statusRank) == [2, 1, 3, 0], "status: the failing, conflicted PR first, no status last: \(order(\.statusRank))")
+    check(order(\.ageKey) == [1, 2, 3, 0] && order(\.ageKey, .reverse) == [0, 3, 2, 1], "age newest first")
+    check(order(\.numKey) == [1, 2, 3, 0], "numberless rows sort last")
+    check(order(\.markerRank) == [2, 1, 3, 0], "your move, then ready, then the rest in order: \(order(\.markerRank))")
+    check(order(\.threadsKey, .reverse).first == 2, "most threads first, descending")
     let n = ItemList.counts(s)
     check(n[.all] == 4 && n[.mine] == 1 && n[.issues] == 1 && n[.ci] == 1 && n[.queue] == 0, "counts \(n)")
 
@@ -380,6 +388,15 @@ do {
     check(twice[1].session.id == "lap2/gh-issue-7", "the session ID stays for watching and copying")
     check([45, 720, 3900].map { AgentList.duration(TimeInterval($0)) } == ["45s", "12m", "1h05"], "durations")
 
+    // Sorting: status by how much it needs you, age newest first, unknowns
+    // last, and ties left in the hub's order.
+    check(rows.sorted(using: KeyPathComparator(\.statusRank)).map(\.status) == ["left work", "blocked", "running"],
+          "agents by status")
+    check(rows.sorted(using: KeyPathComparator(\.ageKey)).map(\.id) == ["s-blocked", "run-1", "s-live"],
+          "agents newest first: \(rows.sorted(using: KeyPathComparator(\.ageKey)).map(\.id))")
+    check(twice.sorted(using: KeyPathComparator(\.tookKey)).map(\.id).last == "lap2/gh-issue-7#1",
+          "no duration sorts last, ties stay in order")
+
     func health(_ ws: String, _ change: (inout Ghhud_V1_CheckoutHealth) -> Void) -> Ghhud_V1_CheckoutHealth {
         var h = Ghhud_V1_CheckoutHealth()
         h.workspace = ws
@@ -411,6 +428,11 @@ do {
     check(ws[2].explanation == "A run here is refused until these are committed or discarded.", "dirty explanation")
     check(ws[3].explanation == "main can't fast-forward to upstream/main.", "diverged explanation")
     check(WorkspaceList.ready(s) == 2, "ready count")
+    let bySync = ws.sorted(using: KeyPathComparator(\.syncKey)).map(\.workspace)
+    check(bySync == ["busy", "broken", "elsewhere", "dirty", "diverged", "ready", "lost"],
+          "sync: in step first, unknown last: \(bySync)")
+    check(ws.sorted(using: KeyPathComparator(\.stateRank)).map(\.workspace).prefix(3) == ["dirty", "diverged", "broken"],
+          "problems first")
     check(WorkspaceList.stale(s, now: now), "never read is stale")
     s.workspacesAt = Google_Protobuf_Timestamp(date: now.addingTimeInterval(-10))
     check(!WorkspaceList.stale(s, now: now), "read 10s ago is fresh")

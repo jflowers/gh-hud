@@ -13,6 +13,8 @@ public struct FleetRow: Identifiable, Equatable, Sendable {
     public let reach: String
     /// Agent slots in use, "1/2", or "—".
     public let slots: String
+    /// Slots in use, for sorting; -1 when unknown.
+    public let slotsUsed: Int
     /// The applied commit, "→ target" while it isn't current.
     public let applied: String
     /// How long it has waited for agents to drain.
@@ -30,8 +32,10 @@ public struct FleetRow: Identifiable, Equatable, Sendable {
         }
         if let u = usage.first(where: { $0.name == m.name }) {
             slots = u.ok ? "\(u.used)/\(u.max)" : "—"
+            slotsUsed = u.ok ? Int(u.used) : -1
         } else {
             slots = "—"
+            slotsUsed = -1
         }
         let have = m.appliedShort.isEmpty ? "—" : m.appliedShort
         applied = m.state == "current" || target.isEmpty || m.appliedShort == target ? have : "\(have) → \(target)"
