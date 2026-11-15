@@ -192,10 +192,21 @@ remote control rather than a viewer.
 
 ### Sequence
 
-1. **4e1, `:core` ports and shared fixtures.** `ItemList`, `Filters`,
+1. **4e1, `:core` ports and shared fixtures.** *(done)* `ItemList`, `Filters`,
    `Sorting`, `Agents`, `Plan`, `Fleet` in Kotlin; the fixtures and
    `GHHudChecks` reading them. No new screens. The biggest step, and it
    makes the rest mostly UI.
+
+   As built: the fixtures are snapshots written as protobuf JSON
+   (`testdata/clients/*.json`); a Go test keeps a binary copy of each,
+   since the Android app's lite protobuf runtime can't read JSON. Rather
+   than move the Mac's checks into data, each client renders everything
+   its views make of a snapshot (rows, counts, searches, sort orders,
+   plan, epics, fleet, what needs you) as `key = value` lines, and both
+   must match `<name>.views.txt` exactly. `make client-fixtures` rewrites
+   the files from the Android code and runs the Mac checks against them;
+   the first run found one difference (the "unknown" sort key's size),
+   fixed. The Mac's own checks stay as they were.
 2. **4e2, the shell and Items.** The bottom bar, the Items list with
    filters, search, sort and column chips, the item detail, and its
    commands (start an agent, queue, re-check).

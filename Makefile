@@ -8,7 +8,7 @@ GOVULNCHECK_VERSION ?= v1.9.0
 BUF_VERSION ?= v1.75.0
 BUF := go run github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
 
-.PHONY: all build test lint fmt tidy vuln proto proto-check proto-breaking ci mac mac-notarize mac-check mac-icon android-sdk android android-install android-device-test android-dev-hub
+.PHONY: all build test lint fmt tidy vuln proto proto-check proto-breaking ci mac mac-notarize mac-check mac-icon client-fixtures android-sdk android android-install android-device-test android-dev-hub
 
 all: build
 
@@ -49,6 +49,14 @@ proto-check: proto
 	git diff --exit-code -- internal/api/gen macos/Sources/GHHudKit/Gen android/core/src/main/gen
 
 ci: tidy proto-check lint test vuln
+
+# The clients' shared fixtures (testdata/clients/README.md): the binary
+# snapshots from their JSON, then what the views make of them, rendered by
+# the Android app's code and checked by the Mac's.
+client-fixtures:
+	go test ./internal/api -run TestClientFixturesAreCurrent -update-fixtures
+	cd android && UPDATE_FIXTURES=1 mise exec -- ./gradlew --console=plain :core:test --rerun-tasks
+	cd macos && swift run GHHudChecks
 
 # The Mac app (macos/). Needs only the Command Line Tools. MAC_SIGN_ID is a
 # codesigning identity ("Developer ID Application: …"); empty signs ad hoc,

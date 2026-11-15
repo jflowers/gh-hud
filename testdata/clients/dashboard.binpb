@@ -1,0 +1,119 @@
+*ü
+•(https://github.com/acme/widgets/pull/401"acme/widgets(‘2Add the gizmo:annR”»æ×XjğŸŸ¡€ˆ’annšme‚enhancement‚good first issue
+n"(https://github.com/acme/widgets/pull/398"acme/widgets(2Fix the flaky build:jayRÆà×Xjâœ…’jay
+p#https://github.com/acme/api/pull/70"acme/api(F2Drop the old endpoint:jay@RÀÓœ×XjâŒzâš ï¸’bob
+a)https://github.com/acme/widgets/issues/60"acme/widgets(<2
+Gizmo epic:jayRÀ–ùÕX‚epic
+X.https://github.com/acme/widgets/actions/runs/9"acme/widgets2
+CI on mainR …æ×X
+W*https://github.com/acme/docs/discussions/3"	acme/docs2Roadmap discussionRÀæ¤Õ
+A(https://github.com/acme/widgets/pull/405"acme/widgets(•2	Bump deps:dependabot[bot]R¢½æ×Xjâ—ˆ’dependabot[bot]
+d&https://github.com/other/tools/pull/12"other/tools(2Teach the tool a trick:cyXjâ€¼ï¸€*jayÀ½æ×0B_
+ses-401review acme/widgets#401"È¼æ×(JreviewZ	widgets-2bacme/widgets#401jchaišrun-3B4
+ses-blockedPort the parser"´æ×(ˆ’´æ×B
+ses-busy"„½æ×(rthinkingB
+
+ses-failedBroke"ÀÌ×0B"
+ses-unknown	Who knows"€Íå×8B$
+ses-idleYesterday's work"ˆä×B
+	ses-stale	Last week"ÀÈÁ×B/
+ses-70"”ªÛ×Jfixbacme/api#70joakšrun-0B#
+ses-idleSame name again" ¤ä×B&
+
+ses-orphan"ÀÓœ×Jfixbgone/repo#1JL
+run-3reviewacme/widgets#4012chai:	widgets-2JrunningZ”»æ×jses-401J6
+run-2fixacme/widgets#398JfailedZ ¿Û×b‚ÓÛ×J2
+run-1fixacme/widgets#401JokZ âà×bÌäà×J5
+run-0fixacme/api#70JokZ€‡Û×b”ªÛ×jses-70J:
+run-4reviewother/tools#12J	left-workZéå×b˜÷å×R
+chai R
+local R
+oakb<
+#https://github.com/acme/api/pull/70
+waitfixcooldownb3
+(https://github.com/acme/widgets/pull/398
+mergebK
+(https://github.com/acme/widgets/pull/401
+youreviewanswer the agentb:
+(https://github.com/acme/widgets/pull/405
+nextreviewbD
+&https://github.com/other/tools/pull/12
+waitreview
+ci pendingjr
+F(https://github.com/acme/widgets/pull/405"acme/widgets(•2	Bump depsreview
+nextreview *next free slotjs
+H#https://github.com/acme/api/pull/70"acme/api(F2Drop the old endpointfix
+waitfix *no free slot on oakj^
+8#https://github.com/acme/gone/pull/5"	acme/gone(2Gonefix *not in the latest refresh0jr
+J(https://github.com/acme/widgets/pull/401"acme/widgets(‘2Add the gizmoreview
+runningreview *runningj`
+F(https://github.com/acme/widgets/pull/410"acme/widgets(š2	Auto nextreview
+nextreviewjR
+!"acme/widgets(=2Gizmo piece one	implement
+next	implement:acme/widgets#60j€
+L)https://github.com/acme/widgets/issues/62"acme/widgets(>2Gizmo piece two	implement
+running	implement:acme/widgets#60jV
+?#https://github.com/acme/api/pull/71"acme/api(G2Running autofix
+runningfixju
+O&https://github.com/other/tools/pull/12"other/tools(2Teach the tool a trickreview
+waitreview
+ci pendingj”
+N)https://github.com/acme/widgets/issues/63"acme/widgets(?2Gizmo piece three	implement&
+you	implementgate: after the demo:acme/widgets#60jb
+P(https://github.com/acme/widgets/pull/398"acme/widgets(2Fix the flaky buildmerge
+mergejc
+G(https://github.com/acme/widgets/pull/399"acme/widgets(2
+Merge soonmerge
+mergeafter CIz1widgetsacme/widgets"
+/w/widgets*main2mainPzW
+chai	widgets-2acme/widgets"/w/widgets-2*fix-x2main8@jreview acme/widgets#401z>apiacme/api"/w/api*feature2main@Z	feature	3Zspike	2`z3api-2acme/api"/w/api-2*main2mainJa.goJb.goz+api-3acme/api"/w/api-3*main2main8@zG
+oaktoolsother/tools"/w/tools*main2main8ÿÿÿÿÿÿÿÿÿ@ÿÿÿÿÿÿÿÿÿpzK
+oakdocs	acme/docs"/w/docs8ÿÿÿÿÿÿÿÿÿ@ÿÿÿÿÿÿÿÿÿznot a git repository‚¶½æ×’æ
+
+abc1234defabc1234greenBoakZ
+localcurrent*abc1234Z
+chaidraining*9f8e7d62ZZ7
+oakfailed*9f8e7d6:chezmoi apply:
+exit status 1
+Z 
+elmunreachable:ssh: timeoutZ
+firpendingZ
+ashapplying*abc1234š
+ shared_failure|acme/widgets|lintshared_failureacme/widgets"lint*
+‘B<
+p1%link_fix	"Retry the flaky
+  buildpending"°¡æ×šj
+shared_failure|acme/api|testshared_failureacme/api"test*
+F2%escalate"Needs a
+human2
+supervisoršI
+shared_failure|acme/api|buildshared_failureacme/api"build*
+FGH8še
+shared_failure|other/tools|vetshared_failureother/tools"vet*
+B
+p0link_fixapproved¢ÿ
+acme/widgets#60)https://github.com/acme/widgets/issues/60
+Gizmo epic*approved:ª
+plan-60#
+acme/widgets#61	Piece one:ready%
+acme/widgets#62	Piece two:running5
+acme/widgets#63Piece three*after the demo:gated7
+acme/widgets#64
+Piece four*cleared already:gatedP.
+acme/api#80	API piece:in_progressBPR open%
+other/tools#20
+Tool piece:waiting#
+acme/widgets#65
+Done piece:done)
+acme/widgets#66Dropped piece:dropped4
+acme/widgets#67Blocked piece:blockedB	needs #612ÀÌ×¢^
+acme/api#90API epic*planned:<
+plan-90
+acme/api#91:ready
+acme/api#92:done2 …æ×¢I
+acme/api#95Changed epic*planned:#
+plan-95
+acme/api#96:waiting@¢
+acme/docs#5Reading*reading¢+
+acme/docs#6Broken*error2no such issue¢
+acme/docs#7Fresh*planned
