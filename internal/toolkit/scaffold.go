@@ -69,6 +69,9 @@ type Result struct {
 	Added   int
 	Deleted int
 	Held    bool // the change touches a hold path
+	// Branch and Base are set for an overlay commit held on a branch:
+	// "remote/branch" and the "remote/default" it should merge into.
+	Branch, Base string
 }
 
 // Options tune a scaffold run.
@@ -167,62 +170,19 @@ func (s *Scaffolder) Scaffold(ctx context.Context, t Target, runs []Run, o Optio
 	if len(runs) == 0 {
 		return fail(StatusCurrent, "no tools to run")
 	}
-	src := ""
-	if t.Repo != "" {
-		src = s.Checkout(t.Repo)
-		if src == "" {
-			return fail(StatusFailed, "no canonical ghws clone of %s", t.Repo)
-		}
-	} else {
-		src = t.Overlay
-		if !filepath.IsAbs(src) {
-			src = filepath.Join(s.GHWSRoot, src)
-		}
+	src, base, def, err := s.locate(ctx, t)
+	if err != nil {
+		return fail(StatusFailed, "%v", err)
 	}
 	g := func(args ...string) (string, error) { return s.Run.Run(ctx, src, "git", args...) }
 
-	remotes, err := g("remote")
-	if err != nil {
-		return fail(StatusFailed, "%v", err)
-	}
-	rs := strings.Fields(remotes)
-	base := "origin"
-	switch {
-	case slices.Contains(rs, "upstream"):
-		base = "upstream"
-	case t.Overlay != "" && len(rs) > 0 && !slices.Contains(rs, "origin"):
-		base = rs[0]
-	case !slices.Contains(rs, "origin"):
-		return fail(StatusFailed, "%s has no origin or upstream remote", src)
-	}
-	head, err := g("ls-remote", "--symref", base, "HEAD")
-	if err != nil {
-		return fail(StatusFailed, "%v", err)
-	}
-	def := defaultBranch(head)
-	if def == "" {
-		return fail(StatusFailed, "can't tell %s's default branch", base)
-	}
-	if _, err := g("fetch", "-q", base, def); err != nil {
-		return fail(StatusFailed, "%v", err)
-	}
-
 	// Never go backwards: a scaffold from an older binary reverts what
 	// a newer one wrote.
-	had := []map[string]string{}
-	if out, err := g("log", "-n", "500", "--format=%(trailers:key="+trailerKey+",valueonly)", base+"/"+def); err == nil {
-		had = append(had, parseTrailers(out)...)
+	had, err := s.recorded(ctx, t, src, base, def)
+	if err != nil {
+		return fail(StatusFailed, "%v", err)
 	}
-	if t.Repo != "" {
-		titles, err := s.prTitles(ctx, src, t.Repo)
-		if err != nil {
-			return fail(StatusFailed, "%v", err)
-		}
-		for _, title := range titles {
-			had = append(had, parseTitle(title))
-		}
-	}
-	if down := downgrades(runs, newest(had...)); len(down) > 0 {
+	if down := downgrades(runs, had); len(down) > 0 {
 		return fail(StatusRefused, "would downgrade: %s", strings.Join(down, ", "))
 	}
 
@@ -308,6 +268,7 @@ func (s *Scaffolder) Scaffold(ctx context.Context, t Target, runs []Run, o Optio
 			if _, err := w("push", "-q", push, branch); err != nil {
 				return fail(StatusFailed, "%v", err)
 			}
+			res.Branch, res.Base = push+"/"+branch, push+"/"+def
 			res.Status, res.Detail = StatusHeld, fmt.Sprintf("%s/%s: changes agent commands or definitions; merge it into %s after a look", push, branch, def)
 			return res
 		}
@@ -347,6 +308,78 @@ func (s *Scaffolder) Scaffold(ctx context.Context, t Target, runs []Run, o Optio
 	}
 	res.Status, res.Detail = StatusOpened, strings.TrimSpace(lastLine(out))
 	return res
+}
+
+// locate finds a target's clone, the remote its default branch comes
+// from, and that branch, fetched.
+func (s *Scaffolder) locate(ctx context.Context, t Target) (src, base, def string, err error) {
+	if t.Repo != "" {
+		src = s.Checkout(t.Repo)
+		if src == "" {
+			return "", "", "", fmt.Errorf("no canonical ghws clone of %s", t.Repo)
+		}
+	} else {
+		src = t.Overlay
+		if !filepath.IsAbs(src) {
+			src = filepath.Join(s.GHWSRoot, src)
+		}
+	}
+	g := func(args ...string) (string, error) { return s.Run.Run(ctx, src, "git", args...) }
+	remotes, err := g("remote")
+	if err != nil {
+		return "", "", "", err
+	}
+	rs := strings.Fields(remotes)
+	base = "origin"
+	switch {
+	case slices.Contains(rs, "upstream"):
+		base = "upstream"
+	case t.Overlay != "" && len(rs) > 0 && !slices.Contains(rs, "origin"):
+		base = rs[0]
+	case !slices.Contains(rs, "origin"):
+		return "", "", "", fmt.Errorf("%s has no origin or upstream remote", src)
+	}
+	head, err := g("ls-remote", "--symref", base, "HEAD")
+	if err != nil {
+		return "", "", "", err
+	}
+	if def = defaultBranch(head); def == "" {
+		return "", "", "", fmt.Errorf("can't tell %s's default branch", base)
+	}
+	if _, err := g("fetch", "-q", base, def); err != nil {
+		return "", "", "", err
+	}
+	return src, base, def, nil
+}
+
+// recorded is the newest scaffolded version of each tool in a target:
+// from Toolkit-Scaffold trailers on its default branch and, for a repo,
+// the titles of its open and merged scaffold PRs.
+func (s *Scaffolder) recorded(ctx context.Context, t Target, src, base, def string) (map[string]string, error) {
+	var had []map[string]string
+	if out, err := s.Run.Run(ctx, src, "git", "log", "-n", "500", "--format=%(trailers:key="+trailerKey+",valueonly)", base+"/"+def); err == nil {
+		had = append(had, parseTrailers(out)...)
+	}
+	if t.Repo != "" {
+		titles, err := s.prTitles(ctx, src, t.Repo)
+		if err != nil {
+			return nil, err
+		}
+		for _, title := range titles {
+			had = append(had, parseTitle(title))
+		}
+	}
+	return newest(had...), nil
+}
+
+// Recorded is the newest scaffolded version of each tool in a target
+// (tools never scaffolded there are missing).
+func (s *Scaffolder) Recorded(ctx context.Context, t Target) (map[string]string, error) {
+	src, base, def, err := s.locate(ctx, t)
+	if err != nil {
+		return nil, err
+	}
+	return s.recorded(ctx, t, src, base, def)
 }
 
 // prTitles lists the titles of the repo's open and merged scaffold PRs.

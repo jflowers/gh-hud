@@ -14,6 +14,7 @@ import (
 var (
 	ErrNoDispatch = errors.New("dispatch unavailable")
 	ErrNoFleet    = errors.New("fleet is off")
+	ErrNoToolkit  = errors.New("toolkit is off")
 )
 
 // Deadlines for the slower commands (as the TUI used them).
@@ -309,3 +310,37 @@ func (h *Hub) FleetRetry(context.Context) error {
 }
 
 var _ Backend = (*Hub)(nil)
+
+// ToolkitRollout starts rolling tool out at version ("" for the latest).
+func (h *Hub) ToolkitRollout(ctx context.Context, tool, version string) (string, error) {
+	if h.opts.Toolkit == nil {
+		return "", ErrNoToolkit
+	}
+	id, err := h.opts.Toolkit.Start(ctx, tool, version)
+	h.publish()
+	return id, err
+}
+
+// ToolkitControl cancels, retries or dismisses a rollout, or asks for a
+// status check.
+func (h *Hub) ToolkitControl(_ context.Context, action ToolkitAction, id string) error {
+	t := h.opts.Toolkit
+	if t == nil {
+		return ErrNoToolkit
+	}
+	var err error
+	switch action {
+	case ToolkitCancel:
+		err = t.Cancel(id)
+	case ToolkitRetry:
+		err = t.Retry(id)
+	case ToolkitDismiss:
+		err = t.Dismiss(id)
+	case ToolkitCheck:
+		t.Check()
+	default:
+		err = fmt.Errorf("unknown toolkit action %q", action)
+	}
+	h.publish()
+	return err
+}

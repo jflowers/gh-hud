@@ -91,4 +91,13 @@ public interface HubServiceClientInterface {
    *  fleet is off.
    */
   public suspend fun fleetControl(request: FleetControlRequest, headers: Headers = emptyMap()): ResponseMessage<FleetControlResponse>
+
+  /**
+   *  ToolkitRollout starts rolling a tool release out (issue #75);
+   *  ToolkitControl drives rollouts. FAILED_PRECONDITION when the toolkit
+   *  is off.
+   */
+  public suspend fun toolkitRollout(request: ToolkitRolloutRequest, headers: Headers = emptyMap()): ResponseMessage<ToolkitRolloutResponse>
+
+  public suspend fun toolkitControl(request: ToolkitControlRequest, headers: Headers = emptyMap()): ResponseMessage<ToolkitControlResponse>
 }

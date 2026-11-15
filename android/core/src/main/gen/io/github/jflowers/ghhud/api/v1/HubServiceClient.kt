@@ -315,4 +315,33 @@ public class HubServiceClient(
     ),
   )
 
+
+  /**
+   *  ToolkitRollout starts rolling a tool release out (issue #75);
+   *  ToolkitControl drives rollouts. FAILED_PRECONDITION when the toolkit
+   *  is off.
+   */
+  override suspend fun toolkitRollout(request: ToolkitRolloutRequest, headers: Headers): ResponseMessage<ToolkitRolloutResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "ghhud.v1.HubService/ToolkitRollout",
+      io.github.jflowers.ghhud.api.v1.ToolkitRolloutRequest::class,
+      io.github.jflowers.ghhud.api.v1.ToolkitRolloutResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  override suspend fun toolkitControl(request: ToolkitControlRequest, headers: Headers): ResponseMessage<ToolkitControlResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "ghhud.v1.HubService/ToolkitControl",
+      io.github.jflowers.ghhud.api.v1.ToolkitControlRequest::class,
+      io.github.jflowers.ghhud.api.v1.ToolkitControlResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
 }

@@ -68,6 +68,12 @@ service HubService {
   // FleetControl drives the GitOps rollout; FAILED_PRECONDITION when the
   // fleet is off.
   rpc FleetControl(FleetControlRequest) returns (FleetControlResponse);
+
+  // ToolkitRollout starts rolling a tool release out (issue #75);
+  // ToolkitControl drives rollouts. FAILED_PRECONDITION when the toolkit
+  // is off.
+  rpc ToolkitRollout(ToolkitRolloutRequest) returns (ToolkitRolloutResponse);
+  rpc ToolkitControl(ToolkitControlRequest) returns (ToolkitControlResponse);
 }
 
 message GetSnapshotRequest {}
@@ -287,6 +293,30 @@ enum FleetAction {
 
 message FleetControlResponse {}
 
+message ToolkitRolloutRequest {
+  string tool = 1;
+  string version = 2; // "" for the latest release
+}
+
+message ToolkitRolloutResponse {
+  string id = 1; // tool@version
+}
+
+message ToolkitControlRequest {
+  ToolkitAction action = 1;
+  string id = 2; // the rollout; unused for CHECK
+}
+
+enum ToolkitAction {
+  TOOLKIT_ACTION_UNSPECIFIED = 0;
+  TOOLKIT_ACTION_CANCEL = 1; // stop a rollout; its PRs stay open
+  TOOLKIT_ACTION_RETRY = 2; // resume a failed or cancelled rollout
+  TOOLKIT_ACTION_DISMISS = 3; // forget a finished rollout
+  TOOLKIT_ACTION_CHECK = 4; // check releases and versions now
+}
+
+message ToolkitControlResponse {}
+
 // Snapshot is the hub's state at one moment.
 message Snapshot {
   // seq increases with every publish; clients drop older snapshots.
@@ -328,6 +358,7 @@ message Snapshot {
   // config_warnings are problems with config.toml that didn't stop it
   // loading, such as keys nothing reads.
   repeated string config_warnings = 21;
+  ToolkitSnapshot toolkit = 22; // unset when the toolkit is off
 }
 
 message FetchResult {
@@ -680,4 +711,60 @@ message Alert {
   Run run = 3; // run alerts
   Session session = 4; // blocked alerts
   string text = 5;
+}
+
+// ToolkitSnapshot is the tools the fleet pins and their rollouts.
+message ToolkitSnapshot {
+  repeated ToolkitTool tools = 1;
+  repeated ToolkitRolloutState rollouts = 2; // newest first
+  google.protobuf.Timestamp checked_at = 3;
+  bool checking = 4;
+  string error = 5; // the manifest or the dotfiles couldn't be read
+}
+
+message ToolkitTool {
+  string name = 1;
+  string release = 2; // the GitHub repo that publishes releases
+  string pin = 3; // on the dotfiles branch
+  string applied = 4; // on the hub's machine
+  string latest = 5; // the newest release
+  bool scaffolds = 6; // has an init that writes into repos
+  repeated ToolkitRepo repos = 7;
+  string error = 8;
+}
+
+message ToolkitRepo {
+  string target = 1;
+  string version = 2; // newest scaffolded; "" when never
+  string error = 3;
+}
+
+message ToolkitRolloutState {
+  string id = 1;
+  string tool = 2;
+  string version = 3;
+  string from = 4;
+  string stage = 5; // pin, scaffold, track, done, failed, cancelled
+  google.protobuf.Timestamp started = 6;
+  google.protobuf.Timestamp updated = 7;
+  string pin_pr = 8;
+  string pin_state = 9;
+  bool applied = 10;
+  repeated ToolkitTarget targets = 11;
+  string error = 12;
+  string summary = 13; // progress on one line
+}
+
+message ToolkitTarget {
+  string target = 1;
+  string status = 2;
+  string detail = 3;
+  string url = 4;
+  string branch = 5;
+  string base = 6;
+  bool held = 7;
+  string pr_state = 8;
+  string ci = 9;
+  int32 files = 10;
+  string needs_you = 11;
 }

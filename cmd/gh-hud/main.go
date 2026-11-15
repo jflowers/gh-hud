@@ -334,6 +334,8 @@ func buildHub(cfg *config.Config, cfgPath string, client *gh.Client, stateDir st
 		}
 	}
 
+	tk := buildToolkit(cfg, stateDir)
+
 	hopts := hub.Options{
 		Config:          cfg,
 		ConfigPath:      cfgPath,
@@ -348,6 +350,9 @@ func buildHub(cfg *config.Config, cfgPath string, client *gh.Client, stateDir st
 	}
 	if fleetCoord != nil {
 		hopts.Fleet = fleetCoord
+	}
+	if tk != nil {
+		hopts.Toolkit = tk
 	}
 	h = hub.New(hopts)
 	return h, cleanup

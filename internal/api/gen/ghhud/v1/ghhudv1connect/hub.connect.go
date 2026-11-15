@@ -94,6 +94,12 @@ const (
 	HubServiceOpenTranscriptProcedure = "/ghhud.v1.HubService/OpenTranscript"
 	// HubServiceFleetControlProcedure is the fully-qualified name of the HubService's FleetControl RPC.
 	HubServiceFleetControlProcedure = "/ghhud.v1.HubService/FleetControl"
+	// HubServiceToolkitRolloutProcedure is the fully-qualified name of the HubService's ToolkitRollout
+	// RPC.
+	HubServiceToolkitRolloutProcedure = "/ghhud.v1.HubService/ToolkitRollout"
+	// HubServiceToolkitControlProcedure is the fully-qualified name of the HubService's ToolkitControl
+	// RPC.
+	HubServiceToolkitControlProcedure = "/ghhud.v1.HubService/ToolkitControl"
 )
 
 // HubServiceClient is a client for the ghhud.v1.HubService service.
@@ -137,6 +143,11 @@ type HubServiceClient interface {
 	// FleetControl drives the GitOps rollout; FAILED_PRECONDITION when the
 	// fleet is off.
 	FleetControl(context.Context, *connect.Request[v1.FleetControlRequest]) (*connect.Response[v1.FleetControlResponse], error)
+	// ToolkitRollout starts rolling a tool release out (issue #75);
+	// ToolkitControl drives rollouts. FAILED_PRECONDITION when the toolkit
+	// is off.
+	ToolkitRollout(context.Context, *connect.Request[v1.ToolkitRolloutRequest]) (*connect.Response[v1.ToolkitRolloutResponse], error)
+	ToolkitControl(context.Context, *connect.Request[v1.ToolkitControlRequest]) (*connect.Response[v1.ToolkitControlResponse], error)
 }
 
 // NewHubServiceClient constructs a client for the ghhud.v1.HubService service. By default, it uses
@@ -282,6 +293,18 @@ func NewHubServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(hubServiceMethods.ByName("FleetControl")),
 			connect.WithClientOptions(opts...),
 		),
+		toolkitRollout: connect.NewClient[v1.ToolkitRolloutRequest, v1.ToolkitRolloutResponse](
+			httpClient,
+			baseURL+HubServiceToolkitRolloutProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("ToolkitRollout")),
+			connect.WithClientOptions(opts...),
+		),
+		toolkitControl: connect.NewClient[v1.ToolkitControlRequest, v1.ToolkitControlResponse](
+			httpClient,
+			baseURL+HubServiceToolkitControlProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("ToolkitControl")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -309,6 +332,8 @@ type hubServiceClient struct {
 	watchRun        *connect.Client[v1.WatchRunRequest, v1.WatchRunResponse]
 	openTranscript  *connect.Client[v1.OpenTranscriptRequest, v1.OpenTranscriptResponse]
 	fleetControl    *connect.Client[v1.FleetControlRequest, v1.FleetControlResponse]
+	toolkitRollout  *connect.Client[v1.ToolkitRolloutRequest, v1.ToolkitRolloutResponse]
+	toolkitControl  *connect.Client[v1.ToolkitControlRequest, v1.ToolkitControlResponse]
 }
 
 // GetSnapshot calls ghhud.v1.HubService.GetSnapshot.
@@ -421,6 +446,16 @@ func (c *hubServiceClient) FleetControl(ctx context.Context, req *connect.Reques
 	return c.fleetControl.CallUnary(ctx, req)
 }
 
+// ToolkitRollout calls ghhud.v1.HubService.ToolkitRollout.
+func (c *hubServiceClient) ToolkitRollout(ctx context.Context, req *connect.Request[v1.ToolkitRolloutRequest]) (*connect.Response[v1.ToolkitRolloutResponse], error) {
+	return c.toolkitRollout.CallUnary(ctx, req)
+}
+
+// ToolkitControl calls ghhud.v1.HubService.ToolkitControl.
+func (c *hubServiceClient) ToolkitControl(ctx context.Context, req *connect.Request[v1.ToolkitControlRequest]) (*connect.Response[v1.ToolkitControlResponse], error) {
+	return c.toolkitControl.CallUnary(ctx, req)
+}
+
 // HubServiceHandler is an implementation of the ghhud.v1.HubService service.
 type HubServiceHandler interface {
 	// GetSnapshot returns the hub's current state.
@@ -462,6 +497,11 @@ type HubServiceHandler interface {
 	// FleetControl drives the GitOps rollout; FAILED_PRECONDITION when the
 	// fleet is off.
 	FleetControl(context.Context, *connect.Request[v1.FleetControlRequest]) (*connect.Response[v1.FleetControlResponse], error)
+	// ToolkitRollout starts rolling a tool release out (issue #75);
+	// ToolkitControl drives rollouts. FAILED_PRECONDITION when the toolkit
+	// is off.
+	ToolkitRollout(context.Context, *connect.Request[v1.ToolkitRolloutRequest]) (*connect.Response[v1.ToolkitRolloutResponse], error)
+	ToolkitControl(context.Context, *connect.Request[v1.ToolkitControlRequest]) (*connect.Response[v1.ToolkitControlResponse], error)
 }
 
 // NewHubServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -603,6 +643,18 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(hubServiceMethods.ByName("FleetControl")),
 		connect.WithHandlerOptions(opts...),
 	)
+	hubServiceToolkitRolloutHandler := connect.NewUnaryHandler(
+		HubServiceToolkitRolloutProcedure,
+		svc.ToolkitRollout,
+		connect.WithSchema(hubServiceMethods.ByName("ToolkitRollout")),
+		connect.WithHandlerOptions(opts...),
+	)
+	hubServiceToolkitControlHandler := connect.NewUnaryHandler(
+		HubServiceToolkitControlProcedure,
+		svc.ToolkitControl,
+		connect.WithSchema(hubServiceMethods.ByName("ToolkitControl")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/ghhud.v1.HubService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case HubServiceGetSnapshotProcedure:
@@ -649,6 +701,10 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 			hubServiceOpenTranscriptHandler.ServeHTTP(w, r)
 		case HubServiceFleetControlProcedure:
 			hubServiceFleetControlHandler.ServeHTTP(w, r)
+		case HubServiceToolkitRolloutProcedure:
+			hubServiceToolkitRolloutHandler.ServeHTTP(w, r)
+		case HubServiceToolkitControlProcedure:
+			hubServiceToolkitControlHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -744,4 +800,12 @@ func (UnimplementedHubServiceHandler) OpenTranscript(context.Context, *connect.R
 
 func (UnimplementedHubServiceHandler) FleetControl(context.Context, *connect.Request[v1.FleetControlRequest]) (*connect.Response[v1.FleetControlResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.FleetControl is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) ToolkitRollout(context.Context, *connect.Request[v1.ToolkitRolloutRequest]) (*connect.Response[v1.ToolkitRolloutResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.ToolkitRollout is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) ToolkitControl(context.Context, *connect.Request[v1.ToolkitControlRequest]) (*connect.Response[v1.ToolkitControlResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.ToolkitControl is not implemented"))
 }

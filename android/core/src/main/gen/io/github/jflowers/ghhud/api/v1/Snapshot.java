@@ -1779,6 +1779,73 @@ io.github.jflowers.ghhud.api.v1.Stage defaultValue) {
     configWarnings_.add(value.toStringUtf8());
   }
 
+  public static final int TOOLKIT_FIELD_NUMBER = 22;
+  private io.github.jflowers.ghhud.api.v1.ToolkitSnapshot toolkit_;
+  /**
+   * <pre>
+   * unset when the toolkit is off
+   * </pre>
+   *
+   * <code>.ghhud.v1.ToolkitSnapshot toolkit = 22 [json_name = "toolkit"];</code>
+   */
+  @java.lang.Override
+  public boolean hasToolkit() {
+    return ((bitField0_ & 0x00000020) != 0);
+  }
+  /**
+   * <pre>
+   * unset when the toolkit is off
+   * </pre>
+   *
+   * <code>.ghhud.v1.ToolkitSnapshot toolkit = 22 [json_name = "toolkit"];</code>
+   */
+  @java.lang.Override
+  public io.github.jflowers.ghhud.api.v1.ToolkitSnapshot getToolkit() {
+    return toolkit_ == null ? io.github.jflowers.ghhud.api.v1.ToolkitSnapshot.getDefaultInstance() : toolkit_;
+  }
+  /**
+   * <pre>
+   * unset when the toolkit is off
+   * </pre>
+   *
+   * <code>.ghhud.v1.ToolkitSnapshot toolkit = 22 [json_name = "toolkit"];</code>
+   */
+  private void setToolkit(io.github.jflowers.ghhud.api.v1.ToolkitSnapshot value) {
+    java.util.Objects.requireNonNull(value);
+    toolkit_ = value;
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <pre>
+   * unset when the toolkit is off
+   * </pre>
+   *
+   * <code>.ghhud.v1.ToolkitSnapshot toolkit = 22 [json_name = "toolkit"];</code>
+   */
+  @java.lang.SuppressWarnings("ReferenceEquality")
+  private void mergeToolkit(io.github.jflowers.ghhud.api.v1.ToolkitSnapshot value) {
+    java.util.Objects.requireNonNull(value);
+    if (toolkit_ != null &&
+        toolkit_ != io.github.jflowers.ghhud.api.v1.ToolkitSnapshot.getDefaultInstance()) {
+      toolkit_ =
+        io.github.jflowers.ghhud.api.v1.ToolkitSnapshot.newBuilder(toolkit_).mergeFrom(value).buildPartial();
+    } else {
+      toolkit_ = value;
+    }
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <pre>
+   * unset when the toolkit is off
+   * </pre>
+   *
+   * <code>.ghhud.v1.ToolkitSnapshot toolkit = 22 [json_name = "toolkit"];</code>
+   */
+  private void clearToolkit() {
+    toolkit_ = null;
+    bitField0_ = (bitField0_ & ~0x00000020);
+  }
+
   public static io.github.jflowers.ghhud.api.v1.Snapshot parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -3739,6 +3806,77 @@ io.github.jflowers.ghhud.api.v1.Stage defaultValue) {
       return this;
     }
 
+    /**
+     * <pre>
+     * unset when the toolkit is off
+     * </pre>
+     *
+     * <code>.ghhud.v1.ToolkitSnapshot toolkit = 22 [json_name = "toolkit"];</code>
+     */
+    @java.lang.Override
+    public boolean hasToolkit() {
+      return instance.hasToolkit();
+    }
+    /**
+     * <pre>
+     * unset when the toolkit is off
+     * </pre>
+     *
+     * <code>.ghhud.v1.ToolkitSnapshot toolkit = 22 [json_name = "toolkit"];</code>
+     */
+    @java.lang.Override
+    public io.github.jflowers.ghhud.api.v1.ToolkitSnapshot getToolkit() {
+      return instance.getToolkit();
+    }
+    /**
+     * <pre>
+     * unset when the toolkit is off
+     * </pre>
+     *
+     * <code>.ghhud.v1.ToolkitSnapshot toolkit = 22 [json_name = "toolkit"];</code>
+     */
+    public Builder setToolkit(io.github.jflowers.ghhud.api.v1.ToolkitSnapshot value) {
+      copyOnWrite();
+      instance.setToolkit(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * unset when the toolkit is off
+     * </pre>
+     *
+     * <code>.ghhud.v1.ToolkitSnapshot toolkit = 22 [json_name = "toolkit"];</code>
+     */
+    public Builder setToolkit(
+        io.github.jflowers.ghhud.api.v1.ToolkitSnapshot.Builder builderForValue) {
+      copyOnWrite();
+      instance.setToolkit(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * unset when the toolkit is off
+     * </pre>
+     *
+     * <code>.ghhud.v1.ToolkitSnapshot toolkit = 22 [json_name = "toolkit"];</code>
+     */
+    public Builder mergeToolkit(io.github.jflowers.ghhud.api.v1.ToolkitSnapshot value) {
+      copyOnWrite();
+      instance.mergeToolkit(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * unset when the toolkit is off
+     * </pre>
+     *
+     * <code>.ghhud.v1.ToolkitSnapshot toolkit = 22 [json_name = "toolkit"];</code>
+     */
+    public Builder clearToolkit() {  copyOnWrite();
+      instance.clearToolkit();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.Snapshot)
   }
   @java.lang.Override
@@ -3786,12 +3924,14 @@ io.github.jflowers.ghhud.api.v1.Stage defaultValue) {
             "epics_",
             io.github.jflowers.ghhud.api.v1.Epic.class,
             "configWarnings_",
+            "toolkit_",
           };
           java.lang.String info =
-              "\u0000\u0015\u0000\u0001\u0001\u0015\u0015\u0001\t\u0000\u0001\u0003\u0002\u1009" +
+              "\u0000\u0016\u0000\u0001\u0001\u0016\u0016\u0001\t\u0000\u0001\u0003\u0002\u1009" +
               "\u0000\u0003\u1009\u0001\u0004\u0007\u0005\u0208\u0006\u0007\u0007\u0208\b\u001b" +
               "\t\u001b\n\u001b\u000b\u1009\u0002\f2\r\u001b\u000e\u001b\u000f\u001b\u0010\u1009" +
-              "\u0003\u0011\u0007\u0012\u1009\u0004\u0013\u001b\u0014\u001b\u0015\u021a";
+              "\u0003\u0011\u0007\u0012\u1009\u0004\u0013\u001b\u0014\u001b\u0015\u021a\u0016\u1009" +
+              "\u0005";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

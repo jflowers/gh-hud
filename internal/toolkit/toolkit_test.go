@@ -201,7 +201,11 @@ func (f *fakeRunner) Run(_ context.Context, dir, name string, args ...string) (s
 	line := strings.Join(append([]string{name}, args...), " ")
 	f.calls = append(f.calls, call{dir, line})
 	if len(args) >= 4 && name == "git" && args[0] == "worktree" && args[1] == "add" {
-		wt := args[4]
+		i := slices.IndexFunc(args, filepath.IsAbs)
+		if i < 0 {
+			f.t.Fatalf("worktree add without an absolute path: %v", args)
+		}
+		wt := args[i]
 		if err := os.MkdirAll(wt, 0o755); err != nil {
 			f.t.Fatal(err)
 		}

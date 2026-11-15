@@ -7,11 +7,13 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/dispatch"
 	"github.com/jflowers/gh-hud/internal/epic"
 	"github.com/jflowers/gh-hud/internal/model"
+	"github.com/jflowers/gh-hud/internal/toolkit"
 )
 
 // The rest of Dispatcher for fakeDisp: commands are recorded in calls,
@@ -330,5 +332,67 @@ func TestEpicCommands(t *testing.T) {
 		if !slices.Contains(d.Calls(), c) {
 			t.Errorf("no %q in %v", c, d.Calls())
 		}
+	}
+}
+
+type fakeToolkit struct {
+	ops []string
+	ran chan struct{}
+}
+
+func (f *fakeToolkit) Snapshot() toolkit.Snapshot {
+	return toolkit.Snapshot{Rollouts: []toolkit.Rollout{{ID: "uf@0.22.0", Stage: toolkit.StagePin}}}
+}
+func (f *fakeToolkit) Run(context.Context) { close(f.ran) }
+func (f *fakeToolkit) Start(_ context.Context, tool, version string) (string, error) {
+	f.ops = append(f.ops, "start "+tool+" "+version)
+	return tool + "@" + version, nil
+}
+func (f *fakeToolkit) Cancel(id string) error  { f.ops = append(f.ops, "cancel "+id); return nil }
+func (f *fakeToolkit) Retry(id string) error   { f.ops = append(f.ops, "retry "+id); return nil }
+func (f *fakeToolkit) Dismiss(id string) error { f.ops = append(f.ops, "dismiss "+id); return nil }
+func (f *fakeToolkit) Check()                  { f.ops = append(f.ops, "check") }
+
+func TestToolkitCommands(t *testing.T) {
+	ctx := context.Background()
+	off := New(Options{})
+	if _, err := off.ToolkitRollout(ctx, "uf", ""); !errors.Is(err, ErrNoToolkit) {
+		t.Errorf("rollout without a toolkit: %v", err)
+	}
+	if err := off.ToolkitControl(ctx, ToolkitCheck, ""); !errors.Is(err, ErrNoToolkit) {
+		t.Errorf("control without a toolkit: %v", err)
+	}
+	if off.Snapshot().Toolkit != nil {
+		t.Error("toolkit snapshot without a toolkit")
+	}
+
+	tk := &fakeToolkit{ran: make(chan struct{})}
+	h := New(Options{Toolkit: tk, Fetch: func(context.Context) *model.FetchResult { return &model.FetchResult{} }})
+	if s := h.Snapshot().Toolkit; s == nil || len(s.Rollouts) != 1 {
+		t.Fatalf("snapshot %+v", s)
+	}
+	if id, err := h.ToolkitRollout(ctx, "uf", "0.22.0"); err != nil || id != "uf@0.22.0" {
+		t.Errorf("rollout %q %v", id, err)
+	}
+	for _, a := range []ToolkitAction{ToolkitCancel, ToolkitRetry, ToolkitDismiss, ToolkitCheck} {
+		if err := h.ToolkitControl(ctx, a, "uf@0.22.0"); err != nil {
+			t.Error(err)
+		}
+	}
+	if err := h.ToolkitControl(ctx, "bogus", ""); err == nil {
+		t.Error("bogus action accepted")
+	}
+	want := []string{"start uf 0.22.0", "cancel uf@0.22.0", "retry uf@0.22.0", "dismiss uf@0.22.0", "check"}
+	if !slices.Equal(tk.ops, want) {
+		t.Errorf("ops %v", tk.ops)
+	}
+	// The hub runs the coordinator when it owns dispatch (no dispatcher here).
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go h.Run(runCtx)
+	select {
+	case <-tk.ran:
+	case <-time.After(5 * time.Second):
+		t.Error("the hub didn't run the toolkit")
 	}
 }

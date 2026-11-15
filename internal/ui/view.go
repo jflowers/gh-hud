@@ -468,6 +468,9 @@ func (m *Model) headerBar() string {
 	if m.res != nil && len(m.res.Errors) > 0 {
 		right = append(right, p.text(cRed, fmt.Sprintf("⚠ %d failed", len(m.res.Errors))))
 	}
+	if s := toolkitIndicatorText(p, m.toolkitSnap); s != "" {
+		right = append(right, s)
+	}
 	if s := fleetIndicatorText(p, m.fleetSnap); s != "" {
 		right = append(right, s)
 	}
@@ -548,6 +551,9 @@ func (m *Model) footer() string {
 		"i", "run",
 		"6", "agents",
 	}
+	if m.toolkitOn {
+		pairs = append(pairs, "T", "toolkit")
+	}
 	if m.fleetOn {
 		pairs = append(pairs, "F", "fleet")
 	}
@@ -593,6 +599,9 @@ func (m *Model) helpView() string {
 		line("i", "last agent run for row"),
 		line("6", "agent sessions"),
 		line("9", "workspaces: which checkouts a run can use"),
+	}
+	if m.toolkitOn {
+		left = append(left, line("T", "toolkit: tool releases and rollouts"))
 	}
 	if m.fleetOn {
 		left = append(left, line("F", "fleet rollout (GitOps)"))
@@ -890,6 +899,9 @@ func (m *Model) View() string {
 	}
 	if m.fleetMode {
 		return m.fleetView()
+	}
+	if m.toolkitMode {
+		return m.toolkitView()
 	}
 
 	l := layoutFor(m.width)

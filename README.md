@@ -1247,6 +1247,68 @@ tools = ["uf"]
 args.uf = ["--lang", "go"]
 ```
 
+A tool without `mise` and `bin` (an opencode plugin) only has a pin. Name
+the file that pins it in the dotfiles repo, and the pin itself:
+
+```toml
+[[tool]]
+name = "auto-question"
+release = "jflowers/opencode-auto-question"
+npm = "opencode-auto-question"          # latest version from npm, not GitHub releases
+pin_file = "dot_config/opencode/opencode.jsonc.tmpl"
+pin = "opencode-auto-question@{version}"
+applied_file = "~/.config/opencode/opencode.jsonc"
+```
+
+Mise tools default to `pin_file = "dot_config/mise/config.toml"`,
+`pin = '"{mise}" = "{version}"'` and `applied_file = "~/.config/mise/config.toml"`.
+
+### Toolkit rollouts
+
+With a manifest in place, the hub also rolls releases out (issue #75; epic
+#78). `T` opens the toolkit view: each tool's pin on the dotfiles branch,
+the version on the hub's machine (the fleet's last), the latest release
+(`⬆` when it's newer), and how many targets carry the pin. Below are the
+rollouts, with the selected one's PRs.
+
+Select a tool with a newer release and press `u` twice. The hub then:
+
+1. **Pins it.** It opens a dotfiles PR that bumps the pin, on `[fleet]`'s
+   repo and branch, cut in a scratch worktree of the chezmoi source. You
+   merge it, or auto-merge does once it's approved. The fleet coordinator
+   rolls it out to the machines.
+2. **Scaffolds.** Once the pin merges, it runs `gh-hud toolkit scaffold` for
+   that tool on every target: one PR per repo, held when agent commands or
+   definitions change. A plugin has no scaffold step.
+3. **Tracks.** It follows the scaffold PRs and the hub's applied pin. The
+   rollout is done when every PR merged or closed and the hub has the pin.
+   Failed and refused targets, held PRs and failing CI show as waiting on
+   you.
+
+Other keys: `c` cancels a rollout (its PRs stay open), `R` retries a failed
+or cancelled one (scaffolding only the targets that failed), `d` dismisses a
+finished one, `o` opens the PR waiting on you (or a tool's releases), and `x`
+checks releases and versions now (otherwise every 30 minutes). Rollouts
+survive restarts (`~/.local/state/gh-hud/toolkit.json`), and notifications
+mark the pin PR, the merge, the finish and failures. The same is on the
+command line:
+
+```sh
+gh-hud toolkit status
+gh-hud toolkit rollout uf          # the latest release; or uf@0.22.0
+gh-hud toolkit cancel|retry|dismiss uf@0.22.0
+gh-hud toolkit check
+```
+
+The toolkit runs when `~/.config/gh-hud/toolkit.toml` exists at hub start:
+
+```toml
+[toolkit]
+enabled = true                              # unset: on when the manifest exists
+manifest = "~/.config/gh-hud/toolkit.toml"  # the default
+dotfiles = "~/.local/share/chezmoi"         # the default: a clone of [fleet]'s repo
+```
+
 ## Config
 
 `~/.config/gh-hud/config.toml` (all optional; `--config` picks another path).

@@ -13,6 +13,7 @@ import (
 	"github.com/jflowers/gh-hud/internal/fleet"
 	"github.com/jflowers/gh-hud/internal/model"
 	"github.com/jflowers/gh-hud/internal/notify"
+	"github.com/jflowers/gh-hud/internal/toolkit"
 )
 
 // Dispatcher is the part of *dispatch.Dispatcher the hub drives.
@@ -64,6 +65,27 @@ type Fleet interface {
 	SkipWait()
 	Retry()
 }
+
+// Toolkit is the part of *toolkit.Coordinator the hub drives.
+type Toolkit interface {
+	Snapshot() toolkit.Snapshot
+	Run(ctx context.Context)
+	Start(ctx context.Context, tool, version string) (string, error)
+	Cancel(id string) error
+	Retry(id string) error
+	Dismiss(id string) error
+	Check()
+}
+
+// ToolkitAction is a ToolkitControl command.
+type ToolkitAction string
+
+const (
+	ToolkitCancel  ToolkitAction = "cancel"
+	ToolkitRetry   ToolkitAction = "retry"
+	ToolkitDismiss ToolkitAction = "dismiss"
+	ToolkitCheck   ToolkitAction = "check"
+)
 
 // Backend is what a client needs from the hub. *Hub implements it
 // in-process; a remote implementation (Phase 2) keeps the same contract,
@@ -120,6 +142,12 @@ type Backend interface {
 	FleetApplyNow(ctx context.Context) error
 	FleetSkipWait(ctx context.Context) error
 	FleetRetry(ctx context.Context) error
+
+	// Toolkit rollouts (issue #75); they fail when the toolkit is off.
+	// ToolkitRollout starts one ("" version for the latest release) and
+	// returns its ID; ToolkitControl acts on one by ID.
+	ToolkitRollout(ctx context.Context, tool, version string) (string, error)
+	ToolkitControl(ctx context.Context, action ToolkitAction, id string) error
 }
 
 // Options configures a Hub.
@@ -137,6 +165,7 @@ type Options struct {
 	// Dispatcher and Fleet are nil when dispatch / the fleet are off.
 	Dispatcher Dispatcher
 	Fleet      Fleet
+	Toolkit    Toolkit // nil when the toolkit is off
 	// Notifier delivers alerts (nil drops them).
 	Notifier notify.Notifier
 	// Now is the clock (time.Now when nil).
@@ -206,6 +235,8 @@ type Snapshot struct {
 	WorkspacesLoading bool
 
 	Fleet *fleet.Snapshot // nil when the fleet is off
+
+	Toolkit *toolkit.Snapshot // nil when the toolkit is off
 
 	// ConfigWarnings are problems with config.toml that didn't stop it
 	// loading (config.Config.Warnings).
@@ -302,6 +333,10 @@ func New(opts Options) *Hub {
 		fs := opts.Fleet.Snapshot()
 		h.snap.Fleet = &fs
 	}
+	if opts.Toolkit != nil {
+		ts := opts.Toolkit.Snapshot()
+		h.snap.Toolkit = &ts
+	}
 	return h
 }
 
@@ -311,6 +346,9 @@ func New(opts Options) *Hub {
 func (h *Hub) Run(ctx context.Context) {
 	if h.opts.Fleet != nil && h.ownsDispatch() {
 		go h.opts.Fleet.Run(ctx)
+	}
+	if h.opts.Toolkit != nil && h.ownsDispatch() {
+		go h.opts.Toolkit.Run(ctx)
 	}
 	go loop(ctx, h.refreshEvery, h.fetchReq, h.fetch)
 	if h.opts.Dispatcher != nil {
@@ -554,6 +592,11 @@ func (h *Hub) publish() {
 		v := h.opts.Fleet.Snapshot()
 		fs = &v
 	}
+	var ts *toolkit.Snapshot
+	if h.opts.Toolkit != nil {
+		v := h.opts.Toolkit.Snapshot()
+		ts = &v
+	}
 	var (
 		stages map[string]dispatch.Stage
 		plan   []dispatch.PlanRow
@@ -577,6 +620,7 @@ func (h *Hub) publish() {
 	h.mu.Lock()
 	h.snap.Seq++
 	h.snap.Fleet = fs
+	h.snap.Toolkit = ts
 	h.snap.Stages = stages
 	h.snap.Plan, h.snap.Queue = plan, queue
 	h.snap.Cases, h.snap.Epics = cases, epics

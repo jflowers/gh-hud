@@ -142,3 +142,10 @@ func downgrades(runs []Run, had map[string]string) []string {
 	}
 	return out
 }
+
+// Newer reports whether version a is newer than b (false when either
+// can't be ordered).
+func Newer(a, b string) bool {
+	c, ok := compareVersions(a, b)
+	return ok && c > 0
+}

@@ -1211,7 +1211,46 @@ public object SnapshotKt {
 @kotlin.jvm.JvmName("setConfigWarnings")
     public fun com.google.protobuf.kotlin.DslList<kotlin.String, ConfigWarningsProxy>.clear() {
       _builder.clearConfigWarnings()
-    }}
+    }
+    /**
+     * ```
+     * unset when the toolkit is off
+     * ```
+     *
+     * `.ghhud.v1.ToolkitSnapshot toolkit = 22 [json_name = "toolkit"];`
+     */
+    public var toolkit: io.github.jflowers.ghhud.api.v1.ToolkitSnapshot
+      @kotlin.jvm.JvmName("getToolkit")
+        get() = _builder.toolkit
+      @kotlin.jvm.JvmName("setToolkit")
+        set(value) {
+        _builder.toolkit = value
+      }
+    /**
+     * ```
+     * unset when the toolkit is off
+     * ```
+     *
+     * `.ghhud.v1.ToolkitSnapshot toolkit = 22 [json_name = "toolkit"];`
+     */
+    public fun clearToolkit() {
+      _builder.clearToolkit()
+    }
+    /**
+     * ```
+     * unset when the toolkit is off
+     * ```
+     *
+     * `.ghhud.v1.ToolkitSnapshot toolkit = 22 [json_name = "toolkit"];`
+     * @return Whether the toolkit field is set.
+     */
+    public fun hasToolkit(): kotlin.Boolean {
+      return _builder.hasToolkit()
+    }
+
+    public val SnapshotKt.Dsl.toolkitOrNull: io.github.jflowers.ghhud.api.v1.ToolkitSnapshot?
+      get() = _builder.toolkitOrNull
+  }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.Snapshot.copy(block: `io.github.jflowers.ghhud.api.v1`.SnapshotKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.Snapshot =
   `io.github.jflowers.ghhud.api.v1`.SnapshotKt.Dsl._create(this.toBuilder()).apply { block() }._build()
@@ -1230,4 +1269,7 @@ public val io.github.jflowers.ghhud.api.v1.SnapshotOrBuilder.workspacesAtOrNull:
 
 public val io.github.jflowers.ghhud.api.v1.SnapshotOrBuilder.fleetOrNull: io.github.jflowers.ghhud.api.v1.FleetSnapshot?
   get() = if (hasFleet()) getFleet() else null
+
+public val io.github.jflowers.ghhud.api.v1.SnapshotOrBuilder.toolkitOrNull: io.github.jflowers.ghhud.api.v1.ToolkitSnapshot?
+  get() = if (hasToolkit()) getToolkit() else null
 

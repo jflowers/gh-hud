@@ -92,6 +92,8 @@ type Config struct {
 	Branches BranchesConfig `toml:"branches"`
 	// Fleet is the GitOps rollout coordinator ([fleet]).
 	Fleet FleetConfig `toml:"fleet"`
+	// Toolkit rolls tool releases out ([toolkit], issue #75).
+	Toolkit ToolkitConfig `toml:"toolkit"`
 	// Hub is how other apps reach the hub ([hub]).
 	Hub HubConfig `toml:"hub"`
 }
@@ -365,6 +367,18 @@ type FleetConfig struct {
 	Order     []string `toml:"order"`      // rollout order; default = machines then "local"
 	MaxWait   string   `toml:"max_wait"`   // drain grace before notifying (duration string)
 	Notify    bool     `toml:"notify"`     // herdr push notifications
+}
+
+// ToolkitConfig places the toolkit rollout coordinator. It opens pin PRs
+// on [fleet]'s repo and branch.
+type ToolkitConfig struct {
+	// Enabled turns it on or off; unset, it runs when Manifest exists.
+	Enabled *bool `toml:"enabled"`
+	// Manifest is the toolkit manifest (default ~/.config/gh-hud/toolkit.toml).
+	Manifest string `toml:"manifest"`
+	// Dotfiles is a clone of [fleet]'s repo to cut pin branches from
+	// (default: the chezmoi source, ~/.local/share/chezmoi).
+	Dotfiles string `toml:"dotfiles"`
 }
 
 // DefaultFleet returns the built-in fleet defaults.
