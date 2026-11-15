@@ -24,6 +24,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/jflowers/gh-hud/internal/epic"
 	"github.com/jflowers/gh-hud/internal/model"
 )
 
@@ -285,6 +286,7 @@ func (d *Dispatcher) Plan(items []model.Item, runs []Run) []PlanRow {
 		auto = append(auto, PlanRow{Item: it, Task: st.Task, Stage: st})
 	}
 	auto = append(auto, d.epicRows(runs, queued, seen)...)
+	auto = append(auto, d.liveRows(runs, queued, auto)...)
 	slices.SortStableFunc(auto, func(a, b PlanRow) int { return order[a.Stage.Kind] - order[b.Stage.Kind] })
 	rows = append(rows, auto...)
 	for i := range rows {
@@ -293,6 +295,59 @@ func (d *Dispatcher) Plan(items []model.Item, runs []Run) []PlanRow {
 		}
 	}
 	return rows
+}
+
+// liveRows are the runs still going that no other row shows: on an item
+// outside the latest refresh that no readable epic plan covers (a piece of
+// an epic whose plan the hub can't read, a run started by hand). Without
+// them the plan's Running misses agents the Agents pane shows. One row per
+// ref; a piece of an epic the hub has a plan for, stale or not, says so.
+func (d *Dispatcher) liveRows(runs []Run, queued map[string]bool, shown []PlanRow) []PlanRow {
+	now := time.Now()
+	have := map[string]bool{}
+	for _, r := range shown {
+		have[r.Item.Ref()] = true
+	}
+	var rows []PlanRow
+	for _, r := range runs {
+		pending := r.Status == RunUnknown && r.FinishedAt == nil && now.Sub(r.StartedAt) < headlessMaxAge
+		live := r.Status == RunRunning || r.Status == RunBlocked || pending
+		if !live || r.Ref == "" || queued[r.Ref] || have[r.Ref] {
+			continue
+		}
+		have[r.Ref] = true
+		repo, num := r.Repo, r.Num
+		if repo == "" || num == 0 {
+			repo, num = splitRef(r.Ref)
+		}
+		row := PlanRow{Task: r.Task, Stage: Stage{Kind: StageRunning, Task: r.Task}}
+		if n, epicRef, ok := d.pieceOf(r.Ref); ok {
+			row.Item, row.Epic, row.Note = epicItem(n), epicRef, "epic "+epicRef
+		} else if r.Task == TaskIssue {
+			row.Item = model.Item{Kind: model.KindIssue, Repo: repo, Num: num,
+				URL: fmt.Sprintf("https://github.com/%s/issues/%d", repo, num)}
+		} else {
+			row.Item = model.Item{Kind: model.KindPR, Repo: repo, Num: num,
+				URL: fmt.Sprintf("https://github.com/%s/pull/%d", repo, num)}
+		}
+		rows = append(rows, row)
+	}
+	return rows
+}
+
+// pieceOf finds the epic plan, approved or not, that has ref as a piece.
+func (d *Dispatcher) pieceOf(ref string) (epic.Node, string, bool) {
+	for _, e := range d.Epics() {
+		if e.Plan == nil {
+			continue
+		}
+		for _, n := range e.Plan.Nodes {
+			if n.Ref == ref {
+				return n, e.Ref, true
+			}
+		}
+	}
+	return epic.Node{}, "", false
 }
 
 // splitRef parses "owner/repo#N".

@@ -247,7 +247,7 @@ type Fact struct {
 // Limits on a plan.
 const (
 	maxNodes    = 60
-	maxRules    = 12
+	maxRules    = 24
 	maxRuleLen  = 300
 	maxGateLen  = 300
 	maxPhaseLen = 80

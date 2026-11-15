@@ -190,3 +190,55 @@ func TestEpicRowsPieceOnDashboard(t *testing.T) {
 		t.Errorf("acme/app#2: %+v (ok %v), want the epic's next row", r, ok)
 	}
 }
+
+// A live run with no row of its own still shows under Running: an item
+// outside the refresh, a piece of an epic whose plan can't start pieces.
+func TestPlanLiveRunsWithoutRows(t *testing.T) {
+	d := newTestDispatcher(t, "refuse")
+	d.opts.Tasks = queueTasks()
+	withEpic(d, time.Now().Add(-time.Hour), node(8, epic.NodeReady))
+	d.mu.Lock()
+	d.epics[0].Plan.Stale = true // its pieces get no epic rows
+	d.mu.Unlock()
+	done := time.Now().Add(-time.Minute)
+	onDash := model.Item{Kind: model.KindIssue, Repo: "acme/app", Num: 9, Title: "on the dashboard", URL: "u9"}
+	runs := []Run{
+		{Ref: "acme/app#7", Repo: "acme/app", Num: 7, Task: TaskIssue, Status: RunRunning, StartedAt: time.Now()},
+		{Ref: "acme/r#3", Task: TaskReview, Status: RunBlocked, StartedAt: time.Now()},
+		{Ref: "acme/app#8", Task: TaskIssue, Status: RunRunning, StartedAt: time.Now()},
+		{Ref: "acme/app#8", Task: TaskIssue, Status: RunFailed, StartedAt: done, FinishedAt: &done},
+		{Ref: "acme/app#9", Task: TaskIssue, Status: RunRunning, StartedAt: time.Now()},
+		{Ref: "acme/app#6", Task: TaskIssue, Status: RunOK, StartedAt: done, FinishedAt: &done},
+	}
+	rows := d.Plan([]model.Item{onDash}, runs)
+	n := map[string]int{}
+	for _, r := range rows {
+		n[r.Item.Ref()]++
+	}
+	by := rowsByRef(rows)
+	for ref, want := range map[string]struct {
+		task Task
+		kind model.Kind
+		url  string
+		epic string
+	}{
+		"acme/app#7": {TaskIssue, model.KindIssue, "https://github.com/acme/app/issues/7", ""},
+		"acme/r#3":   {TaskReview, model.KindPR, "https://github.com/acme/r/pull/3", ""},
+		"acme/app#8": {TaskIssue, model.KindIssue, "https://github.com/acme/app/issues/8", "acme/app#100"},
+	} {
+		r, ok := by[ref]
+		if !ok || r.Stage.Kind != StageRunning || r.Task != want.task || r.Item.Kind != want.kind ||
+			r.Item.URL != want.url || r.Epic != want.epic || n[ref] != 1 {
+			t.Errorf("%s: %+v (rows %d), want %+v", ref, r, n[ref], want)
+		}
+	}
+	if r := by["acme/app#8"]; r.Item.Title != "piece i" || r.Note != "epic acme/app#100" {
+		t.Errorf("epic piece: %+v", r)
+	}
+	if r := by["acme/app#9"]; n["acme/app#9"] != 1 || r.Item.Title != "on the dashboard" {
+		t.Errorf("an item on the dashboard: %+v (rows %d)", r, n["acme/app#9"])
+	}
+	if _, ok := by["acme/app#6"]; ok {
+		t.Error("a finished run has a row")
+	}
+}
