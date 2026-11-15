@@ -174,3 +174,19 @@ func TestAutoDispatchStartsEpicPiece(t *testing.T) {
 		t.Errorf("unknown piece: %v", err)
 	}
 }
+
+// A ready piece that's also on the dashboard, at a stage the plan doesn't
+// show (an issue assigned to you, "later"), still gets its epic row.
+func TestEpicRowsPieceOnDashboard(t *testing.T) {
+	d := newTestDispatcher(t, "refuse")
+	d.opts.Tasks = queueTasks()
+	withEpic(d, time.Now(), node(2, epic.NodeReady))
+	it := model.Item{Kind: model.KindIssue, Repo: "acme/app", Num: 2, Title: "assigned to me", URL: "u2"}
+	if st := d.Stage(it, nil); st.Kind == StageNext || st.Kind == StageRunning || st.Kind == StageWait || st.Kind == StageNeedsYou || st.Kind == StageMerge {
+		t.Fatalf("the item's own stage is shown (%+v); the test needs a hidden one", st)
+	}
+	r, ok := rowsByRef(d.Plan([]model.Item{it}, nil))["acme/app#2"]
+	if !ok || r.Stage.Kind != StageNext || r.Epic != "acme/app#100" {
+		t.Errorf("acme/app#2: %+v (ok %v), want the epic's next row", r, ok)
+	}
+}
