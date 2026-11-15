@@ -392,7 +392,112 @@ public object PruneBranchesResponseKt {
     public fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ForkSync, ForksProxy>.clear() {
       _builder.clearForks()
     }
-  }
+
+    /**
+     * An uninstantiable, behaviorless type to represent the field in
+     * generics.
+     */
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+    public class WorktreesProxy private constructor() : com.google.protobuf.kotlin.DslProxy()
+    /**
+     * ```
+     * Worktree records whose folders were gone, dropped (or to drop) by
+     * `git worktree prune`: "machine:workspace: what git said".
+     * ```
+     *
+     * `repeated string worktrees = 6 [json_name = "worktrees"];`
+     * @return A list containing the worktrees.
+     */
+    public val worktrees: com.google.protobuf.kotlin.DslList<kotlin.String, WorktreesProxy>
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+      get() = com.google.protobuf.kotlin.DslList(
+        _builder.worktreesList
+      )
+    /**
+     * ```
+     * Worktree records whose folders were gone, dropped (or to drop) by
+     * `git worktree prune`: "machine:workspace: what git said".
+     * ```
+     *
+     * `repeated string worktrees = 6 [json_name = "worktrees"];`
+     * @param value The worktrees to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addWorktrees")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, WorktreesProxy>.add(value: kotlin.String) {
+      _builder.addWorktrees(value)
+    }
+    /**
+     * ```
+     * Worktree records whose folders were gone, dropped (or to drop) by
+     * `git worktree prune`: "machine:workspace: what git said".
+     * ```
+     *
+     * `repeated string worktrees = 6 [json_name = "worktrees"];`
+     * @param value The worktrees to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignWorktrees")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, WorktreesProxy>.plusAssign(value: kotlin.String) {
+      add(value)
+    }
+    /**
+     * ```
+     * Worktree records whose folders were gone, dropped (or to drop) by
+     * `git worktree prune`: "machine:workspace: what git said".
+     * ```
+     *
+     * `repeated string worktrees = 6 [json_name = "worktrees"];`
+     * @param values The worktrees to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addAllWorktrees")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, WorktreesProxy>.addAll(values: kotlin.collections.Iterable<kotlin.String>) {
+      _builder.addAllWorktrees(values)
+    }
+    /**
+     * ```
+     * Worktree records whose folders were gone, dropped (or to drop) by
+     * `git worktree prune`: "machine:workspace: what git said".
+     * ```
+     *
+     * `repeated string worktrees = 6 [json_name = "worktrees"];`
+     * @param values The worktrees to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignAllWorktrees")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, WorktreesProxy>.plusAssign(values: kotlin.collections.Iterable<kotlin.String>) {
+      addAll(values)
+    }
+    /**
+     * ```
+     * Worktree records whose folders were gone, dropped (or to drop) by
+     * `git worktree prune`: "machine:workspace: what git said".
+     * ```
+     *
+     * `repeated string worktrees = 6 [json_name = "worktrees"];`
+     * @param index The index to set the value at.
+     * @param value The worktrees to set.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setWorktrees")
+    public operator fun com.google.protobuf.kotlin.DslList<kotlin.String, WorktreesProxy>.set(index: kotlin.Int, value: kotlin.String) {
+      _builder.setWorktrees(index, value)
+    }/**
+     * ```
+     * Worktree records whose folders were gone, dropped (or to drop) by
+     * `git worktree prune`: "machine:workspace: what git said".
+     * ```
+     *
+     * `repeated string worktrees = 6 [json_name = "worktrees"];`
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setWorktrees")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, WorktreesProxy>.clear() {
+      _builder.clearWorktrees()
+    }}
 }
 public inline fun io.github.jflowers.ghhud.api.v1.PruneBranchesResponse.copy(block: `io.github.jflowers.ghhud.api.v1`.PruneBranchesResponseKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.PruneBranchesResponse =
   `io.github.jflowers.ghhud.api.v1`.PruneBranchesResponseKt.Dsl._create(this.toBuilder()).apply { block() }._build()

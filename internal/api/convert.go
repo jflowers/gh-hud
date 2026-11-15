@@ -804,21 +804,23 @@ func recordFromPB(p *pb.DispatchResponse) dispatch.Record {
 
 func sweepToPB(s dispatch.BranchSweep) *pb.PruneBranchesResponse {
 	return &pb.PruneBranchesResponse{
-		Local:  mapSlice(s.Local, branchPruneToPB),
-		Remote: mapSlice(s.Remote, branchPruneToPB),
-		Kept:   int32(s.Kept), //nolint:gosec // a branch count
-		Errors: s.Errors,
-		Forks:  mapSlice(s.Forks, forkSyncToPB),
+		Local:     mapSlice(s.Local, branchPruneToPB),
+		Remote:    mapSlice(s.Remote, branchPruneToPB),
+		Kept:      int32(s.Kept), //nolint:gosec // a branch count
+		Errors:    s.Errors,
+		Forks:     mapSlice(s.Forks, forkSyncToPB),
+		Worktrees: s.Worktrees,
 	}
 }
 
 func sweepFromPB(p *pb.PruneBranchesResponse) dispatch.BranchSweep {
 	return dispatch.BranchSweep{
-		Local:  mapSlice(p.GetLocal(), branchPruneFromPB),
-		Remote: mapSlice(p.GetRemote(), branchPruneFromPB),
-		Kept:   int(p.GetKept()),
-		Errors: p.GetErrors(),
-		Forks:  mapSlice(p.GetForks(), forkSyncFromPB),
+		Local:     mapSlice(p.GetLocal(), branchPruneFromPB),
+		Remote:    mapSlice(p.GetRemote(), branchPruneFromPB),
+		Kept:      int(p.GetKept()),
+		Errors:    p.GetErrors(),
+		Forks:     mapSlice(p.GetForks(), forkSyncFromPB),
+		Worktrees: p.GetWorktrees(),
 	}
 }
 

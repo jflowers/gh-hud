@@ -616,6 +616,10 @@ public nonisolated struct Ghhud_V1_PruneBranchesResponse: Sendable {
   /// forks whose default branch is behind its parent's
   public var forks: [Ghhud_V1_ForkSync] = []
 
+  /// Worktree records whose folders were gone, dropped (or to drop) by
+  /// `git worktree prune`: "machine:workspace: what git said".
+  public var worktrees: [String] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3314,7 +3318,7 @@ nonisolated extension Ghhud_V1_PruneBranchesRequest: SwiftProtobuf.Message, Swif
 
 nonisolated extension Ghhud_V1_PruneBranchesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".PruneBranchesResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}local\0\u{1}remote\0\u{1}kept\0\u{1}errors\0\u{1}forks\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}local\0\u{1}remote\0\u{1}kept\0\u{1}errors\0\u{1}forks\0\u{1}worktrees\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3327,6 +3331,7 @@ nonisolated extension Ghhud_V1_PruneBranchesResponse: SwiftProtobuf.Message, Swi
       case 3: try { try decoder.decodeSingularInt32Field(value: &self.kept) }()
       case 4: try { try decoder.decodeRepeatedStringField(value: &self.errors) }()
       case 5: try { try decoder.decodeRepeatedMessageField(value: &self.forks) }()
+      case 6: try { try decoder.decodeRepeatedStringField(value: &self.worktrees) }()
       default: break
       }
     }
@@ -3348,6 +3353,9 @@ nonisolated extension Ghhud_V1_PruneBranchesResponse: SwiftProtobuf.Message, Swi
     if !self.forks.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.forks, fieldNumber: 5)
     }
+    if !self.worktrees.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.worktrees, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3357,6 +3365,7 @@ nonisolated extension Ghhud_V1_PruneBranchesResponse: SwiftProtobuf.Message, Swi
     if lhs.kept != rhs.kept {return false}
     if lhs.errors != rhs.errors {return false}
     if lhs.forks != rhs.forks {return false}
+    if lhs.worktrees != rhs.worktrees {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

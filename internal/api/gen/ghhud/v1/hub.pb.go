@@ -1124,12 +1124,15 @@ func (x *PruneBranchesRequest) GetApply() bool {
 }
 
 type PruneBranchesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Local         []*BranchPrune         `protobuf:"bytes,1,rep,name=local,proto3" json:"local,omitempty"`
-	Remote        []*BranchPrune         `protobuf:"bytes,2,rep,name=remote,proto3" json:"remote,omitempty"` // the head repo's copies (repo is the head repo)
-	Kept          int32                  `protobuf:"varint,3,opt,name=kept,proto3" json:"kept,omitempty"`    // branches with an open PR, or none
-	Errors        []string               `protobuf:"bytes,4,rep,name=errors,proto3" json:"errors,omitempty"`
-	Forks         []*ForkSync            `protobuf:"bytes,5,rep,name=forks,proto3" json:"forks,omitempty"` // forks whose default branch is behind its parent's
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Local  []*BranchPrune         `protobuf:"bytes,1,rep,name=local,proto3" json:"local,omitempty"`
+	Remote []*BranchPrune         `protobuf:"bytes,2,rep,name=remote,proto3" json:"remote,omitempty"` // the head repo's copies (repo is the head repo)
+	Kept   int32                  `protobuf:"varint,3,opt,name=kept,proto3" json:"kept,omitempty"`    // branches with an open PR, or none
+	Errors []string               `protobuf:"bytes,4,rep,name=errors,proto3" json:"errors,omitempty"`
+	Forks  []*ForkSync            `protobuf:"bytes,5,rep,name=forks,proto3" json:"forks,omitempty"` // forks whose default branch is behind its parent's
+	// Worktree records whose folders were gone, dropped (or to drop) by
+	// `git worktree prune`: "machine:workspace: what git said".
+	Worktrees     []string `protobuf:"bytes,6,rep,name=worktrees,proto3" json:"worktrees,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1195,6 +1198,13 @@ func (x *PruneBranchesResponse) GetErrors() []string {
 func (x *PruneBranchesResponse) GetForks() []*ForkSync {
 	if x != nil {
 		return x.Forks
+	}
+	return nil
+}
+
+func (x *PruneBranchesResponse) GetWorktrees() []string {
+	if x != nil {
+		return x.Worktrees
 	}
 	return nil
 }
@@ -6536,13 +6546,14 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x11ReinspectResponse\x12\x1f\n" +
 	"\x03run\x18\x01 \x01(\v2\r.ghhud.v1.RunR\x03run\",\n" +
 	"\x14PruneBranchesRequest\x12\x14\n" +
-	"\x05apply\x18\x01 \x01(\bR\x05apply\"\xc9\x01\n" +
+	"\x05apply\x18\x01 \x01(\bR\x05apply\"\xe7\x01\n" +
 	"\x15PruneBranchesResponse\x12+\n" +
 	"\x05local\x18\x01 \x03(\v2\x15.ghhud.v1.BranchPruneR\x05local\x12-\n" +
 	"\x06remote\x18\x02 \x03(\v2\x15.ghhud.v1.BranchPruneR\x06remote\x12\x12\n" +
 	"\x04kept\x18\x03 \x01(\x05R\x04kept\x12\x16\n" +
 	"\x06errors\x18\x04 \x03(\tR\x06errors\x12(\n" +
-	"\x05forks\x18\x05 \x03(\v2\x12.ghhud.v1.ForkSyncR\x05forks\"|\n" +
+	"\x05forks\x18\x05 \x03(\v2\x12.ghhud.v1.ForkSyncR\x05forks\x12\x1c\n" +
+	"\tworktrees\x18\x06 \x03(\tR\tworktrees\"|\n" +
 	"\bForkSync\x12\x12\n" +
 	"\x04repo\x18\x01 \x01(\tR\x04repo\x12\x16\n" +
 	"\x06branch\x18\x02 \x01(\tR\x06branch\x12\x16\n" +

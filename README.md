@@ -865,6 +865,11 @@ open PR), it still points at the PR's last head, and no checkout has it
 checked out. The daily `chore/dewey-learnings-…` branches follow the same
 rule.
 
+The sweep also runs `git worktree prune` in each idle checkout: a worktree
+an agent made and whose folder is gone leaves a record that keeps its
+branch checked out (so it can't be pruned); git drops those records, and
+nothing else.
+
 The same sweep keeps each fork's default branch in step with its parent's:
 it fast-forwards it when the fork has no commits of its own there, and
 reports a fork that has.
