@@ -94,7 +94,9 @@ func (d *Dispatcher) AutoMerge(ctx context.Context, items []model.Item) []string
 		action := autoMergeAction(it, cfg)
 		ref := it.Ref()
 		why := ""
-		if action != mergeNone || it.AutoMergeOn {
+		if humanGated(it, d.o().HumanGate) {
+			why = "it has the " + d.o().HumanGate + " label"
+		} else if action != mergeNone || it.AutoMergeOn {
 			why = runHold(ref, allRuns())
 		}
 		action = holdForRun(action, it, cfg, why)

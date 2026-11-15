@@ -325,7 +325,26 @@ func stageOf(it model.Item, runs []Run, tasks map[string]config.TaskConfig, am c
 // Stage reports a PR's stage in the auto pipeline from the given runs
 // (as Runs returns them). No I/O.
 func (d *Dispatcher) Stage(it model.Item, runs []Run) Stage {
-	return stageOf(it, runs, d.o().Tasks, d.o().AutoMerge, d.trainSnapshot(), time.Now())
+	st := stageOf(it, runs, d.o().Tasks, d.o().AutoMerge, d.trainSnapshot(), time.Now())
+	if humanGated(it, d.o().HumanGate) && st.Kind != StageRunning && (it.Kind == model.KindPR || it.Kind == model.KindIssue) {
+		return Stage{Kind: StageNeedsYou, Reason: "human gate"}
+	}
+	return st
+}
+
+// humanGated reports whether the item carries the human-gate label
+// (case-insensitive): a person handles it, so no agent is sent and it is
+// never merged automatically.
+func humanGated(it model.Item, label string) bool {
+	if label == "" {
+		return false
+	}
+	for _, l := range it.Labels {
+		if strings.EqualFold(l, label) {
+			return true
+		}
+	}
+	return false
 }
 
 // Holds reports whether a PR has an agent step running or still to come,
