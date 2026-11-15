@@ -219,8 +219,15 @@ remote control rather than a viewer.
    its text late, and with a captured copy it undid the chips its own
    enter had just made (the device tests caught it, intermittently).
    Watch and Open Transcript wait for 4e6.
-3. **4e3, Plan.** Cases, epics and the queue, with every command the
+3. **4e3, Plan.** *(done)* Cases, epics and the queue, with every command the
    Mac's Plan pane has, Enroll epic included.
+
+   As built: a Plan place in the bottom bar (its badge: how many start
+   next). Queued rows have ↑ and ↓ in place of dragging; a tap on any
+   row offers the rest of the Mac's menu. Dropping an epic asks first,
+   as on the Mac. `PlanCommands` in `:core` says how each command went,
+   in the Mac's words. The device tests read the shared dashboard
+   fixture from the test APK's assets.
 4. **4e4, Agents and Workspaces**, without Watch.
 5. **4e5, Fleet**, with pause/resume, check now, skip wait (confirmed)
    and retry.

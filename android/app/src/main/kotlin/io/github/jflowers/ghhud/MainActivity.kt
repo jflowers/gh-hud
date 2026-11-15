@@ -23,6 +23,10 @@ import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jflowers.ghhud.core.AgentChoice
 import io.github.jflowers.ghhud.core.AttentionRow
+import io.github.jflowers.ghhud.core.CaseRow
+import io.github.jflowers.ghhud.core.EpicRow
+import io.github.jflowers.ghhud.core.PlanCommands
+import io.github.jflowers.ghhud.core.PlanItem
 import io.github.jflowers.ghhud.core.ItemCommands
 import io.github.jflowers.ghhud.core.ItemRow
 import io.github.jflowers.ghhud.core.HubAddress
@@ -49,6 +53,28 @@ class MainActivity : ComponentActivity() {
         override suspend fun run(row: ItemRow, c: AgentChoice, queue: Boolean) = ItemCommands.run(model.connection, row, c, queue)
 
         override suspend fun recheck(row: ItemRow) = ItemCommands.recheck(model.connection, row)
+
+        private val plan get() = PlanCommands(model.connection)
+
+        override suspend fun enqueue(r: PlanItem) = plan.enqueue(r)
+
+        override suspend fun move(r: PlanItem, by: Long) = plan.move(r, by)
+
+        override suspend fun unqueue(r: PlanItem) = plan.unqueue(r)
+
+        override suspend fun approve(c: CaseRow) = plan.approve(c)
+
+        override suspend fun reject(c: CaseRow) = plan.reject(c)
+
+        override suspend fun approve(e: EpicRow) = plan.approve(e)
+
+        override suspend fun reread(e: EpicRow) = plan.reread(e)
+
+        override suspend fun drop(e: EpicRow) = plan.drop(e)
+
+        override suspend fun clearGate(epic: String, piece: String) = plan.clearGate(epic, piece)
+
+        override suspend fun enroll(target: String) = plan.enroll(target)
 
         override fun open(url: String) {
             try {

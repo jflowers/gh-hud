@@ -23,6 +23,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_21
     }
 
+    // The device tests read the clients' shared fixtures (testdata/clients).
+    sourceSets["androidTest"].assets.srcDir(rootProject.file("../testdata/clients"))
+
     buildFeatures {
         compose = true
     }
