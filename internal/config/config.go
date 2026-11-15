@@ -97,11 +97,15 @@ type Config struct {
 // HubConfig is how apps other than the TUI reach the hub. The TUI uses
 // the unix socket in the state directory; the Mac app can't, so the hub
 // also listens on loopback TCP behind a per-start token, and writes both
-// to hub.json in the state directory (readable only by you).
+// to hub.json in the state directory (readable only by you). The phone
+// reaches it over your tailnet instead.
 type HubConfig struct {
 	// Listen is the loopback address ("127.0.0.1:0" picks a free port);
 	// "" turns the TCP listener off.
 	Listen string `toml:"listen"`
+	// Tailnet is the hostname the hub joins your tailnet as, for the
+	// phone; "" (the default) keeps it off the tailnet.
+	Tailnet string `toml:"tailnet"`
 }
 
 // Default returns the built-in defaults.

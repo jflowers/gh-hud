@@ -14,7 +14,8 @@ Mac and Android apps (Phases 3 and 4) can share it.
   generate from the same file.
 - **Transport:** Connect-RPC over HTTP/2 cleartext on a unix socket,
   `hub.sock` in the state directory (0700 dir, 0600 socket, so only you
-  can reach it). Phase 4 adds a tsnet listener for the phone.
+  can reach it). Phase 4 adds a tsnet listener for the phone
+  (`PLAN-android.md`, 4b).
 - **`internal/api`:** converters between the hub's Go types and the wire
   types; `Server` (a `HubServiceHandler` over any `hub.Backend`); and
   `Client`, which *is* a `hub.Backend`, so `ui.New` takes it unchanged.
