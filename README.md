@@ -429,6 +429,18 @@ longer than `blocked_notify_secs` (default 180, needs `notify`), the
 question went to a human and gh-hud sends a desktop notification naming the
 machine and pane to attach to.
 
+Dispatch panes also turn on auto-question's headless mode
+(`AUTO_QUESTION_HEADLESS=1`, plugin 0.4.0 or later): questions are answered
+inside the tool call and no form ever shows, for every agent and subagent.
+When a person must decide (a human gate, or an answer the profile won't
+guess), the agent follows the playbook `AUTO_QUESTION_ESCALATION` names,
+`~/.config/opencode/auto-question/escalation-gh-hud.md` (from dotfiles): it
+comments on the issue or PR with the decision, pushes its work to a draft
+with the `hold` label, and stops. gh-hud reads the plugin's `autoQuestion`
+result from the transcript, so that run counts as failed with "a person must
+decide": the PR or issue shows under Needs you, and an epic piece goes to
+you without a supervisor review. Older plugin versions ignore both variables.
+
 Dispatch only targets ghws `@` instance workspaces (never the base
 human-owned clones); set `dispatch_instances_only = false` to also allow
 base workspaces. With `[[machines]]` configured, placement spreads across

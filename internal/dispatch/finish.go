@@ -59,6 +59,9 @@ type Run struct {
 	// Fingerprint is the PR/issue state the run started from (task, ref,
 	// updated-at); the auto pipeline compares it to the current state.
 	Fingerprint string
+	// HumanNeeded: the agent handed a decision to a person (auto-question's
+	// escalation) and stopped; the run counts as failed.
+	HumanNeeded bool
 }
 
 // runID identifies a record across snapshots.
@@ -119,6 +122,7 @@ func (d *Dispatcher) Runs(ctx context.Context) []Run {
 			SessionID: r.SessionID, PaneID: r.PaneID, WSID: r.WSID, Log: r.Log,
 			Reason: reason, Summary: r.Summary, Left: r.Left, Pushed: r.Pushed,
 			Branch: r.Branch, Cleaned: r.Cleaned, Fingerprint: r.Fingerprint,
+			HumanNeeded: r.HumanNeeded,
 		})
 	}
 	return out
@@ -133,6 +137,7 @@ type outcome struct {
 	reason      string // failure detail, or why the outcome is unknown
 	summary     string // last assistant text
 	unreachable bool   // unread because the machine didn't answer
+	humanNeeded bool   // auto-question handed a decision to a person
 }
 
 // exportedSession is the slice of `opencode export` the outcome needs.
@@ -144,10 +149,49 @@ type exportedSession struct {
 			Finish string          `json:"finish"`
 		} `json:"info"`
 		Parts []struct {
-			Type string `json:"type"`
-			Text string `json:"text"`
+			Type  string `json:"type"`
+			Text  string `json:"text"`
+			Tool  string `json:"tool"`
+			State struct {
+				Metadata struct {
+					AutoQuestion *autoQuestionMeta `json:"autoQuestion"`
+				} `json:"metadata"`
+			} `json:"state"`
 		} `json:"parts"`
 	} `json:"messages"`
+}
+
+// autoQuestionMeta is the auto-question plugin's stable contract (v1) in a
+// headless question tool part's metadata.
+type autoQuestionMeta struct {
+	V           int    `json:"v"`
+	Outcome     string `json:"outcome"`
+	Answered    int    `json:"answered"`
+	Total       int    `json:"total"`
+	HumanGate   bool   `json:"humanGate"`
+	HumanNeeded bool   `json:"humanNeeded"`
+}
+
+// lastQuestion is the session's last headless question result, if any.
+func (s exportedSession) lastQuestion() *autoQuestionMeta {
+	for i := len(s.Messages) - 1; i >= 0; i-- {
+		parts := s.Messages[i].Parts
+		for j := len(parts) - 1; j >= 0; j-- {
+			if p := parts[j]; p.Type == "tool" && p.Tool == "question" && p.State.Metadata.AutoQuestion != nil {
+				return p.State.Metadata.AutoQuestion
+			}
+		}
+	}
+	return nil
+}
+
+// humanNeededReason is why a run whose agent handed a decision to a person
+// counts as failed.
+func humanNeededReason(q *autoQuestionMeta) string {
+	if q.HumanGate {
+		return "a person must decide: a human gate (see the agent's comment)"
+	}
+	return fmt.Sprintf("a person must decide: %d of %d questions unanswered (see the agent's comment)", q.Total-q.Answered, q.Total)
 }
 
 // summaryMax caps the stored final message.
@@ -190,6 +234,14 @@ func judgeSession(out string) (outcome, error) {
 			failed, o.reason = true, errorText(last.Error)
 		case last.Finish == "error":
 			failed, o.reason = true, "assistant finished with an error"
+		}
+	}
+	// A run whose last question was handed to a person didn't finish its
+	// job, however cleanly it ended: it needs you, not a success.
+	if q := s.lastQuestion(); q != nil && q.V == 1 && q.HumanNeeded {
+		o.humanNeeded = true
+		if !failed {
+			failed, o.reason = true, humanNeededReason(q)
 		}
 	}
 	c := 0
@@ -332,6 +384,7 @@ func (d *Dispatcher) finishRecord(r Record, exitCode *int, closePane bool) {
 			rec.FailReason = o.reason
 		}
 		rec.Unread = o.unreachable
+		rec.HumanNeeded = o.humanNeeded
 		insp.apply(rec)
 	}
 	d.saveStateLocked()

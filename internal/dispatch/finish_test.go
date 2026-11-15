@@ -257,3 +257,42 @@ func TestInspectSkipsBusyCheckout(t *testing.T) {
 		t.Errorf("branch switched to %q under a live run", got)
 	}
 }
+
+// A session whose last headless question was handed to a person failed,
+// however cleanly it ended; an answered question afterwards clears it, and
+// an unknown contract version is ignored.
+func TestJudgeSessionHumanNeeded(t *testing.T) {
+	q := func(meta string) string {
+		return `{"type":"tool","tool":"question","state":{"status":"completed","metadata":{"autoQuestion":` + meta + `}}}`
+	}
+	gated := q(`{"v":1,"outcome":"gated","answered":0,"total":2,"humanGate":true,"humanNeeded":true}`)
+	partial := q(`{"v":1,"outcome":"partial","answered":1,"total":3,"humanGate":false,"humanNeeded":true}`)
+	answered := q(`{"v":1,"outcome":"answered","answered":1,"total":1,"humanGate":false,"humanNeeded":false}`)
+	session := func(parts ...string) string {
+		return `{"messages":[{"info":{"role":"assistant","error":null,"finish":"stop"},"parts":[` +
+			strings.Join(parts, ",") + `,{"type":"text","text":"Commented on #7 and stopped."}]}]}`
+	}
+	for _, c := range []struct {
+		name, out string
+		human     bool
+		reason    string
+	}{
+		{"human gate", session(gated), true, "a person must decide: a human gate (see the agent's comment)"},
+		{"unanswered", session(partial), true, "a person must decide: 2 of 3 questions unanswered (see the agent's comment)"},
+		{"answered later", session(gated, answered), false, ""},
+		{"no question", session(`{"type":"tool","tool":"bash","state":{}}`), false, ""},
+		{"unknown version", session(q(`{"v":2,"humanNeeded":true}`)), false, ""},
+	} {
+		o, err := judgeSession(c.out)
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		want := 0
+		if c.human {
+			want = 1
+		}
+		if o.humanNeeded != c.human || *o.code != want || o.reason != c.reason {
+			t.Errorf("%s: human %v code %d reason %q, want %v %d %q", c.name, o.humanNeeded, *o.code, o.reason, c.human, want, c.reason)
+		}
+	}
+}

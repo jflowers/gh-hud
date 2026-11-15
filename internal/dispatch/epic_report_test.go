@@ -134,3 +134,40 @@ func TestEpicPieceReportWithoutSupervisor(t *testing.T) {
 		t.Errorf("row = %+v", r)
 	}
 }
+
+// A run whose agent handed a decision to a person needs you at once: no
+// supervisor review, and the report says why.
+func TestEpicPieceReportHumanNeeded(t *testing.T) {
+	f := &fakeSupervisor{}
+	d := supervisedDispatcher(t, "propose", f)
+	now := time.Now()
+	withEpic(d, now.Add(-time.Hour), node(3, epic.NodeReady))
+	run := pieceRun(d, "acme/app#3", now.Add(-10*time.Minute), now.Add(-time.Minute), "Commented on #3 and stopped.")
+	d.mu.Lock()
+	one := 1
+	d.records[len(d.records)-1].ExitCode, d.records[len(d.records)-1].HumanNeeded = &one, true
+	d.mu.Unlock()
+	run.Status, run.HumanNeeded = RunFailed, true
+	checkedAt(d, now)
+	d.epicPass()
+	rep, ok := d.Epics()[0].Report("acme/app#3")
+	if !ok || rep.Verdict != epic.VerdictHuman || !strings.Contains(rep.Why, "asked a person") {
+		t.Fatalf("report = %+v", rep)
+	}
+	d.mu.Lock()
+	reviewing := len(d.epicReviewing)
+	d.mu.Unlock()
+	f.mu.Lock()
+	calls := len(f.specs)
+	f.mu.Unlock()
+	if reviewing != 0 || calls != 0 {
+		t.Errorf("the supervisor was asked (reviewing %d)", reviewing)
+	}
+	if r := rowsByRef(d.Plan(nil, []Run{run}))["acme/app#3"]; r.Stage.Kind != StageNeedsYou {
+		t.Errorf("row = %+v", r)
+	}
+	d.epicPass() // reviewed: nothing changes
+	if again, _ := d.Epics()[0].Report("acme/app#3"); again != rep {
+		t.Errorf("report changed: %+v", again)
+	}
+}

@@ -569,6 +569,33 @@ public object RunKt {
     public fun clearFingerprint() {
       _builder.clearFingerprint()
     }
+
+    /**
+     * ```
+     * human_needed: the agent handed a decision to a person and stopped
+     * (auto-question's escalation); status is failed.
+     * ```
+     *
+     * `bool human_needed = 24 [json_name = "humanNeeded"];`
+     */
+    public var humanNeeded: kotlin.Boolean
+      @kotlin.jvm.JvmName("getHumanNeeded")
+        get() = _builder.humanNeeded
+      @kotlin.jvm.JvmName("setHumanNeeded")
+        set(value) {
+        _builder.humanNeeded = value
+      }
+    /**
+     * ```
+     * human_needed: the agent handed a decision to a person and stopped
+     * (auto-question's escalation); status is failed.
+     * ```
+     *
+     * `bool human_needed = 24 [json_name = "humanNeeded"];`
+     */
+    public fun clearHumanNeeded() {
+      _builder.clearHumanNeeded()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.Run.copy(block: `io.github.jflowers.ghhud.api.v1`.RunKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.Run =

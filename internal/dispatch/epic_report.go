@@ -80,19 +80,23 @@ func (d *Dispatcher) epicReviewsLocked() {
 				continue // GitHub hasn't been asked since it ended
 			}
 			id := runID(rec)
-			if r, ok := e.Report(n.Ref); ok && r.RunID == id && (r.Verdict != epic.VerdictReviewing || !sup) {
+			if r, ok := e.Report(n.Ref); ok && r.RunID == id && (r.Verdict != epic.VerdictReviewing || !sup || rec.HumanNeeded) {
 				continue // reviewed; one still "reviewing" after a restart is asked again
 			}
 			rep := epic.Report{Piece: n.Ref, RunID: id, On: runOn(rec.Machine, rec.Workspace),
 				Status: string(runStatus(rec, false, false)), Finished: end,
 				Summary: clipKeep(rec.Summary, reportSummaryMax), Reason: firstOf(rec.FinishError, rec.FailReason)}
-			if !sup {
+			if rec.HumanNeeded {
+				// The agent already handed the decision to a person; there's
+				// nothing for the supervisor to judge.
+				rep.Verdict, rep.Why = epic.VerdictHuman, "the agent asked a person to decide (see its comment on the issue)"
+			} else if !sup {
 				rep.Verdict = epic.VerdictNone
 			}
 			e.Reports = slices.DeleteFunc(e.Reports, func(r epic.Report) bool { return r.Piece == n.Ref })
 			e.Reports = append(e.Reports, rep)
 			changed = true
-			if sup {
+			if sup && !rec.HumanNeeded {
 				d.epicReviewing[n.Ref] = true
 				ce := cloneEpic(*e)
 				d.goEpic(func() { d.reviewPiece(ce, n, rec, rep) })

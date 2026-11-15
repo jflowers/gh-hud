@@ -3248,21 +3248,24 @@ type Run struct {
 	Workspace string                 `protobuf:"bytes,7,opt,name=workspace,proto3" json:"workspace,omitempty"`
 	Dir       string                 `protobuf:"bytes,8,opt,name=dir,proto3" json:"dir,omitempty"`
 	// status: running, blocked, ok, failed, left-work or unknown.
-	Status        string                 `protobuf:"bytes,9,opt,name=status,proto3" json:"status,omitempty"`
-	Auto          bool                   `protobuf:"varint,10,opt,name=auto,proto3" json:"auto,omitempty"`
-	StartedAt     *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
-	FinishedAt    *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"` // unset while running
-	SessionId     string                 `protobuf:"bytes,13,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	PaneId        string                 `protobuf:"bytes,14,opt,name=pane_id,json=paneId,proto3" json:"pane_id,omitempty"`
-	WsId          string                 `protobuf:"bytes,15,opt,name=ws_id,json=wsId,proto3" json:"ws_id,omitempty"`
-	Log           string                 `protobuf:"bytes,16,opt,name=log,proto3" json:"log,omitempty"`
-	Reason        string                 `protobuf:"bytes,17,opt,name=reason,proto3" json:"reason,omitempty"`
-	Summary       string                 `protobuf:"bytes,18,opt,name=summary,proto3" json:"summary,omitempty"`
-	Left          []string               `protobuf:"bytes,19,rep,name=left,proto3" json:"left,omitempty"`
-	Pushed        []string               `protobuf:"bytes,20,rep,name=pushed,proto3" json:"pushed,omitempty"`
-	Branch        string                 `protobuf:"bytes,21,opt,name=branch,proto3" json:"branch,omitempty"`
-	Cleaned       bool                   `protobuf:"varint,22,opt,name=cleaned,proto3" json:"cleaned,omitempty"`
-	Fingerprint   string                 `protobuf:"bytes,23,opt,name=fingerprint,proto3" json:"fingerprint,omitempty"`
+	Status      string                 `protobuf:"bytes,9,opt,name=status,proto3" json:"status,omitempty"`
+	Auto        bool                   `protobuf:"varint,10,opt,name=auto,proto3" json:"auto,omitempty"`
+	StartedAt   *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	FinishedAt  *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"` // unset while running
+	SessionId   string                 `protobuf:"bytes,13,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	PaneId      string                 `protobuf:"bytes,14,opt,name=pane_id,json=paneId,proto3" json:"pane_id,omitempty"`
+	WsId        string                 `protobuf:"bytes,15,opt,name=ws_id,json=wsId,proto3" json:"ws_id,omitempty"`
+	Log         string                 `protobuf:"bytes,16,opt,name=log,proto3" json:"log,omitempty"`
+	Reason      string                 `protobuf:"bytes,17,opt,name=reason,proto3" json:"reason,omitempty"`
+	Summary     string                 `protobuf:"bytes,18,opt,name=summary,proto3" json:"summary,omitempty"`
+	Left        []string               `protobuf:"bytes,19,rep,name=left,proto3" json:"left,omitempty"`
+	Pushed      []string               `protobuf:"bytes,20,rep,name=pushed,proto3" json:"pushed,omitempty"`
+	Branch      string                 `protobuf:"bytes,21,opt,name=branch,proto3" json:"branch,omitempty"`
+	Cleaned     bool                   `protobuf:"varint,22,opt,name=cleaned,proto3" json:"cleaned,omitempty"`
+	Fingerprint string                 `protobuf:"bytes,23,opt,name=fingerprint,proto3" json:"fingerprint,omitempty"`
+	// human_needed: the agent handed a decision to a person and stopped
+	// (auto-question's escalation); status is failed.
+	HumanNeeded   bool `protobuf:"varint,24,opt,name=human_needed,json=humanNeeded,proto3" json:"human_needed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3456,6 +3459,13 @@ func (x *Run) GetFingerprint() string {
 		return x.Fingerprint
 	}
 	return ""
+}
+
+func (x *Run) GetHumanNeeded() bool {
+	if x != nil {
+		return x.HumanNeeded
+	}
+	return false
 }
 
 type MachineUsage struct {
@@ -5321,7 +5331,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x05ws_id\x18\x10 \x01(\tR\x04wsId\x12\x18\n" +
 	"\ablocked\x18\x11 \x01(\bR\ablocked\x12?\n" +
 	"\rblocked_since\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\fblockedSince\x12\x15\n" +
-	"\x06run_id\x18\x13 \x01(\tR\x05runId\"\xe0\x04\n" +
+	"\x06run_id\x18\x13 \x01(\tR\x05runId\"\x83\x05\n" +
 	"\x03Run\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04task\x18\x02 \x01(\tR\x04task\x12\x10\n" +
@@ -5349,7 +5359,8 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x06pushed\x18\x14 \x03(\tR\x06pushed\x12\x16\n" +
 	"\x06branch\x18\x15 \x01(\tR\x06branch\x12\x18\n" +
 	"\acleaned\x18\x16 \x01(\bR\acleaned\x12 \n" +
-	"\vfingerprint\x18\x17 \x01(\tR\vfingerprint\"X\n" +
+	"\vfingerprint\x18\x17 \x01(\tR\vfingerprint\x12!\n" +
+	"\fhuman_needed\x18\x18 \x01(\bR\vhumanNeeded\"X\n" +
 	"\fMachineUsage\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04used\x18\x02 \x01(\x03R\x04used\x12\x10\n" +

@@ -307,4 +307,15 @@ public interface RunOrBuilder extends
    */
   com.google.protobuf.ByteString
       getFingerprintBytes();
+
+  /**
+   * <pre>
+   * human_needed: the agent handed a decision to a person and stopped
+   * (auto-question's escalation); status is failed.
+   * </pre>
+   *
+   * <code>bool human_needed = 24 [json_name = "humanNeeded"];</code>
+   * @return The humanNeeded.
+   */
+  boolean getHumanNeeded();
 }

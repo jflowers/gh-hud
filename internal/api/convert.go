@@ -386,6 +386,7 @@ func RunToPB(r dispatch.Run) *pb.Run {
 		Branch:      r.Branch,
 		Cleaned:     r.Cleaned,
 		Fingerprint: r.Fingerprint,
+		HumanNeeded: r.HumanNeeded,
 	}
 }
 
@@ -415,6 +416,7 @@ func RunFromPB(p *pb.Run) dispatch.Run {
 		Branch:      p.GetBranch(),
 		Cleaned:     p.GetCleaned(),
 		Fingerprint: p.GetFingerprint(),
+		HumanNeeded: p.GetHumanNeeded(),
 	}
 }
 

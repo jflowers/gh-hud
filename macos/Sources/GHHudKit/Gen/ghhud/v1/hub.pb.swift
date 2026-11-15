@@ -1605,6 +1605,13 @@ public nonisolated struct Ghhud_V1_Run: @unchecked Sendable {
     set {_uniqueStorage()._fingerprint = newValue}
   }
 
+  /// human_needed: the agent handed a decision to a person and stopped
+  /// (auto-question's escalation); status is failed.
+  public var humanNeeded: Bool {
+    get {_storage._humanNeeded}
+    set {_uniqueStorage()._humanNeeded = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -4459,7 +4466,7 @@ nonisolated extension Ghhud_V1_Session: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Run"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}task\0\u{1}ref\0\u{1}repo\0\u{1}num\0\u{1}machine\0\u{1}workspace\0\u{1}dir\0\u{1}status\0\u{1}auto\0\u{3}started_at\0\u{3}finished_at\0\u{3}session_id\0\u{3}pane_id\0\u{3}ws_id\0\u{1}log\0\u{1}reason\0\u{1}summary\0\u{1}left\0\u{1}pushed\0\u{1}branch\0\u{1}cleaned\0\u{1}fingerprint\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}task\0\u{1}ref\0\u{1}repo\0\u{1}num\0\u{1}machine\0\u{1}workspace\0\u{1}dir\0\u{1}status\0\u{1}auto\0\u{3}started_at\0\u{3}finished_at\0\u{3}session_id\0\u{3}pane_id\0\u{3}ws_id\0\u{1}log\0\u{1}reason\0\u{1}summary\0\u{1}left\0\u{1}pushed\0\u{1}branch\0\u{1}cleaned\0\u{1}fingerprint\0\u{3}human_needed\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -4485,6 +4492,7 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
     var _branch: String = String()
     var _cleaned: Bool = false
     var _fingerprint: String = String()
+    var _humanNeeded: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -4518,6 +4526,7 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
       _branch = source._branch
       _cleaned = source._cleaned
       _fingerprint = source._fingerprint
+      _humanNeeded = source._humanNeeded
     }
   }
 
@@ -4559,6 +4568,7 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
         case 21: try { try decoder.decodeSingularStringField(value: &_storage._branch) }()
         case 22: try { try decoder.decodeSingularBoolField(value: &_storage._cleaned) }()
         case 23: try { try decoder.decodeSingularStringField(value: &_storage._fingerprint) }()
+        case 24: try { try decoder.decodeSingularBoolField(value: &_storage._humanNeeded) }()
         default: break
         }
       }
@@ -4640,6 +4650,9 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
       if !_storage._fingerprint.isEmpty {
         try visitor.visitSingularStringField(value: _storage._fingerprint, fieldNumber: 23)
       }
+      if _storage._humanNeeded != false {
+        try visitor.visitSingularBoolField(value: _storage._humanNeeded, fieldNumber: 24)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4672,6 +4685,7 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
         if _storage._branch != rhs_storage._branch {return false}
         if _storage._cleaned != rhs_storage._cleaned {return false}
         if _storage._fingerprint != rhs_storage._fingerprint {return false}
+        if _storage._humanNeeded != rhs_storage._humanNeeded {return false}
         return true
       }
       if !storagesAreEqual {return false}
