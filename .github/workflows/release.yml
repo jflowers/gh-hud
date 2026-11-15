@@ -1,20 +1,28 @@
 name: Release
 
-# Pushing a tag (v0.2.0) releases the Mac app: built for Apple silicon and
-# Intel, signed with the Developer ID, notarized and stapled, attached to a
-# GitHub release, and published to the Homebrew tap, so any Mac installs
-# and upgrades it with:
+# Pushing a tag (v0.2.0) makes a GitHub release with the apps:
 #
-#   brew install --cask jflowers/tools/gh-hud
-#   brew upgrade --cask gh-hud
+# - The Mac app, built for Apple silicon and Intel, signed with the
+#   Developer ID, notarized and stapled, and published to the Homebrew tap,
+#   so any Mac installs and upgrades it with:
 #
-# Secrets (the same ones get-out's release uses):
+#     brew install --cask jflowers/tools/gh-hud
+#     brew upgrade --cask gh-hud
+#
+# - The Android app, gh-hud-VERSION.apk, signed with the release key, for
+#   any phone or tablet (Android 10 or later) to download and install.
+#   Every release has the same key, so installing a newer APK updates it.
+#
+# Secrets for the Mac app (the same ones get-out's release uses):
 #   MACOS_SIGN_P12, MACOS_SIGN_PASSWORD   the Developer ID Application
 #                                         certificate and key, base64 .p12
 #   MACOS_NOTARY_KEY, MACOS_NOTARY_KEY_ID, MACOS_NOTARY_ISSUER_ID
 #                                         an App Store Connect API key
 #                                         (base64 .p8) for notarytool
 #   HOMEBREW_TAP_TOKEN                    can push to jflowers/homebrew-tools
+# and for the Android app:
+#   ANDROID_KEYSTORE                      the release key's keystore, base64 .jks
+#   ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
 on:
   push:
     tags: ["v*"]
@@ -26,13 +34,30 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
+  # The release itself, so each app's job only adds its download.
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # creates the release
+    steps:
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||
+            gh release create "$VERSION" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
+
   mac-app:
     name: Mac app
+    needs: release
     runs-on: macos-latest
     # The limit counts time spent waiting for a runner and for notarizing.
     timeout-minutes: 60
     permissions:
-      contents: write # creates the release
+      contents: write # uploads to the release
     env:
       VERSION: ${{ github.ref_name }}
     steps:
@@ -74,16 +99,10 @@ jobs:
             MAC_NOTARY_ARGS="--key $RUNNER_TEMP/notary.p8 --key-id $MACOS_NOTARY_KEY_ID --issuer $MACOS_NOTARY_ISSUER_ID"
           lipo -info build/gh-hud.app/Contents/MacOS/GHHud
 
-      - name: Release
+      - name: Upload to the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          zip="build/gh-hud-app_${VERSION#v}.zip"
-          if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$VERSION" "$zip" --repo "$GITHUB_REPOSITORY" --clobber
-          else
-            gh release create "$VERSION" "$zip" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
-          fi
+        run: gh release upload "$VERSION" "build/gh-hud-app_${VERSION#v}.zip" --repo "$GITHUB_REPOSITORY" --clobber
 
       - name: Publish the cask
         env:
@@ -101,3 +120,46 @@ jobs:
           git diff --cached --quiet && { echo "the cask is already up to date"; exit 0; }
           git commit -m "gh-hud ${VERSION#v}"
           git push
+
+  android-app:
+    name: Android app
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write # uploads to the release
+    env:
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The JDK and SDK command-line tools pinned in mise.toml, as locally.
+      - uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
+        with:
+          install_args: java android-sdk
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-read-only: true
+      # Installing the SDK packages also accepts the Android SDK license,
+      # which the build needs before it will download anything itself.
+      - name: SDK packages
+        run: make android-sdk
+
+      - name: Build and sign
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_B64" || { echo "::error::ANDROID_KEYSTORE isn't set; see the top of release.yml"; exit 1; }
+          export ANDROID_KEYSTORE=$RUNNER_TEMP/release.jks
+          echo -n "$ANDROID_KEYSTORE_B64" | base64 --decode > "$ANDROID_KEYSTORE"
+          make android-release ANDROID_VERSION="${VERSION#v}"
+          rm "$ANDROID_KEYSTORE"
+
+      - name: Upload to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$VERSION" "build/gh-hud-${VERSION#v}.apk" --repo "$GITHUB_REPOSITORY" --clobber

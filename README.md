@@ -291,6 +291,15 @@ proposals, epic plans and gates that start waiting on you. Android shows
 this as a silent "gh-hud" notification saying whether the hub is there.
 It starts again when the phone restarts.
 
+**Install.** Each release (a `v*` tag) carries `gh-hud-VERSION.apk`, for
+any phone or tablet on Android 10 or later. Open the release page on the
+device, download the APK and open it; Android asks once to allow installs
+from your browser (or Files). Installing a newer release's APK updates the
+app in place, keeping its hub settings. Every release is signed with the
+same release key. A build from `make android-install` is signed with the
+Mac's debug key instead, so going from one to the other means uninstalling
+first, which drops the hub URL and token.
+
 Its source is in `android/`. The JDK and Android SDK tools come from the
 repo's `mise.toml` (`mise install`); everything else from the Gradle
 build. No Android Studio needed.
@@ -301,6 +310,7 @@ make android               # lint, tests, debug APK
 make android-install       # install on a phone over adb (USB debugging on)
 make android-device-test   # the screen and notification tests, on that phone
 make android-dev-hub       # point the phone's app at this Mac's hub over USB
+make android-release       # the signed release APK (needs the release key, see the Makefile)
 ```
 
 `make android-dev-hub` forwards the Mac's loopback hub to the phone (`adb
