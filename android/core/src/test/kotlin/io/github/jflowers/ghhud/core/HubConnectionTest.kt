@@ -1,6 +1,11 @@
 package io.github.jflowers.ghhud.core
 
+import io.github.jflowers.ghhud.api.v1.AlertType
 import io.github.jflowers.ghhud.api.v1.ApproveProposalRequest
+import io.github.jflowers.ghhud.api.v1.EventKind
+import io.github.jflowers.ghhud.api.v1.SubscribeResponse
+import io.github.jflowers.ghhud.api.v1.alert
+import io.github.jflowers.ghhud.api.v1.event
 import io.github.jflowers.ghhud.api.v1.Snapshot
 import io.github.jflowers.ghhud.api.v1.fetchResult
 import io.github.jflowers.ghhud.api.v1.item
@@ -9,6 +14,7 @@ import io.github.jflowers.ghhud.api.v1.subscribeResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -54,10 +60,13 @@ class HubConnectionTest {
      * With hold, the end comes only after a while, so the connection
      * stays up long enough to see.
      */
-    private fun stream(vararg snaps: Snapshot, hold: Boolean = false): MockResponse {
+    private fun stream(vararg snaps: Snapshot, hold: Boolean = false): MockResponse =
+        messages(*snaps.map { subscribeResponse { snapshot = it } }.toTypedArray(), hold = hold)
+
+    private fun messages(vararg msgs: SubscribeResponse, hold: Boolean = false): MockResponse {
         val body = Buffer()
-        for (s in snaps) {
-            val msg = subscribeResponse { snapshot = s }.toByteArray()
+        for (m in msgs) {
+            val msg = m.toByteArray()
             body.writeByte(0).writeInt(msg.size).write(msg)
         }
         val end = "{}".toByteArray()
@@ -94,6 +103,29 @@ class HubConnectionTest {
         val state = withTimeout(10_000) { hub.state.first { it.attention.count == 3 } }
         assertEquals(HubStatus.Connected, state.status)
         assertEquals(2, server.requestCount)
+        hub.stop()
+    }
+
+    @Test
+    fun passesOnAlerts() = runBlocking {
+        server.enqueue(
+            messages(
+                subscribeResponse { event = event { kind = EventKind.EVENT_KIND_NOTICE; text = "refreshed" } },
+                subscribeResponse {
+                    event = event {
+                        kind = EventKind.EVENT_KIND_ALERT
+                        alert = alert { type = AlertType.ALERT_TYPE_BLOCKED; ref = "o/r#2"; text = "fix-ci waits" }
+                    }
+                },
+                hold = true,
+            ),
+        )
+        val hub = HubConnection(HubAddress(server.url("/").toString()), scope)
+        val got = scope.async { hub.alerts.first() }
+        hub.start()
+        val a = withTimeout(10_000) { got.await() }
+        assertEquals("fix-ci waits", a.text)
+        assertEquals(AlertType.ALERT_TYPE_BLOCKED, a.type)
         hub.stop()
     }
 

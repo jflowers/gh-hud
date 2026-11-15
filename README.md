@@ -271,7 +271,11 @@ a maintainer. Tap a row to open it on GitHub; pull down to refresh.
 It reaches the hub over your tailnet (`[hub] tailnet`, see "The hub"):
 tap **Hub** and enter the URL the hub logs at start, like
 `https://gh-hud.your-tailnet.ts.net`. It's connected while it's on
-screen; notifications while it's closed come later.
+screen. Turn on **Notify me** there to stay connected while it's closed:
+it notifies you of the hub's alerts (as the Mac app does) and of
+proposals, epic plans and gates that start waiting on you. Android shows
+this as a silent "gh-hud" notification saying whether the hub is there.
+It starts again when the phone restarts.
 
 Its source is in `android/`. The JDK and Android SDK tools come from the
 repo's `mise.toml` (`mise install`); everything else from the Gradle
@@ -281,7 +285,7 @@ build. No Android Studio needed.
 make android-sdk           # once per machine: SDK packages and license
 make android               # lint, tests, debug APK
 make android-install       # install on a phone over adb (USB debugging on)
-make android-device-test   # the screen tests, on that phone
+make android-device-test   # the screen and notification tests, on that phone
 make android-dev-hub       # point the phone's app at this Mac's hub over USB
 ```
 

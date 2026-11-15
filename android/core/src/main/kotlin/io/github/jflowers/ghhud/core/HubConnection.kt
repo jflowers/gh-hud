@@ -7,6 +7,8 @@ import com.connectrpc.extensions.GoogleJavaLiteProtobufStrategy
 import com.connectrpc.impl.ProtocolClient
 import com.connectrpc.okhttp.ConnectOkHttpClient
 import com.connectrpc.protocols.NetworkProtocol
+import io.github.jflowers.ghhud.api.v1.Alert
+import io.github.jflowers.ghhud.api.v1.EventKind
 import io.github.jflowers.ghhud.api.v1.HubServiceClient
 import io.github.jflowers.ghhud.api.v1.Snapshot
 import io.github.jflowers.ghhud.api.v1.SubscribeResponse
@@ -21,8 +23,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -72,6 +77,14 @@ public class HubConnection(
     private val _state = MutableStateFlow(HubState(if (address.isSet) HubStatus.Connecting else HubStatus.NotSet))
     public val state: StateFlow<HubState> = _state.asStateFlow()
 
+    private val _alerts = MutableSharedFlow<Alert>(extraBufferCapacity = 64)
+
+    /**
+     * The hub's alerts as they happen, for notifications. Alerts sent while
+     * the connection is down are missed: the hub doesn't keep them.
+     */
+    public val alerts: SharedFlow<Alert> = _alerts.asSharedFlow()
+
     private val hub: HubServiceClient
     private val headers: Map<String, List<String>> =
         if (address.token.isEmpty()) emptyMap() else mapOf("Authorization" to listOf("Bearer ${address.token}"))
@@ -79,9 +92,10 @@ public class HubConnection(
 
     init {
         // Commands get a deadline; the subscription none, since an idle hub
-        // sends nothing for minutes.
+        // sends nothing for minutes. Over HTTP/2 (the tailnet's HTTPS) pings
+        // find a connection that died quietly, so it reconnects.
         val unary = base.newBuilder().callTimeout(30, TimeUnit.SECONDS).build()
-        val stream = base.newBuilder().readTimeout(0, TimeUnit.SECONDS).build()
+        val stream = base.newBuilder().readTimeout(0, TimeUnit.SECONDS).pingInterval(60, TimeUnit.SECONDS).build()
         hub = HubServiceClient(
             ProtocolClient(
                 httpClient = ConnectOkHttpClient(unary, stream),
@@ -127,12 +141,19 @@ public class HubConnection(
     /** Subscribes and applies snapshots until the stream ends. */
     private suspend fun subscribe(onSnapshot: () -> Unit) {
         val stream = hub.subscribe(headers)
+        // Not native_notifications: the phone notifies as well as the Mac,
+        // not instead of it, so the hub keeps posting its own there.
         stream.sendAndClose(subscribeRequest {}).getOrThrow()
         for (msg in stream.responseChannel()) {
-            if (msg.msgCase == SubscribeResponse.MsgCase.SNAPSHOT) {
-                val s = msg.snapshot
-                _state.value = HubState(HubStatus.Connected, s, Attention.of(s))
-                onSnapshot()
+            when (msg.msgCase) {
+                SubscribeResponse.MsgCase.SNAPSHOT -> {
+                    val s = msg.snapshot
+                    _state.value = HubState(HubStatus.Connected, s, Attention.of(s))
+                    onSnapshot()
+                }
+                SubscribeResponse.MsgCase.EVENT ->
+                    if (msg.event.kind == EventKind.EVENT_KIND_ALERT) _alerts.tryEmit(msg.event.alert)
+                else -> {}
             }
         }
     }

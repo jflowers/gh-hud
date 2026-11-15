@@ -17,9 +17,8 @@ Decided: a native app (Kotlin and Jetpack Compose), not a web app.
   checkout, so the pins cost about 900 MB once on each machine with a
   gh-hud checkout, plus about 1 GB of Gradle cache.
 - **Android stops background network.** A subscription lives only while
-  the app is open. Notifications when it's closed need a push channel
-  (4d); a foreground service can't hold the stream all day (Android 15
-  caps `dataSync` services at 6 hours a day).
+  the app is open, unless a foreground service holds it (4d). Android 15
+  caps `dataSync` services at 6 hours a day, but not `specialUse` ones.
 - **Device tests need a phone.** CI (Ubuntu) runs lint, the JVM tests
   and the build. Instrumented tests run locally on a phone over adb
   (USB, or `adb connect` over Wi-Fi or the tailnet): `make
@@ -88,16 +87,29 @@ Decided: a native app (Kotlin and Jetpack Compose), not a web app.
    connect-kotlin can't read on a stream ("unexpected content-type").
    The token and tailnet checks are now a Connect interceptor, so a
    refusal is a Connect error on every kind of call.
-4. **4d, notifications.** Alerts as Android notifications while the app
-   is closed. To decide then:
-   - *FCM*: reliable and battery-friendly; needs a Firebase project and
-     a service-account key on the hub. The push carries only "something
-     changed", and the app reads the details over the tailnet, so no
-     PR content goes through Google.
-   - *UnifiedPush* (ntfy): no Google account, but another app on the
-     phone, and ntfy.sh relays through FCM anyway unless self-hosted.
+4. **4d, notifications.** Done: alerts as Android notifications while the
+   app is closed. Weighed against FCM (a Firebase project and a
+   service-account key on the hub), UnifiedPush/ntfy (another app on the
+   phone) and a WorkManager poll (15 minutes or more late), we chose to
+   keep the subscription open ourselves: no third party, notifications
+   within seconds.
 
-   Either way the hub keeps the mute it gives native notifications (3a)
-   so the laptop and the phone don't both buzz for the same thing.
+   As built: "Notify me" (under **Hub**) starts `HubService`, a
+   `specialUse` foreground service, again at boot. The screen and the
+   service share one connection (`Hub`), up while either holds it.
+   Android shows the service as a silent, minimum-importance
+   notification that says whether the hub is there ("3 need you", "Lost
+   the hub: …"). It posts the hub's alerts as the Mac app does (tap to
+   open the PR), and approvals that start waiting on you (`ApprovalWatch`
+   in `:core`: proposals, epic plans, gates; tap to open the app); an
+   approval's notification goes when it stops waiting. Over HTTPS, HTTP/2
+   pings every minute find a connection that died quietly. Alerts sent
+   while the phone was off the tailnet are missed; the screen still
+   shows what waits.
+
+   The phone doesn't ask the hub to mute its own (osascript)
+   notifications: it's always subscribed, so that would silence the Mac
+   whenever its app isn't running. You get alerts on both, as with a chat
+   app.
 5. **4e, later.** The agents list and Watch, and the queue, if the phone
    turns out to need them. The full dashboard stays on the Mac.

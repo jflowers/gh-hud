@@ -22,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -52,6 +53,7 @@ interface AttentionActions {
     fun reject(row: AttentionRow)
     fun refresh()
     fun setAddress(a: HubAddress)
+    fun setNotify(on: Boolean)
 }
 
 /** The hub's state in a line: its summary when connected, why not otherwise. */
@@ -102,9 +104,10 @@ fun AttentionScreen(ui: Ui, act: AttentionActions) {
         }
     }
     if (editing) {
-        AddressDialog(ui.address, onDismiss = { editing = false }, onSave = {
+        AddressDialog(ui.address, ui.notify, onDismiss = { editing = false }, onSave = { a, notify ->
             editing = false
-            act.setAddress(it)
+            act.setAddress(a)
+            if (notify != ui.notify) act.setNotify(notify)
         })
     }
 }
@@ -211,9 +214,15 @@ private fun Decision(row: AttentionRow, a: Approval, pending: Boolean, act: Atte
 }
 
 @Composable
-private fun AddressDialog(current: HubAddress, onDismiss: () -> Unit, onSave: (HubAddress) -> Unit) {
+private fun AddressDialog(
+    current: HubAddress,
+    notifying: Boolean,
+    onDismiss: () -> Unit,
+    onSave: (HubAddress, Boolean) -> Unit,
+) {
     var url by remember { mutableStateOf(current.url) }
     var token by remember { mutableStateOf(current.token) }
+    var notify by remember { mutableStateOf(notifying) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Hub") },
@@ -237,10 +246,21 @@ private fun AddressDialog(current: HubAddress, onDismiss: () -> Unit, onSave: (H
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.padding(top = 8.dp),
                     )
+                    Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Notify me", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                "Stays connected while the app is closed",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(notify, onCheckedChange = { notify = it }, modifier = Modifier.testTag("notify"))
+                    }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(HubAddress(url, token)) }, modifier = Modifier.testTag("save")) { Text("Save") } },
+        confirmButton = { TextButton(onClick = { onSave(HubAddress(url, token), notify) }, modifier = Modifier.testTag("save")) { Text("Save") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
