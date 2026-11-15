@@ -439,7 +439,11 @@ comments on the issue or PR with the decision, pushes its work to a draft
 with the `hold` label, and stops. gh-hud reads the plugin's `autoQuestion`
 result from the transcript, so that run counts as failed with "a person must
 decide": the PR or issue shows under Needs you, and an epic piece goes to
-you without a supervisor review. Older plugin versions ignore both variables.
+you without a supervisor review. A question asked in a subagent lands in
+that subagent's own session, so gh-hud also reads the sessions the run
+started through the `task` tool (and theirs, up to 12): a person needed
+there makes the run need you too, even if the parent carried on. Older
+plugin versions ignore both variables.
 
 Dispatch only targets ghws `@` instance workspaces (never the base
 human-owned clones); set `dispatch_instances_only = false` to also allow

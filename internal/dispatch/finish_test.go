@@ -2,6 +2,7 @@ package dispatch
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -293,6 +294,51 @@ func TestJudgeSessionHumanNeeded(t *testing.T) {
 		}
 		if o.humanNeeded != c.human || *o.code != want || o.reason != c.reason {
 			t.Errorf("%s: human %v code %d reason %q, want %v %d %q", c.name, o.humanNeeded, *o.code, o.reason, c.human, want, c.reason)
+		}
+	}
+}
+
+// A question handed to a person inside a subagent (or a subagent's
+// subagent) lands in that session; the run still needs you. Background
+// tasks, unreadable sessions and cycles are skipped.
+func TestReadOutcomeSubagentHumanNeeded(t *testing.T) {
+	task := func(id string, background bool) string {
+		return fmt.Sprintf(`{"type":"tool","tool":"task","state":{"status":"completed","metadata":{"sessionId":%q,"background":%v}}}`, id, background)
+	}
+	session := func(parts ...string) string {
+		parts = append(parts, `{"type":"text","text":"Done."}`)
+		return `{"messages":[{"info":{"role":"assistant","error":null,"finish":"stop"},"parts":[` + strings.Join(parts, ",") + `]}]}`
+	}
+	gated := `{"type":"tool","tool":"question","state":{"status":"completed","metadata":{"autoQuestion":{"v":1,"outcome":"gated","answered":0,"total":1,"humanGate":true,"humanNeeded":true}}}}`
+	for _, c := range []struct {
+		name     string
+		sessions map[string]string
+		human    bool
+	}{
+		{"child", map[string]string{"p": session(task("a", false), task("b", false)), "a": session(), "b": session(gated)}, true},
+		{"grandchild", map[string]string{"p": session(task("a", false)), "a": session(task("g", false)), "g": session(gated)}, true},
+		{"background", map[string]string{"p": session(task("b", true)), "b": session(gated)}, false},
+		{"unreadable and cycle", map[string]string{"p": session(task("x", false), task("a", false)), "a": session(task("p", false))}, false},
+	} {
+		d := newTestDispatcher(t, "refuse")
+		var asked []string
+		d.export = func(_ context.Context, _ Machine, _, id string) (string, error) {
+			asked = append(asked, id)
+			if s, ok := c.sessions[id]; ok {
+				return s, nil
+			}
+			return "", fmt.Errorf("no session %s", id)
+		}
+		o := d.readOutcome(context.Background(), Machine{Local: true, Enabled: true}, "/w", "p")
+		want := 0
+		if c.human {
+			want = 1
+		}
+		if o.humanNeeded != c.human || o.code == nil || *o.code != want {
+			t.Errorf("%s: human %v code %v reason %q (asked %v)", c.name, o.humanNeeded, o.code, o.reason, asked)
+		}
+		if c.human && o.reason != "a person must decide (in a subagent): a human gate (see the agent's comment)" {
+			t.Errorf("%s: reason %q", c.name, o.reason)
 		}
 	}
 }
