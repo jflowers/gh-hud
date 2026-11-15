@@ -42,8 +42,10 @@ Decided: a native app (Kotlin and Jetpack Compose), not a web app.
   proto-check`.
 - Versions in `android/gradle/libs.versions.toml`; Gradle 9.9.1 pinned
   by the wrapper with its SHA-256. minSdk 29, target and compile 37.
-- Signing: debug builds only until the app is shared. A release key and
-  Play distribution are out of scope.
+- Signing: development builds use the Mac's debug key. Each release (a
+  `v*` tag) also carries an APK signed with the one release key, so a
+  phone installs and updates it from the release page (README, "Android
+  app"). Play distribution is out of scope.
 
 ## Sequence
 
@@ -307,9 +309,14 @@ separate step (4e7), only if you want it.
    Mac; one without a pane says so in its status line. Watch's pane
    doesn't wrap (a TUI's boxes would break), so wide lines scroll
    sideways.
-7. **4e7, answering an agent** (only if wanted): `SendToPane` (session,
-   text) and a reply box under Watch, with what you send shown in the
-   pane before it goes.
+7. **4e7, answering an agent**: `SendToPane` (session, text) and a reply
+   box under Watch, with what you send shown in the pane before it goes.
+   *Deferred (2026-11-15): not for now; the phone stays a viewer.*
+
+With 4e6, the phone shows about everything the Mac app does, as 4e set
+out to. Two things done along the way that weren't steps: the service
+starts again after an update as well as at boot, and the app has the Mac
+icon's bell (adaptive, with a monochrome layer).
 
 Each step is a PR with its JVM tests and device tests, tried on the
 phone (wireless debugging) before review.
