@@ -17,6 +17,7 @@ import (
 	"github.com/jflowers/gh-hud/internal/fleet"
 	"github.com/jflowers/gh-hud/internal/hub"
 	"github.com/jflowers/gh-hud/internal/model"
+	"github.com/jflowers/gh-hud/internal/toolkit"
 )
 
 // Conversions between the hub's Go types and the wire types, both ways.
@@ -124,6 +125,9 @@ func SnapshotToPB(s hub.Snapshot) *pb.Snapshot {
 			out.Stages[url] = stageToPB(st)
 		}
 	}
+	if s.Toolkit != nil {
+		out.Toolkit = toolkitToPB(*s.Toolkit)
+	}
 	if s.Fleet != nil {
 		out.Fleet = fleetToPB(*s.Fleet)
 	}
@@ -160,6 +164,10 @@ func SnapshotFromPB(p *pb.Snapshot) hub.Snapshot {
 		for url, st := range p.GetStages() {
 			s.Stages[url] = stageFromPB(st)
 		}
+	}
+	if p.GetToolkit() != nil {
+		t := toolkitFromPB(p.GetToolkit())
+		s.Toolkit = &t
 	}
 	if p.GetFleet() != nil {
 		f := fleetFromPB(p.GetFleet())
@@ -659,6 +667,71 @@ func fleetFromPB(p *pb.FleetSnapshot) fleet.Snapshot {
 				Name: m.GetName(), State: fleet.State(m.GetState()), Reachable: m.GetReachable(),
 				Applied: m.GetApplied(), AppliedShort: m.GetAppliedShort(),
 				Waited: fromDur(m.GetWaited()), LastErr: m.GetLastError(),
+			}
+		}),
+	}
+}
+
+// ---------------------------------------------------------------------------
+// toolkit
+
+func toolkitToPB(t toolkit.Snapshot) *pb.ToolkitSnapshot {
+	return &pb.ToolkitSnapshot{
+		CheckedAt: ts(t.CheckedAt),
+		Checking:  t.Checking,
+		Error:     t.Err,
+		Tools: mapSlice(t.Tools, func(x toolkit.ToolStatus) *pb.ToolkitTool {
+			return &pb.ToolkitTool{
+				Name: x.Name, Release: x.Release, Pin: x.Pin, Applied: x.Applied, Latest: x.Latest,
+				Scaffolds: x.Scaffolds, Error: x.Err,
+				Repos: mapSlice(x.Repos, func(r toolkit.RepoVersion) *pb.ToolkitRepo {
+					return &pb.ToolkitRepo{Target: r.Target, Version: r.Version, Error: r.Err}
+				}),
+			}
+		}),
+		Rollouts: mapSlice(t.Rollouts, func(r toolkit.Rollout) *pb.ToolkitRolloutState {
+			return &pb.ToolkitRolloutState{
+				Id: r.ID, Tool: r.Tool, Version: r.Version, From: r.From, Stage: string(r.Stage),
+				Started: ts(r.Started), Updated: ts(r.Updated), PinPr: r.PinPR, PinState: r.PinState,
+				Applied: r.Applied, Error: r.Error, Summary: r.Summary(),
+				Targets: mapSlice(r.Targets, func(x toolkit.TargetRun) *pb.ToolkitTarget {
+					return &pb.ToolkitTarget{
+						Target: x.Target, Status: string(x.Status), Detail: x.Detail, Url: x.URL,
+						Branch: x.Branch, Base: x.Base, Held: x.Held, PrState: x.PRState, Ci: x.CI,
+						Files: int32(min(x.Files, 1<<30)), NeedsYou: x.NeedsYou(), //nolint:gosec // clamped
+					}
+				}),
+			}
+		}),
+	}
+}
+
+func toolkitFromPB(p *pb.ToolkitSnapshot) toolkit.Snapshot {
+	return toolkit.Snapshot{
+		CheckedAt: fromTS(p.GetCheckedAt()),
+		Checking:  p.GetChecking(),
+		Err:       p.GetError(),
+		Tools: mapSlice(p.GetTools(), func(x *pb.ToolkitTool) toolkit.ToolStatus {
+			return toolkit.ToolStatus{
+				Name: x.GetName(), Release: x.GetRelease(), Pin: x.GetPin(), Applied: x.GetApplied(),
+				Latest: x.GetLatest(), Scaffolds: x.GetScaffolds(), Err: x.GetError(),
+				Repos: mapSlice(x.GetRepos(), func(r *pb.ToolkitRepo) toolkit.RepoVersion {
+					return toolkit.RepoVersion{Target: r.GetTarget(), Version: r.GetVersion(), Err: r.GetError()}
+				}),
+			}
+		}),
+		Rollouts: mapSlice(p.GetRollouts(), func(r *pb.ToolkitRolloutState) toolkit.Rollout {
+			return toolkit.Rollout{
+				ID: r.GetId(), Tool: r.GetTool(), Version: r.GetVersion(), From: r.GetFrom(),
+				Stage: toolkit.Stage(r.GetStage()), Started: fromTS(r.GetStarted()), Updated: fromTS(r.GetUpdated()),
+				PinPR: r.GetPinPr(), PinState: r.GetPinState(), Applied: r.GetApplied(), Error: r.GetError(),
+				Targets: mapSlice(r.GetTargets(), func(x *pb.ToolkitTarget) toolkit.TargetRun {
+					return toolkit.TargetRun{
+						Target: x.GetTarget(), Status: toolkit.Status(x.GetStatus()), Detail: x.GetDetail(),
+						URL: x.GetUrl(), Branch: x.GetBranch(), Base: x.GetBase(), Held: x.GetHeld(),
+						PRState: x.GetPrState(), CI: x.GetCi(), Files: int(x.GetFiles()),
+					}
+				}),
 			}
 		}),
 	}

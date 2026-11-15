@@ -135,6 +135,12 @@ func TestCommandsOverSocket(t *testing.T) {
 	must(c.FleetApplyNow(ctx))
 	must(c.FleetSkipWait(ctx))
 	must(c.FleetRetry(ctx))
+	if id, err := c.ToolkitRollout(ctx, "uf", "0.22.0"); err != nil || id != "uf@0.22.0" {
+		t.Errorf("ToolkitRollout = %q, %v", id, err)
+	}
+	for _, a := range []hub.ToolkitAction{hub.ToolkitCancel, hub.ToolkitRetry, hub.ToolkitDismiss, hub.ToolkitCheck} {
+		must(c.ToolkitControl(ctx, a, "uf@0.22.0"))
+	}
 
 	want := []string{
 		"Refresh", "RefreshAgents", "RefreshWorkspaces",
@@ -142,6 +148,8 @@ func TestCommandsOverSocket(t *testing.T) {
 		"Enqueue review u1", "Unqueue review a/r#1", "MoveQueued review a/r#1 -1",
 		"Watch lap1/s1", "WatchRun run1", "OpenTranscript run1",
 		"FleetPause true", "FleetPause false", "FleetApplyNow", "FleetSkipWait", "FleetRetry",
+		"ToolkitRollout uf 0.22.0", "ToolkitControl cancel uf@0.22.0", "ToolkitControl retry uf@0.22.0",
+		"ToolkitControl dismiss uf@0.22.0", "ToolkitControl check uf@0.22.0",
 	}
 	if !slices.Equal(fake.Calls, want) {
 		t.Errorf("calls =\n%q\nwant\n%q", fake.Calls, want)
@@ -160,6 +168,10 @@ func TestErrorsKeepTheirMeaning(t *testing.T) {
 	fake.Err = hub.ErrNoFleet
 	if err := c.FleetRetry(ctx); !errors.Is(err, hub.ErrNoFleet) {
 		t.Errorf("FleetRetry err = %v, want ErrNoFleet", err)
+	}
+	fake.Err = hub.ErrNoToolkit
+	if _, err := c.ToolkitRollout(ctx, "uf", ""); !errors.Is(err, hub.ErrNoToolkit) {
+		t.Errorf("ToolkitRollout err = %v, want ErrNoToolkit", err)
 	}
 	// Other errors arrive as the hub's own message, ready to show.
 	fake.Err = errors.New("gh-hud pid 42 owns dispatch (read-only here)")

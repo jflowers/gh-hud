@@ -182,3 +182,14 @@ func (f *Fake) FleetPause(_ context.Context, paused bool) error {
 func (f *Fake) FleetApplyNow(context.Context) error { return f.call("FleetApplyNow") }
 func (f *Fake) FleetSkipWait(context.Context) error { return f.call("FleetSkipWait") }
 func (f *Fake) FleetRetry(context.Context) error    { return f.call("FleetRetry") }
+
+func (f *Fake) ToolkitRollout(_ context.Context, tool, version string) (string, error) {
+	if err := f.call("ToolkitRollout %s %s", tool, version); err != nil {
+		return "", err
+	}
+	return tool + "@" + version, nil
+}
+
+func (f *Fake) ToolkitControl(_ context.Context, action hub.ToolkitAction, id string) error {
+	return f.call("ToolkitControl %s %s", action, id)
+}

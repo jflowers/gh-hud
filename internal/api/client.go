@@ -73,7 +73,7 @@ func fromConnect(err error) error {
 	msg := ce.Message()
 	switch ce.Code() {
 	case connect.CodeFailedPrecondition:
-		for _, sentinel := range []error{hub.ErrNoDispatch, hub.ErrNoFleet} {
+		for _, sentinel := range []error{hub.ErrNoDispatch, hub.ErrNoFleet, hub.ErrNoToolkit} {
 			if msg == sentinel.Error() {
 				return sentinel
 			}
@@ -397,4 +397,37 @@ func (c *Client) FleetSkipWait(ctx context.Context) error {
 
 func (c *Client) FleetRetry(ctx context.Context) error {
 	return c.fleet(ctx, pb.FleetAction_FLEET_ACTION_RETRY)
+}
+
+// toolkitTimeout covers a rollout start, which looks up the latest release.
+const toolkitTimeout = time.Minute
+
+func (c *Client) ToolkitRollout(ctx context.Context, tool, version string) (string, error) {
+	ctx, cancel := withDeadline(ctx, toolkitTimeout)
+	defer cancel()
+	resp, err := c.rpc.ToolkitRollout(ctx, connect.NewRequest(&pb.ToolkitRolloutRequest{Tool: tool, Version: version}))
+	if err != nil {
+		return "", fromConnect(err)
+	}
+	return resp.Msg.GetId(), nil
+}
+
+func (c *Client) ToolkitControl(ctx context.Context, action hub.ToolkitAction, id string) error {
+	var a pb.ToolkitAction
+	switch action {
+	case hub.ToolkitCancel:
+		a = pb.ToolkitAction_TOOLKIT_ACTION_CANCEL
+	case hub.ToolkitRetry:
+		a = pb.ToolkitAction_TOOLKIT_ACTION_RETRY
+	case hub.ToolkitDismiss:
+		a = pb.ToolkitAction_TOOLKIT_ACTION_DISMISS
+	case hub.ToolkitCheck:
+		a = pb.ToolkitAction_TOOLKIT_ACTION_CHECK
+	default:
+		return fmt.Errorf("unknown toolkit action %q", action)
+	}
+	ctx, cancel := withDeadline(ctx, callTimeout)
+	defer cancel()
+	_, err := c.rpc.ToolkitControl(ctx, connect.NewRequest(&pb.ToolkitControlRequest{Action: a, Id: id}))
+	return fromConnect(err)
 }

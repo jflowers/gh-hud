@@ -40,7 +40,7 @@ func toConnect(err error) error {
 		return nil
 	}
 	switch {
-	case errors.Is(err, hub.ErrNoDispatch), errors.Is(err, hub.ErrNoFleet):
+	case errors.Is(err, hub.ErrNoDispatch), errors.Is(err, hub.ErrNoFleet), errors.Is(err, hub.ErrNoToolkit):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, context.Canceled):
 		return connect.NewError(connect.CodeCanceled, err)
@@ -251,4 +251,26 @@ func (s *Server) FleetControl(ctx context.Context, req *connect.Request[pb.Fleet
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("fleet action unspecified"))
 	}
 	return reply(&pb.FleetControlResponse{}, err)
+}
+
+func (s *Server) ToolkitRollout(ctx context.Context, req *connect.Request[pb.ToolkitRolloutRequest]) (*connect.Response[pb.ToolkitRolloutResponse], error) {
+	id, err := s.b.ToolkitRollout(ctx, req.Msg.GetTool(), req.Msg.GetVersion())
+	return reply(&pb.ToolkitRolloutResponse{Id: id}, err)
+}
+
+func (s *Server) ToolkitControl(ctx context.Context, req *connect.Request[pb.ToolkitControlRequest]) (*connect.Response[pb.ToolkitControlResponse], error) {
+	var action hub.ToolkitAction
+	switch req.Msg.GetAction() {
+	case pb.ToolkitAction_TOOLKIT_ACTION_CANCEL:
+		action = hub.ToolkitCancel
+	case pb.ToolkitAction_TOOLKIT_ACTION_RETRY:
+		action = hub.ToolkitRetry
+	case pb.ToolkitAction_TOOLKIT_ACTION_DISMISS:
+		action = hub.ToolkitDismiss
+	case pb.ToolkitAction_TOOLKIT_ACTION_CHECK:
+		action = hub.ToolkitCheck
+	default:
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("unknown toolkit action"))
+	}
+	return reply(&pb.ToolkitControlResponse{}, s.b.ToolkitControl(ctx, action, req.Msg.GetId()))
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/jflowers/gh-hud/internal/fleet"
 	"github.com/jflowers/gh-hud/internal/hub"
 	"github.com/jflowers/gh-hud/internal/model"
+	"github.com/jflowers/gh-hud/internal/toolkit"
 )
 
 type tickMsg time.Time
@@ -114,10 +115,16 @@ type Model struct {
 	wsLoading bool
 
 	// fleetMode is the GitOps rollout view (F), shown when fleetOn.
-	fleetMode     bool
-	fleetSnap     fleet.Snapshot
-	skipWaitArmed bool
-	skipWaitAt    time.Time
+	fleetMode bool
+	fleetSnap fleet.Snapshot
+	// toolkitMode is the toolkit view (T), shown when toolkitOn.
+	toolkitOn, toolkitMode bool
+	toolkitSnap            toolkit.Snapshot
+	toolkitSel             int
+	rolloutArmed           string // the tool a first u armed
+	rolloutAt              time.Time
+	skipWaitArmed          bool
+	skipWaitAt             time.Time
 
 	// machineUsage is the per-machine slot line for the status area.
 	machineUsage []dispatch.MachineUsage
@@ -210,6 +217,11 @@ func (m *Model) applySnapshot(s hub.Snapshot) {
 	m.dispatchOn, m.fleetOn = s.Dispatch, s.Fleet != nil
 	if s.Fleet != nil {
 		m.fleetSnap = *s.Fleet
+	}
+	m.toolkitOn = s.Toolkit != nil
+	if s.Toolkit != nil {
+		m.toolkitSnap = *s.Toolkit
+		m.toolkitSel = clampSel(m.toolkitSel, m.toolkitRows())
 	}
 	if newRes && m.res != nil && m.fetchErr == "" {
 		m.restoreCursor(keep)
@@ -342,6 +354,9 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.fleetMode {
 		return m.handleFleetKey(msg)
 	}
+	if m.toolkitMode {
+		return m.handleToolkitKey(msg)
+	}
 	if m.searchMode {
 		switch msg.String() {
 		case "esc":
@@ -416,6 +431,8 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "F":
 		m.openFleet()
+	case "T":
+		m.openToolkit()
 	case "6", "9":
 		return m, m.switchTab(msg.String())
 	case "1":
@@ -446,7 +463,7 @@ func (m *Model) handleMouse(e tea.MouseEvent) (tea.Model, tea.Cmd) {
 	if logMouse(e) {
 		return m, nil
 	}
-	if m.help || m.actionMode || m.planMode || m.agentsMode || m.wsMode || m.fleetMode || m.fetchErr != "" {
+	if m.help || m.actionMode || m.planMode || m.agentsMode || m.wsMode || m.fleetMode || m.toolkitMode || m.fetchErr != "" {
 		return m, nil
 	}
 	if e.IsWheel() {

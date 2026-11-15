@@ -20,7 +20,7 @@ import (
 // instead of calling it here.
 func TestUIStaysAClient(t *testing.T) {
 	const mod = "github.com/jflowers/gh-hud/internal/"
-	// Internal packages the UI may import. dispatch, epic, fleet and model
+	// Internal packages the UI may import. dispatch, epic, fleet, toolkit and model
 	// are here for their data types and pure helpers only (epic does no
 	// I/O at all); forbidden below is everything that does work.
 	allowed := map[string]bool{
@@ -31,12 +31,17 @@ func TestUIStaysAClient(t *testing.T) {
 		mod + "fleet":     true,
 		mod + "hub":       true,
 		mod + "model":     true,
+		mod + "toolkit":   true,
 	}
 	forbidden := map[string]map[string]string{
 		"dispatch": {"Dispatcher": "use hub.Backend", "New": "the hub owns the dispatcher"},
 		"fleet":    {"Coordinator": "use hub.Backend", "New": "the hub owns the fleet"},
-		"model":    {"FetchAll": "the hub fetches; read Snapshot.Res"},
-		"hub":      {"Hub": "depend on hub.Backend", "New": "main builds the hub"},
+		"toolkit": {
+			"Coordinator": "use hub.Backend", "NewCoordinator": "the hub owns rollouts",
+			"Scaffolder": "the hub scaffolds", "ExecRunner": "the hub runs commands", "Load": "the hub reads the manifest",
+		},
+		"model": {"FetchAll": "the hub fetches; read Snapshot.Res"},
+		"hub":   {"Hub": "depend on hub.Backend", "New": "main builds the hub"},
 	}
 	stdForbidden := map[string]string{
 		"os/exec": "run commands in the hub (or clipboard, for viewer-local actions)",

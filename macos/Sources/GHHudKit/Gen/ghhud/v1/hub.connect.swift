@@ -93,6 +93,15 @@ public protocol Ghhud_V1_HubServiceClientInterface: Sendable {
     /// fleet is off.
     @available(iOS 13, *)
     func `fleetControl`(request: Ghhud_V1_FleetControlRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_FleetControlResponse>
+
+    /// ToolkitRollout starts rolling a tool release out (issue #75);
+    /// ToolkitControl drives rollouts. FAILED_PRECONDITION when the toolkit
+    /// is off.
+    @available(iOS 13, *)
+    func `toolkitRollout`(request: Ghhud_V1_ToolkitRolloutRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_ToolkitRolloutResponse>
+
+    @available(iOS 13, *)
+    func `toolkitControl`(request: Ghhud_V1_ToolkitControlRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_ToolkitControlResponse>
 }
 
 /// Concrete implementation of `Ghhud_V1_HubServiceClientInterface`.
@@ -213,6 +222,16 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
         return await self.client.unary(path: "/ghhud.v1.HubService/FleetControl", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
+    @available(iOS 13, *)
+    public func `toolkitRollout`(request: Ghhud_V1_ToolkitRolloutRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_ToolkitRolloutResponse> {
+        return await self.client.unary(path: "/ghhud.v1.HubService/ToolkitRollout", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `toolkitControl`(request: Ghhud_V1_ToolkitControlRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_ToolkitControlResponse> {
+        return await self.client.unary(path: "/ghhud.v1.HubService/ToolkitControl", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
     public enum Metadata {
         public enum Methods {
             public static let getSnapshot = Connect.MethodSpec(name: "GetSnapshot", service: "ghhud.v1.HubService", type: .unary)
@@ -237,6 +256,8 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
             public static let watchRun = Connect.MethodSpec(name: "WatchRun", service: "ghhud.v1.HubService", type: .unary)
             public static let openTranscript = Connect.MethodSpec(name: "OpenTranscript", service: "ghhud.v1.HubService", type: .unary)
             public static let fleetControl = Connect.MethodSpec(name: "FleetControl", service: "ghhud.v1.HubService", type: .unary)
+            public static let toolkitRollout = Connect.MethodSpec(name: "ToolkitRollout", service: "ghhud.v1.HubService", type: .unary)
+            public static let toolkitControl = Connect.MethodSpec(name: "ToolkitControl", service: "ghhud.v1.HubService", type: .unary)
         }
     }
 }

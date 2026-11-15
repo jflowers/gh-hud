@@ -18,7 +18,10 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-// Tool is one [[tool]] entry: a binary with an init command.
+// Tool is one [[tool]] entry: something the fleet pins in dotfiles. A
+// binary installed by mise (Mise and Bin set) can also scaffold repos with
+// its init command; a tool without them (an opencode plugin) only rolls
+// out through its pin.
 type Tool struct {
 	Name      string   `toml:"name"`       // short name used on the command line ("uf")
 	Release   string   `toml:"release"`    // GitHub repo that publishes releases ("unbound-force/unbound-force")
@@ -26,7 +29,24 @@ type Tool struct {
 	Bin       string   `toml:"bin"`        // executable name inside the mise install
 	Init      []string `toml:"init"`       // arguments for the init run (default ["init"])
 	TagPrefix *string  `toml:"tag_prefix"` // release tag prefix (default "v")
+	// Npm names the npm package whose "latest" version is the newest
+	// release, for tools that publish there rather than as GitHub
+	// releases (opencode plugins).
+	Npm string `toml:"npm"`
+
+	// PinFile is the file in the dotfiles repo that pins the tool
+	// (default for mise tools: dot_config/mise/config.toml), and Pin the
+	// text that pins it, with {version} for the version (and {mise} for
+	// the mise key; default for mise tools: "{mise}" = "{version}").
+	PinFile string `toml:"pin_file"`
+	Pin     string `toml:"pin"`
+	// AppliedFile is where PinFile lands on this machine once the fleet
+	// applies it (default for mise tools: ~/.config/mise/config.toml).
+	AppliedFile string `toml:"applied_file"`
 }
+
+// Scaffolds reports whether the tool has an init to run in repos.
+func (t Tool) Scaffolds() bool { return t.Mise != "" && t.Bin != "" }
 
 // Tag is the release tag for version v.
 func (t Tool) Tag(v string) string {
@@ -39,6 +59,9 @@ func (t Tool) Tag(v string) string {
 
 // ReleaseURL links to the release notes for version v ("" without a release repo).
 func (t Tool) ReleaseURL(v string) string {
+	if t.Npm != "" {
+		return "https://www.npmjs.com/package/" + t.Npm + "/v/" + v
+	}
 	if t.Release == "" {
 		return ""
 	}
@@ -137,8 +160,20 @@ func Parse(data []byte) (*Manifest, error) {
 		}
 	}
 	for i := range m.Tools {
-		if len(m.Tools[i].Init) == 0 {
-			m.Tools[i].Init = []string{"init"}
+		t := &m.Tools[i]
+		if len(t.Init) == 0 {
+			t.Init = []string{"init"}
+		}
+		if t.Mise != "" {
+			if t.PinFile == "" {
+				t.PinFile = "dot_config/mise/config.toml"
+			}
+			if t.Pin == "" {
+				t.Pin = `"{mise}" = "{version}"`
+			}
+			if t.AppliedFile == "" {
+				t.AppliedFile = "~/.config/mise/config.toml"
+			}
 		}
 	}
 	return &m, m.check()
@@ -153,8 +188,12 @@ func (m *Manifest) check() error {
 			errs = append(errs, fmt.Errorf("tool %d: no name", i+1))
 		case seen[t.Name]:
 			errs = append(errs, fmt.Errorf("tool %q: listed twice", t.Name))
-		case t.Mise == "" || t.Bin == "":
-			errs = append(errs, fmt.Errorf("tool %q: needs mise and bin", t.Name))
+		case (t.Mise == "") != (t.Bin == ""):
+			errs = append(errs, fmt.Errorf("tool %q: set both mise and bin, or neither", t.Name))
+		case t.Mise == "" && (t.PinFile == "" || t.Pin == ""):
+			errs = append(errs, fmt.Errorf("tool %q: without mise it needs pin_file and pin", t.Name))
+		case t.Pin != "" && !strings.Contains(t.Pin, "{version}"):
+			errs = append(errs, fmt.Errorf("tool %q: pin has no {version}", t.Name))
 		}
 		seen[t.Name] = true
 	}
@@ -175,8 +214,10 @@ func (m *Manifest) check() error {
 			errs = append(errs, fmt.Errorf("%s: no tools", where))
 		}
 		for _, name := range t.Tools {
-			if !seen[name] {
+			if tool, ok := m.Tool(name); !ok {
 				errs = append(errs, fmt.Errorf("%s: unknown tool %q", where, name))
+			} else if !tool.Scaffolds() {
+				errs = append(errs, fmt.Errorf("%s: tool %q has no init to run", where, name))
 			}
 		}
 		for name := range t.Args {

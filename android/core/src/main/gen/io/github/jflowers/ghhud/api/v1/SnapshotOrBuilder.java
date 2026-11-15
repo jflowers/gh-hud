@@ -421,4 +421,23 @@ io.github.jflowers.ghhud.api.v1.Stage defaultValue);
    */
   com.google.protobuf.ByteString
       getConfigWarningsBytes(int index);
+
+  /**
+   * <pre>
+   * unset when the toolkit is off
+   * </pre>
+   *
+   * <code>.ghhud.v1.ToolkitSnapshot toolkit = 22 [json_name = "toolkit"];</code>
+   * @return Whether the toolkit field is set.
+   */
+  boolean hasToolkit();
+  /**
+   * <pre>
+   * unset when the toolkit is off
+   * </pre>
+   *
+   * <code>.ghhud.v1.ToolkitSnapshot toolkit = 22 [json_name = "toolkit"];</code>
+   * @return The toolkit.
+   */
+  io.github.jflowers.ghhud.api.v1.ToolkitSnapshot getToolkit();
 }

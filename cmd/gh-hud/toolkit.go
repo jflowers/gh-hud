@@ -7,16 +7,25 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
+	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"text/tabwriter"
 
+	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/ghws"
+	"github.com/jflowers/gh-hud/internal/notify"
 	"github.com/jflowers/gh-hud/internal/toolkit"
 )
 
 const toolkitUsage = `usage: gh-hud toolkit list [flags]
        gh-hud toolkit scaffold [flags] [tool[@version] ...]
+       gh-hud toolkit status                  tools, versions and rollouts (from the hub)
+       gh-hud toolkit rollout tool[@version]  roll a release out: pin PR, scaffold PRs, fleet
+       gh-hud toolkit cancel|retry|dismiss <tool@version>
+       gh-hud toolkit check                   look for releases and versions now
 
 scaffold runs each tool's init at an exact version (default: the fleet's mise
 pin) in a scratch worktree of every target repo at its default branch, then
@@ -34,6 +43,9 @@ func (r *repoFlags) String() string     { return strings.Join(*r, ",") }
 func (r *repoFlags) Set(v string) error { *r = append(*r, v); return nil }
 
 func runToolkit(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && slices.Contains([]string{"status", "rollout", "cancel", "retry", "dismiss", "check"}, args[0]) {
+		return runToolkitHub(args, stdout, stderr)
+	}
 	if len(args) == 0 || (args[0] != "list" && args[0] != "scaffold") {
 		fmt.Fprint(stderr, toolkitUsage)
 		return 2
@@ -60,7 +72,7 @@ func runToolkit(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	if cmd == "list" {
-		return toolkitList(m, stdout, stderr)
+		return toolkitList(m, stdout)
 	}
 
 	want, targets, err := m.Select(fs.Args(), repos)
@@ -121,19 +133,20 @@ func canonicalClone(ix *ghws.Index, repo string) string {
 	return ""
 }
 
-func toolkitList(m *toolkit.Manifest, stdout, stderr io.Writer) int {
-	pins, err := toolkit.Pins(m.MiseConfig)
-	if err != nil {
-		fmt.Fprintf(stderr, "gh-hud toolkit: fleet pins: %v\n", err)
-	}
+func toolkitList(m *toolkit.Manifest, stdout io.Writer) int {
 	tw := tabwriter.NewWriter(stdout, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "TOOL\tPIN\tINIT\tRELEASES")
 	for _, t := range m.Tools {
-		pin := pins[t.Mise]
-		if pin == "" {
-			pin = "-"
+		pin := orDash(t.AppliedPin())
+		init := "- (pin only)"
+		if t.Scaffolds() {
+			init = t.Bin + " " + strings.Join(t.Init, " ")
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s %s\t%s\n", t.Name, pin, t.Bin, strings.Join(t.Init, " "), t.Release)
+		rel := t.Release
+		if t.Npm != "" {
+			rel = "npm " + t.Npm
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", t.Name, pin, init, rel)
 	}
 	fmt.Fprintln(tw, "\nTARGET\tKIND\tTOOLS\t")
 	for _, t := range m.Targets {
@@ -165,4 +178,63 @@ func printResults(results []toolkit.Result, stdout io.Writer) int {
 		return 1
 	}
 	return code
+}
+
+// buildToolkit builds the hub's rollout coordinator, or returns nil when
+// [toolkit] is off or has no manifest.
+func buildToolkit(cfg *config.Config, stateDir string) *toolkit.Coordinator {
+	tc := cfg.Toolkit
+	manifest := expandHome(tc.Manifest)
+	if manifest == "" {
+		manifest = toolkit.DefaultPath()
+	}
+	if tc.Enabled != nil && !*tc.Enabled {
+		return nil
+	}
+	if _, err := os.Stat(manifest); err != nil {
+		if tc.Enabled != nil {
+			log.Printf("toolkit: %v", err)
+		}
+		return nil
+	}
+	dotfiles := expandHome(tc.Dotfiles)
+	if dotfiles == "" {
+		dotfiles = expandHome("~/.local/share/chezmoi")
+	}
+	root := expandHome(cfg.GhwsRoot)
+	if root == "" {
+		root = ghws.DefaultRoot()
+	}
+	c, err := toolkit.NewCoordinator(toolkit.CoordOptions{
+		ManifestPath: manifest,
+		StateDir:     stateDir,
+		Dotfiles:     dotfiles,
+		DotfilesRepo: cfg.Fleet.Repo,
+		Branch:       cfg.Fleet.Branch,
+		GHWSRoot:     root,
+		// Look again each time, so a repo cloned since start is found.
+		Checkout: func(repo string) string {
+			ix, err := ghws.Discover(root)
+			if err != nil {
+				return ""
+			}
+			return canonicalClone(ix, repo)
+		},
+		Notify: notify.OSAScript{}.Notify,
+	})
+	if err != nil {
+		log.Printf("toolkit: %v", err)
+		return nil
+	}
+	return c
+}
+
+// expandHome expands a leading ~/.
+func expandHome(p string) string {
+	if rest, ok := strings.CutPrefix(p, "~/"); ok {
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, rest)
+		}
+	}
+	return p
 }
