@@ -17,6 +17,11 @@ import io.github.jflowers.ghhud.api.v1.MenuChoice
 import io.github.jflowers.ghhud.api.v1.Run
 import io.github.jflowers.ghhud.api.v1.approveEpicRequest
 import io.github.jflowers.ghhud.api.v1.dispatchRequest
+import io.github.jflowers.ghhud.api.v1.dropEpicRequest
+import io.github.jflowers.ghhud.api.v1.enrollEpicRequest
+import io.github.jflowers.ghhud.api.v1.moveQueuedRequest
+import io.github.jflowers.ghhud.api.v1.rereadEpicRequest
+import io.github.jflowers.ghhud.api.v1.unqueueRequest
 import io.github.jflowers.ghhud.api.v1.enqueueRequest
 import io.github.jflowers.ghhud.api.v1.menuChoicesRequest
 import io.github.jflowers.ghhud.api.v1.queueChoicesRequest
@@ -241,6 +246,43 @@ public class HubConnection(
     /** Reads a finished run's outcome again. */
     public suspend fun reinspect(runId: String): Answer<Run> =
         answer(hub.reinspect(reinspectRequest { this.runId = runId }, headers)) { it.run }
+
+    /** Takes a task off your queue. */
+    public suspend fun unqueue(task: String, ref: String): Answer<Unit> =
+        answer(
+            hub.unqueue(
+                unqueueRequest {
+                    this.task = task
+                    this.ref = ref
+                },
+                headers,
+            ),
+        ) { }
+
+    /** Moves a queued task by delta places (negative is earlier); the answer is its new index. */
+    public suspend fun moveQueued(task: String, ref: String, delta: Long): Answer<Long> =
+        answer(
+            hub.moveQueued(
+                moveQueuedRequest {
+                    this.task = task
+                    this.ref = ref
+                    this.delta = delta
+                },
+                headers,
+            ),
+        ) { it.index }
+
+    /** Enrolls an epic (an issue URL or owner/repo#N); the answer is its ref. */
+    public suspend fun enrollEpic(target: String): Answer<String> =
+        answer(hub.enrollEpic(enrollEpicRequest { this.target = target }, headers)) { it.ref }
+
+    /** Stops following an epic. */
+    public suspend fun dropEpic(ref: String): Answer<Unit> =
+        answer(hub.dropEpic(dropEpicRequest { this.ref = ref }, headers)) { }
+
+    /** Reads an epic again. */
+    public suspend fun rereadEpic(ref: String): Answer<Unit> =
+        answer(hub.rereadEpic(rereadEpicRequest { this.ref = ref }, headers)) { }
 
     private companion object {
         fun <T, R> answer(r: ResponseMessage<T>, value: (T) -> R): Answer<R> = when (r) {
