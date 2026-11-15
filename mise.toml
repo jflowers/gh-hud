@@ -1,0 +1,7 @@
+# Toolchains this repo needs beyond the fleet's (~/.config/mise/config.toml
+# from the dotfiles): the Android app's JDK and Google's command-line SDK
+# tools. Gradle, Kotlin and the Android Gradle Plugin are pinned by the
+# build itself (android/gradle/wrapper, android/gradle/libs.versions.toml).
+[tools]
+java = "temurin-21.0.13+9.0.LTS"
+android-sdk = "23.0"

@@ -8,7 +8,7 @@ GOVULNCHECK_VERSION ?= v1.9.0
 BUF_VERSION ?= v1.75.0
 BUF := go run github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
 
-.PHONY: all build test lint fmt tidy vuln proto proto-check proto-breaking ci mac mac-notarize mac-check mac-icon
+.PHONY: all build test lint fmt tidy vuln proto proto-check proto-breaking ci mac mac-notarize mac-check mac-icon android android-install android-device-test
 
 all: build
 
@@ -84,6 +84,17 @@ mac-notarize:
 
 mac-check:
 	cd macos && swift run GHHudChecks
+
+# The Android app (android/). The JDK and SDK tools come from mise.toml;
+# Gradle, Kotlin and the SDK packages from the build. android-device-test
+# needs a phone on adb (USB, or adb connect over the network).
+GRADLE := cd android && mise exec -- ./gradlew --console=plain
+android:
+	$(GRADLE) lint testDebugUnitTest assembleDebug
+android-install:
+	$(GRADLE) installDebug
+android-device-test:
+	$(GRADLE) connectedDebugAndroidTest
 
 # mac-icon redraws macos/Resources/AppIcon.icns from make-icon.swift.
 mac-icon:
