@@ -7,6 +7,7 @@ import io.github.jflowers.ghhud.api.v1.RefreshTarget
 import io.github.jflowers.ghhud.core.Approval
 import io.github.jflowers.ghhud.core.AttentionRow
 import io.github.jflowers.ghhud.core.HubAddress
+import io.github.jflowers.ghhud.core.FleetSort
 import io.github.jflowers.ghhud.core.HubConnection
 import io.github.jflowers.ghhud.core.ItemRow
 import io.github.jflowers.ghhud.core.keepingTerms
@@ -91,6 +92,13 @@ class HubModel(app: Application) : AndroidViewModel(app) {
     val agents: StateFlow<AgentsView> = _agents
 
     fun updateAgents(change: (AgentsView) -> AgentsView) = _agents.update(change)
+
+    private val _fleet = MutableStateFlow(ListState(FleetSort.HUB))
+
+    /** How the fleet's machine list is shown. */
+    val fleet: StateFlow<ListState<FleetSort>> = _fleet
+
+    fun updateFleet(change: (ListState<FleetSort>) -> ListState<FleetSort>) = _fleet.update(change)
 
     /** The connection the commands go to. */
     val connection: HubConnection get() = hub.connection.value
