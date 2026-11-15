@@ -112,41 +112,15 @@ fun ItemsScreen(ui: Ui, view: ItemsView, ctl: ItemsControl, onOpenItem: (ItemRow
                     )
                 }
             }
-            OutlinedTextField(
+            ListSearch(
                 view.query,
-                onValueChange = { q -> ctl.update { it.copy(query = q) } },
-                placeholder = { Text("Search, or repo:acme -author:bot") },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (view.query.isNotEmpty()) {
-                        IconButton(onClick = { ctl.update { it.copy(query = "") } }) {
-                            Icon(Icons.Filled.Close, contentDescription = "Clear the search")
-                        }
-                    }
-                },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { ctl.keepTerms() }),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).testTag("search"),
+                view.kept,
+                "Search, or repo:acme -author:bot",
+                onQuery = { q -> ctl.update { it.copy(query = q) } },
+                onKeep = { ctl.keepTerms() },
+                onRemove = { f -> ctl.update { it.copy(kept = it.kept - f) } },
+                onClear = { ctl.update { it.copy(kept = emptyList()) } },
             )
-            if (view.kept.isNotEmpty()) {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                ) {
-                    items(view.kept, key = { it.term }) { f ->
-                        InputChip(
-                            selected = false,
-                            onClick = { ctl.update { it.copy(kept = it.kept - f) } },
-                            label = { Text(f.term) },
-                            trailingIcon = { Icon(Icons.Filled.Close, contentDescription = "Remove ${f.term}") },
-                            modifier = Modifier.testTag("kept:" + f.term),
-                        )
-                    }
-                    item { TextButton(onClick = { ctl.update { it.copy(kept = emptyList()) } }) { Text("Clear") } }
-                }
-            }
             PullToRefreshBox(isRefreshing = ui.refreshing, onRefresh = ctl::refresh, modifier = Modifier.fillMaxSize()) {
                 LazyColumn(Modifier.fillMaxSize().testTag("items")) {
                     if (rows.isEmpty()) {
@@ -172,36 +146,11 @@ fun ItemsScreen(ui: Ui, view: ItemsView, ctl: ItemsControl, onOpenItem: (ItemRow
 }
 
 @Composable
-private fun SortMenu(view: ItemsView, ctl: ItemsControl) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        TextButton(onClick = { open = true }, modifier = Modifier.testTag("sort")) {
-            Text(if (view.sort == ItemSort.HUB) "Sort" else view.sort.label + if (view.reversed) " ↑" else "")
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            for (s in ItemSort.entries) {
-                DropdownMenuItem(
-                    text = { Text((if (s == view.sort) "✓ " else "") + s.label) },
-                    onClick = {
-                        open = false
-                        ctl.update { it.copy(sort = s, reversed = false) }
-                    },
-                    modifier = Modifier.testTag("sort:" + s.name),
-                )
-            }
-            if (view.sort != ItemSort.HUB) {
-                HorizontalDivider()
-                DropdownMenuItem(
-                    text = { Text("Reverse") },
-                    onClick = {
-                        open = false
-                        ctl.update { it.copy(reversed = !it.reversed) }
-                    },
-                )
-            }
-        }
-    }
-}
+private fun SortMenu(view: ItemsView, ctl: ItemsControl) = SortMenu(
+    ItemSort.entries, { it.label }, view.sort, view.reversed, ItemSort.HUB,
+    onPick = { s -> ctl.update { it.copy(sort = s, reversed = false) } },
+    onReverse = { ctl.update { it.copy(reversed = !it.reversed) } },
+)
 
 /**
  * A row: the title, then the TUI's cluster in small type. Tap opens it;
@@ -237,27 +186,7 @@ fun ItemRowView(row: ItemRow, now: Instant, onOpen: () -> Unit, onFilter: (Colum
             }
             Text(cluster(row, now), style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            for ((column, value) in row.filterChoices) {
-                DropdownMenuItem(
-                    text = { Text("Show only $column: $value", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    onClick = {
-                        menu = false
-                        onFilter(ColumnFilter.of(column, value))
-                    },
-                )
-            }
-            HorizontalDivider()
-            for ((column, value) in row.filterChoices) {
-                DropdownMenuItem(
-                    text = { Text("Hide $column: $value", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    onClick = {
-                        menu = false
-                        onFilter(ColumnFilter.of(column, value, exclude = true))
-                    },
-                )
-            }
-        }
+        FilterMenu(menu, row.filterChoices, onDismiss = { menu = false }, onFilter = onFilter)
     }
 }
 

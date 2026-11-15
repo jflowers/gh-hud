@@ -3,6 +3,7 @@ package io.github.jflowers.ghhud
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.jflowers.ghhud.api.v1.RefreshTarget
 import io.github.jflowers.ghhud.core.Approval
 import io.github.jflowers.ghhud.core.AttentionRow
 import io.github.jflowers.ghhud.core.HubAddress
@@ -84,13 +85,21 @@ class HubModel(app: Application) : AndroidViewModel(app) {
         v.copy(kept = kept, query = text)
     }
 
+    private val _agents = MutableStateFlow(AgentsView())
+
+    /** How the Agents and Workspaces lists are shown. */
+    val agents: StateFlow<AgentsView> = _agents
+
+    fun updateAgents(change: (AgentsView) -> AgentsView) = _agents.update(change)
+
     /** The connection the commands go to. */
     val connection: HubConnection get() = hub.connection.value
 
-    fun refresh() {
+    /** Asks the hub to refresh GitHub, or the agents, or the checkouts, now. */
+    fun refresh(what: RefreshTarget = RefreshTarget.REFRESH_TARGET_GITHUB) {
         local.update { it.copy(refreshing = true, refreshError = null) }
         viewModelScope.launch {
-            val why = hub.connection.value.refresh()
+            val why = hub.connection.value.refresh(what)
             local.update { it.copy(refreshing = false, refreshError = why) }
         }
     }

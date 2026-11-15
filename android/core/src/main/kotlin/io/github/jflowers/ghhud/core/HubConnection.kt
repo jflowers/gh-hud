@@ -178,9 +178,12 @@ public class HubConnection(
         }
     }
 
-    /** Asks the hub to refresh GitHub now. Returns why it failed, if it did. */
-    public suspend fun refresh(): String? =
-        why(hub.refresh(refreshRequest { target = RefreshTarget.REFRESH_TARGET_GITHUB }, headers))
+    /**
+     * Asks the hub to refresh now: GitHub, or the agents, or the checkouts.
+     * Returns why it failed, if it did.
+     */
+    public suspend fun refresh(what: RefreshTarget = RefreshTarget.REFRESH_TARGET_GITHUB): String? =
+        why(hub.refresh(refreshRequest { target = what }, headers))
 
     /** Approves something waiting on you. Returns why it failed, if it did. */
     public suspend fun approve(a: Approval): String? = when (a) {
