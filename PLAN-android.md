@@ -239,8 +239,16 @@ remote control rather than a viewer.
    isn't ready, with its uncommitted files and local-only commits.
    Opening Workspaces reads checkouts older than 30 seconds again, as
    the Mac does.
-5. **4e5, Fleet**, with pause/resume, check now, skip wait (confirmed)
+5. **4e5, Fleet** *(done)*, with pause/resume, check now, skip wait (confirmed)
    and retry.
+
+   As built: the Fleet place shows only while the hub runs a fleet, as
+   the Mac's sidebar does, with "machines on the target / all" as its
+   badge. The header has the rollout's state, the target and its CI,
+   and any banner or error; under it the four controls, Skip wait only
+   while a machine drains (and asking first), Retry only once one failed.
+   A row per machine with the Items list's search, chips, long-press
+   filters and sorts; a tap shows its whole last error.
 6. **4e6, watching from the phone.** The hub calls above, then a
    session screen that follows its output. Planned when 4e5 is done.
 

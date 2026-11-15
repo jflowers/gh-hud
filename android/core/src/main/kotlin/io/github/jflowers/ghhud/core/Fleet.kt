@@ -1,5 +1,6 @@
 package io.github.jflowers.ghhud.core
 
+import io.github.jflowers.ghhud.api.v1.FleetAction
 import io.github.jflowers.ghhud.api.v1.FleetMachine
 import io.github.jflowers.ghhud.api.v1.FleetSnapshot
 import io.github.jflowers.ghhud.api.v1.MachineUsage
@@ -104,5 +105,55 @@ public object FleetList {
         f.blocked -> "blocked" to Tone.WARN
         f.active -> "rolling out" to Tone.PENDING
         else -> "up to date" to Tone.GOOD
+    }
+}
+
+/** The fleet list's orders: the Mac's column sorts. */
+public enum class FleetSort(public val label: String, private val key: ((FleetRow) -> Comparable<*>)?) {
+    HUB("Hub's order", null),
+    STATE("State", { it.stateRank }),
+    WAITED("Waited", { it.waitedKey }),
+    SLOTS("Slots in use", { it.slotsUsed }),
+    ;
+
+    @Suppress("UNCHECKED_CAST")
+    public fun sort(rows: List<FleetRow>, reversed: Boolean = false): List<FleetRow> {
+        val k = key ?: return rows
+        val c = compareBy<FleetRow> { k(it) as Comparable<Any> }
+        return rows.sortedWith(if (reversed) c.reversed() else c)
+    }
+}
+
+/**
+ * The rollout's controls, the TUI's p, a, s and r, and how each went in
+ * the Mac's words (macos/Sources/GHHud/FleetPane.swift).
+ */
+public object FleetCommands {
+    /** Why the controls are off: no hub, or no fleet. */
+    public fun off(state: HubState): String? = when {
+        state.status != HubStatus.Connected -> "Not connected to the hub"
+        !state.snapshot.hasFleet() -> "The fleet is off on the hub"
+        else -> null
+    }
+
+    /** Skip wait applies only while a machine drains. */
+    public fun canSkipWait(f: FleetSnapshot): Boolean = f.machinesList.any { it.state == "draining" }
+
+    /** Retry applies only once a machine failed. */
+    public fun canRetry(f: FleetSnapshot): Boolean = f.failed.isNotEmpty()
+
+    public suspend fun run(hub: HubConnection, action: FleetAction, f: FleetSnapshot): Answer<String> {
+        val said = when (action) {
+            FleetAction.FLEET_ACTION_PAUSE -> "Paused the rollout"
+            FleetAction.FLEET_ACTION_RESUME -> "Resumed the rollout"
+            FleetAction.FLEET_ACTION_APPLY_NOW -> "Checking the target now"
+            FleetAction.FLEET_ACTION_SKIP_WAIT -> "Applying without waiting for agents to finish"
+            FleetAction.FLEET_ACTION_RETRY -> "Retrying ${f.failed}"
+            else -> return Answer.No("Fleet: no such control")
+        }
+        return when (val a = hub.fleet(action)) {
+            is Answer.Ok -> Answer.Ok(said)
+            is Answer.No -> Answer.No("Fleet: ${a.why}")
+        }
     }
 }

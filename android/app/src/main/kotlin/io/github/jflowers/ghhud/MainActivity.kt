@@ -21,7 +21,10 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.getValue
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.jflowers.ghhud.api.v1.FleetAction
 import io.github.jflowers.ghhud.api.v1.RefreshTarget
+import io.github.jflowers.ghhud.core.FleetCommands
+import io.github.jflowers.ghhud.core.FleetSort
 import io.github.jflowers.ghhud.core.AgentChoice
 import io.github.jflowers.ghhud.core.AgentCommands
 import io.github.jflowers.ghhud.core.AgentRow
@@ -64,6 +67,10 @@ class MainActivity : ComponentActivity() {
         override fun refreshWorkspaces() = model.refresh(RefreshTarget.REFRESH_TARGET_WORKSPACES)
 
         override suspend fun recheck(r: AgentRow) = AgentCommands.recheck(model.connection, r)
+
+        override suspend fun fleet(action: FleetAction) = FleetCommands.run(model.connection, action, model.ui.value.hub.snapshot.fleet)
+
+        override fun updateFleet(change: (ListState<FleetSort>) -> ListState<FleetSort>) = model.updateFleet(change)
 
         private val plan get() = PlanCommands(model.connection)
 
@@ -129,7 +136,8 @@ class MainActivity : ComponentActivity() {
                 val ui by model.ui.collectAsStateWithLifecycle()
                 val items by model.items.collectAsStateWithLifecycle()
                 val agents by model.agents.collectAsStateWithLifecycle()
-                AppScreen(ui, items, agents, actions)
+                val fleet by model.fleet.collectAsStateWithLifecycle()
+                AppScreen(ui, items, agents, fleet, actions)
             }
         }
     }

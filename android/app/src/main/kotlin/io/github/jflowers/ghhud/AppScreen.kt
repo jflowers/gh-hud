@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
@@ -29,6 +30,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import io.github.jflowers.ghhud.core.AgentList
+import io.github.jflowers.ghhud.core.FleetList
+import io.github.jflowers.ghhud.core.FleetSort
 import io.github.jflowers.ghhud.core.ItemCommands
 import io.github.jflowers.ghhud.core.WorkspaceList
 import io.github.jflowers.ghhud.core.ItemFilter
@@ -42,17 +45,20 @@ enum class Place(val label: String, val icon: ImageVector) {
     ITEMS("Items", Icons.AutoMirrored.Filled.List),
     PLAN("Plan", Icons.Filled.PlayArrow),
     AGENTS("Agents", Icons.Filled.Person),
+
+    /** Only while the hub runs a fleet, as on the Mac. */
+    FLEET("Fleet", Icons.Filled.Build),
 }
 
 /** Everything the app's screens can ask for. */
-interface AppActions : AttentionActions, ItemsControl, ItemActions, PlanActions, AgentsControl, AgentActions
+interface AppActions : AttentionActions, ItemsControl, ItemActions, PlanActions, AgentsControl, AgentActions, FleetActions
 
 /**
  * The app: a bottom bar between the places, each a list; an item's row
  * opens its own screen, and Back returns to the list.
  */
 @Composable
-fun AppScreen(ui: Ui, items: ItemsView, agents: AgentsView, act: AppActions) {
+fun AppScreen(ui: Ui, items: ItemsView, agents: AgentsView, fleet: ListState<FleetSort>, act: AppActions) {
     var place by rememberSaveable { mutableStateOf(Place.INBOX) }
     // The open detail screen, if any: "item:<url>", "agent:<id>" or "ws:<id>".
     var detail by rememberSaveable { mutableStateOf<String?>(null) }
@@ -73,7 +79,8 @@ fun AppScreen(ui: Ui, items: ItemsView, agents: AgentsView, act: AppActions) {
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
             NavigationBar {
-                for (p in Place.entries) {
+                val fleetOn = ui.hub.snapshot.hasFleet()
+                for (p in Place.entries.filter { it != Place.FLEET || fleetOn }) {
                     NavigationBarItem(
                         selected = p == place,
                         onClick = {
@@ -81,13 +88,15 @@ fun AppScreen(ui: Ui, items: ItemsView, agents: AgentsView, act: AppActions) {
                             detail = null
                         },
                         icon = {
-                            val n = when (p) {
-                                Place.INBOX -> ui.hub.attention.count
-                                Place.PLAN -> PlanList.starting(ui.hub.snapshot)
-                                Place.AGENTS -> AgentList.running(ui.hub.snapshot)
-                                else -> 0
+                            val snap = ui.hub.snapshot
+                            val badge = when (p) {
+                                Place.INBOX -> ui.hub.attention.count.takeIf { it > 0 }?.toString()
+                                Place.PLAN -> PlanList.starting(snap).takeIf { it > 0 }?.toString()
+                                Place.AGENTS -> AgentList.running(snap).takeIf { it > 0 }?.toString()
+                                Place.FLEET -> FleetList.progress(snap) // "2/6": machines on the target
+                                Place.ITEMS -> null
                             }
-                            BadgedBox(badge = { if (n > 0) Badge { Text("$n") } }) { Icon(p.icon, contentDescription = null) }
+                            BadgedBox(badge = { badge?.let { Badge { Text(it) } } }) { Icon(p.icon, contentDescription = null) }
                         },
                         label = { Text(p.label) },
                         modifier = Modifier.testTag("place:" + p.name),
@@ -127,6 +136,8 @@ fun AppScreen(ui: Ui, items: ItemsView, agents: AgentsView, act: AppActions) {
                     onOpenAgent = { detail = "agent:" + it.id },
                     onOpenWorkspace = { detail = "ws:" + it.id },
                 )
+                place == Place.FLEET && s.hasFleet() -> FleetScreen(ui, fleet, act, say, refresh = act::refresh)
+                place == Place.FLEET -> AttentionScreen(ui, act) // the fleet went off: back to the inbox
             }
         }
     }
