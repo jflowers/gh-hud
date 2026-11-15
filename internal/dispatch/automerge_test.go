@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/model"
@@ -139,5 +140,94 @@ func TestAutoMergeOffByDefault(t *testing.T) {
 	}
 	if got := d.AutoMerge(context.Background(), []model.Item{mergeablePR()}); got != nil {
 		t.Errorf("msgs = %v", got)
+	}
+}
+
+func TestRunHold(t *testing.T) {
+	ref := "unbound-force/dewey#7"
+	t0 := time.Now().Add(-3 * time.Hour)
+	at := func(h int) *time.Time { x := t0.Add(time.Duration(h) * time.Hour); return &x }
+	run := func(h int, st RunStatus) Run {
+		return Run{Ref: ref, Task: TaskFeedback, Status: st, StartedAt: *at(h), FinishedAt: at(h)}
+	}
+	cases := []struct {
+		name string
+		runs []Run
+		want string
+	}{
+		{"no runs", nil, ""},
+		{"clean", []Run{run(0, RunOK)}, ""},
+		{"failed", []Run{run(0, RunFailed)}, "the last feedback run failed"},
+		{"left work", []Run{run(0, RunLeftWork)}, "the last feedback run left work behind"},
+		{"a later clean run clears it", []Run{run(1, RunOK), run(0, RunLeftWork)}, ""},
+		{"a later failure counts", []Run{run(0, RunOK), run(1, RunFailed)}, "the last feedback run failed"},
+		{"another PR's run", []Run{{Ref: "unbound-force/dewey#8", Status: RunFailed, StartedAt: t0, FinishedAt: at(0)}}, ""},
+		{"a live run is the stage's business", []Run{{Ref: ref, Status: RunRunning, StartedAt: *at(2)}, run(0, RunOK)}, ""},
+	}
+	for _, tc := range cases {
+		if got := runHold(ref, tc.runs); got != tc.want {
+			t.Errorf("%s: %q, want %q", tc.name, got, tc.want)
+		}
+	}
+	human := run(0, RunFailed)
+	human.HumanNeeded = true
+	if got := runHold(ref, []Run{human}); got != "the last feedback run asked a person to decide" {
+		t.Errorf("human-needed: %q", got)
+	}
+}
+
+func TestHoldForRun(t *testing.T) {
+	it := mergeablePR()
+	why := "the last feedback run left work behind"
+	for _, a := range []mergeAction{mergeEnable, mergeNow} {
+		if got := holdForRun(a, it, testMergeConfig, why); got != mergeNone {
+			t.Errorf("%s held = %q, want none", a, got)
+		}
+	}
+	if got := holdForRun(mergeEnable, it, testMergeConfig, ""); got != mergeEnable {
+		t.Errorf("no hold changed the action: %q", got)
+	}
+	it.AutoMergeOn = true
+	if got := holdForRun(mergeNone, it, testMergeConfig, why); got != mergeDisable {
+		t.Errorf("on and held = %q, want disable", got)
+	}
+	it.Cats = model.CatQueue // someone else's PR: not ours to turn off
+	if got := holdForRun(mergeNone, it, testMergeConfig, why); got != mergeNone {
+		t.Errorf("someone else's PR = %q, want none", got)
+	}
+}
+
+// dewey#157: a feedback run left unpushed fixes and auto-merge still went
+// on. Now the PR waits, and auto-merge already on is turned off.
+func TestAutoMergeWaitsOnALeftWorkRun(t *testing.T) {
+	d := newTestDispatcher(t, "refuse")
+	d.opts.AutoMerge = testMergeConfig
+	var calls []string
+	d.graphql = func(_ context.Context, query string, _ map[string]any) error {
+		calls = append(calls, query)
+		return nil
+	}
+	it := mergeablePR()
+	done := time.Now().Add(-time.Hour)
+	code := 0
+	d.records = []Record{{
+		Task: TaskFeedback, Ref: it.Ref(), Repo: it.Repo, Num: it.Num, Dir: t.TempDir(),
+		StartedAt: done.Add(-time.Minute), FinishedAt: &done, ExitCode: &code, InspectedAt: &done,
+		Left: []string{"unpushed 27a8949 fix(vault): size store-merge allocation"},
+	}}
+	runs := d.Runs(context.Background())
+	if len(runs) != 1 || runs[0].Status != RunLeftWork {
+		t.Fatalf("runs = %+v, want one left-work run", runs)
+	}
+	if got := d.AutoMerge(context.Background(), []model.Item{it}); len(got) != 0 || len(calls) != 0 {
+		t.Fatalf("armed despite left work: msgs %v calls %d", got, len(calls))
+	}
+	it.AutoMergeOn = true
+	got := d.AutoMerge(context.Background(), []model.Item{it})
+	if len(got) != 1 || got[0] != "auto-merge off for unbound-force/dewey#7: the last feedback run left work behind" {
+		t.Fatalf("msgs = %q", got)
+	}
+	if len(calls) != 1 || calls[0] != disableAutoMergeMutation {
+		t.Errorf("calls = %v", calls)
 	}
 }

@@ -92,10 +92,15 @@ func (d *Dispatcher) AutoMerge(ctx context.Context, items []model.Item) []string
 	msgs := sup
 	for _, it := range items {
 		action := autoMergeAction(it, cfg)
+		ref := it.Ref()
+		why := ""
+		if action != mergeNone || it.AutoMergeOn {
+			why = runHold(ref, allRuns())
+		}
+		action = holdForRun(action, it, cfg, why)
 		if action == mergeNone {
 			continue
 		}
-		ref := it.Ref()
 		// Merge is the pipeline's last step: while an agent is on the PR or
 		// another step is due, don't arm or merge it. Disabling is never held.
 		if action != mergeDisable {
@@ -121,13 +126,65 @@ func (d *Dispatcher) AutoMerge(ctx context.Context, items []model.Item) []string
 		case mergeEnable:
 			msgs = append(msgs, "auto-merge on for "+ref)
 		case mergeDisable:
-			msgs = append(msgs, "auto-merge off for "+ref)
+			if why != "" {
+				msgs = append(msgs, "auto-merge off for "+ref+": "+why)
+			} else {
+				msgs = append(msgs, "auto-merge off for "+ref)
+			}
 		case mergeNow:
 			msgs = append(msgs, "merged "+ref)
 		}
 	}
 	msgs = append(msgs, d.updateHeads(ctx, allRuns)...)
 	return append(msgs, d.rearmBranches(ctx, allRuns)...)
+}
+
+// runHold is why a PR's latest finished gh-hud run keeps auto-merge off
+// ("" when it doesn't): the run failed or left work behind, so merging now
+// could drop its fixes (issue #14, dewey#157). A later clean run, or a
+// re-inspection that finds nothing left, clears it. A live run holds the
+// merge through its stage instead.
+func runHold(ref string, runs []Run) string {
+	var last *Run
+	for i := range runs {
+		r := &runs[i]
+		if r.Ref != ref || r.FinishedAt == nil {
+			continue
+		}
+		if last == nil || r.StartedAt.After(last.StartedAt) {
+			last = r
+		}
+	}
+	if last == nil {
+		return ""
+	}
+	switch last.Status {
+	case RunFailed:
+		if last.HumanNeeded {
+			return "the last " + string(last.Task) + " run asked a person to decide"
+		}
+		return "the last " + string(last.Task) + " run failed"
+	case RunLeftWork:
+		return "the last " + string(last.Task) + " run left work behind"
+	}
+	return ""
+}
+
+// holdForRun applies runHold's reason to an action: nothing is armed or
+// merged, and auto-merge already on is turned off.
+func holdForRun(action mergeAction, it model.Item, cfg config.AutoMergeConfig, why string) mergeAction {
+	if why == "" {
+		return action
+	}
+	switch action {
+	case mergeEnable, mergeNow:
+		return mergeNone
+	case mergeNone:
+		if it.AutoMergeOn && it.Kind == model.KindPR && mine(it) && cfg.Covers(it.Repo) && it.NodeID != "" {
+			return mergeDisable
+		}
+	}
+	return action
 }
 
 func (d *Dispatcher) applyMerge(ctx context.Context, action mergeAction, it model.Item, cfg config.AutoMergeConfig) error {
