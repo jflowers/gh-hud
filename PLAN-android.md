@@ -47,12 +47,12 @@ Decided: a native app (Kotlin and Jetpack Compose), not a web app.
 
 ## Sequence
 
-1. **4a, the toolchain.** *(#62)* The mise pins, the Gradle project, the
+1. **4a, the toolchain.** *(done, #62)* The mise pins, the Gradle project, the
    Make targets (`android-sdk`, `android`, `android-install`,
    `android-device-test`), CI (`.github/workflows/android.yml`, with the
    debug APK as an artifact), and a placeholder screen with a JVM test
    and a device test.
-2. **4b, Go: reachable from the phone.** A tsnet listener in the hub,
+2. **4b, Go: reachable from the phone.** *(done, #64)* A tsnet listener in the hub,
    off unless `[hub] tailnet` names a hostname (say `gh-hud`). tsnet
    makes the hub its own tailnet node, so it works whether or not the
    Mac's Tailscale is running; its state lives in `tailnet/` under the
@@ -67,11 +67,27 @@ Decided: a native app (Kotlin and Jetpack Compose), not a web app.
    and another user's refused on a test tailnet (`testcontrol`), with
    HTTP since a test tailnet can't issue certificates. As built: about
    20 MB more binary (tailscale.com).
-3. **4c, what needs you.** The phone's counterpart of the menu bar app:
-   the hub's state, the sections (reviews requested, your PRs ready,
-   agents blocked on you) newest first, tap to open the PR in the
-   browser, pull to refresh. Then approvals (proposals, epic plans,
-   gates) with Approve, Reject and Clear, as in 3b.
+3. **4c, what needs you.** *(this PR)* The phone's counterpart of the
+   menu bar app: the hub's state, the sections (agents blocked on you,
+   proposals, epic plans and gates with Approve, Reject and Clear,
+   reviews requested, your PRs ready) newest first, tap to open on
+   GitHub, pull to refresh, and the hub's address under **Hub**.
+
+   As built: Kotlin is generated with buf's hosted plugins (protobuf
+   Java and Kotlin lite v36.2, connect-kotlin v0.10.0) into
+   `android/core/src/main/gen`; the proto gained `java_package` and
+   `java_multiple_files` (Go and Swift output unchanged). `:core` holds
+   `Attention` (a port of the Mac's) and `HubConnection`; its tests run
+   it against MockWebServer speaking the Connect protocol. The screen is
+   stateless (`AttentionScreen`), tested on the phone. The subscription
+   runs only while the app is on screen. `make android-dev-hub` points
+   the phone at the Mac's loopback hub over USB (`adb reverse`), so
+   development needs no tailnet.
+
+   Found on the way: the hub refused calls at the HTTP level, which
+   connect-kotlin can't read on a stream ("unexpected content-type").
+   The token and tailnet checks are now a Connect interceptor, so a
+   refusal is a Connect error on every kind of call.
 4. **4d, notifications.** Alerts as Android notifications while the app
    is closed. To decide then:
    - *FCM*: reliable and battery-friendly; needs a Firebase project and

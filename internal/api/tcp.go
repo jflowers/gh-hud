@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"connectrpc.com/connect"
+
 	"github.com/jflowers/gh-hud/internal/hub"
 )
 
@@ -37,33 +39,54 @@ type Discovery struct {
 type ServeOption func(*serveOptions)
 
 type serveOptions struct {
-	token string
-	wrap  func(http.Handler) http.Handler
+	// check says why a call may not go through, or nil when it may.
+	check func(ctx context.Context, addr string, h http.Header) error
 }
 
-// WithToken makes Serve refuse requests without "Authorization: Bearer
+// WithToken makes Serve refuse calls without "Authorization: Bearer
 // <token>".
 func WithToken(token string) ServeOption {
-	return func(o *serveOptions) { o.token = token }
-}
-
-// withWrap puts wrap (say, an identity check) in front of every request.
-func withWrap(wrap func(http.Handler) http.Handler) ServeOption {
-	return func(o *serveOptions) { o.wrap = wrap }
-}
-
-func requireToken(token string, next http.Handler) http.Handler {
 	want := []byte("Bearer " + token)
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		got := []byte(r.Header.Get("Authorization"))
-		if subtle.ConstantTimeCompare(got, want) != 1 {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			_, _ = w.Write([]byte(`{"code":"unauthenticated","message":"missing or wrong hub token (see hub.json)"}`))
-			return
+	return withCheck(func(_ context.Context, _ string, h http.Header) error {
+		if subtle.ConstantTimeCompare([]byte(h.Get("Authorization")), want) != 1 {
+			return connect.NewError(connect.CodeUnauthenticated, errors.New("missing or wrong hub token (see hub.json)"))
 		}
-		next.ServeHTTP(w, r)
+		return nil
 	})
+}
+
+// withCheck makes Serve ask check about every call: addr is the caller's
+// address, h its headers.
+func withCheck(check func(ctx context.Context, addr string, h http.Header) error) ServeOption {
+	return func(o *serveOptions) { o.check = check }
+}
+
+// checkInterceptor refuses the calls check says no to. It works on calls,
+// not HTTP requests, so the refusal is a Connect error every client reads
+// on every kind of call: connect-kotlin, for one, can't read an HTTP-level
+// refusal of a stream.
+type checkInterceptor func(ctx context.Context, addr string, h http.Header) error
+
+func (c checkInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
+	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		if err := c(ctx, req.Peer().Addr, req.Header()); err != nil {
+			return nil, err
+		}
+		return next(ctx, req)
+	}
+}
+
+func (c checkInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
+	return next
+}
+
+func (c checkInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
+		if err := c(ctx, conn.Peer().Addr, conn.RequestHeader()); err != nil {
+			return err
+		}
+		return next(ctx, conn)
+	}
 }
 
 // NewToken returns a random 256-bit token.

@@ -5567,7 +5567,8 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x05Watch\x12\x16.ghhud.v1.WatchRequest\x1a\x17.ghhud.v1.WatchResponse\x12A\n" +
 	"\bWatchRun\x12\x19.ghhud.v1.WatchRunRequest\x1a\x1a.ghhud.v1.WatchRunResponse\x12S\n" +
 	"\x0eOpenTranscript\x12\x1f.ghhud.v1.OpenTranscriptRequest\x1a .ghhud.v1.OpenTranscriptResponse\x12M\n" +
-	"\fFleetControl\x12\x1d.ghhud.v1.FleetControlRequest\x1a\x1e.ghhud.v1.FleetControlResponseB>Z<github.com/jflowers/gh-hud/internal/api/gen/ghhud/v1;ghhudv1b\x06proto3"
+	"\fFleetControl\x12\x1d.ghhud.v1.FleetControlRequest\x1a\x1e.ghhud.v1.FleetControlResponseBa\n" +
+	"\x1fio.github.jflowers.ghhud.api.v1P\x01Z<github.com/jflowers/gh-hud/internal/api/gen/ghhud/v1;ghhudv1b\x06proto3"
 
 var (
 	file_ghhud_v1_hub_proto_rawDescOnce sync.Once

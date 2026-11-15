@@ -17,3 +17,18 @@ plugins:
   - remote: buf.build/connectrpc/swift:v1.2.3
     out: macos/Sources/GHHudKit/Gen
     opt: Visibility=Public
+  # Kotlin: the Android app (buf's hosted plugins, lite runtime). The
+  # generator versions must match the libraries in
+  # android/gradle/libs.versions.toml (protobuf v36.2 = protobuf-javalite
+  # 4.36.2).
+  - remote: buf.build/protocolbuffers/java:v36.2
+    out: android/core/src/main/gen
+    opt: lite
+  - remote: buf.build/protocolbuffers/kotlin:v36.2
+    out: android/core/src/main/gen
+    opt: lite
+  - remote: buf.build/connectrpc/kotlin:v0.10.0
+    out: android/core/src/main/gen
+    opt:
+      - generateCallbackMethods=false
+      - generateCoroutineMethods=true

@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"connectrpc.com/connect"
+
 	"github.com/jflowers/gh-hud/internal/hub"
 )
 
@@ -76,21 +78,18 @@ func Serve(ctx context.Context, l net.Listener, b hub.Backend, opts ...ServeOpti
 	for _, opt := range opts {
 		opt(&o)
 	}
+	var hopts []connect.HandlerOption
+	if o.check != nil {
+		hopts = append(hopts, connect.WithInterceptors(checkInterceptor(o.check)))
+	}
 	mux := http.NewServeMux()
-	path, h := NewHandler(b)
+	path, h := NewHandler(b, hopts...)
 	mux.Handle(path, h)
-	var handler http.Handler = mux
-	if o.token != "" {
-		handler = requireToken(o.token, mux)
-	}
-	if o.wrap != nil {
-		handler = o.wrap(handler)
-	}
 	// HTTP/2 over TLS too, for the tailnet listener.
 	protocols := h2c(true)
 	protocols.SetHTTP2(true)
 	srv := &http.Server{
-		Handler:           handler,
+		Handler:           mux,
 		Protocols:         protocols,
 		ReadHeaderTimeout: 10 * time.Second,
 		BaseContext:       func(net.Listener) context.Context { return ctx },

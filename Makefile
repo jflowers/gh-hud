@@ -8,7 +8,7 @@ GOVULNCHECK_VERSION ?= v1.9.0
 BUF_VERSION ?= v1.75.0
 BUF := go run github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
 
-.PHONY: all build test lint fmt tidy vuln proto proto-check proto-breaking ci mac mac-notarize mac-check mac-icon android-sdk android android-install android-device-test
+.PHONY: all build test lint fmt tidy vuln proto proto-check proto-breaking ci mac mac-notarize mac-check mac-icon android-sdk android android-install android-device-test android-dev-hub
 
 all: build
 
@@ -45,8 +45,8 @@ proto-breaking:
 
 # proto-check fails when the generated code is out of date.
 proto-check: proto
-	git add -N internal/api/gen macos/Sources/GHHudKit/Gen
-	git diff --exit-code -- internal/api/gen macos/Sources/GHHudKit/Gen
+	git add -N internal/api/gen macos/Sources/GHHudKit/Gen android/core/src/main/gen
+	git diff --exit-code -- internal/api/gen macos/Sources/GHHudKit/Gen android/core/src/main/gen
 
 ci: tidy proto-check lint test vuln
 
@@ -97,11 +97,21 @@ ANDROID_SDK_PACKAGES := platform-tools platforms/android-37.0 build-tools/36.0.0
 android-sdk:
 	mise exec -- android sdk install $(ANDROID_SDK_PACKAGES)
 android:
-	$(GRADLE) lint testDebugUnitTest assembleDebug
+	$(GRADLE) lint testDebugUnitTest :core:test assembleDebug
 android-install:
 	$(GRADLE) installDebug
 android-device-test:
 	$(GRADLE) connectedDebugAndroidTest
+# Points the app on a USB phone at this Mac's hub: forwards the hub's
+# loopback port to the phone (adb reverse) and launches the app with the
+# URL and token from hub.json. Run it again after the hub restarts (new
+# port and token).
+HUB_JSON ?= $(HOME)/.local/state/gh-hud/hub.json
+android-dev-hub:
+	@url=$$(jq -r .url "$(HUB_JSON)") && token=$$(jq -r .token "$(HUB_JSON)") && port=$${url##*:} && \
+	mise exec -- adb reverse tcp:$$port tcp:$$port && \
+	mise exec -- adb shell am start -n io.github.jflowers.ghhud/.MainActivity --es hub_url "$$url" --es hub_token "$$token" >/dev/null && \
+	echo "the phone's app now uses $$url"
 
 # mac-icon redraws macos/Resources/AppIcon.icns from make-icon.swift.
 mac-icon:

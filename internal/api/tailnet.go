@@ -4,12 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"path/filepath"
 	"strings"
 
+	"connectrpc.com/connect"
 	"tailscale.com/client/tailscale/apitype"
 	"tailscale.com/ipn/ipnstate"
 	"tailscale.com/tailcfg"
@@ -40,35 +40,25 @@ type whoIser interface {
 	WhoIs(ctx context.Context, remoteAddr string) (*apitype.WhoIsResponse, error)
 }
 
-// requireOwner refuses requests that don't come from a device logged in
-// as owner. Tagged devices (servers, CI) are refused even when owner
-// tagged them: they act for no one.
-func requireOwner(who whoIser, owner tailcfg.UserID, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if msg := checkOwner(r.Context(), who, owner, r.RemoteAddr); msg != "" {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusForbidden)
-			_, _ = fmt.Fprintf(w, `{"code":"permission_denied","message":%q}`, msg)
-			return
+// ownerCheck refuses calls that don't come from a device logged in as
+// owner. Tagged devices (servers, CI) are refused even when owner tagged
+// them: they act for no one.
+func ownerCheck(who whoIser, owner tailcfg.UserID) func(context.Context, string, http.Header) error {
+	return func(ctx context.Context, addr string, _ http.Header) error {
+		res, err := who.WhoIs(ctx, addr)
+		var why string
+		switch {
+		case err != nil, res.Node == nil, res.UserProfile == nil:
+			why = "unknown tailnet peer"
+		case res.Node.IsTagged():
+			why = "tagged devices can't use the hub"
+		case res.UserProfile.ID != owner:
+			why = "only the hub's own tailnet user can use it"
+		default:
+			return nil
 		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-// checkOwner says why addr may not use the hub, or "" when it may.
-func checkOwner(ctx context.Context, who whoIser, owner tailcfg.UserID, addr string) string {
-	res, err := who.WhoIs(ctx, addr)
-	switch {
-	case err != nil:
-		return "unknown tailnet peer"
-	case res.Node == nil || res.UserProfile == nil:
-		return "unknown tailnet peer"
-	case res.Node.IsTagged():
-		return "tagged devices can't use the hub"
-	case res.UserProfile.ID != owner:
-		return "only the hub's own tailnet user can use it"
+		return connect.NewError(connect.CodePermissionDenied, errors.New(why))
 	}
-	return ""
 }
 
 // ServeTailnet joins the tailnet as hostname and serves b there until ctx
@@ -128,7 +118,5 @@ func ServeTailnet(ctx context.Context, hostname, dir string, b hub.Backend, logf
 	if ready != nil {
 		ready(url)
 	}
-	return Serve(ctx, l, b, withWrap(func(h http.Handler) http.Handler {
-		return requireOwner(lc, st.Self.UserID, h)
-	}))
+	return Serve(ctx, l, b, withCheck(ownerCheck(lc, st.Self.UserID)))
 }
