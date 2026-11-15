@@ -8,6 +8,10 @@ activity-compose = "1.13.0"
 junit = "4.13.2"
 androidx-junit = "1.3.0"
 androidx-test-runner = "1.7.0"
+# Compose's test library brings Espresso 3.5, which calls an API Android 17
+# removed (InputManager.getInstance). 3.7.0, the latest stable, still does;
+# the 3.8 alphas don't. Device tests only: move to 3.8.0 when it ships.
+espresso = "3.8.0-alpha04"
 
 [libraries]
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
@@ -19,6 +23,7 @@ activity-compose = { module = "androidx.activity:activity-compose", version.ref 
 junit = { module = "junit:junit", version.ref = "junit" }
 androidx-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-junit" }
 androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidx-test-runner" }
+espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espresso" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
