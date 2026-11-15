@@ -378,7 +378,7 @@ func TestViewersSendTheContent(t *testing.T) {
 	}
 
 	// The dispatcher's reasons arrive as they are.
-	fake.Err = errors.New("run finished and its pane is closed (t opens the transcript)")
+	fake.Err = errors.New("run finished and its pane is closed")
 	if _, err := c.ReadPane(ctx, "run1", "", 50); err == nil || !strings.Contains(err.Error(), "run finished and its pane is closed") {
 		t.Errorf("a closed pane: %v", err)
 	}
