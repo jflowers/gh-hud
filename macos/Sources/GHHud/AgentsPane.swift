@@ -84,15 +84,23 @@ struct AgentsPane: View {
         if let url = Links.forRef(r.session.ref) {
             Button("Open \(r.session.ref) on GitHub") { NSWorkspace.shared.open(url) }
         }
-        Button("Copy Session ID") { copy(r.id) }
+        Button("Copy Session ID") { copy(r.session.id) }
         if !r.session.directory.isEmpty {
             Button("Copy Directory") { copy(r.session.directory) }
         }
     }
 
+    /// Watches a dispatch by its run (session IDs repeat across runs, and
+    /// the hub watches the first session with the ID), anything else by
+    /// its session.
     private func watch(_ r: AgentRow) {
         Task {
-            if let why = await conn.watch(sessionID: r.id) {
+            let why = if let run = r.run {
+                await conn.watchRun(id: run.id)
+            } else {
+                await conn.watch(sessionID: r.session.id)
+            }
+            if let why {
                 ui.say("Can't watch \(r.name): \(why)", bad: true)
             } else {
                 ui.say("Watching \(r.name) in a terminal")

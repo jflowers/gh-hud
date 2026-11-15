@@ -5,7 +5,10 @@ import Foundation
 
 /// One agent session, with the dispatch run behind it when there is one.
 public struct AgentRow: Identifiable, Equatable, Sendable {
-    public let id: String // the session ID
+    /// The run's ID for a dispatch, else the session's. Session IDs repeat:
+    /// dispatching the same task on the same item and machine again reuses
+    /// the name, so two rows (the new run and the old) share it.
+    public let id: String
     public let session: Ghhud_V1_Session
     public let run: Ghhud_V1_Run?
     /// The task, or "" for a session gh-hud didn't start.
@@ -25,7 +28,7 @@ public struct AgentRow: Identifiable, Equatable, Sendable {
     public let recent: Bool
 
     public init(_ s: Ghhud_V1_Session, run: Ghhud_V1_Run?, items: [Ghhud_V1_Item], now: Date = Date()) {
-        id = s.id
+        id = s.runID.isEmpty ? s.id : s.runID
         session = s
         self.run = run
         task = s.task
@@ -60,6 +63,30 @@ public struct AgentRow: Identifiable, Equatable, Sendable {
     }
 }
 
+extension AgentRow {
+    func withID(_ id: String) -> AgentRow {
+        AgentRow(id: id, session: session, run: run, task: task, name: name, machine: machine, workspace: workspace,
+                 status: status, tone: tone, took: took, updated: updated, recent: recent)
+    }
+
+    private init(id: String, session: Ghhud_V1_Session, run: Ghhud_V1_Run?, task: String, name: String,
+                 machine: String, workspace: String, status: String, tone: Tone, took: TimeInterval?,
+                 updated: Date?, recent: Bool) {
+        self.id = id
+        self.session = session
+        self.run = run
+        self.task = task
+        self.name = name
+        self.machine = machine
+        self.workspace = workspace
+        self.status = status
+        self.tone = tone
+        self.took = took
+        self.updated = updated
+        self.recent = recent
+    }
+}
+
 public enum AgentList {
     /// Sessions idle longer than this, and not dispatches, are stale.
     public static let recentWindow: TimeInterval = 86400
@@ -67,9 +94,17 @@ public enum AgentList {
     /// The sessions in the hub's order; stale ones only when asked.
     public static func rows(_ s: Ghhud_V1_Snapshot, showStale: Bool, now: Date = Date()) -> [AgentRow] {
         let runs = Dictionary(s.runs.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        var seen: [String: Int] = [:]
         return s.sessions
             .map { AgentRow($0, run: $0.runID.isEmpty ? nil : runs[$0.runID], items: s.result.items, now: now) }
             .filter { showStale || $0.recent }
+            .map { r in
+                // A table needs every row's ID unique; a repeat (sessions
+                // without a run) gets a suffix.
+                let n = seen[r.id, default: 0]
+                seen[r.id] = n + 1
+                return n == 0 ? r : r.withID("\(r.id)#\(n)")
+            }
     }
 
     /// Live sessions: the sidebar's count.
