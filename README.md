@@ -289,7 +289,7 @@ screen. Turn on **Notify me** there to stay connected while it's closed:
 it notifies you of the hub's alerts (as the Mac app does) and of
 proposals, epic plans and gates that start waiting on you. Android shows
 this as a silent "gh-hud" notification saying whether the hub is there.
-It starts again when the phone restarts.
+It starts again when the phone restarts or the app is updated.
 
 **Install.** Each release (a `v*` tag) carries `gh-hud-VERSION.apk`, for
 any phone or tablet on Android 10 or later. Open the release page on the
