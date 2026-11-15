@@ -35,6 +35,7 @@ class AttentionScreenTest {
         override fun reject(row: AttentionRow) { asked += "reject ${row.id}" }
         override fun refresh() { asked += "refresh" }
         override fun setAddress(a: HubAddress) { asked += "address ${a.url} ${a.token}" }
+        override fun setNotify(on: Boolean) { asked += "notify $on" }
     }
 
     private val proposal = AttentionRow(
@@ -103,5 +104,14 @@ class AttentionScreenTest {
         compose.onNodeWithTag("url").performTextReplacement("https://gh-hud.example.ts.net")
         compose.onNodeWithTag("save").performClick()
         assertEquals(listOf("address https://gh-hud.example.ts.net "), asked)
+    }
+
+    @Test
+    fun turnsNotificationsOn() {
+        show(Ui(HubAddress("https://hub"), HubState(HubStatus.Connected, attention = attention)))
+        compose.onNodeWithText("Hub").performClick()
+        compose.onNodeWithTag("notify").performClick()
+        compose.onNodeWithTag("save").performClick()
+        assertEquals(listOf("address https://hub ", "notify true"), asked)
     }
 }

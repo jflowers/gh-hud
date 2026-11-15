@@ -1,12 +1,16 @@
 package io.github.jflowers.ghhud
 
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +46,22 @@ class MainActivity : ComponentActivity() {
         override fun refresh() = model.refresh()
 
         override fun setAddress(a: HubAddress) = model.setAddress(a)
+
+        override fun setNotify(on: Boolean) {
+            val asked = Build.VERSION.SDK_INT >= 33 &&
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            if (on && asked) permission.launch(Manifest.permission.POST_NOTIFICATIONS) else model.setNotify(on)
+        }
+    }
+
+    // Notifying needs the permission (Android 13 and later); without it the
+    // switch stays off.
+    private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            model.setNotify(true)
+        } else {
+            Toast.makeText(this, "gh-hud can't notify you without the permission", Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,7 +86,8 @@ class MainActivity : ComponentActivity() {
         model.setAddress(HubAddress(url, intent.getStringExtra(EXTRA_TOKEN).orEmpty()))
     }
 
-    // The subscription lives only while the app is on screen.
+    // The screen holds the subscription while it's on screen; the service,
+    // when you asked to be notified, holds it the rest of the time.
     override fun onStart() {
         super.onStart()
         model.start()

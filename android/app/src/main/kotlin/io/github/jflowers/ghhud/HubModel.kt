@@ -1,7 +1,6 @@
 package io.github.jflowers.ghhud
 
 import android.app.Application
-import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.jflowers.ghhud.core.Approval
@@ -30,55 +29,50 @@ data class Ui(
     val refreshing: Boolean = false,
     /** Why the last refresh failed. */
     val refreshError: String? = null,
+    /** Whether the app stays connected to notify you. */
+    val notify: Boolean = false,
 )
 
 /**
- * The hub address (kept across launches) and the connection to it. The
- * connection runs while the app is on screen: start and stop follow the
- * activity.
+ * What the screen shows, from the app's shared connection (Hub). The
+ * screen holds the connection while it's on screen: start and stop follow
+ * the activity.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HubModel(app: Application) : AndroidViewModel(app) {
-    private val prefs = app.getSharedPreferences("hub", Context.MODE_PRIVATE)
-    private val connection = MutableStateFlow(connect(saved()))
-    private val local = MutableStateFlow(Ui(connection.value.address, connection.value.state.value))
-    private var started = false
+    private val hub = app.hub
+    private val local = MutableStateFlow(Ui(hub.connection.value.address, hub.connection.value.state.value))
 
-    val ui: StateFlow<Ui> = combine(local, connection.flatMapLatest { it.state }) { l, hub ->
+    val ui: StateFlow<Ui> = combine(local, hub.connection.flatMapLatest { it.state }, hub.notify) { l, state, notify ->
         // A decided row stays pending until the hub no longer has it waiting.
-        val waiting = hub.attention.sections.flatMap { s -> s.rows.map { it.id } }.toSet()
-        l.copy(address = connection.value.address, hub = hub, pending = l.pending intersect waiting)
+        val waiting = state.attention.sections.flatMap { s -> s.rows.map { it.id } }.toSet()
+        l.copy(
+            address = hub.connection.value.address,
+            hub = state,
+            pending = l.pending intersect waiting,
+            notify = notify,
+        )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, local.value)
 
-    private fun saved() = HubAddress(prefs.getString("url", "").orEmpty(), prefs.getString("token", "").orEmpty())
-
-    private fun connect(a: HubAddress) = HubConnection(a, viewModelScope)
-
     fun start() {
-        started = true
-        connection.value.start()
+        hub.hold(HOLDER)
+        hub.startService() // in case Android stopped it
     }
 
-    fun stop() {
-        started = false
-        connection.value.stop()
-    }
+    fun stop() = hub.release(HOLDER)
 
-    /** Saves a new hub address and connects to it. */
     fun setAddress(a: HubAddress) {
-        val clean = HubAddress(a.url.trim(), a.token.trim())
-        if (clean == connection.value.address) return
-        prefs.edit().putString("url", clean.url).putString("token", clean.token).apply()
-        connection.value.stop()
-        local.value = Ui(clean, connection.value.state.value)
-        connection.value = connect(clean)
-        if (started) connection.value.start()
+        val before = hub.connection.value
+        hub.setAddress(a)
+        if (hub.connection.value !== before) local.value = Ui(hub.connection.value.address, hub.connection.value.state.value)
     }
+
+    fun setNotify(on: Boolean) = hub.setNotify(on)
 
     fun refresh() {
         local.update { it.copy(refreshing = true, refreshError = null) }
         viewModelScope.launch {
-            val why = connection.value.refresh()
+            val why = hub.connection.value.refresh()
             local.update { it.copy(refreshing = false, refreshError = why) }
         }
     }
@@ -96,10 +90,14 @@ class HubModel(app: Application) : AndroidViewModel(app) {
         val a = row.approval ?: return
         local.update { it.copy(pending = it.pending + row.id, errors = it.errors - row.id) }
         viewModelScope.launch {
-            val why = send(connection.value, a)
+            val why = send(hub.connection.value, a)
             if (why != null) {
                 local.update { it.copy(pending = it.pending - row.id, errors = it.errors + (row.id to why)) }
             }
         }
+    }
+
+    private companion object {
+        const val HOLDER = "screen"
     }
 }
