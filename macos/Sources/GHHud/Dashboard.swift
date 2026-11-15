@@ -25,6 +25,7 @@ final class DashboardState: ObservableObject {
     @Published var agentSelection: AgentRow.ID?
     @Published var workspaceSelection: WorkspaceRow.ID?
     @Published var showStale = false
+    @Published var liveOnly = false
     @Published var planSelection: PlanItem.ID?
     @Published var dropping: EpicRow?
     @Published var enrolling = false
@@ -84,6 +85,12 @@ struct DashboardView: View {
             if ui.pane == .plan { PlanTools(conn: conn, ui: ui) }
             if ui.pane == .fleet { FleetTools(conn: conn, ui: ui) }
             if ui.pane == .agents {
+                ToolbarItem {
+                    Toggle(isOn: $ui.liveOnly) {
+                        Label("Live Only", systemImage: "bolt.fill")
+                    }
+                    .help(ui.liveOnly ? "Show every session" : "Show only running and blocked sessions")
+                }
                 ToolbarItem {
                     Toggle(isOn: $ui.showStale) {
                         Label("Show Stale", systemImage: "clock.arrow.circlepath")

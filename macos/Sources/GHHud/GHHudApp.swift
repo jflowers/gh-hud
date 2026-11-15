@@ -78,7 +78,8 @@ extension SnapshotMode {
     /// its Nth row (from 0) selected; --enroll opens the Enroll Epic sheet.
     /// --oldest-first sorts the items by their Age column, oldest first.
     /// --search goes to the shown table's search field; --keep then keeps
-    /// its column terms as filter chips, as Return does.
+    /// its column terms as filter chips, as Return does. --live-only turns
+    /// on the Agents pane's Live Only.
     @MainActor
     static func windowIfAsked() {
         let args = CommandLine.arguments
@@ -129,6 +130,7 @@ extension SnapshotMode {
                 try? await Task.sleep(for: .milliseconds(100))
             }
             if args.contains("--enroll") { ui.enrolling = true }
+            if args.contains("--live-only") { ui.liveOnly = true }
             if let n = arg("--pick").flatMap(Int.init) {
                 if pane == .plan {
                     let rows = PlanList.groups(conn.snapshot).flatMap(\.rows)

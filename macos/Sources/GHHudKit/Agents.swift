@@ -64,6 +64,13 @@ public struct AgentRow: Identifiable, Equatable, Sendable {
 }
 
 extension AgentRow {
+    /// Executing now: a running or blocked run, or a live session gh-hud
+    /// didn't start, whatever state it reports. "Live Only" shows these.
+    public var live: Bool {
+        if let r = run { return r.status == "running" || r.status == "blocked" }
+        return session.running || session.blocked
+    }
+
     func withID(_ id: String) -> AgentRow {
         AgentRow(id: id, session: session, run: run, task: task, name: name, machine: machine, workspace: workspace,
                  status: status, tone: tone, took: took, updated: updated, recent: recent)
@@ -91,13 +98,15 @@ public enum AgentList {
     /// Sessions idle longer than this, and not dispatches, are stale.
     public static let recentWindow: TimeInterval = 86400
 
-    /// The sessions in the hub's order; stale ones only when asked.
-    public static func rows(_ s: Ghhud_V1_Snapshot, showStale: Bool, now: Date = Date()) -> [AgentRow] {
+    /// The sessions in the hub's order; stale ones only when asked, and
+    /// with liveOnly only the ones executing now.
+    public static func rows(_ s: Ghhud_V1_Snapshot, showStale: Bool, liveOnly: Bool = false,
+                            now: Date = Date()) -> [AgentRow] {
         let runs = Dictionary(s.runs.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         var seen: [String: Int] = [:]
         return s.sessions
             .map { AgentRow($0, run: $0.runID.isEmpty ? nil : runs[$0.runID], items: s.result.items, now: now) }
-            .filter { showStale || $0.recent }
+            .filter { (showStale || $0.recent) && (!liveOnly || $0.live) }
             .map { r in
                 // A table needs every row's ID unique; a repeat (sessions
                 // without a run) gets a suffix.
