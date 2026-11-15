@@ -3,11 +3,13 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -204,5 +206,19 @@ func TestSomeoneElsesPhoneIsRefused(t *testing.T) {
 	_, err := phone(ctx, t, controlURL, url).Fetch(ctx)
 	if err == nil || !strings.Contains(err.Error(), "only the hub's own tailnet user") {
 		t.Fatalf("Fetch from another user's phone: err = %v, want refused", err)
+	}
+}
+
+func TestTheLoginURLIsLoggedOnce(t *testing.T) {
+	var got []string
+	logf := withoutRepeats(func(format string, args ...any) { got = append(got, fmt.Sprintf(format, args...)) })
+	for range 3 {
+		logf("go to: %s", "https://login.example/a/1")
+	}
+	logf("100%% done")
+	logf("go to: %s", "https://login.example/a/1")
+	want := []string{"go to: https://login.example/a/1", "100% done", "go to: https://login.example/a/1"}
+	if !slices.Equal(got, want) {
+		t.Errorf("logged %q, want %q", got, want)
 	}
 }
