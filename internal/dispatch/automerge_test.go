@@ -55,6 +55,7 @@ func TestAutoMergeAction(t *testing.T) {
 		{"approved, not clean", func(i *model.Item) { approved(i); i.MergeState = "BLOCKED" }, mergeEnable},
 		{"approved, checks failing", func(i *model.Item) { approved(i); i.CI = model.CIFail }, mergeEnable},
 		{"approved, open thread", func(i *model.Item) { approved(i); i.Thread = 1 }, mergeEnable},
+		{"approved, threads past what's read", func(i *model.Item) { approved(i); i.ThreadsMore = true }, mergeEnable},
 		{"clean, not approved", func(i *model.Item) { i.MergeState = "CLEAN" }, mergeEnable},
 		{"approved and held", func(i *model.Item) { approved(i); i.Labels = []string{"hold"} }, mergeNone},
 	}

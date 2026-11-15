@@ -454,6 +454,31 @@ public object ItemKt {
     }
 
     /**
+     * ```
+     * more threads than the dashboard reads; threads may undercount
+     * ```
+     *
+     * `bool threads_more = 45 [json_name = "threadsMore"];`
+     */
+    public var threadsMore: kotlin.Boolean
+      @kotlin.jvm.JvmName("getThreadsMore")
+        get() = _builder.threadsMore
+      @kotlin.jvm.JvmName("setThreadsMore")
+        set(value) {
+        _builder.threadsMore = value
+      }
+    /**
+     * ```
+     * more threads than the dashboard reads; threads may undercount
+     * ```
+     *
+     * `bool threads_more = 45 [json_name = "threadsMore"];`
+     */
+    public fun clearThreadsMore() {
+      _builder.clearThreadsMore()
+    }
+
+    /**
      * `string last_actor = 18 [json_name = "lastActor"];`
      */
     public var lastActor: kotlin.String

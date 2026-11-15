@@ -3549,6 +3549,7 @@ type Item struct {
 	Threads          int64    `protobuf:"varint,16,opt,name=threads,proto3" json:"threads,omitempty"`                            // unresolved review threads opened by humans
 	BotThreads       int64    `protobuf:"varint,17,opt,name=bot_threads,json=botThreads,proto3" json:"bot_threads,omitempty"`    // ... and by bots
 	ThreadsOpen      int64    `protobuf:"varint,44,opt,name=threads_open,json=threadsOpen,proto3" json:"threads_open,omitempty"` // the human ones whose last comment isn't mine
+	ThreadsMore      bool     `protobuf:"varint,45,opt,name=threads_more,json=threadsMore,proto3" json:"threads_more,omitempty"` // more threads than the dashboard reads; threads may undercount
 	LastActor        string   `protobuf:"bytes,18,opt,name=last_actor,json=lastActor,proto3" json:"last_actor,omitempty"`
 	WaitingOn        string   `protobuf:"bytes,19,opt,name=waiting_on,json=waitingOn,proto3" json:"waiting_on,omitempty"`              // "me", "them" or ""
 	Tagged           bool     `protobuf:"varint,20,opt,name=tagged,proto3" json:"tagged,omitempty"`                                    // you are a requested reviewer or assignee
@@ -3733,6 +3734,13 @@ func (x *Item) GetThreadsOpen() int64 {
 		return x.ThreadsOpen
 	}
 	return 0
+}
+
+func (x *Item) GetThreadsMore() bool {
+	if x != nil {
+		return x.ThreadsMore
+	}
+	return false
 }
 
 func (x *Item) GetLastActor() string {
@@ -6675,7 +6683,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x04user\x18\x05 \x01(\tR\x04user\"B\n" +
 	"\fSectionError\x12\x18\n" +
 	"\asection\x18\x01 \x01(\tR\asection\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\x8b\v\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\xae\v\n" +
 	"\x04Item\x12&\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x12.ghhud.v1.ItemKindR\x04kind\x12\x1e\n" +
 	"\n" +
@@ -6701,7 +6709,8 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\athreads\x18\x10 \x01(\x03R\athreads\x12\x1f\n" +
 	"\vbot_threads\x18\x11 \x01(\x03R\n" +
 	"botThreads\x12!\n" +
-	"\fthreads_open\x18, \x01(\x03R\vthreadsOpen\x12\x1d\n" +
+	"\fthreads_open\x18, \x01(\x03R\vthreadsOpen\x12!\n" +
+	"\fthreads_more\x18- \x01(\bR\vthreadsMore\x12\x1d\n" +
 	"\n" +
 	"last_actor\x18\x12 \x01(\tR\tlastActor\x12\x1d\n" +
 	"\n" +

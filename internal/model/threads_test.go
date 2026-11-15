@@ -23,3 +23,23 @@ func TestThreadsAnswered(t *testing.T) {
 		t.Errorf("Thread %d, ThreadOpen %d, BotThread %d; want 2, 1, 1", it.Thread, it.ThreadOpen, it.BotThread)
 	}
 }
+
+// More threads than the query reads: the count may be short, so the item
+// says so and doesn't look clear to merge.
+func TestThreadsMore(t *testing.T) {
+	n := prNodeFromJSON(t, `{
+		"number": 206, "url": "u", "repository": {"nameWithOwner": "acme/r"}, "author": {"login": "me"},
+		"reviewThreads": {"pageInfo": {"hasNextPage": true}, "nodes": [
+			{"isResolved": true, "comments": {"nodes": [{"author": {"login": "reviewer"}}]},
+				"last": {"nodes": [{"author": {"login": "reviewer"}}]}}
+		]}
+	}`)
+	it := BuildPRItem(n, "me", NewBotFilter(nil))
+	if it.Thread != 0 || !it.ThreadsMore || it.ThreadsClear() {
+		t.Errorf("Thread %d, ThreadsMore %v, ThreadsClear %v; want 0, true, false", it.Thread, it.ThreadsMore, it.ThreadsClear())
+	}
+	n.Threads.PageInfo.HasNextPage = false
+	if it := BuildPRItem(n, "me", NewBotFilter(nil)); it.ThreadsMore || !it.ThreadsClear() {
+		t.Errorf("all threads read: ThreadsMore %v, ThreadsClear %v", it.ThreadsMore, it.ThreadsClear())
+	}
+}

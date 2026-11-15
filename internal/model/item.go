@@ -131,6 +131,9 @@ type Item struct {
 	// the ones still to answer.
 	ThreadOpen int
 	BotThread  int // unresolved review threads opened by bots
+	// ThreadsMore means the PR has more review threads than the dashboard
+	// reads, so Thread may undercount; merge gates treat it as unresolved.
+	ThreadsMore bool
 
 	LastActor string // last non-bot human to act
 	// WaitingOn is "me" when the ball is in my court, "them" when the
@@ -194,7 +197,7 @@ func (i Item) MyMaintainerReady() bool {
 		!i.Draft &&
 		ciSettled(i.CI) &&
 		i.Merge != "⚠️" &&
-		i.Thread == 0 &&
+		i.ThreadsClear() &&
 		i.Review != "✅" &&
 		i.WaitingOn == "them"
 }
@@ -363,3 +366,7 @@ func RelativeTime(t, now time.Time) string {
 		return fmt.Sprintf("%dmo", mins/43200)
 	}
 }
+
+// ThreadsClear reports that no unresolved human review thread is known or
+// could be hiding past the threads the dashboard reads.
+func (i Item) ThreadsClear() bool { return i.Thread == 0 && !i.ThreadsMore }
