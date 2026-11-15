@@ -298,6 +298,9 @@ func stageOf(it model.Item, runs []Run, tasks map[string]config.TaskConfig, am c
 		if last.Fingerprint == fingerprint(task, it) {
 			switch last.Status {
 			case RunFailed:
+				if last.HumanNeeded {
+					return Stage{Kind: StageNeedsYou, Task: task, Reason: "a person must decide (see the agent's comment)"}
+				}
 				return Stage{Kind: StageNeedsYou, Task: task, Reason: "last run failed"}
 			case RunLeftWork:
 				return Stage{Kind: StageNeedsYou, Task: task, Reason: "last run left work"}

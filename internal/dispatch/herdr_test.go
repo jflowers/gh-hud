@@ -261,3 +261,21 @@ func TestPaneSetup(t *testing.T) {
 		t.Errorf("exported %q, want %q", out, dispatchPermission)
 	}
 }
+
+// Dispatch panes turn on auto-question's headless mode with gh-hud's
+// escalation playbook, both with and without the bot account.
+func TestPaneSetupHeadlessQuestions(t *testing.T) {
+	line := strings.Replace(paneSetup(false), "echo ghhud-$RANDOM-ready", `printf '%s|%s' "$AUTO_QUESTION_HEADLESS" "$AUTO_QUESTION_ESCALATION"`, 1)
+	cmd := exec.Command("sh", "-c", line)
+	cmd.Env = append(os.Environ(), "HOME=/home/x")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "1|/home/x/.config/opencode/auto-question/escalation-gh-hud.md"; string(out) != want {
+		t.Errorf("exported %q, want %q", out, want)
+	}
+	if !strings.Contains(paneSetup(true), headlessQuestions) {
+		t.Error("a bot pane doesn't turn on headless questions")
+	}
+}

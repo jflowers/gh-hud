@@ -437,6 +437,9 @@ message Run {
   string branch = 21;
   bool cleaned = 22;
   string fingerprint = 23;
+  // human_needed: the agent handed a decision to a person and stopped
+  // (auto-question's escalation); status is failed.
+  bool human_needed = 24;
 }
 
 message MachineUsage {

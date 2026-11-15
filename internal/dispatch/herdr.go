@@ -326,12 +326,21 @@ func paneSetupResult(raw json.RawMessage) error {
 	return nil
 }
 
+// headlessQuestions turns on the auto-question plugin's headless mode in a
+// dispatch pane (jflowers/opencode-auto-question#32): questions are answered
+// inside the tool call and no form is ever shown. When a person must
+// decide, the agent follows gh-hud's escalation playbook (deployed by
+// dotfiles to every machine): comment with the decision, push WIP to a
+// draft, stop. The run then ends as needing you (see autoQuestionMeta).
+// Plugin versions without headless mode ignore both variables.
+const headlessQuestions = `export AUTO_QUESTION_HEADLESS=1 AUTO_QUESTION_ESCALATION="$HOME/.config/opencode/auto-question/escalation-gh-hud.md"`
+
 // paneSetup is the shell line typed into a fresh dispatch pane. A bot pane
 // prints -notoken instead of the ready probe when it can't switch account,
 // so the agent never starts as the operator. The line names the variable
 // and never holds its value, so the pane transcript stays clean.
 func paneSetup(bot bool) string {
-	line := "export OPENCODE_PERMISSION=" + shellQuote(dispatchPermission)
+	line := "export OPENCODE_PERMISSION=" + shellQuote(dispatchPermission) + " && " + headlessQuestions
 	if !bot {
 		return line + " && echo ghhud-$RANDOM-ready"
 	}

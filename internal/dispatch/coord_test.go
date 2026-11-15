@@ -157,6 +157,13 @@ func TestStageOf(t *testing.T) {
 		{"a stuck step holds later ones", conflictFailingQueued,
 			[]Run{run(TaskRebase, conflictFailingQueued, RunFailed, time.Hour, true)},
 			Stage{Kind: StageNeedsYou, Task: TaskRebase, Reason: "last run failed"}},
+		{"a run that handed a decision to a person says so", conflictFailingQueued,
+			[]Run{func() Run {
+				r := run(TaskRebase, conflictFailingQueued, RunFailed, time.Hour, true)
+				r.HumanNeeded = true
+				return r
+			}()},
+			Stage{Kind: StageNeedsYou, Task: TaskRebase, Reason: "a person must decide (see the agent's comment)"}},
 		{"a finished run with no outcome stops the PR", conflictFailingQueued,
 			[]Run{func() Run {
 				r := run(TaskRebase, conflictFailingQueued, RunUnknown, time.Hour, true)

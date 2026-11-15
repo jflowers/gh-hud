@@ -112,6 +112,7 @@ func (d *Dispatcher) rereadRecord(r Record, busyKey string) {
 		rec.SessionID = id
 		rec.ExitCode, rec.Summary = o.code, o.summary
 		rec.FinishError, rec.FailReason = "", ""
+		rec.HumanNeeded = o.humanNeeded
 		if o.code == nil {
 			rec.FinishError = o.reason
 		} else if *o.code != 0 {

@@ -1189,6 +1189,47 @@ public  final class Run extends
 
   }
 
+  public static final int HUMAN_NEEDED_FIELD_NUMBER = 24;
+  private boolean humanNeeded_;
+  /**
+   * <pre>
+   * human_needed: the agent handed a decision to a person and stopped
+   * (auto-question's escalation); status is failed.
+   * </pre>
+   *
+   * <code>bool human_needed = 24 [json_name = "humanNeeded"];</code>
+   * @return The humanNeeded.
+   */
+  @java.lang.Override
+  public boolean getHumanNeeded() {
+    return humanNeeded_;
+  }
+  /**
+   * <pre>
+   * human_needed: the agent handed a decision to a person and stopped
+   * (auto-question's escalation); status is failed.
+   * </pre>
+   *
+   * <code>bool human_needed = 24 [json_name = "humanNeeded"];</code>
+   * @param value The humanNeeded to set.
+   */
+  private void setHumanNeeded(boolean value) {
+    
+    humanNeeded_ = value;
+  }
+  /**
+   * <pre>
+   * human_needed: the agent handed a decision to a person and stopped
+   * (auto-question's escalation); status is failed.
+   * </pre>
+   *
+   * <code>bool human_needed = 24 [json_name = "humanNeeded"];</code>
+   */
+  private void clearHumanNeeded() {
+
+    humanNeeded_ = false;
+  }
+
   public static io.github.jflowers.ghhud.api.v1.Run parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2480,6 +2521,49 @@ public  final class Run extends
       return this;
     }
 
+    /**
+     * <pre>
+     * human_needed: the agent handed a decision to a person and stopped
+     * (auto-question's escalation); status is failed.
+     * </pre>
+     *
+     * <code>bool human_needed = 24 [json_name = "humanNeeded"];</code>
+     * @return The humanNeeded.
+     */
+    @java.lang.Override
+    public boolean getHumanNeeded() {
+      return instance.getHumanNeeded();
+    }
+    /**
+     * <pre>
+     * human_needed: the agent handed a decision to a person and stopped
+     * (auto-question's escalation); status is failed.
+     * </pre>
+     *
+     * <code>bool human_needed = 24 [json_name = "humanNeeded"];</code>
+     * @param value The humanNeeded to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHumanNeeded(boolean value) {
+      copyOnWrite();
+      instance.setHumanNeeded(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * human_needed: the agent handed a decision to a person and stopped
+     * (auto-question's escalation); status is failed.
+     * </pre>
+     *
+     * <code>bool human_needed = 24 [json_name = "humanNeeded"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearHumanNeeded() {
+      copyOnWrite();
+      instance.clearHumanNeeded();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.Run)
   }
   @java.lang.Override
@@ -2520,12 +2604,14 @@ public  final class Run extends
             "branch_",
             "cleaned_",
             "fingerprint_",
+            "humanNeeded_",
           };
           java.lang.String info =
-              "\u0000\u0017\u0000\u0001\u0001\u0017\u0017\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0018\u0000\u0001\u0001\u0018\u0018\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\u0208\u0005\u0002\u0006\u0208\u0007\u0208\b\u0208\t\u0208\n\u0007" +
               "\u000b\u1009\u0000\f\u1009\u0001\r\u0208\u000e\u0208\u000f\u0208\u0010\u0208\u0011" +
-              "\u0208\u0012\u0208\u0013\u021a\u0014\u021a\u0015\u0208\u0016\u0007\u0017\u0208";
+              "\u0208\u0012\u0208\u0013\u021a\u0014\u021a\u0015\u0208\u0016\u0007\u0017\u0208\u0018" +
+              "\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
