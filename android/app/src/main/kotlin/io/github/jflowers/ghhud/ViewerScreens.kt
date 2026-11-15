@@ -154,16 +154,16 @@ fun TranscriptScreen(runId: String, title: String, act: ViewerActions, onBack: (
                 color = Tone.BAD.color(),
                 modifier = m.padding(16.dp).testTag("transcript-error"),
             )
-            is Answer.Ok -> Messages(a.value, m)
+            is Answer.Ok -> Messages(a.value, modifier = m)
         }
     }
 }
 
 @Composable
-private fun Messages(t: TranscriptResponse, m: Modifier) {
+private fun Messages(t: TranscriptResponse, modifier: Modifier = Modifier) {
     val list = rememberLazyListState()
     LaunchedEffect(t) { if (t.messagesCount > 0) list.scrollToItem(t.messagesCount) }
-    LazyColumn(m.testTag("transcript"), state = list) {
+    LazyColumn(modifier.testTag("transcript"), state = list) {
         item {
             Viewers.omitted(t.omitted)?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = Tone.MUTED.color(),
