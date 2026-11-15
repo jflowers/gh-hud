@@ -10,35 +10,38 @@ struct FleetPane: View {
 
     var body: some View {
         let f = conn.snapshot.fleet
-        let rows = FleetList.rows(conn.snapshot)
+        let rows = FleetList.rows(conn.snapshot).sorted(using: ui.fleetSort)
         VStack(alignment: .leading, spacing: 0) {
             header(f)
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Divider()
-            Table(rows) {
-                TableColumn("") { r in StatusGlyph(tone: r.tone, active: r.state != "pending") }
+            Table(rows, sortOrder: $ui.fleetSort) {
+                TableColumn("", value: \.stateRank) { r in StatusGlyph(tone: r.tone, active: r.state != "pending") }
                     .width(12)
-                TableColumn("Machine") { r in Text(r.name) }
+                TableColumn("Machine", value: \.name) { r in Text(r.name) }
                     .width(min: 60, ideal: 110, max: 200)
-                TableColumn("Reached") { r in
+                TableColumn("Reached", value: \.reach) { r in
                     Text(r.reach).foregroundStyle(r.reach == "no" ? Color.orange : .secondary)
                 }
                 .width(min: 50, ideal: 64, max: 90)
-                TableColumn("Slots") { r in Text(r.slots).foregroundStyle(.secondary).monospacedDigit() }
+                TableColumn("Slots", value: \.slotsUsed) { r in Text(r.slots).foregroundStyle(.secondary).monospacedDigit() }
                     .width(min: 36, ideal: 48, max: 70)
-                TableColumn("Applied") { r in Text(r.applied).font(.body.monospaced()).lineLimit(1) }
+                TableColumn("Applied", value: \.applied) { r in Text(r.applied).font(.body.monospaced()).lineLimit(1) }
                     .width(min: 80, ideal: 170, max: 260)
-                TableColumn("State") { r in Text(r.state).foregroundStyle(r.tone.color) }
+                TableColumn("State", value: \.stateRank) { r in Text(r.state).foregroundStyle(r.tone.color) }
                     .width(min: 60, ideal: 90, max: 130)
-                TableColumn("Waited") { r in
+                TableColumn("Waited", value: \.waitedKey) { r in
                     Text(r.waited.map(AgentList.duration) ?? "").foregroundStyle(.secondary).monospacedDigit()
                 }
                 .width(min: 40, ideal: 56, max: 80)
-                TableColumn("Last error") { r in
+                TableColumn("Last error", value: \.error) { r in
                     Text(r.error).foregroundStyle(.red).lineLimit(1).help(r.error)
                 }
                 .width(min: 100, ideal: 280)
+            }
+            .contextMenu(forSelectionType: FleetRow.ID.self) { _ in
+                HubOrderButton(sort: $ui.fleetSort)
             }
         }
         .confirmationDialog("Skip the drain wait?", isPresented: $ui.confirmSkipWait) {

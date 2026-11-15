@@ -11,27 +11,27 @@ struct AgentsPane: View {
     @ObservedObject var ui: DashboardState
 
     var body: some View {
-        let rows = AgentList.rows(conn.snapshot, showStale: ui.showStale)
+        let rows = AgentList.rows(conn.snapshot, showStale: ui.showStale).sorted(using: ui.agentSort)
         let picked = rows.first { ui.agentSelection == $0.id }
         VSplitView {
-            Table(rows, selection: $ui.agentSelection) {
-                TableColumn("") { r in StatusGlyph(tone: r.tone, active: !r.status.isEmpty) }
+            Table(rows, selection: $ui.agentSelection, sortOrder: $ui.agentSort) {
+                TableColumn("", value: \.statusRank) { r in StatusGlyph(tone: r.tone, active: !r.status.isEmpty) }
                     .width(12)
-                TableColumn("Task") { r in Text(r.task.isEmpty ? "—" : r.task).foregroundStyle(r.task.isEmpty ? .secondary : .primary) }
+                TableColumn("Task", value: \.task) { r in Text(r.task.isEmpty ? "—" : r.task).foregroundStyle(r.task.isEmpty ? .secondary : .primary) }
                     .width(min: 44, ideal: 64, max: 100)
-                TableColumn("Agent") { r in Text(r.name).lineLimit(1).foregroundStyle(r.recent ? .primary : .secondary) }
+                TableColumn("Agent", value: \.name) { r in Text(r.name).lineLimit(1).foregroundStyle(r.recent ? .primary : .secondary) }
                     .width(min: 160, ideal: 290)
-                TableColumn("Where") { r in Text(r.machine).foregroundStyle(.secondary) }
+                TableColumn("Where", value: \.machine) { r in Text(r.machine).foregroundStyle(.secondary) }
                     .width(min: 40, ideal: 60, max: 100)
-                TableColumn("Workspace") { r in Text(r.workspace.isEmpty ? "—" : r.workspace).foregroundStyle(.secondary).lineLimit(1) }
+                TableColumn("Workspace", value: \.workspace) { r in Text(r.workspace.isEmpty ? "—" : r.workspace).foregroundStyle(.secondary).lineLimit(1) }
                     .width(min: 60, ideal: 130, max: 260)
-                TableColumn("Status") { r in Text(r.status).foregroundStyle(r.tone.color) }
+                TableColumn("Status", value: \.statusRank) { r in Text(r.status).foregroundStyle(r.tone.color) }
                     .width(min: 50, ideal: 76, max: 120)
-                TableColumn("Took") { r in
+                TableColumn("Took", value: \.tookKey) { r in
                     Text(r.took.map(AgentList.duration) ?? "").foregroundStyle(.secondary).monospacedDigit()
                 }
                 .width(min: 36, ideal: 48, max: 64)
-                TableColumn("Age") { r in
+                TableColumn("Age", value: \.ageKey) { r in
                     Text(r.updated.map { ItemList.age($0) } ?? "").foregroundStyle(.secondary).monospacedDigit()
                 }
                 .width(min: 36, ideal: 44, max: 64)
@@ -40,6 +40,7 @@ struct AgentsPane: View {
                 if let r = rows.first(where: { ids.contains($0.id) }) {
                     menu(r)
                 }
+                HubOrderButton(sort: $ui.agentSort)
             } primaryAction: { ids in
                 if let r = rows.first(where: { ids.contains($0.id) }) { watch(r) }
             }
@@ -250,29 +251,29 @@ struct WorkspacesPane: View {
     @ObservedObject var ui: DashboardState
 
     var body: some View {
-        let rows = WorkspaceList.rows(conn.snapshot)
+        let rows = WorkspaceList.rows(conn.snapshot).sorted(using: ui.workspaceSort)
         let picked = rows.first { ui.workspaceSelection == $0.id }
         VSplitView {
-            Table(rows, selection: $ui.workspaceSelection) {
-                TableColumn("") { r in StatusGlyph(tone: r.tone, active: true) }
+            Table(rows, selection: $ui.workspaceSelection, sortOrder: $ui.workspaceSort) {
+                TableColumn("", value: \.stateRank) { r in StatusGlyph(tone: r.tone, active: true) }
                     .width(12)
-                TableColumn("Where") { r in Text(r.machine).foregroundStyle(.secondary) }
+                TableColumn("Where", value: \.machine) { r in Text(r.machine).foregroundStyle(.secondary) }
                     .width(min: 40, ideal: 60, max: 100)
-                TableColumn("Workspace") { r in Text(r.health.workspace).lineLimit(1) }
+                TableColumn("Workspace", value: \.workspace) { r in Text(r.health.workspace).lineLimit(1) }
                     .width(min: 80, ideal: 130, max: 300)
-                TableColumn("Repo") { r in Text(r.repo).foregroundStyle(.secondary).lineLimit(1) }
+                TableColumn("Repo", value: \.repo) { r in Text(r.repo).foregroundStyle(.secondary).lineLimit(1) }
                     .width(min: 60, ideal: 90, max: 200)
-                TableColumn("Branch") { r in
+                TableColumn("Branch", value: \.branch) { r in
                     Text(r.health.branch)
                         .foregroundStyle(r.health.branch == r.health.defaultBranch ? .secondary : .primary)
                         .lineLimit(1)
                 }
                 .width(min: 60, ideal: 110, max: 260)
-                TableColumn("Sync") { r in Text(r.sync).foregroundStyle(.secondary).monospacedDigit() }
+                TableColumn("Sync", value: \.syncKey) { r in Text(r.sync).foregroundStyle(.secondary).monospacedDigit() }
                     .width(min: 36, ideal: 56, max: 80)
-                TableColumn("State") { r in Text(r.state).foregroundStyle(r.tone.color).lineLimit(1) }
+                TableColumn("State", value: \.stateRank) { r in Text(r.state).foregroundStyle(r.tone.color).lineLimit(1) }
                     .width(min: 60, ideal: 140, max: 260)
-                TableColumn("Notes") { r in Text(r.notes).foregroundStyle(.secondary).lineLimit(1) }
+                TableColumn("Notes", value: \.notes) { r in Text(r.notes).foregroundStyle(.secondary).lineLimit(1) }
                     .width(min: 60, ideal: 160)
             }
             .contextMenu(forSelectionType: WorkspaceRow.ID.self) { ids in
@@ -284,6 +285,7 @@ struct WorkspacesPane: View {
                         }
                     }
                 }
+                HubOrderButton(sort: $ui.workspaceSort)
             }
             .frame(minHeight: 140)
             .overlay {

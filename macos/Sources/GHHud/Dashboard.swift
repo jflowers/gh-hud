@@ -29,6 +29,11 @@ final class DashboardState: ObservableObject {
     @Published var dropping: EpicRow?
     @Published var enrolling = false
     @Published var confirmSkipWait = false
+    /// Each table's sort, from its clicked headers; empty is the hub's order.
+    @Published var itemSort: [KeyPathComparator<ItemRow>] = []
+    @Published var agentSort: [KeyPathComparator<AgentRow>] = []
+    @Published var workspaceSort: [KeyPathComparator<WorkspaceRow>] = []
+    @Published var fleetSort: [KeyPathComparator<FleetRow>] = []
 
     init(pane: Pane?, query: String) {
         self.pane = pane
@@ -281,32 +286,33 @@ struct ItemTable: View {
     @ObservedObject var ui: DashboardState
 
     var body: some View {
-        Table(rows, selection: $ui.selection) {
-            TableColumn("") { r in MarkerDot(marker: r.marker) }
+        let rows = rows.sorted(using: ui.itemSort)
+        Table(rows, selection: $ui.selection, sortOrder: $ui.itemSort) {
+            TableColumn("", value: \.markerRank) { r in MarkerDot(marker: r.marker) }
                 .width(10)
-            TableColumn("Kind") { r in KindBadge(kind: r.kind) }
+            TableColumn("Kind", value: \.kind) { r in KindBadge(kind: r.kind) }
                 .width(min: 44, ideal: 52, max: 64)
-            TableColumn("Status") { r in StatusCluster(row: r) }
+            TableColumn("Status", value: \.statusRank) { r in StatusCluster(row: r) }
                 .width(min: 46, ideal: 50, max: 60)
-            TableColumn("#") { r in
+            TableColumn("#", value: \.numKey) { r in
                 Text(r.num > 0 ? "#\(r.num)" : "")
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
             .width(min: 40, ideal: 56, max: 80)
-            TableColumn("Repo") { r in
+            TableColumn("Repo", value: \.repo) { r in
                 Text(r.repo).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head)
             }
             .width(min: 80, ideal: 120, max: 280)
-            TableColumn("Title") { r in TitleCell(row: r) }
+            TableColumn("Title", value: \.title) { r in TitleCell(row: r) }
                 .width(min: 160, ideal: 250)
-            TableColumn("Threads") { r in ThreadsCell(row: r) }
+            TableColumn("Threads", value: \.threadsKey) { r in ThreadsCell(row: r) }
                 .width(min: 52, ideal: 56, max: 70)
-            TableColumn("Last") { r in
+            TableColumn("Last", value: \.lastActor) { r in
                 Text(r.lastActor).foregroundStyle(r.lastActor == "you" ? .secondary : .primary).lineLimit(1)
             }
             .width(min: 50, ideal: 80, max: 160)
-            TableColumn("Age") { r in
+            TableColumn("Age", value: \.ageKey) { r in
                 Text(r.updated.map { ItemList.age($0) } ?? "")
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
@@ -323,6 +329,7 @@ struct ItemTable: View {
                 .disabled(picked.isEmpty)
             Button(picked.count > 1 ? "Copy \(picked.count) Links" : "Copy Link") { copy(picked) }
                 .disabled(picked.isEmpty)
+            HubOrderButton(sort: $ui.itemSort)
         } primaryAction: { ids in
             open(rows.filter { ids.contains($0.id) })
         }
@@ -481,6 +488,19 @@ struct ThreadsCell: View {
             Label("\(row.botThreads)", systemImage: "text.bubble")
                 .foregroundStyle(.secondary)
                 .help("Unresolved threads from bots")
+        }
+    }
+}
+
+/// Puts a sorted table back in the hub's order (clicking a header only
+/// flips between ascending and descending). Shown only while sorted.
+struct HubOrderButton<Row>: View {
+    @Binding var sort: [KeyPathComparator<Row>]
+
+    var body: some View {
+        if !sort.isEmpty {
+            Divider()
+            Button("Sort in Hub Order") { sort = [] }
         }
     }
 }
