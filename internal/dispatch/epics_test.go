@@ -337,7 +337,7 @@ func TestEpicsWithRuns(t *testing.T) {
 	runs := []Run{
 		{Ref: "acme/app#1", Task: TaskIssue, Machine: "chai", Status: RunRunning, StartedAt: time.Now()},
 		{Ref: "acme/app#2", Task: TaskIssue, Status: RunOK, StartedAt: done, FinishedAt: &done},
-		{Ref: "acme/app#3", Task: TaskIssue, Status: RunRunning, StartedAt: at.Add(-time.Hour)}, // before approval
+		{Ref: "acme/app#3", Task: TaskIssue, Status: RunRunning, StartedAt: at.Add(-time.Hour)}, // before approval: still running
 	}
 	n := EpicsWithRuns(es, runs)[0].Plan.Nodes
 	if n[0].State != epic.NodeRunning || n[0].Note != "on chai" {
@@ -346,8 +346,11 @@ func TestEpicsWithRuns(t *testing.T) {
 	if n[1].State != epic.NodeReady || n[1].Note != "ran once, no PR" {
 		t.Errorf("ran: %+v", n[1])
 	}
-	if n[2].State != epic.NodeReady || n[2].Note != "" || n[3].State != epic.NodeWaiting {
-		t.Errorf("others: %+v %+v", n[2], n[3])
+	if n[2].State != epic.NodeRunning || n[2].Note != "on the hub" {
+		t.Errorf("running since before the approval: %+v", n[2])
+	}
+	if n[3].State != epic.NodeWaiting || n[3].Note != "" {
+		t.Errorf("waiting: %+v", n[3])
 	}
 }
 

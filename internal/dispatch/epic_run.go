@@ -62,16 +62,21 @@ func (d *Dispatcher) approvedEpics() []epic.Epic {
 }
 
 // pieceRuns are the issue runs on a piece since its epic's approval, newest
-// first, and whether one is live.
-func pieceRuns(ref string, since time.Time, runs []Run, now time.Time) (mine []Run, live bool) {
-	for _, r := range runs {
-		if r.Ref != ref || r.Task != TaskIssue || r.StartedAt.Before(since) {
+// first, and whether one is live. A live run counts whenever it started:
+// approving a re-read plan doesn't stop the pieces already running, so they
+// stay active (and count toward max_active) instead of reading as ready and
+// being started again. Only the run count starts over at approval.
+func pieceRuns(ref string, since time.Time, runs []Run, now time.Time) (mine []Run, live *Run) {
+	for i, r := range runs {
+		if r.Ref != ref || r.Task != TaskIssue {
 			continue
 		}
-		mine = append(mine, r)
 		pending := r.Status == RunUnknown && r.FinishedAt == nil && now.Sub(r.StartedAt) < headlessMaxAge
-		if r.Status == RunRunning || r.Status == RunBlocked || pending {
-			live = true
+		if live == nil && (r.Status == RunRunning || r.Status == RunBlocked || pending) {
+			live = &runs[i]
+		}
+		if !r.StartedAt.Before(since) {
+			mine = append(mine, r)
 		}
 	}
 	return mine, live
@@ -102,8 +107,8 @@ func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool) []PlanRo
 		active := 0
 		for _, n := range e.Plan.Nodes {
 			mine, live := pieceRuns(n.Ref, *e.Approved, runs, now)
-			pieces = append(pieces, piece{n, mine, live})
-			if live || n.State == epic.NodeInProgress {
+			pieces = append(pieces, piece{n, mine, live != nil})
+			if live != nil || n.State == epic.NodeInProgress {
 				active++
 			}
 		}
@@ -266,8 +271,9 @@ func piecePlan(e epic.Epic, n epic.Node) string {
 
 func oneLine(s string) string { return strings.Join(strings.Fields(s), " ") }
 
-// EpicsWithRuns marks the ready pieces of approved epics that have an
-// agent on them as running, and notes a piece's runs that left no PR, so a
+// EpicsWithRuns marks the pieces of approved epics that have an agent on
+// them as running (a waiting one too: it was started before a re-read plan
+// put it behind another piece), and notes a piece's runs that left no PR, so a
 // listing says what the plan rows say. The hub applies it to what it
 // publishes; Epics stays GitHub's view.
 func EpicsWithRuns(es []epic.Epic, runs []Run) []epic.Epic {
@@ -279,19 +285,15 @@ func EpicsWithRuns(es []epic.Epic, runs []Run) []epic.Epic {
 		}
 		for j := range e.Plan.Nodes {
 			n := &e.Plan.Nodes[j]
-			if n.State != epic.NodeReady {
+			if n.State != epic.NodeReady && n.State != epic.NodeWaiting {
 				continue
 			}
 			mine, live := pieceRuns(n.Ref, *e.Approved, runs, now)
-			if live {
-				r := mine[0]
-				for _, m := range mine {
-					if m.FinishedAt == nil {
-						r = m
-						break
-					}
-				}
-				n.State, n.Note = epic.NodeRunning, "on "+runOn(r.Machine, r.Workspace)
+			if live != nil {
+				n.State, n.Note = epic.NodeRunning, "on "+runOn(live.Machine, live.Workspace)
+				continue
+			}
+			if n.State != epic.NodeReady {
 				continue
 			}
 			if len(mine) == 0 {
