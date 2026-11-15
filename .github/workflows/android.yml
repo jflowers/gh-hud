@@ -6,9 +6,9 @@ name: Android app
 on:
   push:
     branches: [master]
-    paths: ["android/**", "proto/**", "mise.toml", ".github/workflows/android.yml"]
+    paths: ["android/**", "proto/**", "testdata/clients/**", "mise.toml", ".github/workflows/android.yml"]
   pull_request:
-    paths: ["android/**", "proto/**", "mise.toml", ".github/workflows/android.yml"]
+    paths: ["android/**", "proto/**", "testdata/clients/**", "mise.toml", ".github/workflows/android.yml"]
   workflow_dispatch:
 
 permissions:

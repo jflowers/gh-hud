@@ -1,0 +1,253 @@
+{
+  "seq": "42",
+  "fetchedAt": "2026-11-15T12:00:00Z",
+  "dispatch": true,
+  "result": {
+    "user": "jay",
+    "items": [
+      {
+        "kind": "ITEM_KIND_PR", "categories": 1, "url": "https://github.com/acme/widgets/pull/401",
+        "repo": "acme/widgets", "num": "401", "title": "Add the gizmo", "author": "ann",
+        "updatedAt": "2026-11-15T11:55:00Z", "ci": "CI_STATE_PENDING", "review": "🟡",
+        "threads": "2", "botThreads": "1", "lastActor": "ann", "waitingOn": "me", "labels": ["enhancement", "good first issue"]
+      },
+      {
+        "kind": "ITEM_KIND_PR", "categories": 34, "url": "https://github.com/acme/widgets/pull/398",
+        "repo": "acme/widgets", "num": "398", "title": "Fix the flaky build", "author": "jay",
+        "updatedAt": "2026-11-14T09:00:00Z", "ci": "CI_STATE_OK", "review": "✅", "lastActor": "jay"
+      },
+      {
+        "kind": "ITEM_KIND_PR", "categories": 2, "url": "https://github.com/acme/api/pull/70",
+        "repo": "acme/api", "num": "70", "title": "Drop the old endpoint", "author": "jay", "draft": true,
+        "updatedAt": "2026-11-01T12:00:00Z", "ci": "CI_STATE_FAIL", "review": "❌", "merge": "⚠️", "lastActor": "bob"
+      },
+      {
+        "kind": "ITEM_KIND_ISSUE", "categories": 4, "url": "https://github.com/acme/widgets/issues/60",
+        "repo": "acme/widgets", "num": "60", "title": "Gizmo epic", "author": "jay",
+        "updatedAt": "2026-10-01T12:00:00Z", "ci": "CI_STATE_BLANK", "labels": ["epic"]
+      },
+      {
+        "kind": "ITEM_KIND_RUN", "categories": 8, "url": "https://github.com/acme/widgets/actions/runs/9",
+        "repo": "acme/widgets", "title": "CI on main", "updatedAt": "2026-11-15T10:00:00Z", "ci": "CI_STATE_FAIL"
+      },
+      {
+        "kind": "ITEM_KIND_NOTE", "categories": 16, "url": "https://github.com/acme/docs/discussions/3",
+        "repo": "acme/docs", "title": "Roadmap discussion", "updatedAt": "2026-09-15T12:00:00Z"
+      },
+      {
+        "kind": "ITEM_KIND_PR", "categories": 65, "url": "https://github.com/acme/widgets/pull/405",
+        "repo": "acme/widgets", "num": "405", "title": "Bump deps", "author": "dependabot[bot]",
+        "updatedAt": "2026-11-15T11:59:30Z", "ci": "CI_STATE_NONE", "review": "❗", "botThreads": "3", "lastActor": "dependabot[bot]"
+      },
+      {
+        "kind": "ITEM_KIND_PR", "categories": 1, "url": "https://github.com/other/tools/pull/12",
+        "repo": "other/tools", "num": "12", "title": "Teach the tool a trick", "author": "cy",
+        "ci": "CI_STATE_OK", "review": "‼️", "threads": "1"
+      }
+    ]
+  },
+  "runs": [
+    {
+      "id": "run-3", "task": "review", "ref": "acme/widgets#401", "status": "running",
+      "startedAt": "2026-11-15T11:55:00Z", "sessionId": "ses-401", "machine": "chai", "workspace": "widgets-2"
+    },
+    {
+      "id": "run-2", "task": "fix", "ref": "acme/widgets#398", "status": "failed",
+      "startedAt": "2026-11-13T10:00:00Z", "finishedAt": "2026-11-13T10:42:10Z"
+    },
+    {
+      "id": "run-1", "task": "fix", "ref": "acme/widgets#401", "status": "ok",
+      "startedAt": "2026-11-14T10:00:00Z", "finishedAt": "2026-11-14T10:05:00Z"
+    },
+    {
+      "id": "run-0", "task": "fix", "ref": "acme/api#70", "status": "ok",
+      "startedAt": "2026-11-13T08:00:00Z", "finishedAt": "2026-11-13T09:15:00Z", "sessionId": "ses-70"
+    },
+    {
+      "id": "run-4", "task": "review", "ref": "other/tools#12", "status": "left-work",
+      "startedAt": "2026-11-15T09:00:00Z", "finishedAt": "2026-11-15T09:30:00Z"
+    }
+  ],
+  "stages": {
+    "https://github.com/acme/widgets/pull/401": {"kind": "you", "task": "review", "reason": "answer the agent"},
+    "https://github.com/acme/widgets/pull/398": {"kind": "merge"},
+    "https://github.com/acme/api/pull/70": {"kind": "wait", "task": "fix", "reason": "cooldown"},
+    "https://github.com/acme/widgets/pull/405": {"kind": "next", "task": "review"},
+    "https://github.com/other/tools/pull/12": {"kind": "wait", "task": "review", "reason": "ci pending"}
+  },
+  "sessions": [
+    {
+      "id": "ses-401", "title": "review acme/widgets#401", "task": "review", "ref": "acme/widgets#401",
+      "machine": "chai", "workspace": "widgets-2", "running": true, "runId": "run-3", "updatedAt": "2026-11-15T11:58:00Z"
+    },
+    {
+      "id": "ses-blocked", "title": "Port the parser", "running": true, "blocked": true,
+      "blockedSince": "2026-11-15T11:40:00Z", "updatedAt": "2026-11-15T11:40:00Z"
+    },
+    {"id": "ses-busy", "title": "", "running": true, "state": "thinking", "updatedAt": "2026-11-15T11:59:00Z"},
+    {"id": "ses-failed", "title": "Broke", "failed": true, "updatedAt": "2026-11-10T12:00:00Z"},
+    {"id": "ses-unknown", "title": "Who knows", "unknown": true, "updatedAt": "2026-11-15T08:00:00Z"},
+    {"id": "ses-idle", "title": "Yesterday's work", "updatedAt": "2026-11-15T01:00:00Z"},
+    {"id": "ses-stale", "title": "Last week", "updatedAt": "2026-11-08T12:00:00Z"},
+    {
+      "id": "ses-70", "task": "fix", "ref": "acme/api#70", "runId": "run-0", "machine": "oak",
+      "updatedAt": "2026-11-13T09:15:00Z"
+    },
+    {"id": "ses-idle", "title": "Same name again", "updatedAt": "2026-11-15T02:00:00Z"},
+    {"id": "ses-orphan", "task": "fix", "ref": "gone/repo#1", "updatedAt": "2026-11-01T12:00:00Z"}
+  ],
+  "usage": [
+    {"name": "chai", "used": "1", "max": "2", "ok": true},
+    {"name": "local", "used": "0", "max": "1", "ok": true},
+    {"name": "oak", "ok": false}
+  ],
+  "plan": [
+    {
+      "item": {"url": "https://github.com/acme/widgets/pull/405", "repo": "acme/widgets", "num": "405", "title": "Bump deps"},
+      "task": "review", "queued": "1", "note": "next free slot", "stage": {"kind": "next", "task": "review"}
+    },
+    {
+      "item": {"url": "https://github.com/acme/api/pull/70", "repo": "acme/api", "num": "70", "title": "Drop the old endpoint"},
+      "task": "fix", "queued": "2", "note": "no free slot on oak", "stage": {"kind": "wait", "task": "fix"}
+    },
+    {
+      "item": {"url": "https://github.com/acme/gone/pull/5", "repo": "acme/gone", "num": "5", "title": "Gone"},
+      "task": "fix", "queued": "3", "note": "not in the latest refresh", "missing": true
+    },
+    {
+      "item": {"url": "https://github.com/acme/widgets/pull/401", "repo": "acme/widgets", "num": "401", "title": "Add the gizmo"},
+      "task": "review", "queued": "4", "note": "running", "stage": {"kind": "running", "task": "review"}
+    },
+    {
+      "item": {"url": "https://github.com/acme/widgets/pull/410", "repo": "acme/widgets", "num": "410", "title": "Auto next"},
+      "task": "review", "stage": {"kind": "next", "task": "review"}
+    },
+    {
+      "item": {"url": "", "repo": "acme/widgets", "num": "61", "title": "Gizmo piece one"},
+      "task": "implement", "epic": "acme/widgets#60", "stage": {"kind": "next", "task": "implement"}
+    },
+    {
+      "item": {"url": "https://github.com/acme/widgets/issues/62", "repo": "acme/widgets", "num": "62", "title": "Gizmo piece two"},
+      "task": "implement", "epic": "acme/widgets#60", "stage": {"kind": "running", "task": "implement"}
+    },
+    {
+      "item": {"url": "https://github.com/acme/api/pull/71", "repo": "acme/api", "num": "71", "title": "Running auto"},
+      "task": "fix", "stage": {"kind": "running", "task": "fix"}
+    },
+    {
+      "item": {"url": "https://github.com/other/tools/pull/12", "repo": "other/tools", "num": "12", "title": "Teach the tool a trick"},
+      "task": "review", "stage": {"kind": "wait", "task": "review", "reason": "ci pending"}
+    },
+    {
+      "item": {"url": "https://github.com/acme/widgets/issues/63", "repo": "acme/widgets", "num": "63", "title": "Gizmo piece three"},
+      "task": "implement", "epic": "acme/widgets#60", "stage": {"kind": "you", "task": "implement", "reason": "gate: after the demo"}
+    },
+    {
+      "item": {"url": "https://github.com/acme/widgets/pull/398", "repo": "acme/widgets", "num": "398", "title": "Fix the flaky build"},
+      "task": "merge", "stage": {"kind": "merge"}
+    },
+    {
+      "item": {"url": "https://github.com/acme/widgets/pull/399", "repo": "acme/widgets", "num": "399", "title": "Merge soon"},
+      "task": "merge", "stage": {"kind": "merge", "reason": "after CI"}
+    }
+  ],
+  "workspaces": [
+    {
+      "workspace": "widgets", "repo": "acme/widgets", "dir": "/w/widgets", "branch": "main", "defaultBranch": "main",
+      "ahead": "0", "behind": "0", "learnings": "2"
+    },
+    {
+      "machine": "chai", "workspace": "widgets-2", "repo": "acme/widgets", "dir": "/w/widgets-2", "branch": "fix-x",
+      "defaultBranch": "main", "ahead": "1", "behind": "3", "busy": "review acme/widgets#401"
+    },
+    {
+      "workspace": "api", "repo": "acme/api", "dir": "/w/api", "branch": "feature", "defaultBranch": "main",
+      "ahead": "0", "behind": "2", "localOnly": ["feature\t3", "spike\t2"], "stashes": "1"
+    },
+    {
+      "workspace": "api-2", "repo": "acme/api", "dir": "/w/api-2", "branch": "main", "defaultBranch": "main",
+      "ahead": "0", "behind": "0", "dirty": ["a.go", "b.go"]
+    },
+    {
+      "workspace": "api-3", "repo": "acme/api", "dir": "/w/api-3", "branch": "main", "defaultBranch": "main",
+      "ahead": "2", "behind": "1"
+    },
+    {
+      "machine": "oak", "workspace": "tools", "repo": "other/tools", "dir": "/w/tools", "branch": "main",
+      "defaultBranch": "main", "ahead": "-1", "behind": "-1", "noUpstream": true
+    },
+    {
+      "machine": "oak", "workspace": "docs", "repo": "acme/docs", "dir": "/w/docs", "ahead": "-1", "behind": "-1",
+      "error": "not a git repository"
+    }
+  ],
+  "workspacesAt": "2026-11-15T11:59:50Z",
+  "fleet": {
+    "target": "abc1234def", "targetShort": "abc1234", "ci": "green", "failed": "oak",
+    "machines": [
+      {"name": "local", "state": "current", "reachable": true, "appliedShort": "abc1234"},
+      {"name": "chai", "state": "draining", "reachable": true, "appliedShort": "9f8e7d6", "waited": "90s"},
+      {"name": "oak", "state": "failed", "reachable": true, "appliedShort": "9f8e7d6", "lastError": "chezmoi apply:\nexit status 1\n"},
+      {"name": "elm", "state": "unreachable", "lastError": "ssh: timeout"},
+      {"name": "fir", "state": "pending"},
+      {"name": "ash", "state": "applying", "reachable": true, "appliedShort": "abc1234"}
+    ]
+  },
+  "cases": [
+    {
+      "id": "shared_failure|acme/widgets|lint", "kind": "shared_failure", "repo": "acme/widgets", "check": "lint",
+      "facts": {"prs": ["398", "401"], "onBase": true},
+      "proposal": {
+        "id": "p1", "status": "pending", "created": "2026-11-15T11:00:00Z",
+        "decision": {"kind": "link_fix", "fixPr": "9", "summary": "Retry the flaky\n  build"}
+      }
+    },
+    {
+      "id": "shared_failure|acme/api|test", "kind": "shared_failure", "repo": "acme/api", "check": "test",
+      "facts": {"prs": ["70"]},
+      "decision": {"kind": "escalate", "summary": "Needs a\nhuman", "by": "supervisor"}
+    },
+    {
+      "id": "shared_failure|acme/api|build", "kind": "shared_failure", "repo": "acme/api", "check": "build",
+      "facts": {"prs": ["70", "71", "72"]}, "supervising": true
+    },
+    {
+      "id": "shared_failure|other/tools|vet", "kind": "shared_failure", "repo": "other/tools", "check": "vet",
+      "facts": {"prs": ["12"]},
+      "proposal": {"id": "p0", "status": "approved", "decision": {"kind": "link_fix", "fixPr": "3"}}
+    }
+  ],
+  "epics": [
+    {
+      "ref": "acme/widgets#60", "url": "https://github.com/acme/widgets/issues/60", "title": "Gizmo epic", "state": "approved",
+      "plan": {
+        "id": "plan-60", "created": "2026-11-10T12:00:00Z",
+        "nodes": [
+          {"ref": "acme/widgets#61", "title": "Piece one", "state": "ready"},
+          {"ref": "acme/widgets#62", "title": "Piece two", "state": "running"},
+          {"ref": "acme/widgets#63", "title": "Piece three", "state": "gated", "gate": "after the demo"},
+          {"ref": "acme/widgets#64", "title": "Piece four", "state": "gated", "gate": "cleared already", "cleared": true},
+          {"ref": "acme/api#80", "title": "API piece", "state": "in_progress", "note": "PR open"},
+          {"ref": "other/tools#20", "title": "Tool piece", "state": "waiting"},
+          {"ref": "acme/widgets#65", "title": "Done piece", "state": "done"},
+          {"ref": "acme/widgets#66", "title": "Dropped piece", "state": "dropped"},
+          {"ref": "acme/widgets#67", "title": "Blocked piece", "state": "blocked", "note": "needs #61"}
+        ]
+      }
+    },
+    {
+      "ref": "acme/api#90", "title": "API epic", "state": "planned",
+      "plan": {
+        "id": "plan-90", "created": "2026-11-15T10:00:00Z",
+        "nodes": [{"ref": "acme/api#91", "state": "ready"}, {"ref": "acme/api#92", "state": "done"}]
+      }
+    },
+    {
+      "ref": "acme/api#95", "title": "Changed epic", "state": "planned",
+      "plan": {"id": "plan-95", "stale": true, "nodes": [{"ref": "acme/api#96", "state": "waiting"}]}
+    },
+    {"ref": "acme/docs#5", "title": "Reading", "state": "reading"},
+    {"ref": "acme/docs#6", "title": "Broken", "state": "error", "error": "no such issue"},
+    {"ref": "acme/docs#7", "title": "Fresh", "state": "planned"}
+  ]
+}

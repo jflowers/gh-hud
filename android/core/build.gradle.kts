@@ -34,3 +34,11 @@ dependencies {
     testImplementation(libs.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
 }
+
+// The clients' shared fixtures: the tests read them, so they're inputs.
+val fixtures = rootProject.file("../testdata/clients")
+tasks.test {
+    systemProperty("fixtures", fixtures.path)
+    inputs.dir(fixtures)
+    environment("UPDATE_FIXTURES", System.getenv("UPDATE_FIXTURES") ?: "")
+}

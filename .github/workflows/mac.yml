@@ -6,9 +6,9 @@ name: Mac app
 on:
   push:
     branches: [master]
-    paths: ["macos/**", "proto/**", "Makefile", ".github/workflows/mac.yml"]
+    paths: ["macos/**", "proto/**", "testdata/clients/**", "Makefile", ".github/workflows/mac.yml"]
   pull_request:
-    paths: ["macos/**", "proto/**", "Makefile", ".github/workflows/mac.yml"]
+    paths: ["macos/**", "proto/**", "testdata/clients/**", "Makefile", ".github/workflows/mac.yml"]
   workflow_dispatch:
 
 permissions:

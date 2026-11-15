@@ -643,6 +643,10 @@ do {
     check(Links.forAlert(alert)?.absoluteString == "https://github.com/acme/r/issues/7", "alert falls back to its run")
 }
 
+// MARK: shared fixtures (testdata/clients)
+
+checkFixtures()
+
 // MARK: live (optional)
 
 // `swift run GHHudChecks --live <state dir>` also connects to the hub

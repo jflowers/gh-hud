@@ -1,0 +1,8 @@
+{
+  "seq": "7",
+  "fetchedAt": "2026-11-15T12:00:00Z",
+  "follower": "4242",
+  "fetchError": "",
+  "usage": [{"name": "local", "used": "1", "max": "1", "ok": true}],
+  "workspacesLoading": true
+}
