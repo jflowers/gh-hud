@@ -98,11 +98,11 @@ struct ItemCommands {
         if let run = r.latestRun {
             Divider()
             Button("Watch \(run.task) Run") { watch(r) }
-                .disabled(off != nil || !run.live)
+                .disabled(off != nil || !run.live || conn.isRemote)
             Button("Re-check \(run.task) Run") { recheck(r) }
                 .disabled(off != nil || !run.finished)
             Button("Open \(run.task) Transcript") { transcript(r) }
-                .disabled(off != nil || !run.hasTranscript)
+                .disabled(off != nil || !run.hasTranscript || conn.isRemote)
         }
     }
 }

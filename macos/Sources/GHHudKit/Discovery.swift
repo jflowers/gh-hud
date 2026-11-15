@@ -62,3 +62,51 @@ public struct HubDiscovery: Decodable, Equatable, Sendable {
         ["Authorization": ["Bearer \(token)"]]
     }
 }
+
+/// Where the app finds the hub: on this Mac, through hub.json, or on
+/// another Mac on the local network, at its [hub] lan address with its LAN
+/// token (lan-token in that Mac's state directory).
+public enum HubSource: Equatable, Sendable {
+    case local(stateDir: URL)
+    case remote(url: String, token: String)
+
+    /// The hub on this Mac, in the default state directory.
+    public static var thisMac: HubSource { .local(stateDir: HubDiscovery.defaultStateDir) }
+
+    public var isRemote: Bool {
+        if case .remote = self { return true }
+        return false
+    }
+
+    /// Where and how to reach the hub now: hub.json says for this Mac's
+    /// (it changes each time the hub starts); a remote hub's address and
+    /// token are what you entered.
+    public func discover() throws(HubDiscovery.LoadError) -> HubDiscovery {
+        switch self {
+        case .local(let dir):
+            return try HubDiscovery.load(stateDir: dir)
+        case .remote(let url, let token):
+            guard let u = Self.normalize(url) else {
+                throw .invalid("enter the other Mac's hub address in Settings")
+            }
+            let t = token.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !t.isEmpty else { throw .invalid("enter the hub's LAN token in Settings") }
+            return HubDiscovery(url: u, token: t, pid: 0)
+        }
+    }
+
+    /// The address as a URL the app can use: "macbook.local:7377" becomes
+    /// "http://macbook.local:7377", without a trailing slash. Nil when it
+    /// has no host or isn't http(s).
+    public static func normalize(_ s: String) -> String? {
+        var t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.isEmpty { return nil }
+        if !t.contains("://") { t = "http://" + t }
+        guard let c = URLComponents(string: t), let scheme = c.scheme?.lowercased(),
+              scheme == "http" || scheme == "https", let host = c.host, !host.isEmpty,
+              c.path.isEmpty || c.path == "/", c.query == nil, c.user == nil
+        else { return nil }
+        let h = host.contains(":") ? "[\(host)]" : host // IPv6
+        return "\(scheme)://\(h)" + (c.port.map { ":\($0)" } ?? "")
+    }
+}

@@ -643,6 +643,26 @@ do {
     check(Links.forAlert(alert)?.absoluteString == "https://github.com/acme/r/issues/7", "alert falls back to its run")
 }
 
+// MARK: hub source (another Mac on the network)
+
+do {
+    check(HubSource.normalize("macbook.local:7377") == "http://macbook.local:7377", "bare host:port gets http")
+    check(HubSource.normalize(" http://10.0.0.5:7377/ ") == "http://10.0.0.5:7377", "trimmed, no trailing slash")
+    check(HubSource.normalize("https://hub.example:443") == "https://hub.example:443", "https kept")
+    check(HubSource.normalize("") == nil && HubSource.normalize("ftp://x:1") == nil, "empty and ftp refused")
+    check(HubSource.normalize("http://x:1/path") == nil && HubSource.normalize("http://") == nil, "path or no host refused")
+    let r = try? HubSource.remote(url: "macbook.local:7377", token: " tok\n").discover()
+    check(r == HubDiscovery(url: "http://macbook.local:7377", token: "tok", pid: 0), "remote discovery \(String(describing: r))")
+    check((try? HubSource.remote(url: "macbook.local:7377", token: "").discover()) == nil, "no token, no hub")
+    check((try? HubSource.remote(url: "", token: "t").discover()) == nil, "no address, no hub")
+    check(HubSource.remote(url: "a:1", token: "t").isRemote && !HubSource.thisMac.isRemote, "isRemote")
+    let remote = HubConnection(source: .remote(url: "a:1", token: "t"))
+    let why = await remote.watchRun(id: "x")
+    check(why == HubConnection.remoteTerminalWhy, "remote watch is refused: \(why ?? "nil")")
+    let tr = await remote.openTranscript(id: "x")
+    check(tr == HubConnection.remoteTerminalWhy, "remote transcript is refused")
+}
+
 // MARK: shared fixtures (testdata/clients)
 
 checkFixtures()
@@ -653,7 +673,13 @@ checkFixtures()
 // serving there, the way the app does, and waits for its first snapshot.
 if let i = CommandLine.arguments.firstIndex(of: "--live"), i + 1 < CommandLine.arguments.count {
     let dir = URL(fileURLWithPath: CommandLine.arguments[i + 1], isDirectory: true)
-    let conn = HubConnection(stateDir: dir)
+    // With --lan <url> <token>, as another Mac would: the LAN listener.
+    let conn: HubConnection
+    if let l = CommandLine.arguments.firstIndex(of: "--lan"), l + 2 < CommandLine.arguments.count {
+        conn = HubConnection(source: .remote(url: CommandLine.arguments[l + 1], token: CommandLine.arguments[l + 2]))
+    } else {
+        conn = HubConnection(stateDir: dir)
+    }
     conn.start()
     var connected = false
     for _ in 0..<100 where !connected {

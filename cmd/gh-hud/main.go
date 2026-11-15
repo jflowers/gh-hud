@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -149,8 +150,9 @@ func run() int {
 }
 
 // serveHub serves h on the unix socket l and, unless [hub] listen is
-// empty, on loopback TCP for apps that can't use the socket, and on the
-// tailnet when [hub] tailnet names a host, until ctx ends. A TCP or
+// empty, on loopback TCP for apps that can't use the socket, on the local
+// network when [hub] lan names an address, and on the tailnet when [hub]
+// tailnet names a host, until ctx ends. A TCP or
 // tailnet failure is reported but leaves the socket serving.
 func serveHub(ctx context.Context, cfg *config.Config, h *hub.Hub, dir string, l net.Listener, tcpReady func(api.Discovery)) error {
 	ctx, cancel := context.WithCancel(ctx)
@@ -160,6 +162,16 @@ func serveHub(ctx context.Context, cfg *config.Config, h *hub.Hub, dir string, l
 		others.Go(func() {
 			if err := api.ServeTCP(ctx, cfg.Hub.Listen, dir, h, os.Getpid(), tcpReady); err != nil {
 				fmt.Fprintln(os.Stderr, "hub tcp:", err)
+			}
+		})
+	}
+	if cfg.Hub.LAN != "" {
+		others.Go(func() {
+			ready := func(i api.LANInfo) {
+				log.Printf("other Macs reach the hub at %s with the token in %s (private networks only)", strings.Join(i.URLs, " or "), i.TokenFile)
+			}
+			if err := api.ServeLAN(ctx, cfg.Hub.LAN, dir, h, ready); err != nil {
+				fmt.Fprintln(os.Stderr, "hub lan:", err)
 			}
 		})
 	}

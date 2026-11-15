@@ -2,7 +2,8 @@ import Connect
 import Foundation
 import Observation
 
-/// A live connection to the hub: it finds the hub through hub.json,
+/// A live connection to the hub: it finds the hub (through hub.json for
+/// this Mac's, or at the address you entered for another Mac's),
 /// subscribes, and keeps the latest snapshot. When the hub goes away it
 /// says so and reconnects with backoff, reading hub.json again each time
 /// (a restarted hub has a new port and token).
@@ -12,7 +13,9 @@ public final class HubConnection {
     public enum Status: Equatable, Sendable {
         case connecting
         case connected
-        /// No hub.json, or it can't be read: no hub is running.
+        /// No hub.json, or it can't be read: no hub is running. For another
+        /// Mac's hub: its address or token is missing, or it can't be
+        /// reached.
         case noHub(String)
         /// We had a hub and lost it; reconnecting.
         case lost(String)
@@ -25,7 +28,8 @@ public final class HubConnection {
     /// Called for each alert the hub sends (on the main actor).
     @ObservationIgnored public var onAlert: (@MainActor (Ghhud_V1_Alert) -> Void)?
 
-    @ObservationIgnored private let stateDir: URL
+    /// Where the hub is; setSource changes it.
+    public private(set) var source: HubSource
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var nativeNotifications = false
     @ObservationIgnored private var hub: HubDiscovery?
@@ -35,8 +39,34 @@ public final class HubConnection {
     private static let firstRetry: Duration = .milliseconds(250)
     private static let longestRetry: Duration = .seconds(5)
 
-    public init(stateDir: URL = HubDiscovery.defaultStateDir) {
-        self.stateDir = stateDir
+    public init(source: HubSource) {
+        self.source = source
+    }
+
+    public convenience init(stateDir: URL = HubDiscovery.defaultStateDir) {
+        self.init(source: .local(stateDir: stateDir))
+    }
+
+    /// Connected (or connecting) to a hub on another Mac.
+    public var isRemote: Bool { source.isRemote }
+
+    /// Why Watch and Open Transcript are off with a hub on another Mac:
+    /// they open a terminal on the hub's machine.
+    public static let remoteTerminalWhy = "Watch and Open Transcript open a terminal on the hub's Mac; use them there"
+
+    /// Switches to another hub, reconnecting if running.
+    public func setSource(_ s: HubSource) {
+        guard s != source else { return }
+        source = s
+        hub = nil
+        commands = nil
+        snapshot = Ghhud_V1_Snapshot()
+        attention = .empty
+        status = .connecting
+        if task != nil {
+            stop()
+            start()
+        }
     }
 
     /// Starts connecting (again, after stop).
@@ -188,6 +218,7 @@ public final class HubConnection {
 
     /// Opens a terminal attached to an agent session's pane.
     public func watch(sessionID: String) async -> String? {
+        if isRemote { return Self.remoteTerminalWhy }
         guard let hub, let client = commands else { return "not connected" }
         var req = Ghhud_V1_WatchRequest()
         req.sessionID = sessionID
@@ -196,6 +227,7 @@ public final class HubConnection {
 
     /// Opens a terminal on the hub's machine attached to a live run.
     public func watchRun(id: String) async -> String? {
+        if isRemote { return Self.remoteTerminalWhy }
         guard let hub, let client = commands else { return "not connected" }
         var req = Ghhud_V1_WatchRunRequest()
         req.runID = id
@@ -212,6 +244,7 @@ public final class HubConnection {
 
     /// Opens a run's opencode session in a terminal on its machine.
     public func openTranscript(id: String) async -> String? {
+        if isRemote { return Self.remoteTerminalWhy }
         guard let hub, let client = commands else { return "not connected" }
         var req = Ghhud_V1_OpenTranscriptRequest()
         req.runID = id
@@ -247,7 +280,7 @@ public final class HubConnection {
         while !Task.isCancelled {
             let d: HubDiscovery
             do {
-                d = try HubDiscovery.load(stateDir: stateDir)
+                d = try source.discover()
             } catch {
                 hub = nil
                 commands = nil
@@ -259,32 +292,48 @@ public final class HubConnection {
                 hub = d
                 commands = Self.client(for: d, streaming: false)
             }
-            if await stream(d) {
+            let (got, why) = await stream(d)
+            if got {
                 hadHub = true
                 wait = Self.firstRetry
             }
             if Task.isCancelled { return }
-            status = hadHub ? .lost("lost the hub; reconnecting…") : .connecting
+            if hadHub {
+                status = .lost("lost the hub; reconnecting…")
+            } else if source.isRemote, let why {
+                // A hub on another Mac: say why it can't be reached (wrong
+                // address or token, the hub's lan off, the network).
+                status = .noHub("can't reach the hub at \(d.url): \(why)")
+            } else {
+                status = .connecting
+            }
             try? await Task.sleep(for: wait)
             wait = min(wait * 2, Self.longestRetry)
         }
     }
 
-    /// Runs one subscription; reports whether it delivered anything.
-    private func stream(_ d: HubDiscovery) async -> Bool {
+    /// Runs one subscription; reports whether it delivered anything, and
+    /// why it ended when the hub said.
+    private func stream(_ d: HubDiscovery) async -> (Bool, String?) {
         let client = Self.client(for: d, streaming: true)
         let st = client.subscribe(headers: d.authHeaders)
         defer { st.cancel() }
         var req = Ghhud_V1_SubscribeRequest()
-        req.nativeNotifications = nativeNotifications
+        // Only this Mac's hub stops its own notifications for the app: a hub
+        // on another Mac keeps notifying there.
+        req.nativeNotifications = nativeNotifications && !source.isRemote
         do {
             try st.send(req)
         } catch {
-            return false
+            return (false, String(describing: error))
         }
         var got = false
+        var why: String?
         for await result in st.results() {
             if Task.isCancelled { break }
+            if case .complete(_, let error, _) = result, let error {
+                why = (error as? ConnectError)?.message ?? String(describing: error)
+            }
             guard case .message(let m) = result else { continue }
             switch m.msg {
             case .snapshot(let s):
@@ -299,7 +348,7 @@ public final class HubConnection {
                 break
             }
         }
-        return got
+        return (got, why)
     }
 
     /// Applies a snapshot as if it came from the hub (also for previews

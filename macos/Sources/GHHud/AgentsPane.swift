@@ -86,12 +86,12 @@ struct AgentsPane: View {
     @ViewBuilder
     private func menu(_ r: AgentRow) -> some View {
         Button("Watch") { watch(r) }
-            .disabled(off != nil)
+            .disabled(off != nil || conn.isRemote)
         if let run = r.run {
             Button("Re-check Run") { recheck(r, run) }
                 .disabled(off != nil || !run.hasFinishedAt)
             Button("Open Transcript") { transcript(r, run) }
-                .disabled(off != nil || run.sessionID.isEmpty)
+                .disabled(off != nil || run.sessionID.isEmpty || conn.isRemote)
         }
         Divider()
         if let url = Links.forRef(r.session.ref) {
