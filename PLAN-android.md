@@ -1,7 +1,8 @@
 # gh-hud — Phase 4 plan: the Android app
 
 A native client of the hub (`PLAN-serve.md`) for the phone: what needs
-you, approvals, and notifications when you're away from the laptop.
+you, approvals, and notifications when you're away from the laptop, and
+then (4e) about everything the Mac app shows.
 Decided: a native app (Kotlin and Jetpack Compose), not a web app.
 
 ## Constraints that shape it
@@ -111,5 +112,101 @@ Decided: a native app (Kotlin and Jetpack Compose), not a web app.
    notifications: it's always subscribed, so that would silence the Mac
    whenever its app isn't running. You get alerts on both, as with a chat
    app.
-5. **4e, later.** The agents list and Watch, and the queue, if the phone
-   turns out to need them. The full dashboard stays on the Mac.
+5. **4e, the rest of the Mac app.** What needs you isn't enough on its
+   own: the phone should show about everything the Mac app does. Below.
+
+## 4e: about everything the Mac app shows
+
+The Mac app has the menu (what needs you, which the phone has) and the
+dashboard: the item filters (the TUI's tabs) as a table, and the Plan,
+Agents, Workspaces and Fleet panes, with commands on each. The phone
+gets the same information and the same commands, laid out for a phone.
+Two things it can't copy as they are: tables with ten columns, and
+commands that open something on the Mac (Watch, Open Transcript, Show in
+Finder).
+
+### Layout
+
+A bottom bar with five places, each a list; tapping a row opens its
+detail, where its commands are:
+
+- **Inbox**: what needs you, as now. The app opens here.
+- **Items**: the dashboard's filters (Review requested, Mine, Issues,
+  CI, Notifications, Ready, …) as chips across the top, with counts.
+  Each row is two lines: the title, then the TUI's cluster in small
+  type (kind, marker ◆, CI/review/merge glyphs, threads, last actor,
+  age, the run tag "fix ● 5m" and what's next "▸review"). The search
+  field takes the Mac's column terms (`repo:acme -author:dependabot`)
+  and keeps them as chips; a sort menu replaces clickable headers.
+- **Plan**: open cases (with their proposals), enrolled epics (plan,
+  pieces, gates), then what starts next, running, waiting, stopped and
+  merging. Your queue reorders by drag or Move up/down.
+- **Agents**: sessions and runs (Live Only and Show stale, as on the
+  Mac), and a Workspaces tab within it for the checkouts a dispatch
+  could use.
+- **Fleet**: the rollout target and its CI, a row per machine, and the
+  four controls.
+
+Details are full screens, not side panes:
+
+- **Item**: everything the row has, untruncated, plus its runs.
+  Commands: Open on GitHub, Start agent… and Add to queue… (the hub's
+  task choices, in a bottom sheet), Re-check run, Copy link.
+- **Session or run**: the Mac's labelled facts (outcome, took,
+  directory, ref). Commands: Re-check, Open on GitHub, Copy session ID.
+- **Epic**: the plan's pieces and gates. Approve plan, Clear gate,
+  Reread, Drop (confirmed).
+- **Case**: the check, the PRs, the proposal. Approve or Reject.
+
+Long-press on a row offers the same commands and the column filters
+("Show only repo acme/r", "Hide author dependabot") the Mac's context
+menu does. A command's result shows in a snackbar; a failure stays until
+dismissed, as the Mac's notice bar. Commands are off, with the reason,
+when the hub has no dispatcher or another gh-hud owns dispatch.
+
+### The logic goes to `:core`, tested against the Mac's
+
+Almost everything the Mac shows is worked out by pure functions in
+`GHHudKit`: `ItemList`, `Filters`, `Sorting`, `Agents`, `Plan`,
+`Fleet` (about 1,300 lines), checked by `GHHudChecks` (189 checks).
+They port to Kotlin in `:core` the way `Attention` did, with JVM tests.
+
+So the two can't drift, the checks move to shared fixtures:
+`testdata/clients/` holds snapshots (as protobuf JSON) and what each
+view should make of them (rows, counts, sort orders, filter results).
+`GHHudChecks` and the `:core` tests both read them; a change to what a
+view shows changes the fixture once, and both clients follow. Checks
+that are specific to one client stay in it.
+
+### Watching an agent from the phone
+
+On the Mac, Watch opens the agent's herdr pane and Open Transcript its
+opencode session, both on the hub's machine. The phone needs the
+content instead: a hub call that returns a session's recent output
+(herdr `pane read`) and streams what follows, and one that returns a
+run's transcript as text. To decide when we get there: which of those
+the dispatcher can already give (its runners are the merge train's,
+`internal/dispatch`), and whether answering a blocked agent from the
+phone (sending it a line) is wanted, which would make the phone a
+remote control rather than a viewer.
+
+### Sequence
+
+1. **4e1, `:core` ports and shared fixtures.** `ItemList`, `Filters`,
+   `Sorting`, `Agents`, `Plan`, `Fleet` in Kotlin; the fixtures and
+   `GHHudChecks` reading them. No new screens. The biggest step, and it
+   makes the rest mostly UI.
+2. **4e2, the shell and Items.** The bottom bar, the Items list with
+   filters, search, sort and column chips, the item detail, and its
+   commands (start an agent, queue, re-check).
+3. **4e3, Plan.** Cases, epics and the queue, with every command the
+   Mac's Plan pane has, Enroll epic included.
+4. **4e4, Agents and Workspaces**, without Watch.
+5. **4e5, Fleet**, with pause/resume, check now, skip wait (confirmed)
+   and retry.
+6. **4e6, watching from the phone.** The hub calls above, then a
+   session screen that follows its output. Planned when 4e5 is done.
+
+Each step is a PR with its JVM tests and device tests, tried on the
+phone (wireless debugging) before review.
+
