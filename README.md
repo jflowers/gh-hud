@@ -848,18 +848,26 @@ A local branch is pruned when:
 - it isn't checked out in any worktree, isn't the default branch, and no
   run is live in the checkout.
 
-Its copy in the head repo goes too when you own that repo (your fork) and
-it still points at the PR's last head. The daily
-`chore/dewey-learnings-…` branches follow the same rule.
+The forks the checkouts push to (their `origin`, when you own it) are
+swept on GitHub as a whole, so a branch no checkout has anymore goes too:
+a fork branch is deleted when its PR on the parent is merged or closed (no
+open PR), it still points at the PR's last head, and no checkout has it
+checked out. The daily `chore/dewey-learnings-…` branches follow the same
+rule.
+
+The same sweep keeps each fork's default branch in step with its parent's:
+it fast-forwards it when the fork has no commits of its own there, and
+reports a fork that has.
 
 ```sh
-gh-hud branches          # what would be pruned, per checkout (-v for each branch)
-gh-hud branches -apply   # prune them
+gh-hud branches          # what would be pruned or synced (-v for each branch)
+gh-hud branches -apply   # prune them and sync the forks
 ```
 
 ```toml
 [branches]
-prune = true   # the hub prunes on its own every 6 hours (default off)
+prune = true        # the hub prunes on its own every 6 hours (default off)
+sync_forks = true   # and fast-forwards the forks' default branches (default off)
 ```
 
 ## Configuring dispatch

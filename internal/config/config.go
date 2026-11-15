@@ -195,6 +195,10 @@ type BranchesConfig struct {
 	// Prune makes the hub delete, every few hours, dispatch checkouts'
 	// branches whose PR is merged or closed, and their copy in your fork.
 	Prune bool `toml:"prune"`
+	// SyncForks makes the hub fast-forward each dispatch fork's default
+	// branch to its parent's, at the same pace, when the fork has no
+	// commits of its own there.
+	SyncForks bool `toml:"sync_forks"`
 }
 
 // AutoMergeConfig says where gh-hud turns on GitHub auto-merge for your own

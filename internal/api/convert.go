@@ -732,6 +732,7 @@ func sweepToPB(s dispatch.BranchSweep) *pb.PruneBranchesResponse {
 		Remote: mapSlice(s.Remote, branchPruneToPB),
 		Kept:   int32(s.Kept), //nolint:gosec // a branch count
 		Errors: s.Errors,
+		Forks:  mapSlice(s.Forks, forkSyncToPB),
 	}
 }
 
@@ -741,6 +742,7 @@ func sweepFromPB(p *pb.PruneBranchesResponse) dispatch.BranchSweep {
 		Remote: mapSlice(p.GetRemote(), branchPruneFromPB),
 		Kept:   int(p.GetKept()),
 		Errors: p.GetErrors(),
+		Forks:  mapSlice(p.GetForks(), forkSyncFromPB),
 	}
 }
 
@@ -755,5 +757,19 @@ func branchPruneFromPB(p *pb.BranchPrune) dispatch.BranchPrune {
 	return dispatch.BranchPrune{
 		Machine: p.GetMachine(), Workspace: p.GetWorkspace(), Repo: p.GetRepo(), Branch: p.GetBranch(),
 		PR: p.GetPr(), State: p.GetState(), Action: p.GetAction(),
+	}
+}
+
+func forkSyncToPB(f dispatch.ForkSync) *pb.ForkSync {
+	return &pb.ForkSync{
+		Repo: f.Repo, Branch: f.Branch, Action: f.Action,
+		Behind: int32(f.Behind), Ahead: int32(f.Ahead), //nolint:gosec // commit counts
+	}
+}
+
+func forkSyncFromPB(p *pb.ForkSync) dispatch.ForkSync {
+	return dispatch.ForkSync{
+		Repo: p.GetRepo(), Branch: p.GetBranch(), Action: p.GetAction(),
+		Behind: int(p.GetBehind()), Ahead: int(p.GetAhead()),
 	}
 }

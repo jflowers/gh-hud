@@ -293,7 +293,106 @@ public object PruneBranchesResponseKt {
 @kotlin.jvm.JvmName("setErrors")
     public fun com.google.protobuf.kotlin.DslList<kotlin.String, ErrorsProxy>.clear() {
       _builder.clearErrors()
-    }}
+    }
+    /**
+     * An uninstantiable, behaviorless type to represent the field in
+     * generics.
+     */
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+    public class ForksProxy private constructor() : com.google.protobuf.kotlin.DslProxy()
+    /**
+     * ```
+     * forks whose default branch is behind its parent's
+     * ```
+     *
+     * `repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];`
+     */
+     public val forks: com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ForkSync, ForksProxy>
+      @kotlin.jvm.JvmSynthetic
+  get() = com.google.protobuf.kotlin.DslList(
+        _builder.forksList
+      )
+    /**
+     * ```
+     * forks whose default branch is behind its parent's
+     * ```
+     *
+     * `repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];`
+     * @param value The forks to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addForks")
+    public fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ForkSync, ForksProxy>.add(value: io.github.jflowers.ghhud.api.v1.ForkSync) {
+      _builder.addForks(value)
+    }
+    /**
+     * ```
+     * forks whose default branch is behind its parent's
+     * ```
+     *
+     * `repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];`
+     * @param value The forks to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignForks")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ForkSync, ForksProxy>.plusAssign(value: io.github.jflowers.ghhud.api.v1.ForkSync) {
+      add(value)
+    }
+    /**
+     * ```
+     * forks whose default branch is behind its parent's
+     * ```
+     *
+     * `repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];`
+     * @param values The forks to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addAllForks")
+    public fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ForkSync, ForksProxy>.addAll(values: kotlin.collections.Iterable<io.github.jflowers.ghhud.api.v1.ForkSync>) {
+      _builder.addAllForks(values)
+    }
+    /**
+     * ```
+     * forks whose default branch is behind its parent's
+     * ```
+     *
+     * `repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];`
+     * @param values The forks to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignAllForks")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ForkSync, ForksProxy>.plusAssign(values: kotlin.collections.Iterable<io.github.jflowers.ghhud.api.v1.ForkSync>) {
+      addAll(values)
+    }
+    /**
+     * ```
+     * forks whose default branch is behind its parent's
+     * ```
+     *
+     * `repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];`
+     * @param index The index to set the value at.
+     * @param value The forks to set.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setForks")
+    public operator fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ForkSync, ForksProxy>.set(index: kotlin.Int, value: io.github.jflowers.ghhud.api.v1.ForkSync) {
+      _builder.setForks(index, value)
+    }
+    /**
+     * ```
+     * forks whose default branch is behind its parent's
+     * ```
+     *
+     * `repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];`
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("clearForks")
+    public fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ForkSync, ForksProxy>.clear() {
+      _builder.clearForks()
+    }
+  }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.PruneBranchesResponse.copy(block: `io.github.jflowers.ghhud.api.v1`.PruneBranchesResponseKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.PruneBranchesResponse =
   `io.github.jflowers.ghhud.api.v1`.PruneBranchesResponseKt.Dsl._create(this.toBuilder()).apply { block() }._build()

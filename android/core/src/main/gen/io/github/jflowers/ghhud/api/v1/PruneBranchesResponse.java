@@ -18,6 +18,7 @@ public  final class PruneBranchesResponse extends
     local_ = emptyProtobufList();
     remote_ = emptyProtobufList();
     errors_ = emptyProtobufList();
+    forks_ = emptyProtobufList();
   }
   public static final int LOCAL_FIELD_NUMBER = 1;
   private com.google.protobuf.Internal.ProtobufList<io.github.jflowers.ghhud.api.v1.BranchPrune> local_;
@@ -380,6 +381,144 @@ public  final class PruneBranchesResponse extends
     checkByteStringIsUtf8(value);
     ensureErrorsIsMutable();
     errors_.add(value.toStringUtf8());
+  }
+
+  public static final int FORKS_FIELD_NUMBER = 5;
+  private com.google.protobuf.Internal.ProtobufList<io.github.jflowers.ghhud.api.v1.ForkSync> forks_;
+  /**
+   * <pre>
+   * forks whose default branch is behind its parent's
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.jflowers.ghhud.api.v1.ForkSync> getForksList() {
+    return forks_;
+  }
+  /**
+   * <pre>
+   * forks whose default branch is behind its parent's
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+   */
+  public java.util.List<? extends io.github.jflowers.ghhud.api.v1.ForkSyncOrBuilder> 
+      getForksOrBuilderList() {
+    return forks_;
+  }
+  /**
+   * <pre>
+   * forks whose default branch is behind its parent's
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+   */
+  @java.lang.Override
+  public int getForksCount() {
+    return forks_.size();
+  }
+  /**
+   * <pre>
+   * forks whose default branch is behind its parent's
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+   */
+  @java.lang.Override
+  public io.github.jflowers.ghhud.api.v1.ForkSync getForks(int index) {
+    return forks_.get(index);
+  }
+  /**
+   * <pre>
+   * forks whose default branch is behind its parent's
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+   */
+  public io.github.jflowers.ghhud.api.v1.ForkSyncOrBuilder getForksOrBuilder(
+      int index) {
+    return forks_.get(index);
+  }
+  private void ensureForksIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.jflowers.ghhud.api.v1.ForkSync> tmp = forks_;
+    if (!tmp.isModifiable()) {
+      forks_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <pre>
+   * forks whose default branch is behind its parent's
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+   */
+  private void setForks(
+      int index, io.github.jflowers.ghhud.api.v1.ForkSync value) {
+    java.util.Objects.requireNonNull(value);
+    ensureForksIsMutable();
+    forks_.set(index, value);
+  }
+  /**
+   * <pre>
+   * forks whose default branch is behind its parent's
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+   */
+  private void addForks(io.github.jflowers.ghhud.api.v1.ForkSync value) {
+    java.util.Objects.requireNonNull(value);
+    ensureForksIsMutable();
+    forks_.add(value);
+  }
+  /**
+   * <pre>
+   * forks whose default branch is behind its parent's
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+   */
+  private void addForks(
+      int index, io.github.jflowers.ghhud.api.v1.ForkSync value) {
+    java.util.Objects.requireNonNull(value);
+    ensureForksIsMutable();
+    forks_.add(index, value);
+  }
+  /**
+   * <pre>
+   * forks whose default branch is behind its parent's
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+   */
+  private void addAllForks(
+      java.lang.Iterable<? extends io.github.jflowers.ghhud.api.v1.ForkSync> values) {
+    ensureForksIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, forks_);
+  }
+  /**
+   * <pre>
+   * forks whose default branch is behind its parent's
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+   */
+  private void clearForks() {
+    forks_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * forks whose default branch is behind its parent's
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+   */
+  private void removeForks(int index) {
+    ensureForksIsMutable();
+    forks_.remove(index);
   }
 
   public static io.github.jflowers.ghhud.api.v1.PruneBranchesResponse parseFrom(
@@ -863,6 +1002,156 @@ public  final class PruneBranchesResponse extends
       return this;
     }
 
+    /**
+     * <pre>
+     * forks whose default branch is behind its parent's
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.jflowers.ghhud.api.v1.ForkSync> getForksList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getForksList());
+    }
+    /**
+     * <pre>
+     * forks whose default branch is behind its parent's
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+     */
+    @java.lang.Override
+    public int getForksCount() {
+      return instance.getForksCount();
+    }/**
+     * <pre>
+     * forks whose default branch is behind its parent's
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+     */
+    @java.lang.Override
+    public io.github.jflowers.ghhud.api.v1.ForkSync getForks(int index) {
+      return instance.getForks(index);
+    }
+    /**
+     * <pre>
+     * forks whose default branch is behind its parent's
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+     */
+    public Builder setForks(
+        int index, io.github.jflowers.ghhud.api.v1.ForkSync value) {
+      copyOnWrite();
+      instance.setForks(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * forks whose default branch is behind its parent's
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+     */
+    public Builder setForks(
+        int index, io.github.jflowers.ghhud.api.v1.ForkSync.Builder builderForValue) {
+      copyOnWrite();
+      instance.setForks(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * forks whose default branch is behind its parent's
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+     */
+    public Builder addForks(io.github.jflowers.ghhud.api.v1.ForkSync value) {
+      copyOnWrite();
+      instance.addForks(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * forks whose default branch is behind its parent's
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+     */
+    public Builder addForks(
+        int index, io.github.jflowers.ghhud.api.v1.ForkSync value) {
+      copyOnWrite();
+      instance.addForks(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * forks whose default branch is behind its parent's
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+     */
+    public Builder addForks(
+        io.github.jflowers.ghhud.api.v1.ForkSync.Builder builderForValue) {
+      copyOnWrite();
+      instance.addForks(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * forks whose default branch is behind its parent's
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+     */
+    public Builder addForks(
+        int index, io.github.jflowers.ghhud.api.v1.ForkSync.Builder builderForValue) {
+      copyOnWrite();
+      instance.addForks(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * forks whose default branch is behind its parent's
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+     */
+    public Builder addAllForks(
+        java.lang.Iterable<? extends io.github.jflowers.ghhud.api.v1.ForkSync> values) {
+      copyOnWrite();
+      instance.addAllForks(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * forks whose default branch is behind its parent's
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+     */
+    public Builder clearForks() {
+      copyOnWrite();
+      instance.clearForks();
+      return this;
+    }
+    /**
+     * <pre>
+     * forks whose default branch is behind its parent's
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+     */
+    public Builder removeForks(int index) {
+      copyOnWrite();
+      instance.removeForks(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.PruneBranchesResponse)
   }
   @java.lang.Override
@@ -885,10 +1174,12 @@ public  final class PruneBranchesResponse extends
             io.github.jflowers.ghhud.api.v1.BranchPrune.class,
             "kept_",
             "errors_",
+            "forks_",
+            io.github.jflowers.ghhud.api.v1.ForkSync.class,
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0003\u0000\u0001\u001b\u0002\u001b" +
-              "\u0003\u0004\u0004\u021a";
+              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0004\u0000\u0001\u001b\u0002\u001b" +
+              "\u0003\u0004\u0004\u021a\u0005\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -38,8 +38,8 @@ public interface HubServiceClientInterface {
 
   /**
    *  PruneBranches finds the dispatch checkouts' branches whose PR is
-   *  merged or closed; with apply it deletes them, and their copy in your
-   *  fork (gh-hud branches).
+   *  merged or closed, and your forks' (gh-hud branches); with apply it
+   *  deletes them and fast-forwards the forks' default branches.
    */
   public suspend fun pruneBranches(request: PruneBranchesRequest, headers: Headers = emptyMap()): ResponseMessage<PruneBranchesResponse>
 

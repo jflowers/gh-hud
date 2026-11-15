@@ -320,6 +320,9 @@ type Dispatcher struct {
 	// ghQuery runs a GraphQL query and decodes its data (a hook for tests;
 	// nil uses gh).
 	ghQuery func(ctx context.Context, query string, out any) error
+	// ghREST runs a REST GET and decodes its body (a hook for tests; nil
+	// uses gh).
+	ghREST func(ctx context.Context, path string, out any) error
 	// Guarded by mu (branches.go): a sweep in flight, and when the last
 	// automatic one finished.
 	pruning  bool

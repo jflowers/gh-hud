@@ -112,8 +112,8 @@ type HubServiceClient interface {
 	Dispatch(context.Context, *connect.Request[v1.DispatchRequest]) (*connect.Response[v1.DispatchResponse], error)
 	Reinspect(context.Context, *connect.Request[v1.ReinspectRequest]) (*connect.Response[v1.ReinspectResponse], error)
 	// PruneBranches finds the dispatch checkouts' branches whose PR is
-	// merged or closed; with apply it deletes them, and their copy in your
-	// fork (gh-hud branches).
+	// merged or closed, and your forks' (gh-hud branches); with apply it
+	// deletes them and fast-forwards the forks' default branches.
 	PruneBranches(context.Context, *connect.Request[v1.PruneBranchesRequest]) (*connect.Response[v1.PruneBranchesResponse], error)
 	// Your queue of agent tasks.
 	QueueChoices(context.Context, *connect.Request[v1.QueueChoicesRequest]) (*connect.Response[v1.QueueChoicesResponse], error)
@@ -437,8 +437,8 @@ type HubServiceHandler interface {
 	Dispatch(context.Context, *connect.Request[v1.DispatchRequest]) (*connect.Response[v1.DispatchResponse], error)
 	Reinspect(context.Context, *connect.Request[v1.ReinspectRequest]) (*connect.Response[v1.ReinspectResponse], error)
 	// PruneBranches finds the dispatch checkouts' branches whose PR is
-	// merged or closed; with apply it deletes them, and their copy in your
-	// fork (gh-hud branches).
+	// merged or closed, and your forks' (gh-hud branches); with apply it
+	// deletes them and fast-forwards the forks' default branches.
 	PruneBranches(context.Context, *connect.Request[v1.PruneBranchesRequest]) (*connect.Response[v1.PruneBranchesResponse], error)
 	// Your queue of agent tasks.
 	QueueChoices(context.Context, *connect.Request[v1.QueueChoicesRequest]) (*connect.Response[v1.QueueChoicesResponse], error)

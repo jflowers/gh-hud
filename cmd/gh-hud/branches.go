@@ -19,12 +19,14 @@ import (
 
 const branchesUsage = `usage: gh-hud branches [-apply] [-v]
 
-Lists the branches in the dispatch checkouts (hub and workers) whose PR is
-merged or closed, and their copy in your fork. Nothing is deleted without
--apply. A branch is kept when it's checked out, when a run is live in its
-checkout, when it has commits that aren't in the PR, or (in the fork) when
-it was pushed to after the PR. [branches] prune = true makes the hub do
-this on its own every few hours.
+Lists the branches in the dispatch checkouts (hub and workers) and in your
+forks whose PR is merged or closed, and the forks whose default branch is
+behind its parent's. Nothing changes without -apply, which deletes the
+branches and fast-forwards those forks. A branch is kept when it's checked
+out, when a run is live in its checkout, when it has commits that aren't in
+the PR, or (in a fork) when it was pushed to after the PR; a fork with
+commits of its own on its default branch isn't synced. [branches] prune
+and sync_forks make the hub do this on its own every few hours.
 
 flags:
 `
@@ -137,8 +139,15 @@ func printSweep(w io.Writer, s dispatch.BranchSweep, apply, verbose bool) {
 			remote++
 		}
 	}
-	fmt.Fprintf(w, "\n%s %d local branch(es) and %d fork branch(es); %d other branch(es) have an open PR or none.\n", verb, local, remote, s.Kept)
-	if !apply && local+remote > 0 {
+	fmt.Fprintf(w, "\n%s %d local branch(es) and %d fork branch(es); %d other local branch(es) have an open PR or none.\n", verb, local, remote, s.Kept)
+	syncs := 0
+	for _, f := range s.Forks {
+		fmt.Fprintf(w, "fork %s %s: %d behind its parent, %s\n", f.Repo, f.Branch, f.Behind, f.Action)
+		if f.Synced() {
+			syncs++
+		}
+	}
+	if !apply && local+remote+syncs > 0 {
 		fmt.Fprintln(w, "Run gh-hud branches -apply to delete them.")
 	}
 	for _, e := range s.Errors {

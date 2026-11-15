@@ -559,6 +559,34 @@ public nonisolated struct Ghhud_V1_PruneBranchesResponse: Sendable {
 
   public var errors: [String] = []
 
+  /// forks whose default branch is behind its parent's
+  public var forks: [Ghhud_V1_ForkSync] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// ForkSync is a fork's default branch against its parent's.
+public nonisolated struct Ghhud_V1_ForkSync: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// the fork, owner/name
+  public var repo: String = String()
+
+  public var branch: String = String()
+
+  /// parent commits the fork lacks
+  public var behind: Int32 = 0
+
+  /// fork commits the parent lacks (then it isn't synced)
+  public var ahead: Int32 = 0
+
+  /// "synced", "would sync", or "kept: why"
+  public var action: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2882,7 +2910,7 @@ nonisolated extension Ghhud_V1_PruneBranchesRequest: SwiftProtobuf.Message, Swif
 
 nonisolated extension Ghhud_V1_PruneBranchesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".PruneBranchesResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}local\0\u{1}remote\0\u{1}kept\0\u{1}errors\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}local\0\u{1}remote\0\u{1}kept\0\u{1}errors\0\u{1}forks\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2894,6 +2922,7 @@ nonisolated extension Ghhud_V1_PruneBranchesResponse: SwiftProtobuf.Message, Swi
       case 2: try { try decoder.decodeRepeatedMessageField(value: &self.remote) }()
       case 3: try { try decoder.decodeSingularInt32Field(value: &self.kept) }()
       case 4: try { try decoder.decodeRepeatedStringField(value: &self.errors) }()
+      case 5: try { try decoder.decodeRepeatedMessageField(value: &self.forks) }()
       default: break
       }
     }
@@ -2912,6 +2941,9 @@ nonisolated extension Ghhud_V1_PruneBranchesResponse: SwiftProtobuf.Message, Swi
     if !self.errors.isEmpty {
       try visitor.visitRepeatedStringField(value: self.errors, fieldNumber: 4)
     }
+    if !self.forks.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.forks, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2920,6 +2952,57 @@ nonisolated extension Ghhud_V1_PruneBranchesResponse: SwiftProtobuf.Message, Swi
     if lhs.remote != rhs.remote {return false}
     if lhs.kept != rhs.kept {return false}
     if lhs.errors != rhs.errors {return false}
+    if lhs.forks != rhs.forks {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_ForkSync: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ForkSync"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}repo\0\u{1}branch\0\u{1}behind\0\u{1}ahead\0\u{1}action\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.repo) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.branch) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self.behind) }()
+      case 4: try { try decoder.decodeSingularInt32Field(value: &self.ahead) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.action) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.repo.isEmpty {
+      try visitor.visitSingularStringField(value: self.repo, fieldNumber: 1)
+    }
+    if !self.branch.isEmpty {
+      try visitor.visitSingularStringField(value: self.branch, fieldNumber: 2)
+    }
+    if self.behind != 0 {
+      try visitor.visitSingularInt32Field(value: self.behind, fieldNumber: 3)
+    }
+    if self.ahead != 0 {
+      try visitor.visitSingularInt32Field(value: self.ahead, fieldNumber: 4)
+    }
+    if !self.action.isEmpty {
+      try visitor.visitSingularStringField(value: self.action, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_ForkSync, rhs: Ghhud_V1_ForkSync) -> Bool {
+    if lhs.repo != rhs.repo {return false}
+    if lhs.branch != rhs.branch {return false}
+    if lhs.behind != rhs.behind {return false}
+    if lhs.ahead != rhs.ahead {return false}
+    if lhs.action != rhs.action {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -3,6 +3,7 @@ package dispatch
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -162,55 +163,81 @@ func TestPruneScript(t *testing.T) {
 	}
 }
 
-// fakePruneGitHub answers the sweep's GraphQL: PR lists per branch and the
-// fork's refs, and records deleteRef calls.
+// fakePruneGitHub answers the sweep's GitHub calls: PR lists per branch,
+// the fork (its parent, default branches and branches), the compare of
+// the default branches, and records the mutations.
 type fakePruneGitHub struct {
-	login   string
-	headRe  string                      // the PRs' head repo
-	prs     map[string][]map[string]any // branch → PR nodes
-	refs    map[string]string           // fork branch → oid
-	deleted []string                    // ref ids
-	queries []string
+	login     string
+	headRe    string                      // the PRs' head repo, the fork
+	prs       map[string][]map[string]any // branch → PR nodes
+	refs      map[string]string           // fork branch → oid
+	forkMain  string                      // the fork's main
+	parentTip string                      // the parent's main
+	ahead     int                         // fork commits on main the parent lacks
+	deleted   []string                    // ref ids
+	synced    []string                    // ref id → oid
+	queries   []string
 }
 
 func (f *fakePruneGitHub) query(_ context.Context, q string, out any) error {
 	f.queries = append(f.queries, q)
-	alias := regexp.MustCompile(`(b\d+): (pullRequests\(headRefName|ref\(qualifiedName): "([^"]+)"`)
-	repo := map[string]any{}
-	for _, m := range alias.FindAllStringSubmatch(q, -1) {
-		if strings.HasPrefix(m[2], "pull") {
-			repo[m[1]] = map[string]any{"nodes": f.prs[m[3]]}
-			continue
+	var data map[string]any
+	if strings.Contains(q, "isFork") {
+		owner, _, _ := strings.Cut(f.headRe, "/")
+		nodes := []map[string]any{{"name": "main", "id": "ref:main", "target": map[string]any{"oid": f.forkMain}}}
+		for _, name := range sortedKeys(f.refs) {
+			nodes = append(nodes, map[string]any{"name": name, "id": "ref:" + name, "target": map[string]any{"oid": f.refs[name]}})
 		}
-		name := strings.TrimPrefix(m[3], "refs/heads/")
-		if oid, ok := f.refs[name]; ok {
-			repo[m[1]] = map[string]any{"id": "ref:" + name, "target": map[string]any{"oid": oid}}
-		} else {
-			repo[m[1]] = nil
+		data = map[string]any{"viewer": map[string]any{"login": f.login}, "repository": map[string]any{
+			"isFork":           true,
+			"owner":            map[string]any{"login": owner},
+			"parent":           map[string]any{"nameWithOwner": "acme/app", "defaultBranchRef": map[string]any{"name": "main", "target": map[string]any{"oid": f.parentTip}}},
+			"defaultBranchRef": map[string]any{"name": "main", "id": "ref:main", "target": map[string]any{"oid": f.forkMain}},
+			"refs":             map[string]any{"pageInfo": map[string]any{"hasNextPage": false}, "nodes": nodes},
+		}}
+	} else {
+		alias := regexp.MustCompile(`(b\d+): pullRequests\(headRefName: "([^"]+)"`)
+		repo := map[string]any{}
+		for _, m := range alias.FindAllStringSubmatch(q, -1) {
+			repo[m[1]] = map[string]any{"nodes": f.prs[m[2]]}
 		}
+		data = map[string]any{"viewer": map[string]any{"login": f.login}, "repository": repo}
 	}
-	b, _ := json.Marshal(map[string]any{"viewer": map[string]any{"login": f.login}, "repository": repo})
+	b, _ := json.Marshal(data)
 	return json.Unmarshal(b, out)
+}
+
+func (f *fakePruneGitHub) rest(_ context.Context, path string, out any) error {
+	if !strings.HasPrefix(path, "repos/acme/app/compare/main...") {
+		return fmt.Errorf("unexpected REST %s", path)
+	}
+	behind := 0
+	if f.forkMain != f.parentTip {
+		behind = 3
+	}
+	b, _ := json.Marshal(map[string]int{"ahead_by": f.ahead, "behind_by": behind})
+	return json.Unmarshal(b, out)
+}
+
+func (f *fakePruneGitHub) mutate(_ context.Context, q string, vars map[string]any) error {
+	switch {
+	case strings.Contains(q, "deleteRef"):
+		f.deleted = append(f.deleted, vars["id"].(string))
+	case strings.Contains(q, "updateRef"):
+		f.synced = append(f.synced, vars["id"].(string)+"→"+vars["oid"].(string))
+	default:
+		return fmt.Errorf("unexpected mutation %s", q)
+	}
+	return nil
 }
 
 func (f *fakePruneGitHub) pr(n int, state, head string) map[string]any {
 	return map[string]any{"number": n, "state": state, "headRefOid": head, "headRepository": map[string]any{"nameWithOwner": f.headRe}}
 }
 
-func TestPruneBranchesSweep(t *testing.T) {
-	work, heads := pruneRepo(t)
-	gitRun(t, work, "remote", "set-url", "origin", "git@github.com:me/app.git") // the head repo is my fork
-	gh := &fakePruneGitHub{login: "me", headRe: "me/app", refs: map[string]string{
-		"done":   heads["done"],
-		"behind": "pushed-later", // someone pushed after the PR closed
-	}}
-	gh.prs = map[string][]map[string]any{
-		"done":    {gh.pr(5, "MERGED", heads["done"])},
-		"behind":  {gh.pr(6, "CLOSED", heads["behind"])},
-		"extra":   {gh.pr(7, "MERGED", heads["extra"])},
-		"open":    {gh.pr(8, "OPEN", heads["open"])},
-		"current": {gh.pr(9, "MERGED", heads["current"])},
-	}
+// pruneDispatcher sweeps work, an instance checkout of acme/app, against gh.
+func pruneDispatcher(t *testing.T, work string, gh *fakePruneGitHub) *Dispatcher {
+	t.Helper()
 	d, err := New(Options{Root: t.TempDir(), StateDir: t.TempDir(), LocalIndex: ghws.NewIndex([]ghws.Checkout{
 		{Workspace: "acme@x", Repo: "acme/app", Dir: work, Instance: true},
 		{Workspace: "acme", Repo: "acme/app", Dir: t.TempDir()}, // not an instance: never swept
@@ -219,80 +246,123 @@ func TestPruneBranchesSweep(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(d.epicWork.Wait)
-	d.ghQuery = gh.query
-	d.graphql = func(_ context.Context, q string, vars map[string]any) error {
-		if !strings.Contains(q, "deleteRef") {
-			t.Errorf("unexpected mutation %s", q)
-		}
-		gh.deleted = append(gh.deleted, vars["id"].(string))
-		return nil
+	d.ghQuery, d.ghREST, d.graphql = gh.query, gh.rest, gh.mutate
+	return d
+}
+
+func pruneSummary(ps []BranchPrune) string {
+	var s []string
+	for _, p := range ps {
+		s = append(s, p.Branch+" "+p.PR+" "+p.State+": "+p.Action)
 	}
+	return strings.Join(s, "\n")
+}
+
+func TestPruneBranchesSweep(t *testing.T) {
+	work, heads := pruneRepo(t)
+	gitRun(t, work, "remote", "set-url", "origin", "git@github.com:me/app.git") // the head repo is my fork
+	gh := &fakePruneGitHub{login: "me", headRe: "me/app", forkMain: "old", parentTip: "new", refs: map[string]string{
+		"done":    heads["done"],
+		"behind":  "pushed-later", // someone pushed after the PR closed
+		"current": heads["current"],
+		"gone":    "g1", // only in the fork: its checkout deleted it long ago
+		"wip":     "w1", // only in the fork, no PR
+	}}
+	gh.prs = map[string][]map[string]any{
+		"done":    {gh.pr(5, "MERGED", heads["done"])},
+		"behind":  {gh.pr(6, "CLOSED", heads["behind"])},
+		"extra":   {gh.pr(7, "MERGED", heads["extra"])},
+		"open":    {gh.pr(8, "OPEN", heads["open"])},
+		"current": {gh.pr(9, "MERGED", heads["current"])},
+		"gone":    {gh.pr(4, "MERGED", "g1")},
+	}
+	d := pruneDispatcher(t, work, gh)
 
 	sweep, err := d.PruneBranches(context.Background(), false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	summary := func(ps []BranchPrune) string {
-		var s []string
-		for _, p := range ps {
-			s = append(s, p.Branch+" "+p.PR+" "+p.State+": "+p.Action)
-		}
-		return strings.Join(s, "\n")
-	}
 	wantLocal := "behind acme/app#6 closed: would prune\n" +
 		"done acme/app#5 merged: would prune\n" +
 		"extra acme/app#7 merged: kept: has commits that aren't in the PR"
-	if got := summary(sweep.Local); got != wantLocal {
+	if got := pruneSummary(sweep.Local); got != wantLocal {
 		t.Errorf("local =\n%s\nwant\n%s", got, wantLocal)
 	}
+	// current is checked out, so its fork copy stays too
 	wantRemote := "behind acme/app#6 closed: kept: pushed to after the PR\n" +
-		"done acme/app#5 merged: would prune"
-	if got := summary(sweep.Remote); got != wantRemote {
+		"done acme/app#5 merged: would prune\n" +
+		"gone acme/app#4 merged: would prune"
+	if got := pruneSummary(sweep.Remote); got != wantRemote {
 		t.Errorf("remote =\n%s\nwant\n%s", got, wantRemote)
+	}
+	if len(sweep.Forks) != 1 || sweep.Forks[0] != (ForkSync{Repo: "me/app", Branch: "main", Behind: 3, Action: actWouldSync}) {
+		t.Errorf("forks = %+v", sweep.Forks)
 	}
 	if sweep.Kept != 2 || len(sweep.Errors) != 0 { // open, nopr
 		t.Errorf("kept %d errors %q, want 2 and none", sweep.Kept, sweep.Errors)
 	}
-	if len(gh.deleted) != 0 {
-		t.Errorf("a dry run deleted %q", gh.deleted)
+	if len(gh.deleted)+len(gh.synced) != 0 {
+		t.Errorf("a dry run changed GitHub: deleted %q synced %q", gh.deleted, gh.synced)
 	}
 
 	sweep, err = d.PruneBranches(context.Background(), true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := summary(sweep.Local); got != strings.ReplaceAll(wantLocal, "would prune", "pruned") {
+	if got := pruneSummary(sweep.Local); got != strings.ReplaceAll(wantLocal, "would prune", "pruned") {
 		t.Errorf("applied local =\n%s", got)
 	}
-	if strings.Join(gh.deleted, ",") != "ref:done" {
-		t.Errorf("deleted fork refs %q, want only done's", gh.deleted)
+	if strings.Join(gh.deleted, ",") != "ref:done,ref:gone" {
+		t.Errorf("deleted fork refs %q, want done's and gone's", gh.deleted)
 	}
-	if n := sweep.notice(); len(n) != 1 || n[0] != "pruned 2 local branch(es) and 1 fork branch(es) whose PR is done" {
+	if strings.Join(gh.synced, ",") != "ref:main→new" {
+		t.Errorf("synced %q, want main fast-forwarded to the parent's tip", gh.synced)
+	}
+	want := []string{"pruned 2 local branch(es) and 2 fork branch(es) whose PR is done", "synced me/app main with its parent (3 commit(s))"}
+	if n := sweep.notice(); strings.Join(n, "|") != strings.Join(want, "|") {
 		t.Errorf("notice = %q", n)
+	}
+}
+
+func TestSyncForkKeepsADivergedFork(t *testing.T) {
+	work, _ := pruneRepo(t)
+	gitRun(t, work, "remote", "set-url", "origin", "git@github.com:me/app.git")
+	gh := &fakePruneGitHub{login: "me", headRe: "me/app", forkMain: "mine", parentTip: "new", ahead: 2}
+	d := pruneDispatcher(t, work, gh)
+	sweep, err := d.sweepBranches(context.Background(), true, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sweep.Forks) != 1 || sweep.Forks[0].Action != "kept: has 2 commit(s) of its own" || sweep.Forks[0].Synced() {
+		t.Errorf("forks = %+v", sweep.Forks)
+	}
+	if len(gh.synced)+len(gh.deleted) != 0 || len(sweep.Local)+len(sweep.Remote) != 0 {
+		t.Errorf("sync-only sweep changed more: synced %q deleted %q local %d remote %d", gh.synced, gh.deleted, len(sweep.Local), len(sweep.Remote))
+	}
+	if n := sweep.notice(); len(n) != 1 || n[0] != "fork me/app main not synced: has 2 commit(s) of its own" {
+		t.Errorf("notice = %q", n)
+	}
+
+	gh.forkMain = "new" // in sync: nothing to report
+	if sweep, _ := d.sweepBranches(context.Background(), true, false, true); len(sweep.Forks) != 0 {
+		t.Errorf("an in-sync fork was reported: %+v", sweep.Forks)
 	}
 }
 
 func TestPruneBranchesLeavesOthersForks(t *testing.T) {
 	work, heads := pruneRepo(t)
 	gitRun(t, work, "remote", "set-url", "origin", "git@github.com:me/app.git")
-	gh := &fakePruneGitHub{login: "someone-else", headRe: "me/app", refs: map[string]string{"done": heads["done"]}}
+	gh := &fakePruneGitHub{login: "someone-else", headRe: "me/app", forkMain: "old", parentTip: "new", refs: map[string]string{"done": heads["done"]}}
 	gh.prs = map[string][]map[string]any{"done": {gh.pr(5, "MERGED", heads["done"])}}
-	d, err := New(Options{Root: t.TempDir(), StateDir: t.TempDir(), LocalIndex: ghws.NewIndex([]ghws.Checkout{
-		{Workspace: "acme@x", Repo: "acme/app", Dir: work, Instance: true},
-	})})
+	d := pruneDispatcher(t, work, gh)
+	sweep, err := d.PruneBranches(context.Background(), true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(d.epicWork.Wait)
-	d.ghQuery = gh.query
-	sweep, err := d.PruneBranches(context.Background(), false)
-	if err != nil {
-		t.Fatal(err)
+	if len(sweep.Remote)+len(sweep.Forks)+len(gh.deleted)+len(gh.synced) != 0 {
+		t.Errorf("a fork the operator doesn't own was touched: %+v %+v", sweep.Remote, sweep.Forks)
 	}
-	if len(sweep.Remote) != 0 {
-		t.Errorf("a fork the operator doesn't own was touched: %+v", sweep.Remote)
-	}
-	if len(sweep.Local) != 1 || !sweep.Local[0].Pruned() {
+	if len(sweep.Local) != 1 || sweep.Local[0].Action != actPruned {
 		t.Errorf("local = %+v, want done pruned", sweep.Local)
 	}
 }
@@ -305,7 +375,7 @@ func TestPruneBatchesQueries(t *testing.T) {
 	gh := &fakePruneGitHub{login: "me"}
 	d := newTestDispatcher(t, "refuse")
 	d.ghQuery = gh.query
-	got, _, err := d.branchPRs(context.Background(), "acme/app", names)
+	got, err := d.branchPRs(context.Background(), "acme/app", names)
 	if err != nil {
 		t.Fatal(err)
 	}
