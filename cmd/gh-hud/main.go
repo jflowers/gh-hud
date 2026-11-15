@@ -390,6 +390,7 @@ func dispatchOptions(cfg *config.Config, stateDir string, wsDirs []string, idx *
 		InstancesOnly: cfg.DispatchInstancesOnly,
 		StateDir:      stateDir,
 		LearningsPR:   cfg.LearningsPR,
+		HumanGate:     cfg.HumanGateLabel,
 	}
 }
 

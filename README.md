@@ -1124,11 +1124,14 @@ where approvals, checks and resolved threads are configured. gh-hud acts on a
 PR only when all of these hold:
 
 - you opened it, and it's in a covered repo
-- it's not a draft, has no `hold_label` label and has no merge conflict
+- it's not a draft, has no `hold_label` or `human_gate_label` label and has
+  no merge conflict
 - the repo allows auto-merge
 - the base branch's protection or rulesets require at least one approval
 - no agent is working on it and no agent step is due (merge is the
   [pipeline's](#coordination) last step; turning auto-merge off is never held)
+- its last gh-hud run didn't fail or leave work behind (unpushed commits,
+  uncommitted changes); a later clean run or a re-inspection clears that
 
 The last check is the safety net: on a branch with no such rule, auto-merge
 has nothing to wait for. gh-hud also doesn't use `gh pr merge --auto`, which
@@ -1141,6 +1144,13 @@ refuse it.
 
 To stop a PR, add the hold label or convert it to a draft: gh-hud turns
 auto-merge off at the next refresh, so a merge can still land before then.
+A run that fails or leaves work turns it off the same way.
+
+A PR or issue a person must handle (a Dewey curation PR, say) gets the
+`human-gate` label (`human_gate_label` at the top level of the config to
+rename it). gh-hud then sends it no agent of any task, by hand, from your
+queue or automatically, shows it as `needs you: human gate`, and never
+merges it. `hold` only means "don't merge yet": agents still work on it.
 New PRs are only picked up while gh-hud runs; once auto-merge is on, GitHub
 finishes the merge without it. Merges run as your `gh` login, not `uf-divisor`.
 

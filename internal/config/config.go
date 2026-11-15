@@ -51,6 +51,10 @@ type Config struct {
 	// .uf/dewey/learnings files after a clean agent run, at most once a
 	// day per checkout. Untracked learnings never block a dispatch.
 	LearningsPR bool `toml:"learnings_pr"`
+	// HumanGateLabel marks issues and PRs a person handles: gh-hud
+	// dispatches no agent to them, by hand or automatically, and never
+	// merges them (default "human-gate").
+	HumanGateLabel string `toml:"human_gate_label"`
 	// Machines are remote dispatch workers: herdr-managed machines saved
 	// with `herdr machine add`, reached over ssh. Empty keeps the historic
 	// hub-only behavior.
@@ -467,6 +471,9 @@ func Load(path string) (*Config, error) {
 		if strings.TrimSpace(m) == "" {
 			return nil, fmt.Errorf("supervisor second_opinion_models: empty model name")
 		}
+	}
+	if cfg.HumanGateLabel == "" {
+		cfg.HumanGateLabel = "human-gate"
 	}
 	if cfg.AutoMerge.HoldLabel == "" {
 		cfg.AutoMerge.HoldLabel = "hold"

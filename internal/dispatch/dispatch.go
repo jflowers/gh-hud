@@ -230,6 +230,9 @@ type Options struct {
 	Supervisor config.SupervisorConfig
 	// Epics bounds the work started on approved epics (epic_run.go).
 	Epics config.EpicsConfig
+	// HumanGate is the label that keeps agents and auto-merge off an item
+	// ("" = none).
+	HumanGate string
 	// Branches turns on the hub's own branch pruning (branches.go).
 	Branches config.BranchesConfig
 }
@@ -453,6 +456,9 @@ func (d *Dispatcher) Dispatch(ctx context.Context, task Task, it model.Item, aut
 func (d *Dispatcher) dispatchWith(ctx context.Context, task Task, it model.Item, auto bool, prep func(context.Context, Machine) ([]string, error)) (Record, error) {
 	if !d.owns() {
 		return Record{}, d.followerErr()
+	}
+	if humanGated(it, d.o().HumanGate) {
+		return Record{}, fmt.Errorf("%s has the %q label: a person handles it, so no agent is sent", it.Ref(), d.o().HumanGate)
 	}
 	name, args, title, err := d.taskCommand(task, it)
 	if err != nil {
@@ -937,6 +943,9 @@ type MenuChoice struct {
 // MenuChoices lists the row's dispatchable tasks and where each would
 // run, using cached machine state only (no I/O; safe from the UI loop).
 func (d *Dispatcher) MenuChoices(it model.Item) []MenuChoice {
+	if humanGated(it, d.o().HumanGate) {
+		return nil
+	}
 	v := d.cachedView()
 	var out []MenuChoice
 	for _, task := range MenuTasks(it) {
