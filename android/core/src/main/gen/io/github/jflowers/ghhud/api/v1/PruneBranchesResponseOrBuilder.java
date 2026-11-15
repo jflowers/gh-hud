@@ -84,4 +84,30 @@ public interface PruneBranchesResponseOrBuilder extends
    */
   com.google.protobuf.ByteString
       getErrorsBytes(int index);
+
+  /**
+   * <pre>
+   * forks whose default branch is behind its parent's
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+   */
+  java.util.List<io.github.jflowers.ghhud.api.v1.ForkSync> 
+      getForksList();
+  /**
+   * <pre>
+   * forks whose default branch is behind its parent's
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+   */
+  io.github.jflowers.ghhud.api.v1.ForkSync getForks(int index);
+  /**
+   * <pre>
+   * forks whose default branch is behind its parent's
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
+   */
+  int getForksCount();
 }

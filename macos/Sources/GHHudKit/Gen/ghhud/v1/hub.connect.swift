@@ -37,8 +37,8 @@ public protocol Ghhud_V1_HubServiceClientInterface: Sendable {
     func `reinspect`(request: Ghhud_V1_ReinspectRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_ReinspectResponse>
 
     /// PruneBranches finds the dispatch checkouts' branches whose PR is
-    /// merged or closed; with apply it deletes them, and their copy in your
-    /// fork (gh-hud branches).
+    /// merged or closed, and your forks' (gh-hud branches); with apply it
+    /// deletes them and fast-forwards the forks' default branches.
     @available(iOS 13, *)
     func `pruneBranches`(request: Ghhud_V1_PruneBranchesRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_PruneBranchesResponse>
 

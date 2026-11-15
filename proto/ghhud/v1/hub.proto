@@ -38,8 +38,8 @@ service HubService {
   rpc Dispatch(DispatchRequest) returns (DispatchResponse);
   rpc Reinspect(ReinspectRequest) returns (ReinspectResponse);
   // PruneBranches finds the dispatch checkouts' branches whose PR is
-  // merged or closed; with apply it deletes them, and their copy in your
-  // fork (gh-hud branches).
+  // merged or closed, and your forks' (gh-hud branches); with apply it
+  // deletes them and fast-forwards the forks' default branches.
   rpc PruneBranches(PruneBranchesRequest) returns (PruneBranchesResponse);
 
   // Your queue of agent tasks.
@@ -151,6 +151,16 @@ message PruneBranchesResponse {
   repeated BranchPrune remote = 2; // the head repo's copies (repo is the head repo)
   int32 kept = 3; // branches with an open PR, or none
   repeated string errors = 4;
+  repeated ForkSync forks = 5; // forks whose default branch is behind its parent's
+}
+
+// ForkSync is a fork's default branch against its parent's.
+message ForkSync {
+  string repo = 1; // the fork, owner/name
+  string branch = 2;
+  int32 behind = 3; // parent commits the fork lacks
+  int32 ahead = 4; // fork commits the parent lacks (then it isn't synced)
+  string action = 5; // "synced", "would sync", or "kept: why"
 }
 
 // BranchPrune is one branch whose PR is done.

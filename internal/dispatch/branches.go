@@ -13,13 +13,17 @@ package dispatch
 //   - it is not checked out in any worktree, and no run is live in the
 //     checkout.
 //
-// The fork's copy is deleted too when the operator owns the head repo and
-// its tip is still the PR's last head (nothing was pushed after).
+// In each fork the operator owns (a checkout's origin), the sweep also
+// deletes every branch whose PR on the parent is done and whose tip is
+// still the PR's last head, unless a checkout has it checked out (#83), and
+// fast-forwards the fork's default branch to the parent's when the fork has
+// no commits of its own there (#82).
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"sort"
 	"strings"
 	"sync"
@@ -46,11 +50,26 @@ func (b BranchPrune) Pruned() bool { return !strings.HasPrefix(b.Action, "kept")
 type BranchSweep struct {
 	Local  []BranchPrune
 	Remote []BranchPrune
-	Kept   int      // branches with an open PR, or none
-	Errors []string // machines, checkouts or repos that could not be read
+	Forks  []ForkSync // forks whose default branch is behind its parent's
+	Kept   int        // branches with an open PR, or none
+	Errors []string   // machines, checkouts or repos that could not be read
 }
 
+// ForkSync is a fork's default branch against its parent's.
+type ForkSync struct {
+	Repo   string // the fork, owner/name
+	Branch string
+	Behind int    // parent commits the fork lacks
+	Ahead  int    // fork commits the parent lacks (then it isn't synced)
+	Action string // "synced", "would sync", or "kept: why"
+}
+
+// Synced reports whether the fork was or would be fast-forwarded.
+func (f ForkSync) Synced() bool { return !strings.HasPrefix(f.Action, "kept") }
+
 const (
+	actSynced     = "synced"
+	actWouldSync  = "would sync"
 	actPruned     = "pruned"
 	actWouldPrune = "would prune"
 	// pruneEvery spaces the hub's own sweeps ([branches] prune).
@@ -189,36 +208,33 @@ type prNode struct {
 
 // branchPRs asks GitHub for the PRs of each branch on repo, in batches,
 // and returns them per branch name.
-func (d *Dispatcher) branchPRs(ctx context.Context, repo string, names []string) (map[string][]prNode, string, error) {
+func (d *Dispatcher) branchPRs(ctx context.Context, repo string, names []string) (map[string][]prNode, error) {
 	owner, name, ok := strings.Cut(repo, "/")
 	if !ok {
-		return nil, "", fmt.Errorf("bad repo %q", repo)
+		return nil, fmt.Errorf("bad repo %q", repo)
 	}
 	out := map[string][]prNode{}
-	login := ""
 	for start := 0; start < len(names); start += pruneBatch {
 		batch := names[start:min(start+pruneBatch, len(names))]
 		var q strings.Builder
-		q.WriteString("query { viewer { login } repository(owner: " + gqlString(owner) + ", name: " + gqlString(name) + ") {\n")
+		q.WriteString("query { repository(owner: " + gqlString(owner) + ", name: " + gqlString(name) + ") {\n")
 		for i, b := range batch {
 			fmt.Fprintf(&q, "b%d: pullRequests(headRefName: %s, first: 20, states: [OPEN, MERGED, CLOSED], orderBy: {field: CREATED_AT, direction: DESC}) { nodes { number state headRefOid headRepository { nameWithOwner } } }\n", i, gqlString(b))
 		}
 		q.WriteString("} }")
 		var res struct {
-			Viewer     struct{ Login string } `json:"viewer"`
 			Repository map[string]struct {
 				Nodes []prNode `json:"nodes"`
 			} `json:"repository"`
 		}
 		if err := d.query(ctx, q.String(), &res); err != nil {
-			return nil, "", err
+			return nil, err
 		}
-		login = res.Viewer.Login
 		for i, b := range batch {
 			out[b] = res.Repository[fmt.Sprintf("b%d", i)].Nodes
 		}
 	}
-	return out, login, nil
+	return out, nil
 }
 
 // gqlString quotes s as a GraphQL string literal (JSON's escaping).
@@ -286,6 +302,12 @@ func pruneScript(jobs []pruneJob, apply bool) string {
 // merged or closed; apply deletes them (and the operator's fork's copy),
 // otherwise it only reports.
 func (d *Dispatcher) PruneBranches(ctx context.Context, apply bool) (BranchSweep, error) {
+	return d.sweepBranches(ctx, apply, true, true)
+}
+
+// sweepBranches is the sweep: prune deletes branches whose PR is done,
+// syncForks fast-forwards the forks' default branches.
+func (d *Dispatcher) sweepBranches(ctx context.Context, apply, prune, syncForks bool) (BranchSweep, error) {
 	if apply && !d.owns() {
 		return BranchSweep{}, d.followerErr()
 	}
@@ -309,6 +331,8 @@ func (d *Dispatcher) PruneBranches(ctx context.Context, apply bool) (BranchSweep
 	}
 	type listed struct {
 		branches []localBranch
+		checked  []string // fork \x00 branch checked out in some checkout
+		forks    []string
 		errs     []string
 	}
 	results := make([]listed, len(machines))
@@ -317,14 +341,26 @@ func (d *Dispatcher) PruneBranches(ctx context.Context, apply bool) (BranchSweep
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			results[i].branches, results[i].errs = d.listBranches(ctx, m, busy)
+			r := &results[i]
+			r.branches, r.checked, r.forks, r.errs = d.listBranches(ctx, m, busy)
 		}()
 	}
 	wg.Wait()
 	var all []localBranch
+	checkedOut := map[string]bool{}
+	forks := map[string]bool{}
 	for _, r := range results {
 		all = append(all, r.branches...)
+		for _, k := range r.checked {
+			checkedOut[k] = true
+		}
+		for _, f := range r.forks {
+			forks[f] = true
+		}
 		sweep.Errors = append(sweep.Errors, r.errs...)
+	}
+	if !prune {
+		all = nil
 	}
 
 	// 2. Ask GitHub about the PRs, per upstream repo.
@@ -337,23 +373,18 @@ func (d *Dispatcher) PruneBranches(ctx context.Context, apply bool) (BranchSweep
 		}
 	}
 	prs := map[string]map[string][]prNode{}
-	login := ""
 	for _, repo := range sortedKeys(byRepo) {
-		got, who, err := d.branchPRs(ctx, repo, byRepo[repo])
+		got, err := d.branchPRs(ctx, repo, byRepo[repo])
 		if err != nil {
 			sweep.Errors = append(sweep.Errors, repo+": "+err.Error())
 			continue
 		}
 		prs[repo] = got
-		if who != "" {
-			login = who
-		}
 	}
 
 	// 3. Check and delete on each machine.
 	jobsBy := map[string][]pruneJob{}
 	machineBy := map[string]Machine{}
-	remoteWant := map[string]prState{} // headRepo \x00 branch → PR
 	for _, b := range all {
 		got, ok := prs[b.co.repo]
 		if !ok {
@@ -366,7 +397,6 @@ func (d *Dispatcher) PruneBranches(ctx context.Context, apply bool) (BranchSweep
 		}
 		jobsBy[b.machine.key()] = append(jobsBy[b.machine.key()], pruneJob{b: b, st: st})
 		machineBy[b.machine.key()] = b.machine
-		remoteWant[b.headRepo+"\x00"+b.name] = st
 	}
 	for _, key := range sortedKeys(jobsBy) {
 		jobs := jobsBy[key]
@@ -397,40 +427,44 @@ func (d *Dispatcher) PruneBranches(ctx context.Context, apply bool) (BranchSweep
 		}
 	}
 
-	// 4. The fork's copy: only in a head repo the operator owns, and only
-	// while it still points at the PR's last head.
-	if login != "" {
-		sweep.Remote = d.pruneRemote(ctx, login, remoteWant, apply)
+	// 4. The forks: their branches whose PR is done, and their default
+	// branch.
+	if len(forks) > 0 && (prune || syncForks) {
+		remote, synced, errs := d.sweepForks(ctx, sortedKeys(forks), checkedOut, apply, prune, syncForks)
+		sweep.Remote, sweep.Forks = remote, synced
+		sweep.Errors = append(sweep.Errors, errs...)
 	}
 	sortPrunes(sweep.Local)
 	sortPrunes(sweep.Remote)
 	return sweep, nil
 }
 
-// listBranches reads one machine's instance checkouts and returns the
-// branches a sweep may prune.
-func (d *Dispatcher) listBranches(ctx context.Context, m Machine, busy map[string]bool) ([]localBranch, []string) {
+// listBranches reads one machine's instance checkouts. It returns the
+// branches a sweep may prune (none in busy checkouts), every branch checked
+// out anywhere (fork \x00 branch, busy checkouts included), and the forks
+// the checkouts push to (an origin that isn't the upstream repo).
+func (d *Dispatcher) listBranches(ctx context.Context, m Machine, busy map[string]bool) (bs []localBranch, checked, forks, errs []string) {
 	ix := d.o().LocalIndex
 	if !m.Local {
 		ix = d.remoteIndex(ctx, m)
 	}
 	if ix == nil {
 		if m.Local {
-			return nil, nil
+			return nil, nil, nil, nil
 		}
-		return nil, []string{m.key() + ": unreachable (no ghws index)"}
+		return nil, nil, nil, []string{m.key() + ": unreachable (no ghws index)"}
 	}
 	cos := map[string]checkoutRef{}
 	var dirs []string
 	for _, co := range ix.Checkouts() {
-		if !co.Instance || busy[m.key()+"\x00"+co.Dir] {
+		if !co.Instance {
 			continue
 		}
 		cos[co.Dir] = checkoutRef{workspace: co.Workspace, repo: co.Repo, dir: co.Dir}
 		dirs = append(dirs, co.Dir)
 	}
 	if len(dirs) == 0 {
-		return nil, nil
+		return nil, nil, nil, nil
 	}
 	label := m.key()
 	if label == "" {
@@ -438,10 +472,8 @@ func (d *Dispatcher) listBranches(ctx context.Context, m Machine, busy map[strin
 	}
 	out, err := m.shell(ctx, branchesScript(dirs))
 	if err != nil && out == "" {
-		return nil, []string{label + ": " + err.Error()}
+		return nil, nil, nil, []string{label + ": " + err.Error()}
 	}
-	var bs []localBranch
-	var errs []string
 	for _, l := range parseBranches(out) {
 		co, ok := cos[l.dir]
 		if !ok {
@@ -455,44 +487,170 @@ func (d *Dispatcher) listBranches(ctx context.Context, m Machine, busy map[strin
 		if head == "" {
 			head = co.repo
 		}
+		if !strings.EqualFold(head, co.repo) {
+			forks = append(forks, head)
+		}
+		if l.head != "" {
+			checked = append(checked, head+"\x00"+l.head)
+		}
+		for b := range l.inTree {
+			checked = append(checked, head+"\x00"+b)
+		}
+		if busy[m.key()+"\x00"+co.dir] {
+			continue
+		}
 		for _, c := range l.candidates() {
 			bs = append(bs, localBranch{machine: m, co: co, name: c[0], tip: c[1], headRepo: head})
 		}
 	}
-	return bs, errs
+	return bs, checked, forks, errs
 }
 
-const deleteRefMutation = `
+const (
+	deleteRefMutation = `
 mutation($id: ID!) {
   deleteRef(input: {refId: $id}) { clientMutationId }
 }`
+	// Not forced: GitHub refuses unless it's a fast-forward.
+	fastForwardMutation = `
+mutation($id: ID!, $oid: GitObjectID!) {
+  updateRef(input: {refId: $id, oid: $oid, force: false}) { clientMutationId }
+}`
+)
 
-// pruneRemote deletes (or, without apply, reports) the head repo's copy
-// of each done branch, in repos login owns.
-func (d *Dispatcher) pruneRemote(ctx context.Context, login string, want map[string]prState, apply bool) []BranchPrune {
-	byRepo := map[string][]string{}
-	for k := range want {
-		repo, branch, _ := strings.Cut(k, "\x00")
-		owner, _, _ := strings.Cut(repo, "/")
-		if !strings.EqualFold(owner, login) {
+// forkInfo is one fork as GitHub has it.
+type forkInfo struct {
+	repo, parent       string
+	def, defID, defOid string
+	parentDef          string
+	parentOid          string
+	refs               []forkRef
+}
+
+type forkRef struct{ name, id, oid string }
+
+// readFork reads a fork the viewer owns: its parent, both default branches
+// and all its branches. ok is false for a repo that isn't the viewer's
+// fork.
+func (d *Dispatcher) readFork(ctx context.Context, repo string) (forkInfo, bool, error) {
+	owner, name, _ := strings.Cut(repo, "/")
+	fi := forkInfo{repo: repo}
+	cursor := ""
+	for page := 0; page < 50; page++ {
+		after := ""
+		if cursor != "" {
+			after = ", after: " + gqlString(cursor)
+		}
+		q := "query { viewer { login } repository(owner: " + gqlString(owner) + ", name: " + gqlString(name) + ") {\n" +
+			"isFork owner { login }\n" +
+			"parent { nameWithOwner defaultBranchRef { name target { oid } } }\n" +
+			"defaultBranchRef { name id target { oid } }\n" +
+			"refs(refPrefix: \"refs/heads/\", first: 100" + after + ") { pageInfo { hasNextPage endCursor } nodes { name id target { oid } } }\n" +
+			"} }"
+		var res struct {
+			Viewer     struct{ Login string } `json:"viewer"`
+			Repository *struct {
+				IsFork bool                   `json:"isFork"`
+				Owner  struct{ Login string } `json:"owner"`
+				Parent *struct {
+					NameWithOwner    string `json:"nameWithOwner"`
+					DefaultBranchRef *struct {
+						Name   string `json:"name"`
+						Target struct {
+							Oid string `json:"oid"`
+						} `json:"target"`
+					} `json:"defaultBranchRef"`
+				} `json:"parent"`
+				DefaultBranchRef *struct {
+					Name   string `json:"name"`
+					ID     string `json:"id"`
+					Target struct {
+						Oid string `json:"oid"`
+					} `json:"target"`
+				} `json:"defaultBranchRef"`
+				Refs struct {
+					PageInfo struct {
+						HasNextPage bool   `json:"hasNextPage"`
+						EndCursor   string `json:"endCursor"`
+					} `json:"pageInfo"`
+					Nodes []struct {
+						Name   string `json:"name"`
+						ID     string `json:"id"`
+						Target struct {
+							Oid string `json:"oid"`
+						} `json:"target"`
+					} `json:"nodes"`
+				} `json:"refs"`
+			} `json:"repository"`
+		}
+		if err := d.query(ctx, q, &res); err != nil {
+			return fi, false, err
+		}
+		r := res.Repository
+		if r == nil || !r.IsFork || r.Parent == nil || r.Parent.DefaultBranchRef == nil || r.DefaultBranchRef == nil ||
+			!strings.EqualFold(r.Owner.Login, res.Viewer.Login) {
+			return fi, false, nil
+		}
+		fi.parent = r.Parent.NameWithOwner
+		fi.parentDef, fi.parentOid = r.Parent.DefaultBranchRef.Name, r.Parent.DefaultBranchRef.Target.Oid
+		fi.def, fi.defID, fi.defOid = r.DefaultBranchRef.Name, r.DefaultBranchRef.ID, r.DefaultBranchRef.Target.Oid
+		for _, n := range r.Refs.Nodes {
+			fi.refs = append(fi.refs, forkRef{name: n.Name, id: n.ID, oid: n.Target.Oid})
+		}
+		if !r.Refs.PageInfo.HasNextPage {
+			break
+		}
+		cursor = r.Refs.PageInfo.EndCursor
+	}
+	return fi, true, nil
+}
+
+// sweepForks prunes each fork's branches whose PR on the parent is done
+// (prune) and fast-forwards its default branch (syncForks). Only forks the
+// viewer owns are touched.
+func (d *Dispatcher) sweepForks(ctx context.Context, repos []string, checkedOut map[string]bool, apply, prune, syncForks bool) (remote []BranchPrune, synced []ForkSync, errs []string) {
+	for _, repo := range repos {
+		fi, ok, err := d.readFork(ctx, repo)
+		if err != nil {
+			errs = append(errs, repo+": "+err.Error())
 			continue
 		}
-		byRepo[repo] = append(byRepo[repo], branch)
-	}
-	var out []BranchPrune
-	for _, repo := range sortedKeys(byRepo) {
-		names := byRepo[repo]
-		sort.Strings(names)
-		refs, err := d.headRefs(ctx, repo, names)
+		if !ok {
+			continue
+		}
+		if syncForks {
+			if f, ok := d.syncFork(ctx, fi, apply); ok {
+				synced = append(synced, f)
+			}
+		}
+		if !prune {
+			continue
+		}
+		var names []string
+		byName := map[string]forkRef{}
+		for _, r := range fi.refs {
+			if r.name == fi.def || checkedOut[repo+"\x00"+r.name] {
+				continue
+			}
+			names = append(names, r.name)
+			byName[r.name] = r
+		}
+		if len(names) == 0 {
+			continue
+		}
+		prs, err := d.branchPRs(ctx, fi.parent, names)
+		if err != nil {
+			errs = append(errs, fi.parent+": "+err.Error())
+			continue
+		}
 		for _, name := range names {
-			st := want[repo+"\x00"+name]
+			st := stateFor(fi.parent, repo, prs[name])
+			if !st.done {
+				continue
+			}
+			ref := byName[name]
 			p := BranchPrune{Repo: repo, Branch: name, PR: st.pr, State: st.state}
-			ref, ok := refs[name]
 			switch {
-			case err != nil:
-				p.Action = "kept: " + err.Error()
-			case !ok:
-				continue // already gone
 			case ref.oid != st.head:
 				p.Action = "kept: pushed to after the PR"
 			case !apply:
@@ -504,44 +662,57 @@ func (d *Dispatcher) pruneRemote(ctx context.Context, login string, want map[str
 					p.Action = actPruned
 				}
 			}
-			out = append(out, p)
+			remote = append(remote, p)
 		}
 	}
-	return out
+	return remote, synced, errs
 }
 
-type headRef struct{ id, oid string }
-
-// headRefs reads repo's branches by name (absent ones are left out).
-func (d *Dispatcher) headRefs(ctx context.Context, repo string, names []string) (map[string]headRef, error) {
-	owner, name, _ := strings.Cut(repo, "/")
-	out := map[string]headRef{}
-	for start := 0; start < len(names); start += pruneBatch {
-		batch := names[start:min(start+pruneBatch, len(names))]
-		var q strings.Builder
-		q.WriteString("query { repository(owner: " + gqlString(owner) + ", name: " + gqlString(name) + ") {\n")
-		for i, b := range batch {
-			fmt.Fprintf(&q, "b%d: ref(qualifiedName: %s) { id target { oid } }\n", i, gqlString("refs/heads/"+b))
-		}
-		q.WriteString("} }")
-		var res struct {
-			Repository map[string]*struct {
-				ID     string `json:"id"`
-				Target struct {
-					Oid string `json:"oid"`
-				} `json:"target"`
-			} `json:"repository"`
-		}
-		if err := d.query(ctx, q.String(), &res); err != nil {
-			return nil, err
-		}
-		for i, b := range batch {
-			if r := res.Repository[fmt.Sprintf("b%d", i)]; r != nil && r.ID != "" {
-				out[b] = headRef{id: r.ID, oid: r.Target.Oid}
-			}
+// syncFork fast-forwards a fork's default branch to its parent's. ok is
+// false when the fork is already in sync.
+func (d *Dispatcher) syncFork(ctx context.Context, fi forkInfo, apply bool) (ForkSync, bool) {
+	if fi.defOid == fi.parentOid {
+		return ForkSync{}, false
+	}
+	f := ForkSync{Repo: fi.repo, Branch: fi.def}
+	if fi.def != fi.parentDef {
+		f.Action = "kept: its default branch isn't the parent's (" + fi.parentDef + ")"
+		return f, true
+	}
+	owner, _, _ := strings.Cut(fi.repo, "/")
+	var cmp struct {
+		AheadBy  int `json:"ahead_by"`
+		BehindBy int `json:"behind_by"`
+	}
+	path := "repos/" + fi.parent + "/compare/" + url.PathEscape(fi.parentDef) + "..." + url.PathEscape(owner+":"+fi.def)
+	if err := d.rest(ctx, path, &cmp); err != nil {
+		f.Action = "kept: " + err.Error()
+		return f, true
+	}
+	f.Ahead, f.Behind = cmp.AheadBy, cmp.BehindBy
+	switch {
+	case f.Ahead > 0:
+		f.Action = fmt.Sprintf("kept: has %d commit(s) of its own", f.Ahead)
+	case f.Behind == 0:
+		return ForkSync{}, false
+	case !apply:
+		f.Action = actWouldSync
+	default:
+		if err := d.graphql(ctx, fastForwardMutation, map[string]any{"id": fi.defID, "oid": fi.parentOid}); err != nil {
+			f.Action = "kept: " + err.Error()
+		} else {
+			f.Action = actSynced
 		}
 	}
-	return out, nil
+	return f, true
+}
+
+// rest runs a REST GET and decodes the body.
+func (d *Dispatcher) rest(ctx context.Context, path string, out any) error {
+	if d.ghREST != nil {
+		return d.ghREST(ctx, path, out)
+	}
+	return ghClient().REST(ctx, path, out)
 }
 
 func sortPrunes(ps []BranchPrune) {
@@ -572,7 +743,8 @@ func sortedKeys[V any](m map[string]V) []string {
 // AutoPruneBranches runs the sweep with apply when [branches] prune is
 // on, at most every pruneEvery, and returns a notice for what it pruned.
 func (d *Dispatcher) AutoPruneBranches(ctx context.Context) []string {
-	if !d.o().Branches.Prune || !d.owns() {
+	cfg := d.o().Branches
+	if !cfg.Prune && !cfg.SyncForks || !d.owns() {
 		return nil
 	}
 	d.mu.Lock()
@@ -584,7 +756,7 @@ func (d *Dispatcher) AutoPruneBranches(ctx context.Context) []string {
 	if !due {
 		return nil
 	}
-	sweep, err := d.PruneBranches(ctx, true)
+	sweep, err := d.sweepBranches(ctx, true, cfg.Prune, cfg.SyncForks)
 	d.mu.Lock()
 	d.pruning = false
 	if err == nil && len(sweep.Errors) == 0 {
@@ -615,6 +787,14 @@ func (s BranchSweep) notice() []string {
 	var msgs []string
 	if local+remote > 0 {
 		msgs = append(msgs, fmt.Sprintf("pruned %d local branch(es) and %d fork branch(es) whose PR is done", local, remote))
+	}
+	for _, f := range s.Forks {
+		switch {
+		case f.Action == actSynced:
+			msgs = append(msgs, fmt.Sprintf("synced %s %s with its parent (%d commit(s))", f.Repo, f.Branch, f.Behind))
+		case !f.Synced():
+			msgs = append(msgs, fmt.Sprintf("fork %s %s not synced: %s", f.Repo, f.Branch, strings.TrimPrefix(f.Action, "kept: ")))
+		}
 	}
 	for _, e := range s.Errors {
 		msgs = append(msgs, "branch prune: "+e)
