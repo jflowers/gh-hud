@@ -8,7 +8,7 @@ GOVULNCHECK_VERSION ?= v1.9.0
 BUF_VERSION ?= v1.75.0
 BUF := go run github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
 
-.PHONY: all build test lint fmt tidy vuln proto proto-check proto-breaking ci mac mac-notarize mac-check mac-icon client-fixtures android-sdk android android-install android-device-test android-dev-hub
+.PHONY: all build test lint fmt tidy vuln proto proto-check proto-breaking ci mac mac-notarize mac-check mac-icon client-fixtures android-sdk android android-install android-release android-device-test android-dev-hub
 
 all: build
 
@@ -118,6 +118,19 @@ android:
 	$(GRADLE) lint testDebugUnitTest :core:test assembleDebug
 android-install:
 	$(GRADLE) installDebug
+# android-release builds the signed release APK a GitHub release carries,
+# build/gh-hud-VERSION.apk. Its key comes from the environment (see
+# android/app/build.gradle.kts): ANDROID_KEYSTORE, an absolute path to the
+# .jks, plus ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD.
+ANDROID_VERSION ?= $(MAC_VERSION)
+ANDROID_APK = build/gh-hud-$(ANDROID_VERSION).apk
+android-release:
+	@test -n "$$ANDROID_KEYSTORE" || { echo "android-release needs ANDROID_KEYSTORE and its passwords (see the Makefile)"; exit 1; }
+	$(GRADLE) assembleRelease -PghhudVersion=$(ANDROID_VERSION)
+	mkdir -p build
+	cp android/app/build/outputs/apk/release/app-release.apk $(ANDROID_APK)
+	mise exec -- sh -c '"$$ANDROID_HOME"/build-tools/36.0.0/apksigner verify --print-certs $(ANDROID_APK)' | grep 'certificate SHA-256'
+	@echo "built $(ANDROID_APK)"
 android-device-test:
 	$(GRADLE) connectedDebugAndroidTest
 # Points the app on a USB phone at this Mac's hub: forwards the hub's
