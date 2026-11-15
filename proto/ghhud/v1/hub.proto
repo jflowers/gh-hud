@@ -18,6 +18,8 @@ import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/jflowers/gh-hud/internal/api/gen/ghhud/v1;ghhudv1";
+option java_multiple_files = true;
+option java_package = "io.github.jflowers.ghhud.api.v1";
 
 service HubService {
   // GetSnapshot returns the hub's current state.

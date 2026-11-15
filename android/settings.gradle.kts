@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "gh-hud"
-include(":app")
+include(":app", ":core")

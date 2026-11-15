@@ -261,6 +261,35 @@ System Settings → General → Login Items to start it with your Mac.
 - `build/gh-hud.app/Contents/MacOS/GHHud --snapshot menu.png` renders the
   menu to an image once the hub answers, for screenshots.
 
+## Android app
+
+A phone app (in progress, see `PLAN-android.md`) that shows what needs
+you, as the Mac menu does: agents waiting on you, proposals, epic plans
+and gates to approve or clear, reviews requested, and your PRs ready for
+a maintainer. Tap a row to open it on GitHub; pull down to refresh.
+
+It reaches the hub over your tailnet (`[hub] tailnet`, see "The hub"):
+tap **Hub** and enter the URL the hub logs at start, like
+`https://gh-hud.your-tailnet.ts.net`. It's connected while it's on
+screen; notifications while it's closed come later.
+
+Its source is in `android/`. The JDK and Android SDK tools come from the
+repo's `mise.toml` (`mise install`); everything else from the Gradle
+build. No Android Studio needed.
+
+```
+make android-sdk           # once per machine: SDK packages and license
+make android               # lint, tests, debug APK
+make android-install       # install on a phone over adb (USB debugging on)
+make android-device-test   # the screen tests, on that phone
+make android-dev-hub       # point the phone's app at this Mac's hub over USB
+```
+
+`make android-dev-hub` forwards the Mac's loopback hub to the phone (`adb
+reverse`) and launches the app with the URL and token from `hub.json`,
+so you can develop without the tailnet. Run it again after the hub
+restarts.
+
 ## Agent dispatch
 
 `a` on a row proposes dispatching an autonomous opencode session against a

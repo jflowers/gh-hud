@@ -1,7 +1,9 @@
 package api
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -150,5 +152,39 @@ func TestNativeNotificationsMuteTheHub(t *testing.T) {
 		cancel()
 		_ = st.Close()
 		waitFor(t, "mute released", func() bool { return b.held.Load() == 0 })
+	}
+}
+
+// A refused stream is a Connect error in the stream, not an HTTP error:
+// connect-kotlin (the Android app) can't read an HTTP-level refusal of a
+// stream, so it would show "unexpected content-type" instead of why.
+func TestRefusedStreamIsAConnectError(t *testing.T) {
+	d, _, _ := serveTCP(t, t.TempDir(), &hubtest.Fake{})
+	env := []byte{0, 0, 0, 0, 2, '{', '}'} // one envelope: {}
+	req, _ := http.NewRequest(http.MethodPost, d.URL+ghhudv1connect.HubServiceSubscribeProcedure, bytes.NewReader(env))
+	req.Header.Set("Content-Type", "application/connect+json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK || resp.Header.Get("Content-Type") != "application/connect+json" {
+		t.Errorf("status %d, content-type %q; want 200 and a Connect stream", resp.StatusCode, resp.Header.Get("Content-Type"))
+	}
+	if !bytes.Contains(body, []byte(`"unauthenticated"`)) || !bytes.Contains(body, []byte("hub token")) {
+		t.Errorf("body %q, want the end of stream to say why", body)
+	}
+
+	// And Go's client reads it as the code.
+	c := ghhudv1connect.NewHubServiceClient(http.DefaultClient, d.URL)
+	stream, err := c.Subscribe(t.Context(), connect.NewRequest(&pb.SubscribeRequest{}))
+	if err == nil {
+		for stream.Receive() {
+		}
+		err = stream.Err()
+	}
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Errorf("Subscribe without the token: %v, want unauthenticated", err)
 	}
 }

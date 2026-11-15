@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	"tailscale.com/client/tailscale/apitype"
 	"tailscale.com/ipn/ipnstate"
 	"tailscale.com/ipn/store/mem"
@@ -50,25 +51,17 @@ func TestOnlyTheOwnersDevicesGetThrough(t *testing.T) {
 		"100.64.0.4:1": device(owner, "tag:server"),
 		"100.64.0.5:1": {Node: &tailcfg.Node{}},
 	}
-	h := requireOwner(who, owner, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("ok"))
-	}))
-	for addr, want := range map[string]int{
-		"100.64.0.2:1": http.StatusOK,        // your phone
-		"100.64.0.3:1": http.StatusForbidden, // someone else's, shared in
-		"100.64.0.4:1": http.StatusForbidden, // a tagged server
-		"100.64.0.5:1": http.StatusForbidden, // no user
-		"100.64.0.9:1": http.StatusForbidden, // WhoIs doesn't know it
+	check := ownerCheck(who, owner)
+	for addr, want := range map[string]connect.Code{
+		"100.64.0.2:1": 0,                            // your phone
+		"100.64.0.3:1": connect.CodePermissionDenied, // someone else's, shared in
+		"100.64.0.4:1": connect.CodePermissionDenied, // a tagged server
+		"100.64.0.5:1": connect.CodePermissionDenied, // no user
+		"100.64.0.9:1": connect.CodePermissionDenied, // WhoIs doesn't know it
 	} {
-		r := httptest.NewRequest(http.MethodPost, "/", nil)
-		r.RemoteAddr = addr
-		w := httptest.NewRecorder()
-		h.ServeHTTP(w, r)
-		if w.Code != want {
-			t.Errorf("%s: status %d, want %d (%s)", addr, w.Code, want, w.Body)
-		}
-		if want == http.StatusForbidden && !strings.Contains(w.Body.String(), `"permission_denied"`) {
-			t.Errorf("%s: body %s, want a Connect error", addr, w.Body)
+		err := check(t.Context(), addr, nil)
+		if got := connect.CodeOf(err); err != nil && got != want || err == nil && want != 0 {
+			t.Errorf("%s: %v, want code %v", addr, err, want)
 		}
 	}
 }
