@@ -83,8 +83,9 @@ func TestBuildPlanRefuses(t *testing.T) {
 		"cycle": {`{"nodes":[{"ref":"unbound-force/dewey#146","after":["unbound-force/dewey#150"]},
 			{"ref":"unbound-force/dewey#150","after":["unbound-force/dewey#147"]},
 			{"ref":"unbound-force/dewey#147","after":["unbound-force/dewey#146"]}]}`, "cycle"},
-		"bad ref": {`{"nodes":[{"ref":"dewey 146"}]}`, "isn't owner/repo#N"},
-		"rules":   {`{"nodes":[{"ref":"unbound-force/dewey#146"}],"rules":[` + strings.Repeat(`"r",`, 24) + `"r"]}`, "25 rules, more than 24"},
+		"bad ref":   {`{"nodes":[{"ref":"dewey 146"}]}`, "isn't owner/repo#N"},
+		"long rule": {`{"nodes":[{"ref":"unbound-force/dewey#146"}],"rules":["` + strings.Repeat("x", 501) + `"]}`, "a rule is over 500 characters"},
+		"rules":     {`{"nodes":[{"ref":"unbound-force/dewey#146"}],"rules":[` + strings.Repeat(`"r",`, 24) + `"r"]}`, "25 rules, more than 24"},
 	} {
 		_, err := BuildPlan(epicRef, answer(t, tc.ans), mentioned(), facts)
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
@@ -202,5 +203,15 @@ func TestBuildPlanManyRules(t *testing.T) {
 	p, err := BuildPlan(epicRef, answer(t, `{"nodes":[{"ref":"unbound-force/dewey#146"}],"rules":[`+rules+`]}`), mentioned(), facts)
 	if err != nil || len(p.Rules) != 24 {
 		t.Fatalf("24 rules: %v, %v", p, err)
+	}
+}
+
+// A long rule passes: the planner aims under 300 characters, and one
+// that runs over (413, unbound-force#1060) still plans.
+func TestBuildPlanLongRule(t *testing.T) {
+	rule := strings.Repeat("x", 413)
+	p, err := BuildPlan(epicRef, answer(t, `{"nodes":[{"ref":"unbound-force/dewey#146"}],"rules":["`+rule+`"]}`), mentioned(), facts)
+	if err != nil || len(p.Rules) != 1 {
+		t.Fatalf("413-character rule: %v, %v", p, err)
 	}
 }
