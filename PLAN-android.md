@@ -288,12 +288,25 @@ separate step (4e7), only if you want it.
    while a machine drains (and asking first), Retry only once one failed.
    A row per machine with the Items list's search, chips, long-press
    filters and sorts; a tap shows its whole last error.
-6. **4e6, watching from the phone.** `ReadPane` and `Transcript` (proto,
+6. **4e6, watching from the phone.** *(done)* `ReadPane` and `Transcript` (proto,
    hub, API, the dispatcher's two methods), then Watch and Transcript
    on an agent's and an item's screen. Go tests for the calls against
    the dispatcher's stubs; JVM tests for the transcript's parsing on
    the phone side; device tests for the two screens; tried against a
    real running agent.
+
+   As built: the dispatcher got three methods, not two: `PaneText` for a
+   session, `RunPaneText` for a run, sharing `runPane` with `WatchRun`
+   so the closed-pane message can't drift, and `Transcript` through the
+   `export` hook. The hub parses the export (`hub.ParseTranscript`):
+   words and tool calls only, a tool as one line from opencode's title
+   or its command or file, parts clipped, the last 100 messages (a real
+   2.3 MB export came to 31 KB). Errors carry the dispatcher's words
+   with the hub's usual codes, not FAILED_PRECONDITION: the apps show
+   the message either way. Watch shows for any live agent, as on the
+   Mac; one without a pane says so in its status line. Watch's pane
+   doesn't wrap (a TUI's boxes would break), so wide lines scroll
+   sideways.
 7. **4e7, answering an agent** (only if wanted): `SendToPane` (session,
    text) and a reply box under Watch, with what you send shown in the
    pane before it goes.

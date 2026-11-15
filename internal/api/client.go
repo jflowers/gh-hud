@@ -373,6 +373,26 @@ func (c *Client) OpenTranscript(ctx context.Context, runID string) error {
 	return fromConnect(err)
 }
 
+func (c *Client) ReadPane(ctx context.Context, runID, sessionID string, lines int) (string, error) {
+	ctx, cancel := withDeadline(ctx, callTimeout)
+	defer cancel()
+	resp, err := c.rpc.ReadPane(ctx, connect.NewRequest(&pb.ReadPaneRequest{RunId: runID, SessionId: sessionID, Lines: clamp32(lines)}))
+	if err != nil {
+		return "", fromConnect(err)
+	}
+	return resp.Msg.GetText(), nil
+}
+
+func (c *Client) Transcript(ctx context.Context, runID string, last int) (hub.Transcript, error) {
+	ctx, cancel := withDeadline(ctx, callTimeout)
+	defer cancel()
+	resp, err := c.rpc.Transcript(ctx, connect.NewRequest(&pb.TranscriptRequest{RunId: runID, Last: clamp32(last)}))
+	if err != nil {
+		return hub.Transcript{}, fromConnect(err)
+	}
+	return transcriptFromPB(resp.Msg), nil
+}
+
 func (c *Client) fleet(ctx context.Context, a pb.FleetAction) error {
 	ctx, cancel := withDeadline(ctx, callTimeout)
 	defer cancel()

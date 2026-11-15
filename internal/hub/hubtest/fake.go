@@ -25,7 +25,9 @@ type Fake struct {
 	Record    dispatch.Record
 	Run       dispatch.Run
 	Sweep     dispatch.BranchSweep
-	Pos       int // Enqueue's position and MoveQueued's index
+	Pos       int            // Enqueue's position and MoveQueued's index
+	Pane      string         // what ReadPane returns
+	Talk      hub.Transcript // what Transcript returns
 
 	// Snaps and Events, when set, are what Subscribe returns, so a test
 	// can stream; otherwise Subscribe's channels never deliver.
@@ -173,6 +175,20 @@ func (f *Fake) WatchRun(_ context.Context, runID string) error {
 
 func (f *Fake) OpenTranscript(_ context.Context, runID string) error {
 	return f.call("OpenTranscript %s", runID)
+}
+
+func (f *Fake) ReadPane(_ context.Context, runID, sessionID string, lines int) (string, error) {
+	if err := f.call("ReadPane %s %s %d", runID, sessionID, lines); err != nil {
+		return "", err
+	}
+	return f.Pane, nil
+}
+
+func (f *Fake) Transcript(_ context.Context, runID string, last int) (hub.Transcript, error) {
+	if err := f.call("Transcript %s %d", runID, last); err != nil {
+		return hub.Transcript{}, err
+	}
+	return f.Talk, nil
 }
 
 func (f *Fake) FleetPause(_ context.Context, paused bool) error {

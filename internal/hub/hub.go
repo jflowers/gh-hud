@@ -50,6 +50,10 @@ type Dispatcher interface {
 	Watch(s dispatch.Session) error
 	WatchRun(r dispatch.Run) error
 	OpenTranscript(r dispatch.Run) error
+	// The viewers' content, for apps on other devices (read-only).
+	PaneText(ctx context.Context, s dispatch.Session, lines int) (string, error)
+	RunPaneText(ctx context.Context, r dispatch.Run, lines int) (string, error)
+	Transcript(ctx context.Context, r dispatch.Run) (string, error)
 
 	// SetOptions applies a reloaded config; it returns the settings that
 	// changed but need a restart (dispatch.Dispatcher.SetOptions).
@@ -136,6 +140,12 @@ type Backend interface {
 	Watch(ctx context.Context, sessionID string) error
 	WatchRun(ctx context.Context, runID string) error
 	OpenTranscript(ctx context.Context, runID string) error
+
+	// The viewers' content, for apps on other devices: the end of a live
+	// agent's pane (by run, else by session), and a run's transcript (its
+	// last messages). Read-only: a follower serves them too.
+	ReadPane(ctx context.Context, runID, sessionID string, lines int) (string, error)
+	Transcript(ctx context.Context, runID string, last int) (Transcript, error)
 
 	// Fleet rollout controls; they fail when the fleet is off.
 	FleetPause(ctx context.Context, paused bool) error

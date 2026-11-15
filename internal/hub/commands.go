@@ -278,6 +278,49 @@ func (h *Hub) OpenTranscript(_ context.Context, runID string) error {
 	return d.OpenTranscript(r)
 }
 
+// ReadPane returns the end of a live agent's pane: the run's when runID
+// is set (run IDs are unique), else the session's. lines 0 asks for 200.
+func (h *Hub) ReadPane(ctx context.Context, runID, sessionID string, lines int) (string, error) {
+	d, err := h.disp()
+	if err != nil {
+		return "", err
+	}
+	if lines <= 0 {
+		lines = 200
+	}
+	if runID != "" {
+		r, err := h.run(runID)
+		if err != nil {
+			return "", err
+		}
+		return d.RunPaneText(ctx, r, lines)
+	}
+	for _, s := range h.Snapshot().Sessions {
+		if s.ID == sessionID {
+			return d.PaneText(ctx, s, lines)
+		}
+	}
+	return "", fmt.Errorf("no session %s", sessionID)
+}
+
+// Transcript returns a run's opencode session as its last messages
+// (last 0 asks for 100).
+func (h *Hub) Transcript(ctx context.Context, runID string, last int) (Transcript, error) {
+	d, err := h.disp()
+	if err != nil {
+		return Transcript{}, err
+	}
+	r, err := h.run(runID)
+	if err != nil {
+		return Transcript{}, err
+	}
+	raw, err := d.Transcript(ctx, r)
+	if err != nil {
+		return Transcript{}, err
+	}
+	return ParseTranscript(raw, last)
+}
+
 // fleetDo runs a fleet control and publishes the result at once.
 func (h *Hub) fleetDo(f func(Fleet)) error {
 	if h.opts.Fleet == nil {

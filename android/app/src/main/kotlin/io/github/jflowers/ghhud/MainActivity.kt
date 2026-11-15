@@ -24,6 +24,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jflowers.ghhud.api.v1.FleetAction
 import io.github.jflowers.ghhud.api.v1.RefreshTarget
 import io.github.jflowers.ghhud.core.FleetCommands
+import io.github.jflowers.ghhud.core.Viewers
+import io.github.jflowers.ghhud.core.WatchTarget
 import io.github.jflowers.ghhud.core.FleetSort
 import io.github.jflowers.ghhud.core.AgentChoice
 import io.github.jflowers.ghhud.core.AgentCommands
@@ -71,6 +73,10 @@ class MainActivity : ComponentActivity() {
         override suspend fun fleet(action: FleetAction) = FleetCommands.run(model.connection, action, model.ui.value.hub.snapshot.fleet)
 
         override fun updateFleet(change: (ListState<FleetSort>) -> ListState<FleetSort>) = model.updateFleet(change)
+
+        override fun follow(t: WatchTarget) = Viewers.follow(model.connection, t)
+
+        override suspend fun transcript(runId: String) = model.connection.transcript(runId)
 
         private val plan get() = PlanCommands(model.connection)
 

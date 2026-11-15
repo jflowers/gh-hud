@@ -350,3 +350,36 @@ func TestRealHubEndToEnd(t *testing.T) {
 		t.Errorf("Dispatch without a dispatcher: %v", err)
 	}
 }
+
+func TestViewersSendTheContent(t *testing.T) {
+	when := time.Date(2026, 11, 15, 12, 0, 0, 0, time.UTC)
+	fake := &hubtest.Fake{
+		Pane: "$ go test ./...\nok\n",
+		Talk: hub.Transcript{Omitted: 3, Messages: []hub.TranscriptMessage{{
+			Role:    "assistant",
+			Created: when,
+			Parts:   []hub.TranscriptPart{{Text: "Running the tests."}, {Tool: "bash", Text: "go test ./...", Failed: true}},
+		}}},
+	}
+	c, stop := serve(t, sockPath(t), fake)
+	defer stop()
+	ctx := t.Context()
+
+	text, err := c.ReadPane(ctx, "run1", "", 50)
+	if err != nil || text != fake.Pane {
+		t.Errorf("ReadPane = %q, %v", text, err)
+	}
+	got, err := c.Transcript(ctx, "run1", 20)
+	if err != nil || !reflect.DeepEqual(got, fake.Talk) {
+		t.Errorf("Transcript =\n%+v, %v\nwant\n%+v", got, err, fake.Talk)
+	}
+	if want := []string{"ReadPane run1  50", "Transcript run1 20"}; !slices.Equal(fake.Calls, want) {
+		t.Errorf("calls = %q, want %q", fake.Calls, want)
+	}
+
+	// The dispatcher's reasons arrive as they are.
+	fake.Err = errors.New("run finished and its pane is closed (t opens the transcript)")
+	if _, err := c.ReadPane(ctx, "run1", "", 50); err == nil || !strings.Contains(err.Error(), "run finished and its pane is closed") {
+		t.Errorf("a closed pane: %v", err)
+	}
+}

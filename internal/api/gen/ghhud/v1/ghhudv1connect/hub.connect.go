@@ -92,6 +92,10 @@ const (
 	// HubServiceOpenTranscriptProcedure is the fully-qualified name of the HubService's OpenTranscript
 	// RPC.
 	HubServiceOpenTranscriptProcedure = "/ghhud.v1.HubService/OpenTranscript"
+	// HubServiceReadPaneProcedure is the fully-qualified name of the HubService's ReadPane RPC.
+	HubServiceReadPaneProcedure = "/ghhud.v1.HubService/ReadPane"
+	// HubServiceTranscriptProcedure is the fully-qualified name of the HubService's Transcript RPC.
+	HubServiceTranscriptProcedure = "/ghhud.v1.HubService/Transcript"
 	// HubServiceFleetControlProcedure is the fully-qualified name of the HubService's FleetControl RPC.
 	HubServiceFleetControlProcedure = "/ghhud.v1.HubService/FleetControl"
 	// HubServiceToolkitRolloutProcedure is the fully-qualified name of the HubService's ToolkitRollout
@@ -140,6 +144,12 @@ type HubServiceClient interface {
 	Watch(context.Context, *connect.Request[v1.WatchRequest]) (*connect.Response[v1.WatchResponse], error)
 	WatchRun(context.Context, *connect.Request[v1.WatchRunRequest]) (*connect.Response[v1.WatchRunResponse], error)
 	OpenTranscript(context.Context, *connect.Request[v1.OpenTranscriptRequest]) (*connect.Response[v1.OpenTranscriptResponse], error)
+	// Viewers for apps on other devices: the content instead of a window.
+	// ReadPane returns the end of a live agent's herdr pane, as Watch shows
+	// it; Transcript a run's opencode session as messages. Read-only: a
+	// hub that follows another gh-hud serves them too.
+	ReadPane(context.Context, *connect.Request[v1.ReadPaneRequest]) (*connect.Response[v1.ReadPaneResponse], error)
+	Transcript(context.Context, *connect.Request[v1.TranscriptRequest]) (*connect.Response[v1.TranscriptResponse], error)
 	// FleetControl drives the GitOps rollout; FAILED_PRECONDITION when the
 	// fleet is off.
 	FleetControl(context.Context, *connect.Request[v1.FleetControlRequest]) (*connect.Response[v1.FleetControlResponse], error)
@@ -287,6 +297,18 @@ func NewHubServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(hubServiceMethods.ByName("OpenTranscript")),
 			connect.WithClientOptions(opts...),
 		),
+		readPane: connect.NewClient[v1.ReadPaneRequest, v1.ReadPaneResponse](
+			httpClient,
+			baseURL+HubServiceReadPaneProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("ReadPane")),
+			connect.WithClientOptions(opts...),
+		),
+		transcript: connect.NewClient[v1.TranscriptRequest, v1.TranscriptResponse](
+			httpClient,
+			baseURL+HubServiceTranscriptProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("Transcript")),
+			connect.WithClientOptions(opts...),
+		),
 		fleetControl: connect.NewClient[v1.FleetControlRequest, v1.FleetControlResponse](
 			httpClient,
 			baseURL+HubServiceFleetControlProcedure,
@@ -331,6 +353,8 @@ type hubServiceClient struct {
 	watch           *connect.Client[v1.WatchRequest, v1.WatchResponse]
 	watchRun        *connect.Client[v1.WatchRunRequest, v1.WatchRunResponse]
 	openTranscript  *connect.Client[v1.OpenTranscriptRequest, v1.OpenTranscriptResponse]
+	readPane        *connect.Client[v1.ReadPaneRequest, v1.ReadPaneResponse]
+	transcript      *connect.Client[v1.TranscriptRequest, v1.TranscriptResponse]
 	fleetControl    *connect.Client[v1.FleetControlRequest, v1.FleetControlResponse]
 	toolkitRollout  *connect.Client[v1.ToolkitRolloutRequest, v1.ToolkitRolloutResponse]
 	toolkitControl  *connect.Client[v1.ToolkitControlRequest, v1.ToolkitControlResponse]
@@ -441,6 +465,16 @@ func (c *hubServiceClient) OpenTranscript(ctx context.Context, req *connect.Requ
 	return c.openTranscript.CallUnary(ctx, req)
 }
 
+// ReadPane calls ghhud.v1.HubService.ReadPane.
+func (c *hubServiceClient) ReadPane(ctx context.Context, req *connect.Request[v1.ReadPaneRequest]) (*connect.Response[v1.ReadPaneResponse], error) {
+	return c.readPane.CallUnary(ctx, req)
+}
+
+// Transcript calls ghhud.v1.HubService.Transcript.
+func (c *hubServiceClient) Transcript(ctx context.Context, req *connect.Request[v1.TranscriptRequest]) (*connect.Response[v1.TranscriptResponse], error) {
+	return c.transcript.CallUnary(ctx, req)
+}
+
 // FleetControl calls ghhud.v1.HubService.FleetControl.
 func (c *hubServiceClient) FleetControl(ctx context.Context, req *connect.Request[v1.FleetControlRequest]) (*connect.Response[v1.FleetControlResponse], error) {
 	return c.fleetControl.CallUnary(ctx, req)
@@ -494,6 +528,12 @@ type HubServiceHandler interface {
 	Watch(context.Context, *connect.Request[v1.WatchRequest]) (*connect.Response[v1.WatchResponse], error)
 	WatchRun(context.Context, *connect.Request[v1.WatchRunRequest]) (*connect.Response[v1.WatchRunResponse], error)
 	OpenTranscript(context.Context, *connect.Request[v1.OpenTranscriptRequest]) (*connect.Response[v1.OpenTranscriptResponse], error)
+	// Viewers for apps on other devices: the content instead of a window.
+	// ReadPane returns the end of a live agent's herdr pane, as Watch shows
+	// it; Transcript a run's opencode session as messages. Read-only: a
+	// hub that follows another gh-hud serves them too.
+	ReadPane(context.Context, *connect.Request[v1.ReadPaneRequest]) (*connect.Response[v1.ReadPaneResponse], error)
+	Transcript(context.Context, *connect.Request[v1.TranscriptRequest]) (*connect.Response[v1.TranscriptResponse], error)
 	// FleetControl drives the GitOps rollout; FAILED_PRECONDITION when the
 	// fleet is off.
 	FleetControl(context.Context, *connect.Request[v1.FleetControlRequest]) (*connect.Response[v1.FleetControlResponse], error)
@@ -637,6 +677,18 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(hubServiceMethods.ByName("OpenTranscript")),
 		connect.WithHandlerOptions(opts...),
 	)
+	hubServiceReadPaneHandler := connect.NewUnaryHandler(
+		HubServiceReadPaneProcedure,
+		svc.ReadPane,
+		connect.WithSchema(hubServiceMethods.ByName("ReadPane")),
+		connect.WithHandlerOptions(opts...),
+	)
+	hubServiceTranscriptHandler := connect.NewUnaryHandler(
+		HubServiceTranscriptProcedure,
+		svc.Transcript,
+		connect.WithSchema(hubServiceMethods.ByName("Transcript")),
+		connect.WithHandlerOptions(opts...),
+	)
 	hubServiceFleetControlHandler := connect.NewUnaryHandler(
 		HubServiceFleetControlProcedure,
 		svc.FleetControl,
@@ -699,6 +751,10 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 			hubServiceWatchRunHandler.ServeHTTP(w, r)
 		case HubServiceOpenTranscriptProcedure:
 			hubServiceOpenTranscriptHandler.ServeHTTP(w, r)
+		case HubServiceReadPaneProcedure:
+			hubServiceReadPaneHandler.ServeHTTP(w, r)
+		case HubServiceTranscriptProcedure:
+			hubServiceTranscriptHandler.ServeHTTP(w, r)
 		case HubServiceFleetControlProcedure:
 			hubServiceFleetControlHandler.ServeHTTP(w, r)
 		case HubServiceToolkitRolloutProcedure:
@@ -796,6 +852,14 @@ func (UnimplementedHubServiceHandler) WatchRun(context.Context, *connect.Request
 
 func (UnimplementedHubServiceHandler) OpenTranscript(context.Context, *connect.Request[v1.OpenTranscriptRequest]) (*connect.Response[v1.OpenTranscriptResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.OpenTranscript is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) ReadPane(context.Context, *connect.Request[v1.ReadPaneRequest]) (*connect.Response[v1.ReadPaneResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.ReadPane is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) Transcript(context.Context, *connect.Request[v1.TranscriptRequest]) (*connect.Response[v1.TranscriptResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.Transcript is not implemented"))
 }
 
 func (UnimplementedHubServiceHandler) FleetControl(context.Context, *connect.Request[v1.FleetControlRequest]) (*connect.Response[v1.FleetControlResponse], error) {

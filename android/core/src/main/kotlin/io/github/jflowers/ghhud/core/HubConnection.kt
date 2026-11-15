@@ -19,6 +19,9 @@ import io.github.jflowers.ghhud.api.v1.approveEpicRequest
 import io.github.jflowers.ghhud.api.v1.dispatchRequest
 import io.github.jflowers.ghhud.api.v1.dropEpicRequest
 import io.github.jflowers.ghhud.api.v1.FleetAction
+import io.github.jflowers.ghhud.api.v1.TranscriptResponse
+import io.github.jflowers.ghhud.api.v1.readPaneRequest
+import io.github.jflowers.ghhud.api.v1.transcriptRequest
 import io.github.jflowers.ghhud.api.v1.enrollEpicRequest
 import io.github.jflowers.ghhud.api.v1.fleetControlRequest
 import io.github.jflowers.ghhud.api.v1.moveQueuedRequest
@@ -292,6 +295,31 @@ public class HubConnection(
     /** Drives the fleet rollout: pause, resume, apply now, skip the drain wait, retry. */
     public suspend fun fleet(action: FleetAction): Answer<Unit> =
         answer(hub.fleetControl(fleetControlRequest { this.action = action }, headers)) { }
+
+    /** The end of a live agent's pane: the run's when runId is set, else the session's. */
+    public suspend fun readPane(runId: String, sessionId: String, lines: Int = 200): Answer<String> =
+        answer(
+            hub.readPane(
+                readPaneRequest {
+                    this.runId = runId
+                    this.sessionId = sessionId
+                    this.lines = lines
+                },
+                headers,
+            ),
+        ) { it.text }
+
+    /** A run's transcript: its last messages, oldest first. */
+    public suspend fun transcript(runId: String, last: Int = 100): Answer<TranscriptResponse> =
+        answer(
+            hub.transcript(
+                transcriptRequest {
+                    this.runId = runId
+                    this.last = last
+                },
+                headers,
+            ),
+        ) { it }
 
     private companion object {
         fun <T, R> answer(r: ResponseMessage<T>, value: (T) -> R): Answer<R> = when (r) {

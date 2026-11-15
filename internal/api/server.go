@@ -234,6 +234,19 @@ func (s *Server) OpenTranscript(ctx context.Context, req *connect.Request[pb.Ope
 	return reply(&pb.OpenTranscriptResponse{}, s.b.OpenTranscript(ctx, req.Msg.GetRunId()))
 }
 
+func (s *Server) ReadPane(ctx context.Context, req *connect.Request[pb.ReadPaneRequest]) (*connect.Response[pb.ReadPaneResponse], error) {
+	text, err := s.b.ReadPane(ctx, req.Msg.GetRunId(), req.Msg.GetSessionId(), int(req.Msg.GetLines()))
+	return reply(&pb.ReadPaneResponse{Text: text}, err)
+}
+
+func (s *Server) Transcript(ctx context.Context, req *connect.Request[pb.TranscriptRequest]) (*connect.Response[pb.TranscriptResponse], error) {
+	t, err := s.b.Transcript(ctx, req.Msg.GetRunId(), int(req.Msg.GetLast()))
+	if err != nil {
+		return nil, toConnect(err)
+	}
+	return connect.NewResponse(transcriptToPB(t)), nil
+}
+
 func (s *Server) FleetControl(ctx context.Context, req *connect.Request[pb.FleetControlRequest]) (*connect.Response[pb.FleetControlResponse], error) {
 	var err error
 	switch req.Msg.GetAction() {

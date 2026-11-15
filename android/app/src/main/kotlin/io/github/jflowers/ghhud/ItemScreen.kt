@@ -38,6 +38,7 @@ import io.github.jflowers.ghhud.core.AgentChoice
 import io.github.jflowers.ghhud.core.Answer
 import io.github.jflowers.ghhud.core.HubSummary
 import io.github.jflowers.ghhud.core.ItemRow
+import io.github.jflowers.ghhud.core.WatchTarget
 import kotlinx.coroutines.launch
 import java.time.Instant
 
@@ -56,7 +57,16 @@ typealias Say = (text: String, bad: Boolean) -> Unit
 /** One item: everything its row has, untruncated, and its commands. */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun ItemScreen(row: ItemRow?, off: String?, act: ItemActions, say: Say, onBack: () -> Unit, now: Instant = Instant.now()) {
+fun ItemScreen(
+    row: ItemRow?,
+    off: String?,
+    act: ItemActions,
+    say: Say,
+    onBack: () -> Unit,
+    onWatch: (WatchTarget) -> Unit = {},
+    onTranscript: (runId: String, title: String) -> Unit = { _, _ -> },
+    now: Instant = Instant.now(),
+) {
     var sheet by remember { mutableStateOf<Boolean?>(null) } // queue or start
     val scope = rememberCoroutineScope()
     var rechecking by remember { mutableStateOf(false) }
@@ -107,6 +117,16 @@ fun ItemScreen(row: ItemRow?, off: String?, act: ItemActions, say: Say, onBack: 
                 }
                 OutlinedButton(onClick = { sheet = true }, enabled = off == null, modifier = Modifier.testTag("queue")) {
                     Text("Add to queue…")
+                }
+                row.latestRun?.takeIf { it.live }?.let { run ->
+                    OutlinedButton(onClick = { WatchTarget.of(row)?.let(onWatch) }, modifier = Modifier.testTag("watch")) {
+                        Text("Watch ${run.task} run")
+                    }
+                }
+                row.latestRun?.takeIf { it.hasTranscript }?.let { run ->
+                    OutlinedButton(onClick = { onTranscript(run.id, "${run.task} ${row.ref}") }, modifier = Modifier.testTag("transcript")) {
+                        Text("${run.task} transcript")
+                    }
                 }
                 row.latestRun?.takeIf { it.finished }?.let { run ->
                     OutlinedButton(
