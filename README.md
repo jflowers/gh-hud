@@ -227,6 +227,18 @@ and retries the failed machine.
 Its source is in `macos/` and it needs a hub running (see "The hub") with
 TCP on, which is the default.
 
+Each release (a `v*` tag) publishes the app, notarized and built for Apple
+silicon and Intel, to the GitHub release and to the Homebrew tap:
+
+```
+brew install --cask jflowers/tools/gh-hud
+brew upgrade --cask gh-hud                 # after a new release
+```
+
+To cut a release, tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
+The release workflow (`.github/workflows/release.yml`) lists the secrets it
+needs. To build it yourself:
+
 ```
 make mac                                   # build/gh-hud.app, signed ad hoc
 make mac MAC_SIGN_ID="Developer ID Application: Your Name (TEAMID)"
@@ -242,10 +254,12 @@ xcrun notarytool store-credentials gh-hud-notary --key AuthKey_XXXX.p8 --key-id 
 make mac-notarize MAC_SIGN_ID="Developer ID Application: Your Name (TEAMID)"
 ```
 
+It leaves the stapled app zipped as `build/gh-hud-app_VERSION.zip`.
 `MAC_NOTARY_PROFILE` names another profile. A build signed with a
 Developer ID now carries a secure timestamp, which notarization requires.
 
-It builds with the Command Line Tools alone (no Xcode). Add it to
+It builds with the Command Line Tools alone (no Xcode), for this Mac's
+architecture; `MAC_ARCHS="arm64 x86_64"` builds both, which needs Xcode. Add it to
 System Settings → General → Login Items to start it with your Mac.
 
 - **Notifications.** On first launch it asks to show notifications. Once

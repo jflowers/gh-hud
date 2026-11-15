@@ -1,0 +1,103 @@
+name: Release
+
+# Pushing a tag (v0.2.0) releases the Mac app: built for Apple silicon and
+# Intel, signed with the Developer ID, notarized and stapled, attached to a
+# GitHub release, and published to the Homebrew tap, so any Mac installs
+# and upgrades it with:
+#
+#   brew install --cask jflowers/tools/gh-hud
+#   brew upgrade --cask gh-hud
+#
+# Secrets (the same ones get-out's release uses):
+#   MACOS_SIGN_P12, MACOS_SIGN_PASSWORD   the Developer ID Application
+#                                         certificate and key, base64 .p12
+#   MACOS_NOTARY_KEY, MACOS_NOTARY_KEY_ID, MACOS_NOTARY_ISSUER_ID
+#                                         an App Store Connect API key
+#                                         (base64 .p8) for notarytool
+#   HOMEBREW_TAP_TOKEN                    can push to jflowers/homebrew-tools
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  mac-app:
+    name: Mac app
+    runs-on: macos-latest
+    # The limit counts time spent waiting for a runner and for notarizing.
+    timeout-minutes: 60
+    permissions:
+      contents: write # creates the release
+    env:
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Checks
+        run: make mac-check
+
+      - name: Import the Developer ID
+        env:
+          MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
+          MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
+          MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+        run: |
+          test -n "$MACOS_SIGN_P12" || { echo "::error::MACOS_SIGN_P12 isn't set; see the top of release.yml"; exit 1; }
+          keychain=$RUNNER_TEMP/signing.keychain-db
+          password=$(openssl rand -base64 32)
+          echo -n "$MACOS_SIGN_P12" | base64 --decode -o "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_SIGN_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+          security set-key-partition-list -S apple-tool:,apple: -k "$password" "$keychain"
+          security list-keychain -d user -s "$keychain"
+          rm "$RUNNER_TEMP/cert.p12"
+          id=$(security find-identity -v -p codesigning "$keychain" | sed -n 's/.*"\(Developer ID Application: .*\)"/\1/p' | head -1)
+          test -n "$id" || { echo "::error::no Developer ID Application identity in MACOS_SIGN_P12"; exit 1; }
+          echo "SIGN_ID=$id" >> "$GITHUB_ENV"
+          echo -n "$MACOS_NOTARY_KEY" | base64 --decode -o "$RUNNER_TEMP/notary.p8"
+
+      - name: Build, sign and notarize
+        env:
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+        run: |
+          make mac-notarize MAC_SIGN_ID="$SIGN_ID" MAC_VERSION="${VERSION#v}" MAC_ARCHS="arm64 x86_64" \
+            MAC_NOTARY_ARGS="--key $RUNNER_TEMP/notary.p8 --key-id $MACOS_NOTARY_KEY_ID --issuer $MACOS_NOTARY_ISSUER_ID"
+          lipo -info build/gh-hud.app/Contents/MacOS/GHHud
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          zip="build/gh-hud-app_${VERSION#v}.zip"
+          if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$VERSION" "$zip" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$VERSION" "$zip" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
+          fi
+
+      - name: Publish the cask
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          test -n "$HOMEBREW_TAP_TOKEN" || { echo "::error::HOMEBREW_TAP_TOKEN isn't set; see the top of release.yml"; exit 1; }
+          sha=$(shasum -a 256 "build/gh-hud-app_${VERSION#v}.zip" | cut -d' ' -f1)
+          git clone --depth 1 "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/jflowers/homebrew-tools.git" "$RUNNER_TEMP/tap"
+          mkdir -p "$RUNNER_TEMP/tap/Casks"
+          macos/cask.sh "${VERSION#v}" "$sha" > "$RUNNER_TEMP/tap/Casks/gh-hud.rb"
+          cd "$RUNNER_TEMP/tap"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/gh-hud.rb
+          git diff --cached --quiet && { echo "the cask is already up to date"; exit 0; }
+          git commit -m "gh-hud ${VERSION#v}"
+          git push

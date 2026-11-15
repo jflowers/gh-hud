@@ -53,17 +53,23 @@ ci: tidy proto-check lint test vuln
 # The Mac app (macos/). Needs only the Command Line Tools. MAC_SIGN_ID is a
 # codesigning identity ("Developer ID Application: …"); empty signs ad hoc,
 # which runs on this Mac only. MAC_NOTARY_PROFILE is a notarytool keychain
-# profile (xcrun notarytool store-credentials) for mac-notarize.
+# profile (xcrun notarytool store-credentials) for mac-notarize; CI passes
+# an App Store Connect API key in MAC_NOTARY_ARGS instead. MAC_ARCHS picks
+# the architectures: empty builds this Mac's only (the Command Line Tools
+# can't build more); a release passes "arm64 x86_64", which needs Xcode.
 MAC_APP := build/gh-hud.app
 MAC_SIGN_ID ?=
 MAC_NOTARY_PROFILE ?= gh-hud-notary
-MAC_VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+MAC_NOTARY_ARGS ?= --keychain-profile "$(MAC_NOTARY_PROFILE)"
+MAC_ARCHS ?=
+MAC_VERSION ?= $(patsubst v%,%,$(shell git describe --tags --always --dirty 2>/dev/null || echo dev))
+MAC_SWIFT_BUILD = cd macos && swift build -c release --product GHHud $(foreach a,$(MAC_ARCHS),--arch $(a))
 
 mac:
-	cd macos && swift build -c release --product GHHud
+	$(MAC_SWIFT_BUILD)
 	rm -rf $(MAC_APP)
 	mkdir -p $(MAC_APP)/Contents/MacOS $(MAC_APP)/Contents/Resources
-	cp macos/.build/release/GHHud $(MAC_APP)/Contents/MacOS/GHHud
+	cp "$$($(MAC_SWIFT_BUILD) --show-bin-path)/GHHud" $(MAC_APP)/Contents/MacOS/GHHud
 	cp macos/Resources/AppIcon.icns $(MAC_APP)/Contents/Resources/
 	sed 's/VERSION/$(MAC_VERSION)/g' macos/Resources/Info.plist > $(MAC_APP)/Contents/Info.plist
 	codesign --force --options runtime $(if $(MAC_SIGN_ID),--timestamp,--timestamp=none) --sign "$(if $(MAC_SIGN_ID),$(MAC_SIGN_ID),-)" $(MAC_APP)
@@ -71,16 +77,20 @@ mac:
 	@echo "built $(MAC_APP)"
 
 # mac-notarize builds with a Developer ID, has Apple notarize the app and
-# staples the ticket, so it opens on any Mac.
+# staples the ticket, so it opens on any Mac. It leaves the stapled app
+# zipped as build/gh-hud-app_VERSION.zip, a release's download.
+MAC_ZIP = build/gh-hud-app_$(MAC_VERSION).zip
 mac-notarize:
 	@test -n "$(MAC_SIGN_ID)" || { echo "mac-notarize needs MAC_SIGN_ID (a Developer ID Application identity)"; exit 1; }
-	$(MAKE) mac MAC_SIGN_ID="$(MAC_SIGN_ID)"
-	rm -f build/gh-hud.zip
+	$(MAKE) mac MAC_SIGN_ID="$(MAC_SIGN_ID)" MAC_VERSION="$(MAC_VERSION)" MAC_ARCHS="$(MAC_ARCHS)"
+	rm -f build/gh-hud.zip $(MAC_ZIP)
 	ditto -c -k --keepParent $(MAC_APP) build/gh-hud.zip
-	xcrun notarytool submit build/gh-hud.zip --keychain-profile "$(MAC_NOTARY_PROFILE)" --wait
+	xcrun notarytool submit build/gh-hud.zip $(MAC_NOTARY_ARGS) --wait
 	xcrun stapler staple $(MAC_APP)
 	spctl --assess --type execute -vv $(MAC_APP)
 	rm -f build/gh-hud.zip
+	ditto -c -k --keepParent $(MAC_APP) $(MAC_ZIP)
+	@echo "notarized $(MAC_ZIP)"
 
 mac-check:
 	cd macos && swift run GHHudChecks
