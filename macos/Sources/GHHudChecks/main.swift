@@ -350,7 +350,7 @@ do {
         session("s-old", updated: 3 * 86400),
     ]
     let rows = AgentList.rows(s, showStale: false, now: now)
-    check(rows.map(\.id) == ["s-run", "s-blocked", "s-live"], "stale sessions hidden: \(rows.map(\.id))")
+    check(rows.map(\.id) == ["run-1", "s-blocked", "s-live"], "stale sessions hidden, dispatches keyed by run: \(rows.map(\.id))")
     check(AgentList.rows(s, showStale: true, now: now).count == 4, "shown on asking")
     check(rows[0].name == "acme/r#7  Seven" && rows[0].status == "left work" && rows[0].tone == .warn,
           "a dispatch reads its run: \(rows[0].name) \(rows[0].status)")
@@ -358,6 +358,26 @@ do {
     check(rows[1].status == "blocked" && rows[1].machine == "chai" && rows[1].name == "title s-blocked", "blocked session")
     check(rows[2].status == "running" && rows[2].tone == .pending && rows[2].machine == "local", "running session")
     check(AgentList.running(s) == 1, "running count")
+
+    // A task dispatched again on the same item and machine reuses the
+    // session ID: each run is still its own row, with its own status.
+    var again = Ghhud_V1_Snapshot()
+    var newer = run
+    newer.id = "run-2"
+    newer.status = "running"
+    newer.clearFinishedAt()
+    again.runs = [newer, run]
+    var idle = session("lap2/gh-issue-7", updated: 10)
+    idle.blocked = true
+    again.sessions = [
+        session("lap2/gh-issue-7", task: "issue", ref: "acme/r#7", runID: "run-2", running: true, updated: 60),
+        session("lap2/gh-issue-7", task: "issue", ref: "acme/r#7", runID: "run-1", updated: 600),
+        idle, idle,
+    ]
+    let twice = AgentList.rows(again, showStale: false, now: now)
+    check(twice.map(\.id) == ["run-2", "run-1", "lap2/gh-issue-7", "lap2/gh-issue-7#1"], "unique row IDs: \(twice.map(\.id))")
+    check(twice.map(\.status) == ["running", "left work", "blocked", "blocked"], "each run its own status: \(twice.map(\.status))")
+    check(twice[1].session.id == "lap2/gh-issue-7", "the session ID stays for watching and copying")
     check([45, 720, 3900].map { AgentList.duration(TimeInterval($0)) } == ["45s", "12m", "1h05"], "durations")
 
     func health(_ ws: String, _ change: (inout Ghhud_V1_CheckoutHealth) -> Void) -> Ghhud_V1_CheckoutHealth {
