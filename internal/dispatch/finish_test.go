@@ -2,6 +2,7 @@ package dispatch
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -339,6 +340,38 @@ func TestReadOutcomeSubagentHumanNeeded(t *testing.T) {
 		}
 		if c.human && o.reason != "a person must decide (in a subagent): a human gate (see the agent's comment)" {
 			t.Errorf("%s: reason %q", c.name, o.reason)
+		}
+	}
+}
+
+// #9: a feedback run ended on a question tool call written as text. It was
+// recorded as a success and its pane closed; it never asked anyone.
+func TestJudgeSessionTextToolCall(t *testing.T) {
+	session := func(text string) string {
+		b, _ := json.Marshal(text)
+		return `{"messages":[{"info":{"role":"assistant","error":null,"finish":"stop"},"parts":[{"type":"text","text":` + string(b) + `}]}]}`
+	}
+	for _, c := range []struct {
+		name, text, reason string
+	}{
+		{"question as text", "Item 3 of 7 needs a call.\n\n<invoke name=\"question\">\n<parameter name=\"questions\">[…]</parameter>\n</invoke>\n",
+			"stopped on a question tool call written as text, never run"},
+		{"namespaced block", "Next:\n<function_calls>\n<x:invoke name=\"bash\"><x:parameter name=\"command\">git push</x:parameter></x:invoke>\n</function_calls>",
+			"stopped on a bash tool call written as text, never run"},
+		{"unnamed", "<tool_call>{\"name\":\"question\"}</tool_call>", "stopped on a tool call written as text, never run"},
+		{"quoted mid-message", "The agent wrote `<invoke name=\"question\">…</invoke>` instead of calling it. Fixed and pushed.", ""},
+		{"plain summary", "Pushed 2 commits and replied to every thread.", ""},
+	} {
+		o, err := judgeSession(session(c.text))
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		want := 0
+		if c.reason != "" {
+			want = 1
+		}
+		if *o.code != want || o.reason != c.reason {
+			t.Errorf("%s: code %d reason %q, want %d %q", c.name, *o.code, o.reason, want, c.reason)
 		}
 	}
 }
