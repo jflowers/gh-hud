@@ -248,7 +248,7 @@ type Fact struct {
 const (
 	maxNodes    = 60
 	maxRules    = 24
-	maxRuleLen  = 300
+	maxRuleLen  = 500
 	maxGateLen  = 300
 	maxPhaseLen = 80
 )
