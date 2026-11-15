@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sync"
 	"syscall"
 	"time"
 
@@ -142,24 +143,32 @@ func run() int {
 }
 
 // serveHub serves h on the unix socket l and, unless [hub] listen is
-// empty, on loopback TCP for apps that can't use the socket, until ctx
-// ends. A TCP failure is reported but leaves the socket serving.
+// empty, on loopback TCP for apps that can't use the socket, and on the
+// tailnet when [hub] tailnet names a host, until ctx ends. A TCP or
+// tailnet failure is reported but leaves the socket serving.
 func serveHub(ctx context.Context, cfg *config.Config, h *hub.Hub, dir string, l net.Listener, tcpReady func(api.Discovery)) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	tcpDone := make(chan struct{})
-	go func() {
-		defer close(tcpDone)
-		if cfg.Hub.Listen == "" {
-			return
-		}
-		if err := api.ServeTCP(ctx, cfg.Hub.Listen, dir, h, os.Getpid(), tcpReady); err != nil {
-			fmt.Fprintln(os.Stderr, "hub tcp:", err)
-		}
-	}()
+	var others sync.WaitGroup
+	if cfg.Hub.Listen != "" {
+		others.Go(func() {
+			if err := api.ServeTCP(ctx, cfg.Hub.Listen, dir, h, os.Getpid(), tcpReady); err != nil {
+				fmt.Fprintln(os.Stderr, "hub tcp:", err)
+			}
+		})
+	}
+	if cfg.Hub.Tailnet != "" {
+		others.Go(func() {
+			logf := func(format string, args ...any) { log.Printf("tailnet: "+format, args...) }
+			ready := func(url string) { log.Printf("the phone reaches the hub at %s (your tailnet devices only)", url) }
+			if err := api.ServeTailnet(ctx, cfg.Hub.Tailnet, dir, h, logf, ready); err != nil {
+				fmt.Fprintln(os.Stderr, "hub tailnet:", err)
+			}
+		})
+	}
 	err := api.Serve(ctx, l, h)
-	cancel() // the socket is gone: stop TCP too
-	<-tcpDone
+	cancel() // the socket is gone: stop the others too
+	others.Wait()
 	return err
 }
 

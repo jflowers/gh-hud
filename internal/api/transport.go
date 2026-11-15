@@ -83,9 +83,15 @@ func Serve(ctx context.Context, l net.Listener, b hub.Backend, opts ...ServeOpti
 	if o.token != "" {
 		handler = requireToken(o.token, mux)
 	}
+	if o.wrap != nil {
+		handler = o.wrap(handler)
+	}
+	// HTTP/2 over TLS too, for the tailnet listener.
+	protocols := h2c(true)
+	protocols.SetHTTP2(true)
 	srv := &http.Server{
 		Handler:           handler,
-		Protocols:         h2c(true),
+		Protocols:         protocols,
 		ReadHeaderTimeout: 10 * time.Second,
 		BaseContext:       func(net.Listener) context.Context { return ctx },
 	}

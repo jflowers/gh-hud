@@ -1,0 +1,215 @@
+package api
+
+import (
+	"context"
+	"errors"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"tailscale.com/client/tailscale/apitype"
+	"tailscale.com/ipn/ipnstate"
+	"tailscale.com/ipn/store/mem"
+	"tailscale.com/net/netns"
+	"tailscale.com/tailcfg"
+	"tailscale.com/tsnet"
+	"tailscale.com/tstest/integration"
+	"tailscale.com/tstest/integration/testcontrol"
+	"tailscale.com/types/logger"
+
+	"github.com/jflowers/gh-hud/internal/hub"
+	"github.com/jflowers/gh-hud/internal/hub/hubtest"
+)
+
+// fakeWho answers WhoIs from a table keyed by address.
+type fakeWho map[string]*apitype.WhoIsResponse
+
+func (f fakeWho) WhoIs(_ context.Context, addr string) (*apitype.WhoIsResponse, error) {
+	if r, ok := f[addr]; ok {
+		return r, nil
+	}
+	return nil, errors.New("no match for IP:port")
+}
+
+func TestOnlyTheOwnersDevicesGetThrough(t *testing.T) {
+	const owner tailcfg.UserID = 7
+	device := func(user tailcfg.UserID, tags ...string) *apitype.WhoIsResponse {
+		return &apitype.WhoIsResponse{
+			Node:        &tailcfg.Node{Tags: tags},
+			UserProfile: &tailcfg.UserProfile{ID: user},
+		}
+	}
+	who := fakeWho{
+		"100.64.0.2:1": device(owner),
+		"100.64.0.3:1": device(8),
+		"100.64.0.4:1": device(owner, "tag:server"),
+		"100.64.0.5:1": {Node: &tailcfg.Node{}},
+	}
+	h := requireOwner(who, owner, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("ok"))
+	}))
+	for addr, want := range map[string]int{
+		"100.64.0.2:1": http.StatusOK,        // your phone
+		"100.64.0.3:1": http.StatusForbidden, // someone else's, shared in
+		"100.64.0.4:1": http.StatusForbidden, // a tagged server
+		"100.64.0.5:1": http.StatusForbidden, // no user
+		"100.64.0.9:1": http.StatusForbidden, // WhoIs doesn't know it
+	} {
+		r := httptest.NewRequest(http.MethodPost, "/", nil)
+		r.RemoteAddr = addr
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Code != want {
+			t.Errorf("%s: status %d, want %d (%s)", addr, w.Code, want, w.Body)
+		}
+		if want == http.StatusForbidden && !strings.Contains(w.Body.String(), `"permission_denied"`) {
+			t.Errorf("%s: body %s, want a Connect error", addr, w.Body)
+		}
+	}
+}
+
+// tailnet is a test control server and DERP relay on loopback.
+func tailnet(t *testing.T, sameUser bool) string {
+	t.Helper()
+	netns.SetEnabled(false)
+	t.Cleanup(func() { netns.SetEnabled(true) })
+	control := &testcontrol.Server{
+		DERPMap:          integration.RunDERPAndSTUN(t, logger.Discard, "127.0.0.1"),
+		DNSConfig:        &tailcfg.DNSConfig{Proxied: true},
+		MagicDNSDomain:   "tail-scale.ts.net",
+		AllNodesSameUser: sameUser,
+		Logf:             logger.Discard,
+	}
+	control.HTTPTestServer = httptest.NewUnstartedServer(control)
+	control.HTTPTestServer.Start()
+	t.Cleanup(control.HTTPTestServer.Close)
+	return control.HTTPTestServer.URL
+}
+
+// phone joins the tailnet and returns a hub client that dials url's host
+// over it.
+func phone(ctx context.Context, t *testing.T, controlURL, url string) *Client {
+	t.Helper()
+	s := &tsnet.Server{
+		Dir:        t.TempDir(),
+		ControlURL: controlURL,
+		Hostname:   "phone",
+		Store:      new(mem.Store),
+		Ephemeral:  true,
+		UserLogf:   logger.Discard,
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	if _, err := s.Up(ctx); err != nil {
+		t.Fatalf("phone up: %v", err)
+	}
+	lc, err := s.LocalClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Find the hub by name among the phone's peers: MagicDNS isn't
+	// served on a test tailnet.
+	host := strings.TrimPrefix(url, "http://")
+	var ip string
+	for ip == "" {
+		st, err := lc.Status(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, p := range st.Peer {
+			if strings.TrimSuffix(p.DNSName, ".") == host && len(p.TailscaleIPs) > 0 {
+				ip = p.TailscaleIPs[0].String()
+			}
+		}
+		if ip == "" {
+			select {
+			case <-ctx.Done():
+				t.Fatalf("the phone never saw %s", host)
+			case <-time.After(100 * time.Millisecond):
+			}
+		}
+	}
+	hc := &http.Client{Transport: &http.Transport{
+		DialContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			return s.Dial(ctx, network, net.JoinHostPort(ip, "80"))
+		},
+	}}
+	return NewClient(hc, url)
+}
+
+// serveTailnet runs ServeTailnet on a test tailnet and returns its URL.
+func serveTailnet(ctx context.Context, t *testing.T, controlURL, dir string, b hub.Backend) string {
+	t.Helper()
+	t.Setenv("TS_CONTROL_URL", controlURL)
+	was := useTLS
+	useTLS = func(*ipnstate.Status) bool { return false }
+	t.Cleanup(func() { useTLS = was })
+	readyc := make(chan string, 1)
+	done := make(chan error, 1)
+	go func() {
+		done <- ServeTailnet(ctx, "hub", dir, b, func(string, ...any) {}, func(u string) { readyc <- u })
+	}()
+	t.Cleanup(func() {
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Errorf("ServeTailnet: %v", err)
+			}
+		case <-time.After(10 * time.Second):
+			t.Error("ServeTailnet didn't stop")
+		}
+	})
+	select {
+	case u := <-readyc:
+		return u
+	case err := <-done:
+		t.Fatalf("ServeTailnet: %v", err)
+	case <-ctx.Done():
+		t.Fatal("ServeTailnet never ready")
+	}
+	return ""
+}
+
+func TestTheOwnersPhoneReachesTheHub(t *testing.T) {
+	if testing.Short() {
+		t.Skip("runs a tailnet")
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
+	defer cancel()
+	controlURL := tailnet(t, true)
+	dir := t.TempDir()
+	fake := &hubtest.Fake{Snap: hub.Snapshot{Seq: 3, Follower: "x"}}
+	url := serveTailnet(ctx, t, controlURL, dir, fake)
+	defer cancel() // stop the hub before the cleanups check it stopped
+
+	if url != "http://hub.tail-scale.ts.net" {
+		t.Errorf("url = %q, want http://hub.tail-scale.ts.net (no HTTPS on a test tailnet)", url)
+	}
+	if fi, err := os.Stat(filepath.Join(dir, TailnetDir)); err != nil || !fi.IsDir() {
+		t.Errorf("tailnet state = %v, %v; want it under the state directory", fi, err)
+	}
+	s, err := phone(ctx, t, controlURL, url).Fetch(ctx)
+	if err != nil || s.Follower != "x" {
+		t.Fatalf("Fetch from your phone = %+v, %v", s, err)
+	}
+}
+
+func TestSomeoneElsesPhoneIsRefused(t *testing.T) {
+	if testing.Short() {
+		t.Skip("runs a tailnet")
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
+	defer cancel()
+	controlURL := tailnet(t, false) // every node its own user
+	url := serveTailnet(ctx, t, controlURL, t.TempDir(), &hubtest.Fake{})
+	defer cancel()
+
+	_, err := phone(ctx, t, controlURL, url).Fetch(ctx)
+	if err == nil || !strings.Contains(err.Error(), "only the hub's own tailnet user") {
+		t.Fatalf("Fetch from another user's phone: err = %v, want refused", err)
+	}
+}

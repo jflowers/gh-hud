@@ -106,6 +106,15 @@ can open it).
   directory (readable only by you). Every request must carry the token;
   the hub refuses non-loopback addresses. `[hub] listen` sets the address
   (`"127.0.0.1:0"` by default); `listen = ""` turns TCP off.
+- The phone reaches the hub over your tailnet. `[hub] tailnet = "gh-hud"`
+  makes the hub join it as its own device named `gh-hud` (it doesn't
+  need the machine's Tailscale app running). The first start logs a
+  login URL: open it and log in as yourself, not with a tagged auth key.
+  The node's state is kept in `tailnet/` under the state directory. Only
+  devices logged in as your tailnet user get through; tagged devices and
+  devices shared in from other people are refused. The hub serves HTTPS
+  on its tailnet name when HTTPS is on in your tailnet's admin console
+  (DNS page: MagicDNS and HTTPS certificates), and plain HTTP otherwise.
 - A client that shows alerts as native notifications says so when it
   subscribes, and the hub stops posting its own osascript notifications
   while it's connected, so you aren't notified twice.
@@ -1180,6 +1189,7 @@ update_method = "merge"    # merge train's branch update: merge or rebase
 # How apps other than the TUI reach the hub (see "The hub" above).
 [hub]
 listen = "127.0.0.1:0"     # loopback only; "" turns TCP off
+tailnet = ""               # join your tailnet as this device name, for the phone
 
 # GitOps fleet rollout (see "Fleet rollout (GitOps)" above). Machines need
 # a fleet-apply script on PATH (chezmoi dotfiles checkout).

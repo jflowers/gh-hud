@@ -55,16 +55,18 @@ Decided: a native app (Kotlin and Jetpack Compose), not a web app.
 2. **4b, Go: reachable from the phone.** A tsnet listener in the hub,
    off unless `[hub] tailnet` names a hostname (say `gh-hud`). tsnet
    makes the hub its own tailnet node, so it works whether or not the
-   Mac's Tailscale is running; its state lives in the state directory,
-   and the first start prints a login URL (or uses `TS_AUTHKEY`).
-   Requests must come from the hub owner's own tailnet login
-   (`LocalClient.WhoIs`); tagged and shared nodes are refused. HTTPS
-   with the tailnet's certificate when the tailnet allows it (Android
-   refuses cleartext by default), otherwise HTTP with a cleartext
-   exception for that one host. Only the hub that owns dispatch (not a
-   follower) joins. Tests: identity check, follower stays off, `gh-hud
-   serve` end to end over a test tailnet (`tstest/integration`) if that
-   stays cheap, otherwise over a fake `WhoIs`.
+   Mac's Tailscale is running; its state lives in `tailnet/` under the
+   state directory, and the first start logs a login URL (or uses
+   `TS_AUTHKEY`). Requests must come from the hub owner's own tailnet
+   login (`WhoIs`); tagged devices and devices shared in by other people
+   are refused, and a hub whose own node is tagged refuses to serve.
+   HTTPS on the tailnet's certificate when the tailnet has HTTPS on
+   (Android refuses cleartext by default), otherwise HTTP. Like the TCP
+   listener, it runs on whichever hub holds the socket. Tests: the
+   identity check against a fake `WhoIs`, and the owner's device served
+   and another user's refused on a test tailnet (`testcontrol`), with
+   HTTP since a test tailnet can't issue certificates. As built: about
+   20 MB more binary (tailscale.com).
 3. **4c, what needs you.** The phone's counterpart of the menu bar app:
    the hub's state, the sections (reviews requested, your PRs ready,
    agents blocked on you) newest first, tap to open the PR in the

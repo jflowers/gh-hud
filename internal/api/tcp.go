@@ -36,12 +36,20 @@ type Discovery struct {
 // ServeOption configures Serve.
 type ServeOption func(*serveOptions)
 
-type serveOptions struct{ token string }
+type serveOptions struct {
+	token string
+	wrap  func(http.Handler) http.Handler
+}
 
 // WithToken makes Serve refuse requests without "Authorization: Bearer
 // <token>".
 func WithToken(token string) ServeOption {
 	return func(o *serveOptions) { o.token = token }
+}
+
+// withWrap puts wrap (say, an identity check) in front of every request.
+func withWrap(wrap func(http.Handler) http.Handler) ServeOption {
+	return func(o *serveOptions) { o.wrap = wrap }
 }
 
 func requireToken(token string, next http.Handler) http.Handler {
