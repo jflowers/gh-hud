@@ -268,11 +268,14 @@ public struct RunRef: Equatable, Sendable {
 
 public enum ItemList {
     /// The rows a filter and a search show, in the hub's order (most
-    /// pressing first). The search matches repo, title and ref, ignoring
-    /// case, like the TUI's /.
+    /// pressing first). The search's text matches repo, title and ref,
+    /// ignoring case, like the TUI's /; its column terms (`kind:issue`) and
+    /// the kept filters narrow it further.
     public static func rows(_ s: Ghhud_V1_Snapshot, filter: ItemFilter, query: String = "",
-                            now: Date = Date()) -> [ItemRow] {
-        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+                            kept: [ColumnFilter] = [], now: Date = Date()) -> [ItemRow] {
+        let parsed = TableQuery.parse(query, columns: ItemRow.filterColumns)
+        let q = parsed.text.trimmingCharacters(in: .whitespaces).lowercased()
+        let filters = kept + parsed.filters
         let runs = latestRuns(s)
         return s.result.items
             .filter { filter.matches($0) }
@@ -282,6 +285,7 @@ public enum ItemList {
             .map { it in
                 ItemRow(it, me: s.result.user, run: runs[it.ref], stage: s.stages[it.url], now: now)
             }
+            .filter { $0.passes(filters) }
     }
 
     /// Each ref's newest run (the hub sends runs newest first).

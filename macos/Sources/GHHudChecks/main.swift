@@ -232,6 +232,31 @@ do {
     check(order(\.numKey) == [1, 2, 3, 0], "numberless rows sort last")
     check(order(\.markerRank) == [2, 1, 3, 0], "your move, then ready, then the rest in order: \(order(\.markerRank))")
     check(order(\.threadsKey, .reverse).first == 2, "most threads first, descending")
+    // Column filters, kept and typed.
+    func nums(_ q: String, _ kept: [ColumnFilter] = []) -> [Int] {
+        ItemList.rows(s, filter: .all, query: q, kept: kept).map(\.num)
+    }
+    check(nums("kind:issue") == [3], "a typed term")
+    check(nums("KIND:Review") == [2], "terms ignore case")
+    check(nums("-kind:issue -kind:ci") == [1, 2], "hide terms")
+    check(nums("kind:issue kind:mine") == [1, 3], "one column's filters are alternatives")
+    check(nums("kind:review repo:widgets") == [2] && nums("kind:mine repo:widgets").isEmpty, "columns all apply")
+    check(nums("status:failing") == [2] && nums("status:conflict") == [2] && nums("status:approved") == [1],
+          "status words: \(all.map(\.statusWords))")
+    check(nums("last:you") == [1] && nums("author:pat") == [2], "people")
+    check(nums("parser", [ColumnFilter("kind", "mine")]) == [1] && nums("crash", [ColumnFilter("kind", "mine")]).isEmpty,
+          "kept filters and text together")
+    check(nums("nope:x").isEmpty, "an unknown column stays text")
+    let typed = TableQuery.parse(#"label:"good first issue" -repo:acme/r fix it"#, columns: ItemRow.filterColumns)
+    check(typed.filters == [ColumnFilter("label", "good first issue"), ColumnFilter("repo", "acme/r", exclude: true)]
+          && typed.text == "fix it", "quoted values: \(typed)")
+    check(typed.filters.map(\.term) == [#"label:"good first issue""#, "-repo:acme/r"], "terms read back")
+    var kept: [ColumnFilter] = [ColumnFilter("kind", "issue")]
+    let left = kept.keepTerms(of: "crash kind:issue -author:pat", columns: ItemRow.filterColumns)
+    check(left == "crash" && kept == [ColumnFilter("kind", "issue"), ColumnFilter("author", "pat", exclude: true)],
+          "Return keeps the terms once: \(kept)")
+    check(all[1].filterChoices.map(\.column) == ["kind", "status", "status", "repo", "title", "author"],
+          "menu choices: \(all[1].filterChoices.map(\.column))")
     let n = ItemList.counts(s)
     check(n[.all] == 4 && n[.mine] == 1 && n[.issues] == 1 && n[.ci] == 1 && n[.queue] == 0, "counts \(n)")
 
@@ -428,6 +453,9 @@ do {
     check(ws[2].explanation == "A run here is refused until these are committed or discarded.", "dirty explanation")
     check(ws[3].explanation == "main can't fast-forward to upstream/main.", "diverged explanation")
     check(WorkspaceList.ready(s) == 2, "ready count")
+    check(TableFilter.rows(ws, query: "where:chai", kept: []).map(\.workspace) == ["busy"], "workspace where")
+    check(TableFilter.rows(ws, query: "uncommitted", kept: []).map(\.workspace) == ["dirty"], "free text, any column")
+    check(TableFilter.rows(ws, query: "", kept: [ColumnFilter("state", "ready", exclude: true)]).count == 5, "hide ready")
     let bySync = ws.sorted(using: KeyPathComparator(\.syncKey)).map(\.workspace)
     check(bySync == ["busy", "broken", "elsewhere", "dirty", "diverged", "ready", "lost"],
           "sync: in step first, unknown last: \(bySync)")

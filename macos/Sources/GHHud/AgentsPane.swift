@@ -11,7 +11,8 @@ struct AgentsPane: View {
     @ObservedObject var ui: DashboardState
 
     var body: some View {
-        let rows = AgentList.rows(conn.snapshot, showStale: ui.showStale).sorted(using: ui.agentSort)
+        let rows = TableFilter.rows(AgentList.rows(conn.snapshot, showStale: ui.showStale),
+                                    query: ui.agentQuery, kept: ui.agentFilters).sorted(using: ui.agentSort)
         let picked = rows.first { ui.agentSelection == $0.id }
         VSplitView {
             Table(rows, selection: $ui.agentSelection, sortOrder: $ui.agentSort) {
@@ -39,16 +40,24 @@ struct AgentsPane: View {
             .contextMenu(forSelectionType: AgentRow.ID.self) { ids in
                 if let r = rows.first(where: { ids.contains($0.id) }) {
                     menu(r)
+                    FilterMenu(row: r, filters: $ui.agentFilters, except: ["agent"])
                 }
                 HubOrderButton(sort: $ui.agentSort)
             } primaryAction: { ids in
                 if let r = rows.first(where: { ids.contains($0.id) }) { watch(r) }
             }
+            .safeAreaInset(edge: .top, spacing: 0) { FilterBar(filters: $ui.agentFilters) }
+            .tableSearch(text: $ui.agentQuery, kept: $ui.agentFilters, columns: AgentRow.filterColumns,
+                         prompt: "Search or status:blocked")
             .frame(minHeight: 140)
             .overlay {
                 if rows.isEmpty {
-                    ContentUnavailableView("No agent sessions", systemImage: "person.2.slash",
-                                           description: Text(ui.showStale ? "" : "Stale sessions are hidden."))
+                    if !ui.agentQuery.isEmpty || !ui.agentFilters.isEmpty {
+                        NoMatches(query: ui.agentQuery)
+                    } else {
+                        ContentUnavailableView("No agent sessions", systemImage: "person.2.slash",
+                                               description: Text(ui.showStale ? "" : "Stale sessions are hidden."))
+                    }
                 }
             }
 
@@ -251,7 +260,8 @@ struct WorkspacesPane: View {
     @ObservedObject var ui: DashboardState
 
     var body: some View {
-        let rows = WorkspaceList.rows(conn.snapshot).sorted(using: ui.workspaceSort)
+        let rows = TableFilter.rows(WorkspaceList.rows(conn.snapshot), query: ui.workspaceQuery,
+                                    kept: ui.workspaceFilters).sorted(using: ui.workspaceSort)
         let picked = rows.first { ui.workspaceSelection == $0.id }
         VSplitView {
             Table(rows, selection: $ui.workspaceSelection, sortOrder: $ui.workspaceSort) {
@@ -284,13 +294,19 @@ struct WorkspacesPane: View {
                             NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: r.health.dir)
                         }
                     }
+                    FilterMenu(row: r, filters: $ui.workspaceFilters)
                 }
                 HubOrderButton(sort: $ui.workspaceSort)
             }
+            .safeAreaInset(edge: .top, spacing: 0) { FilterBar(filters: $ui.workspaceFilters) }
+            .tableSearch(text: $ui.workspaceQuery, kept: $ui.workspaceFilters, columns: WorkspaceRow.filterColumns,
+                         prompt: "Search or where:chai")
             .frame(minHeight: 140)
             .overlay {
                 if rows.isEmpty {
-                    if conn.snapshot.workspacesLoading {
+                    if !ui.workspaceQuery.isEmpty || !ui.workspaceFilters.isEmpty {
+                        NoMatches(query: ui.workspaceQuery)
+                    } else if conn.snapshot.workspacesLoading {
                         ProgressView("Reading the checkouts…")
                     } else {
                         ContentUnavailableView("No checkouts", systemImage: "folder.badge.questionmark")
