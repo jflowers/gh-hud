@@ -84,6 +84,7 @@ func TestBuildPlanRefuses(t *testing.T) {
 			{"ref":"unbound-force/dewey#150","after":["unbound-force/dewey#147"]},
 			{"ref":"unbound-force/dewey#147","after":["unbound-force/dewey#146"]}]}`, "cycle"},
 		"bad ref": {`{"nodes":[{"ref":"dewey 146"}]}`, "isn't owner/repo#N"},
+		"rules":   {`{"nodes":[{"ref":"unbound-force/dewey#146"}],"rules":[` + strings.Repeat(`"r",`, 24) + `"r"]}`, "25 rules, more than 24"},
 	} {
 		_, err := BuildPlan(epicRef, answer(t, tc.ans), mentioned(), facts)
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
@@ -192,5 +193,14 @@ func TestClearedGate(t *testing.T) {
 	Refresh(next, "a/b", f)
 	if next.Nodes[0].State != NodeReady || next.Nodes[1].State != NodeGated {
 		t.Errorf("states: %s %s", next.Nodes[0].State, next.Nodes[1].State)
+	}
+}
+
+// An epic with many constraints still plans: up to 24 rules.
+func TestBuildPlanManyRules(t *testing.T) {
+	rules := `"r"` + strings.Repeat(`,"r"`, 23)
+	p, err := BuildPlan(epicRef, answer(t, `{"nodes":[{"ref":"unbound-force/dewey#146"}],"rules":[`+rules+`]}`), mentioned(), facts)
+	if err != nil || len(p.Rules) != 24 {
+		t.Fatalf("24 rules: %v, %v", p, err)
 	}
 }

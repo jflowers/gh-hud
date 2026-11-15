@@ -447,7 +447,8 @@ func epicBrief(ref string, iss epicIssue, mentioned []string, facts map[string]e
   holds back. Leave it empty otherwise.
 - "rules" are the epic's constraints every piece must respect: non-goals,
   principles, things never to do (e.g. "never weaken a guard in a repo's
-  committed config"). Keep each one sentence.
+  committed config"). Keep each one sentence, and list at most 24, merging
+  related ones rather than dropping any.
 - Use the refs exactly as listed above (owner/repo#N). Ignore the body's
   checkboxes: gh-hud takes status from GitHub.
 
