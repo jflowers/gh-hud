@@ -57,6 +57,9 @@ const (
 	HubServiceDispatchProcedure = "/ghhud.v1.HubService/Dispatch"
 	// HubServiceReinspectProcedure is the fully-qualified name of the HubService's Reinspect RPC.
 	HubServiceReinspectProcedure = "/ghhud.v1.HubService/Reinspect"
+	// HubServicePruneBranchesProcedure is the fully-qualified name of the HubService's PruneBranches
+	// RPC.
+	HubServicePruneBranchesProcedure = "/ghhud.v1.HubService/PruneBranches"
 	// HubServiceQueueChoicesProcedure is the fully-qualified name of the HubService's QueueChoices RPC.
 	HubServiceQueueChoicesProcedure = "/ghhud.v1.HubService/QueueChoices"
 	// HubServiceEnqueueProcedure is the fully-qualified name of the HubService's Enqueue RPC.
@@ -108,6 +111,10 @@ type HubServiceClient interface {
 	MenuChoices(context.Context, *connect.Request[v1.MenuChoicesRequest]) (*connect.Response[v1.MenuChoicesResponse], error)
 	Dispatch(context.Context, *connect.Request[v1.DispatchRequest]) (*connect.Response[v1.DispatchResponse], error)
 	Reinspect(context.Context, *connect.Request[v1.ReinspectRequest]) (*connect.Response[v1.ReinspectResponse], error)
+	// PruneBranches finds the dispatch checkouts' branches whose PR is
+	// merged or closed; with apply it deletes them, and their copy in your
+	// fork (gh-hud branches).
+	PruneBranches(context.Context, *connect.Request[v1.PruneBranchesRequest]) (*connect.Response[v1.PruneBranchesResponse], error)
 	// Your queue of agent tasks.
 	QueueChoices(context.Context, *connect.Request[v1.QueueChoicesRequest]) (*connect.Response[v1.QueueChoicesResponse], error)
 	Enqueue(context.Context, *connect.Request[v1.EnqueueRequest]) (*connect.Response[v1.EnqueueResponse], error)
@@ -177,6 +184,12 @@ func NewHubServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			httpClient,
 			baseURL+HubServiceReinspectProcedure,
 			connect.WithSchema(hubServiceMethods.ByName("Reinspect")),
+			connect.WithClientOptions(opts...),
+		),
+		pruneBranches: connect.NewClient[v1.PruneBranchesRequest, v1.PruneBranchesResponse](
+			httpClient,
+			baseURL+HubServicePruneBranchesProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("PruneBranches")),
 			connect.WithClientOptions(opts...),
 		),
 		queueChoices: connect.NewClient[v1.QueueChoicesRequest, v1.QueueChoicesResponse](
@@ -280,6 +293,7 @@ type hubServiceClient struct {
 	menuChoices     *connect.Client[v1.MenuChoicesRequest, v1.MenuChoicesResponse]
 	dispatch        *connect.Client[v1.DispatchRequest, v1.DispatchResponse]
 	reinspect       *connect.Client[v1.ReinspectRequest, v1.ReinspectResponse]
+	pruneBranches   *connect.Client[v1.PruneBranchesRequest, v1.PruneBranchesResponse]
 	queueChoices    *connect.Client[v1.QueueChoicesRequest, v1.QueueChoicesResponse]
 	enqueue         *connect.Client[v1.EnqueueRequest, v1.EnqueueResponse]
 	unqueue         *connect.Client[v1.UnqueueRequest, v1.UnqueueResponse]
@@ -325,6 +339,11 @@ func (c *hubServiceClient) Dispatch(ctx context.Context, req *connect.Request[v1
 // Reinspect calls ghhud.v1.HubService.Reinspect.
 func (c *hubServiceClient) Reinspect(ctx context.Context, req *connect.Request[v1.ReinspectRequest]) (*connect.Response[v1.ReinspectResponse], error) {
 	return c.reinspect.CallUnary(ctx, req)
+}
+
+// PruneBranches calls ghhud.v1.HubService.PruneBranches.
+func (c *hubServiceClient) PruneBranches(ctx context.Context, req *connect.Request[v1.PruneBranchesRequest]) (*connect.Response[v1.PruneBranchesResponse], error) {
+	return c.pruneBranches.CallUnary(ctx, req)
 }
 
 // QueueChoices calls ghhud.v1.HubService.QueueChoices.
@@ -417,6 +436,10 @@ type HubServiceHandler interface {
 	MenuChoices(context.Context, *connect.Request[v1.MenuChoicesRequest]) (*connect.Response[v1.MenuChoicesResponse], error)
 	Dispatch(context.Context, *connect.Request[v1.DispatchRequest]) (*connect.Response[v1.DispatchResponse], error)
 	Reinspect(context.Context, *connect.Request[v1.ReinspectRequest]) (*connect.Response[v1.ReinspectResponse], error)
+	// PruneBranches finds the dispatch checkouts' branches whose PR is
+	// merged or closed; with apply it deletes them, and their copy in your
+	// fork (gh-hud branches).
+	PruneBranches(context.Context, *connect.Request[v1.PruneBranchesRequest]) (*connect.Response[v1.PruneBranchesResponse], error)
 	// Your queue of agent tasks.
 	QueueChoices(context.Context, *connect.Request[v1.QueueChoicesRequest]) (*connect.Response[v1.QueueChoicesResponse], error)
 	Enqueue(context.Context, *connect.Request[v1.EnqueueRequest]) (*connect.Response[v1.EnqueueResponse], error)
@@ -482,6 +505,12 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 		HubServiceReinspectProcedure,
 		svc.Reinspect,
 		connect.WithSchema(hubServiceMethods.ByName("Reinspect")),
+		connect.WithHandlerOptions(opts...),
+	)
+	hubServicePruneBranchesHandler := connect.NewUnaryHandler(
+		HubServicePruneBranchesProcedure,
+		svc.PruneBranches,
+		connect.WithSchema(hubServiceMethods.ByName("PruneBranches")),
 		connect.WithHandlerOptions(opts...),
 	)
 	hubServiceQueueChoicesHandler := connect.NewUnaryHandler(
@@ -588,6 +617,8 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 			hubServiceDispatchHandler.ServeHTTP(w, r)
 		case HubServiceReinspectProcedure:
 			hubServiceReinspectHandler.ServeHTTP(w, r)
+		case HubServicePruneBranchesProcedure:
+			hubServicePruneBranchesHandler.ServeHTTP(w, r)
 		case HubServiceQueueChoicesProcedure:
 			hubServiceQueueChoicesHandler.ServeHTTP(w, r)
 		case HubServiceEnqueueProcedure:
@@ -649,6 +680,10 @@ func (UnimplementedHubServiceHandler) Dispatch(context.Context, *connect.Request
 
 func (UnimplementedHubServiceHandler) Reinspect(context.Context, *connect.Request[v1.ReinspectRequest]) (*connect.Response[v1.ReinspectResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.Reinspect is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) PruneBranches(context.Context, *connect.Request[v1.PruneBranchesRequest]) (*connect.Response[v1.PruneBranchesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.PruneBranches is not implemented"))
 }
 
 func (UnimplementedHubServiceHandler) QueueChoices(context.Context, *connect.Request[v1.QueueChoicesRequest]) (*connect.Response[v1.QueueChoicesResponse], error) {

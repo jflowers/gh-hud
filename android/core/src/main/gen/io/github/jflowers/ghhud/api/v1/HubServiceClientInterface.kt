@@ -37,6 +37,13 @@ public interface HubServiceClientInterface {
   public suspend fun reinspect(request: ReinspectRequest, headers: Headers = emptyMap()): ResponseMessage<ReinspectResponse>
 
   /**
+   *  PruneBranches finds the dispatch checkouts' branches whose PR is
+   *  merged or closed; with apply it deletes them, and their copy in your
+   *  fork (gh-hud branches).
+   */
+  public suspend fun pruneBranches(request: PruneBranchesRequest, headers: Headers = emptyMap()): ResponseMessage<PruneBranchesResponse>
+
+  /**
    *  Your queue of agent tasks.
    */
   public suspend fun queueChoices(request: QueueChoicesRequest, headers: Headers = emptyMap()): ResponseMessage<QueueChoicesResponse>

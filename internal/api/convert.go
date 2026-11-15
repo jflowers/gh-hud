@@ -725,3 +725,35 @@ func recordFromPB(p *pb.DispatchResponse) dispatch.Record {
 		Machine: p.GetMachine(), Runner: p.GetRunner(), Dir: p.GetDir(),
 	}
 }
+
+func sweepToPB(s dispatch.BranchSweep) *pb.PruneBranchesResponse {
+	return &pb.PruneBranchesResponse{
+		Local:  mapSlice(s.Local, branchPruneToPB),
+		Remote: mapSlice(s.Remote, branchPruneToPB),
+		Kept:   int32(s.Kept), //nolint:gosec // a branch count
+		Errors: s.Errors,
+	}
+}
+
+func sweepFromPB(p *pb.PruneBranchesResponse) dispatch.BranchSweep {
+	return dispatch.BranchSweep{
+		Local:  mapSlice(p.GetLocal(), branchPruneFromPB),
+		Remote: mapSlice(p.GetRemote(), branchPruneFromPB),
+		Kept:   int(p.GetKept()),
+		Errors: p.GetErrors(),
+	}
+}
+
+func branchPruneToPB(b dispatch.BranchPrune) *pb.BranchPrune {
+	return &pb.BranchPrune{
+		Machine: b.Machine, Workspace: b.Workspace, Repo: b.Repo, Branch: b.Branch,
+		Pr: b.PR, State: b.State, Action: b.Action,
+	}
+}
+
+func branchPruneFromPB(p *pb.BranchPrune) dispatch.BranchPrune {
+	return dispatch.BranchPrune{
+		Machine: p.GetMachine(), Workspace: p.GetWorkspace(), Repo: p.GetRepo(), Branch: p.GetBranch(),
+		PR: p.GetPr(), State: p.GetState(), Action: p.GetAction(),
+	}
+}

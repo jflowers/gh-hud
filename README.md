@@ -833,6 +833,35 @@ max_runs = 2     # runs per piece before it's left to you
 
 Epics are kept in `epics.json` in the state dir.
 
+### Pruning branches
+
+Agents push PR branches to your fork and open the PRs upstream. GitHub
+deletes neither copy once the PR is done: the upstream repo's "delete head
+branches" skips forks, and git never deletes a local branch. So gh-hud
+does, in the dispatch checkouts (instances, on the hub and the workers).
+A local branch is pruned when:
+
+- a merged or closed PR on the checkout's upstream repo has it as head,
+  from the checkout's `origin` repo, and no open PR does;
+- its tip is the PR's last head or an ancestor of it, so no local commit
+  is lost;
+- it isn't checked out in any worktree, isn't the default branch, and no
+  run is live in the checkout.
+
+Its copy in the head repo goes too when you own that repo (your fork) and
+it still points at the PR's last head. The daily
+`chore/dewey-learnings-…` branches follow the same rule.
+
+```sh
+gh-hud branches          # what would be pruned, per checkout (-v for each branch)
+gh-hud branches -apply   # prune them
+```
+
+```toml
+[branches]
+prune = true   # the hub prunes on its own every 6 hours (default off)
+```
+
 ## Configuring dispatch
 
 Dispatch is configured in three layers, all in `config.toml`:

@@ -88,6 +88,8 @@ type Config struct {
 	Supervisor SupervisorConfig `toml:"supervisor"`
 	// Epics bounds how gh-hud runs approved epics ([epics]).
 	Epics EpicsConfig `toml:"epics"`
+	// Branches turns on pruning branches whose PR is done ([branches]).
+	Branches BranchesConfig `toml:"branches"`
 	// Fleet is the GitOps rollout coordinator ([fleet]).
 	Fleet FleetConfig `toml:"fleet"`
 	// Hub is how other apps reach the hub ([hub]).
@@ -185,6 +187,14 @@ type EpicsConfig struct {
 	// MaxRuns is how many runs one piece gets after the plan is approved
 	// before it's left to you (default 2).
 	MaxRuns int `toml:"max_runs"`
+}
+
+// BranchesConfig is the hub's branch pruning (`gh-hud branches` runs it
+// by hand either way).
+type BranchesConfig struct {
+	// Prune makes the hub delete, every few hours, dispatch checkouts'
+	// branches whose PR is merged or closed, and their copy in your fork.
+	Prune bool `toml:"prune"`
 }
 
 // AutoMergeConfig says where gh-hud turns on GitHub auto-merge for your own

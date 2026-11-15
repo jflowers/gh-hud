@@ -40,6 +40,8 @@ type Dispatcher interface {
 	MenuChoices(it model.Item) []dispatch.MenuChoice
 	Dispatch(ctx context.Context, task dispatch.Task, it model.Item, auto bool) (dispatch.Record, error)
 	Reinspect(ctx context.Context, id string) (dispatch.Run, error)
+	PruneBranches(ctx context.Context, apply bool) (dispatch.BranchSweep, error)
+	AutoPruneBranches(ctx context.Context) []string
 	QueueChoices(it model.Item) []dispatch.Task
 	Enqueue(task dispatch.Task, it model.Item) error
 	Unqueue(task dispatch.Task, ref string) error
@@ -85,6 +87,8 @@ type Backend interface {
 	MenuChoices(ctx context.Context, url string) ([]dispatch.MenuChoice, error)
 	Dispatch(ctx context.Context, task dispatch.Task, url string) (dispatch.Record, error)
 	Reinspect(ctx context.Context, runID string) (dispatch.Run, error)
+	// PruneBranches sweeps for branches whose PR is done; apply deletes them.
+	PruneBranches(ctx context.Context, apply bool) (dispatch.BranchSweep, error)
 
 	// Your queue. Enqueue returns the entry's position (1 is first),
 	// MoveQueued its new index (0 is first).
@@ -159,6 +163,7 @@ const (
 	liveTimeout       = 20 * time.Second // runs and slot usage
 	workspacesTimeout = 60 * time.Second
 	autoTimeout       = 90 * time.Second
+	pruneTimeout      = 5 * time.Minute // a branch sweep across the fleet
 )
 
 // Snapshot is the hub's state at one moment. Clients treat it as read-only:
@@ -443,11 +448,23 @@ func (h *Hub) autoPass(ctx context.Context, items []model.Item) {
 	ctx, cancel := context.WithTimeout(ctx, autoTimeout)
 	defer cancel()
 	d := h.opts.Dispatcher
+	go h.autoPrune(context.WithoutCancel(ctx))
 	msgs := d.AutoMerge(ctx, items)
 	msgs = append(msgs, d.AutoDispatch(ctx, items)...)
 	if len(msgs) > 0 {
 		h.emit(Event{Kind: EventNotice, Text: strings.Join(msgs, " · ")})
 		poke(h.agentsReq)
+	}
+}
+
+// autoPrune runs the dispatcher's own branch sweep when it is due
+// ([branches] prune); it keeps to itself so a slow sweep can't hold up
+// auto-merge and auto-dispatch.
+func (h *Hub) autoPrune(ctx context.Context) {
+	ctx, cancel := context.WithTimeout(ctx, pruneTimeout)
+	defer cancel()
+	if msgs := h.opts.Dispatcher.AutoPruneBranches(ctx); len(msgs) > 0 {
+		h.emit(Event{Kind: EventNotice, Text: strings.Join(msgs, " · ")})
 	}
 }
 

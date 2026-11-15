@@ -154,6 +154,14 @@ func (s *Server) Reinspect(ctx context.Context, req *connect.Request[pb.Reinspec
 	return connect.NewResponse(&pb.ReinspectResponse{Run: RunToPB(run)}), nil
 }
 
+func (s *Server) PruneBranches(ctx context.Context, req *connect.Request[pb.PruneBranchesRequest]) (*connect.Response[pb.PruneBranchesResponse], error) {
+	sweep, err := s.b.PruneBranches(ctx, req.Msg.GetApply())
+	if err != nil {
+		return nil, toConnect(err)
+	}
+	return connect.NewResponse(sweepToPB(sweep)), nil
+}
+
 func (s *Server) QueueChoices(ctx context.Context, req *connect.Request[pb.QueueChoicesRequest]) (*connect.Response[pb.QueueChoicesResponse], error) {
 	tasks, err := s.b.QueueChoices(ctx, req.Msg.GetUrl())
 	if err != nil {

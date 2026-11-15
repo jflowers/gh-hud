@@ -101,6 +101,23 @@ public class HubServiceClient(
 
 
   /**
+   *  PruneBranches finds the dispatch checkouts' branches whose PR is
+   *  merged or closed; with apply it deletes them, and their copy in your
+   *  fork (gh-hud branches).
+   */
+  override suspend fun pruneBranches(request: PruneBranchesRequest, headers: Headers): ResponseMessage<PruneBranchesResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "ghhud.v1.HubService/PruneBranches",
+      io.github.jflowers.ghhud.api.v1.PruneBranchesRequest::class,
+      io.github.jflowers.ghhud.api.v1.PruneBranchesResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  /**
    *  Your queue of agent tasks.
    */
   override suspend fun queueChoices(request: QueueChoicesRequest, headers: Headers): ResponseMessage<QueueChoicesResponse> = client.unary(
