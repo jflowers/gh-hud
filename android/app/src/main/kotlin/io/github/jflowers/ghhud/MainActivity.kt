@@ -21,7 +21,10 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.getValue
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.jflowers.ghhud.api.v1.RefreshTarget
 import io.github.jflowers.ghhud.core.AgentChoice
+import io.github.jflowers.ghhud.core.AgentCommands
+import io.github.jflowers.ghhud.core.AgentRow
 import io.github.jflowers.ghhud.core.AttentionRow
 import io.github.jflowers.ghhud.core.CaseRow
 import io.github.jflowers.ghhud.core.EpicRow
@@ -53,6 +56,14 @@ class MainActivity : ComponentActivity() {
         override suspend fun run(row: ItemRow, c: AgentChoice, queue: Boolean) = ItemCommands.run(model.connection, row, c, queue)
 
         override suspend fun recheck(row: ItemRow) = ItemCommands.recheck(model.connection, row)
+
+        override fun updateAgents(change: (AgentsView) -> AgentsView) = model.updateAgents(change)
+
+        override fun refreshAgents() = model.refresh(RefreshTarget.REFRESH_TARGET_AGENTS)
+
+        override fun refreshWorkspaces() = model.refresh(RefreshTarget.REFRESH_TARGET_WORKSPACES)
+
+        override suspend fun recheck(r: AgentRow) = AgentCommands.recheck(model.connection, r)
 
         private val plan get() = PlanCommands(model.connection)
 
@@ -117,7 +128,8 @@ class MainActivity : ComponentActivity() {
             MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
                 val ui by model.ui.collectAsStateWithLifecycle()
                 val items by model.items.collectAsStateWithLifecycle()
-                AppScreen(ui, items, actions)
+                val agents by model.agents.collectAsStateWithLifecycle()
+                AppScreen(ui, items, agents, actions)
             }
         }
     }

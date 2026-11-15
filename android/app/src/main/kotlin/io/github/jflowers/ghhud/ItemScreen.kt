@@ -84,18 +84,18 @@ fun ItemScreen(row: ItemRow?, off: String?, act: ItemActions, say: Say, onBack: 
             Text(row.title, style = MaterialTheme.typography.titleLarge)
             row.marker?.let { Text("◆ ${it.words}", color = it.color(), modifier = Modifier.padding(top = 4.dp)) }
             Column(Modifier.padding(vertical = 12.dp)) {
-                Fact("Kind", row.kind + if (row.draft) ", draft" else "")
-                Fact("Repo", row.repo)
-                if (row.author.isNotEmpty()) Fact("Author", row.author)
-                if (row.statusWords.isNotEmpty()) Fact("Status", row.statusWords.joinToString(", "))
+                FactRow("Kind", row.kind + if (row.draft) ", draft" else "")
+                FactRow("Repo", row.repo)
+                if (row.author.isNotEmpty()) FactRow("Author", row.author)
+                if (row.statusWords.isNotEmpty()) FactRow("Status", row.statusWords.joinToString(", "))
                 if (row.threads > 0 || row.botThreads > 0) {
-                    Fact("Threads", "${row.threads} from people, ${row.botThreads} from bots, unresolved")
+                    FactRow("Threads", "${row.threads} from people, ${row.botThreads} from bots, unresolved")
                 }
-                if (row.lastActor.isNotEmpty()) Fact("Last", row.lastActor)
-                row.updated?.let { Fact("Updated", HubSummary.ago(it, now)) }
-                if (row.labels.isNotEmpty()) Fact("Labels", row.labels.joinToString(", "))
-                row.run?.let { Fact("Agent run", "${it.text(now)}: ${it.words}", it.tone.color()) }
-                row.stage?.let { Fact("Next", it.text, it.tone.color()) }
+                if (row.lastActor.isNotEmpty()) FactRow("Last", row.lastActor)
+                row.updated?.let { FactRow("Updated", HubSummary.ago(it, now)) }
+                if (row.labels.isNotEmpty()) FactRow("Labels", row.labels.joinToString(", "))
+                row.run?.let { FactRow("Agent run", "${it.text(now)}: ${it.words}", it.tone.color()) }
+                row.stage?.let { FactRow("Next", it.text, it.tone.color()) }
             }
             off?.let {
                 Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp).testTag("off"))
@@ -134,19 +134,5 @@ fun ItemScreen(row: ItemRow?, off: String?, act: ItemActions, say: Say, onBack: 
             sheet = null
             said?.let { say(it, false) }
         })
-    }
-}
-
-@Composable
-private fun Fact(label: String, value: String, color: Color = Color.Unspecified) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
-        Text(
-            label,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(96.dp),
-        )
-        Text(value, style = MaterialTheme.typography.bodyMedium, color = color, modifier = Modifier.testTag("fact:$label"))
     }
 }

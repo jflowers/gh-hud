@@ -228,7 +228,17 @@ remote control rather than a viewer.
    as on the Mac. `PlanCommands` in `:core` says how each command went,
    in the Mac's words. The device tests read the shared dashboard
    fixture from the test APK's assets.
-4. **4e4, Agents and Workspaces**, without Watch.
+4. **4e4, Agents and Workspaces**, without Watch. *(done)*
+
+   As built: one Agents place with two tabs, its badge how many agents
+   run. Live only and Show stale as chips; each list has the Items
+   list's search, chips, long-press filters and a sort menu, now shared
+   pieces (`Common.kt`). An agent's screen has the Mac's run facts,
+   what it left behind or pushed, its final message, Re-check, Open,
+   and Copy session ID and directory; a checkout's says why it is or
+   isn't ready, with its uncommitted files and local-only commits.
+   Opening Workspaces reads checkouts older than 30 seconds again, as
+   the Mac does.
 5. **4e5, Fleet**, with pause/resume, check now, skip wait (confirmed)
    and retry.
 6. **4e6, watching from the phone.** The hub calls above, then a
