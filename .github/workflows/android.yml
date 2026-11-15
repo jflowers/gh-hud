@@ -32,9 +32,12 @@ jobs:
         with:
           install_args: java android-sdk
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
-      # The build downloads the SDK platform and build tools it declares.
+      # Installing the SDK packages also accepts the Android SDK license,
+      # which the build needs before it will download anything itself.
+      - name: SDK packages
+        run: make android-sdk
       - name: Lint, test and build
-        run: cd android && ./gradlew --console=plain lint testDebugUnitTest assembleDebug
+        run: make android
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: gh-hud-debug.apk
