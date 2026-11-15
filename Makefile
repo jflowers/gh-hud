@@ -8,7 +8,7 @@ GOVULNCHECK_VERSION ?= v1.9.0
 BUF_VERSION ?= v1.75.0
 BUF := go run github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
 
-.PHONY: all build test lint fmt tidy vuln proto proto-check proto-breaking ci mac mac-notarize mac-check mac-icon android android-install android-device-test
+.PHONY: all build test lint fmt tidy vuln proto proto-check proto-breaking ci mac mac-notarize mac-check mac-icon android-sdk android android-install android-device-test
 
 all: build
 
@@ -89,6 +89,13 @@ mac-check:
 # Gradle, Kotlin and the SDK packages from the build. android-device-test
 # needs a phone on adb (USB, or adb connect over the network).
 GRADLE := cd android && mise exec -- ./gradlew --console=plain
+# The SDK packages the build uses: adb, the platform it compiles against
+# (compileSdk) and the Android Gradle Plugin's default build tools.
+# Installing them also accepts the Android SDK license on this machine,
+# which the build requires before it downloads anything itself.
+ANDROID_SDK_PACKAGES := platform-tools platforms/android-37.0 build-tools/36.0.0
+android-sdk:
+	mise exec -- android sdk install $(ANDROID_SDK_PACKAGES)
 android:
 	$(GRADLE) lint testDebugUnitTest assembleDebug
 android-install:
