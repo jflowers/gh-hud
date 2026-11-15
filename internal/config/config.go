@@ -114,6 +114,10 @@ type HubConfig struct {
 	// Tailnet is the hostname the hub joins your tailnet as, for the
 	// phone; "" (the default) keeps it off the tailnet.
 	Tailnet string `toml:"tailnet"`
+	// LAN is the address the hub listens on for the Mac app on other Macs
+	// on your local network, e.g. "0.0.0.0:7377"; "" (the default) is off.
+	// Plain HTTP with the LAN token: use it only on a network you trust.
+	LAN string `toml:"lan"`
 }
 
 // Default returns the built-in defaults.

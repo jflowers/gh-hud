@@ -13,5 +13,10 @@
   <!-- A regular app: in the Dock and ⌘-Tab, with the menu bar extra too. -->
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>NSHumanReadableCopyright</key><string>Apache-2.0</string>
+  <!-- A hub on another Mac is plain HTTP on the local network. -->
+  <key>NSAppTransportSecurity</key>
+  <dict><key>NSAllowsLocalNetworking</key><true/></dict>
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>gh-hud connects to the gh-hud hub on another Mac on your network, when you set one in Settings.</string>
 </dict>
 </plist>

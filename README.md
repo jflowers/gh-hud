@@ -115,6 +115,17 @@ can open it).
   devices shared in from other people are refused. The hub serves HTTPS
   on its tailnet name when HTTPS is on in your tailnet's admin console
   (DNS page: MagicDNS and HTTPS certificates), and plain HTTP otherwise.
+- The Mac app on another Mac reaches the hub over your local network
+  when `[hub] lan` names an address, e.g. `lan = "0.0.0.0:7377"` (a fixed
+  port, so the other Macs keep finding it). Those Macs can't read
+  `hub.json`, so they send the LAN token instead: the hub makes it once,
+  keeps it in `lan-token` in the state directory (readable only by you)
+  and keeps it across restarts. The hub logs where to reach it, such as
+  `http://macbook.local:7377`, at start. It only answers private network
+  addresses (your LAN, link-local, a VPN such as Tailscale), never the
+  open internet. It's plain HTTP: anyone on the same network can read
+  the traffic, token included, so turn it on only on a network you
+  trust. Delete `lan-token` and restart the hub to make a new one.
 - A client that shows alerts as native notifications says so when it
   subscribes, and the hub stops posting its own osascript notifications
   while it's connected, so you aren't notified twice.
@@ -226,6 +237,18 @@ and retries the failed machine.
 
 Its source is in `macos/` and it needs a hub running (see "The hub") with
 TCP on, which is the default.
+
+**On another Mac.** The app can use the hub on another Mac on your local
+network. On the hub's Mac, set `[hub] lan = "0.0.0.0:7377"` and restart
+the hub. It logs the addresses to use, and its LAN token is in
+`~/.local/state/gh-hud/lan-token`. On the other Mac, open gh-hud →
+Settings… (⌘,), choose **On another Mac on the network**, enter the
+address (e.g. `macbook.local:7377`) and the token, and click Connect.
+The token is kept in the Keychain. macOS asks once to let gh-hud reach
+devices on your local network. Everything works the same except Watch
+and Open Transcript, which open a terminal on the hub's Mac, so they're
+off there. The hub on the other Mac keeps posting its own notifications
+while this app is connected.
 
 Each release (a `v*` tag) publishes the app, notarized and built for Apple
 silicon and Intel, to the GitHub release and to the Homebrew tap:
@@ -1440,6 +1463,7 @@ update_method = "merge"    # merge train's branch update: merge or rebase
 [hub]
 listen = "127.0.0.1:0"     # loopback only; "" turns TCP off
 tailnet = ""               # join your tailnet as this device name, for the phone
+lan = ""                   # e.g. "0.0.0.0:7377": the Mac app on other Macs on your network
 
 # GitOps fleet rollout (see "Fleet rollout (GitOps)" above). Machines need
 # a fleet-apply script on PATH (chezmoi dotfiles checkout).

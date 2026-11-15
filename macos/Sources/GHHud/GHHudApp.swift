@@ -29,18 +29,35 @@ struct GHHudApp: App {
             DashboardView(conn: model.conn)
         }
         .defaultSize(width: 1100, height: 640)
+
+        Settings {
+            HubSettingsView(conn: model.conn)
+        }
     }
 }
 
 /// `GHHud --snapshot out.png` renders the menu once the hub answers, then
 /// exits: for screenshots and checking the app without clicking.
 enum SnapshotMode {
+    /// This Mac's hub, or with --hub-url and --hub-token one on another
+    /// Mac (the saved settings aren't used, so snapshots are repeatable).
+    static var source: HubSource {
+        let args = CommandLine.arguments
+        func value(_ flag: String) -> String? {
+            args.firstIndex(of: flag).flatMap { $0 + 1 < args.count ? args[$0 + 1] : nil }
+        }
+        if let url = value("--hub-url") {
+            return .remote(url: url, token: value("--hub-token") ?? "")
+        }
+        return .thisMac
+    }
+
     @MainActor
     static func runIfAsked() {
         let args = CommandLine.arguments
         guard let i = args.firstIndex(of: "--snapshot"), i + 1 < args.count else { return }
         let out = URL(fileURLWithPath: args[i + 1])
-        let conn = HubConnection()
+        let conn = HubConnection(source: SnapshotMode.source)
         conn.start()
         Task { @MainActor in
             for _ in 0..<150 where conn.status != .connected {
@@ -90,7 +107,7 @@ extension SnapshotMode {
         guard let path = arg("--snapshot-window") else { return }
         let out = URL(fileURLWithPath: path)
         let filter = arg("--filter").flatMap(ItemFilter.init(rawValue:)) ?? .all
-        let conn = HubConnection()
+        let conn = HubConnection(source: SnapshotMode.source)
         conn.start()
         let app = NSApplication.shared
         app.setActivationPolicy(.accessory)
@@ -182,7 +199,7 @@ extension SnapshotMode {
 /// Owns the hub connection and the notifications, for the app's lifetime.
 @MainActor
 final class AppModel {
-    let conn = HubConnection()
+    let conn = HubConnection(source: HubSettings.source)
     private let notifier = Notifier()
 
     init() {
