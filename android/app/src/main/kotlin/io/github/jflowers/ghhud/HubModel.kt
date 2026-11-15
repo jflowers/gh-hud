@@ -7,6 +7,8 @@ import io.github.jflowers.ghhud.core.Approval
 import io.github.jflowers.ghhud.core.AttentionRow
 import io.github.jflowers.ghhud.core.HubAddress
 import io.github.jflowers.ghhud.core.HubConnection
+import io.github.jflowers.ghhud.core.ItemRow
+import io.github.jflowers.ghhud.core.keepingTerms
 import io.github.jflowers.ghhud.core.HubState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -68,6 +70,22 @@ class HubModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun setNotify(on: Boolean) = hub.setNotify(on)
+
+    private val _items = MutableStateFlow(ItemsView())
+
+    /** How the item list is filtered, searched and sorted. */
+    val items: StateFlow<ItemsView> = _items
+
+    fun updateItems(change: (ItemsView) -> ItemsView) = _items.update(change)
+
+    /** The search's column terms become kept filters; its text stays. */
+    fun keepTerms() = _items.update { v ->
+        val (kept, text) = v.kept.keepingTerms(v.query, ItemRow.COLUMNS)
+        v.copy(kept = kept, query = text)
+    }
+
+    /** The connection the commands go to. */
+    val connection: HubConnection get() = hub.connection.value
 
     fun refresh() {
         local.update { it.copy(refreshing = true, refreshError = null) }

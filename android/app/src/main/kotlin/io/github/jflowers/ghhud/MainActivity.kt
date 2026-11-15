@@ -2,6 +2,8 @@ package io.github.jflowers.ghhud
 
 import android.Manifest
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -19,18 +21,35 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.getValue
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.jflowers.ghhud.core.AgentChoice
 import io.github.jflowers.ghhud.core.AttentionRow
+import io.github.jflowers.ghhud.core.ItemCommands
+import io.github.jflowers.ghhud.core.ItemRow
 import io.github.jflowers.ghhud.core.HubAddress
 
 /**
- * The app's one screen: what needs you. Launching it with the extras
+ * The app: what needs you, and the items (AppScreen). Launching it with the extras
  * hub_url (and hub_token, for the Mac's loopback hub) sets the hub, which
  * is how `make android-dev-hub` points it at the Mac over USB.
  */
 class MainActivity : ComponentActivity() {
     private val model: HubModel by viewModels()
 
-    private val actions = object : AttentionActions {
+    private val actions = object : AppActions {
+        override fun update(change: (ItemsView) -> ItemsView) = model.updateItems(change)
+
+        override fun keepTerms() = model.keepTerms()
+
+        override fun copy(text: String) {
+            getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("link", text))
+        }
+
+        override suspend fun choices(row: ItemRow, queue: Boolean) = ItemCommands.choices(model.connection, row, queue)
+
+        override suspend fun run(row: ItemRow, c: AgentChoice, queue: Boolean) = ItemCommands.run(model.connection, row, c, queue)
+
+        override suspend fun recheck(row: ItemRow) = ItemCommands.recheck(model.connection, row)
+
         override fun open(url: String) {
             try {
                 startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
@@ -71,7 +90,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
                 val ui by model.ui.collectAsStateWithLifecycle()
-                AttentionScreen(ui, actions)
+                val items by model.items.collectAsStateWithLifecycle()
+                AppScreen(ui, items, actions)
             }
         }
     }

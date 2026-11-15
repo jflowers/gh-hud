@@ -207,9 +207,18 @@ remote control rather than a viewer.
    the files from the Android code and runs the Mac checks against them;
    the first run found one difference (the "unknown" sort key's size),
    fixed. The Mac's own checks stay as they were.
-2. **4e2, the shell and Items.** The bottom bar, the Items list with
+2. **4e2, the shell and Items.** *(done)* The bottom bar, the Items list with
    filters, search, sort and column chips, the item detail, and its
    commands (start an agent, queue, re-check).
+
+   As built: the bottom bar has Inbox and Items; each later step adds
+   its place. Sort is a menu (Hub's order, Needs you, Status, Number,
+   Threads, Newest, and Reverse), the Mac's column sorts as `ItemSort` in
+   `:core`. Every change to the list's view goes through one function
+   that applies it to the view as it is then: the search field reports
+   its text late, and with a captured copy it undid the chips its own
+   enter had just made (the device tests caught it, intermittently).
+   Watch and Open Transcript wait for 4e6.
 3. **4e3, Plan.** Cases, epics and the queue, with every command the
    Mac's Plan pane has, Enroll epic included.
 4. **4e4, Agents and Workspaces**, without Watch.
