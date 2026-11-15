@@ -376,3 +376,30 @@ internal object SortKey {
     /** A duration column: unknown last. */
     fun duration(t: Double?): Double = t ?: Double.POSITIVE_INFINITY
 }
+
+/**
+ * The orders the item list offers: the Mac's column sorts. HUB keeps the
+ * hub's (most pressing first). Ties keep the hub's order either way.
+ */
+public enum class ItemSort(public val label: String) {
+    HUB("Hub's order"),
+    NEEDS_YOU("Needs you"),
+    STATUS("Status"),
+    NUMBER("Number"),
+    THREADS("Threads"),
+    AGE("Newest"),
+    ;
+
+    /** The rows in this order, or reversed; HUB is never reversed. */
+    public fun sort(rows: List<ItemRow>, reversed: Boolean = false): List<ItemRow> {
+        val c: Comparator<ItemRow> = when (this) {
+            HUB -> return rows
+            NEEDS_YOU -> compareBy { it.markerRank }
+            STATUS -> compareBy { it.statusRank }
+            NUMBER -> compareBy { it.numKey }
+            THREADS -> compareByDescending { it.threadsKey } // most first, as the Mac's descending
+            AGE -> compareBy { it.ageKey }
+        }
+        return rows.sortedWith(if (reversed) c.reversed() else c)
+    }
+}

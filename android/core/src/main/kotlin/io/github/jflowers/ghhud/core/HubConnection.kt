@@ -12,7 +12,15 @@ import io.github.jflowers.ghhud.api.v1.EventKind
 import io.github.jflowers.ghhud.api.v1.HubServiceClient
 import io.github.jflowers.ghhud.api.v1.Snapshot
 import io.github.jflowers.ghhud.api.v1.SubscribeResponse
+import io.github.jflowers.ghhud.api.v1.DispatchResponse
+import io.github.jflowers.ghhud.api.v1.MenuChoice
+import io.github.jflowers.ghhud.api.v1.Run
 import io.github.jflowers.ghhud.api.v1.approveEpicRequest
+import io.github.jflowers.ghhud.api.v1.dispatchRequest
+import io.github.jflowers.ghhud.api.v1.enqueueRequest
+import io.github.jflowers.ghhud.api.v1.menuChoicesRequest
+import io.github.jflowers.ghhud.api.v1.queueChoicesRequest
+import io.github.jflowers.ghhud.api.v1.reinspectRequest
 import io.github.jflowers.ghhud.api.v1.approveProposalRequest
 import io.github.jflowers.ghhud.api.v1.clearEpicGateRequest
 import io.github.jflowers.ghhud.api.v1.refreshRequest
@@ -63,6 +71,13 @@ public data class HubState(
     val snapshot: Snapshot = Snapshot.getDefaultInstance(),
     val attention: Attention = Attention.EMPTY,
 )
+
+/** A hub call's answer: what it gave, or why it didn't. */
+public sealed interface Answer<out T> {
+    public data class Ok<T>(val value: T) : Answer<T>
+
+    public data class No(val why: String) : Answer<Nothing>
+}
 
 /**
  * A live connection to the hub: it subscribes and keeps the latest
@@ -191,7 +206,48 @@ public class HubConnection(
         return why(hub.rejectProposal(rejectProposalRequest { id = a.id }, headers))
     }
 
+    /** Where an agent task could start on an item now. */
+    public suspend fun menuChoices(url: String): Answer<List<MenuChoice>> =
+        answer(hub.menuChoices(menuChoicesRequest { this.url = url }, headers)) { it.choicesList }
+
+    /** Starts an agent task on an item. */
+    public suspend fun dispatch(task: String, url: String): Answer<DispatchResponse> =
+        answer(
+            hub.dispatch(
+                dispatchRequest {
+                    this.task = task
+                    this.url = url
+                },
+                headers,
+            ),
+        ) { it }
+
+    /** The tasks that can join your queue for an item. */
+    public suspend fun queueChoices(url: String): Answer<List<String>> =
+        answer(hub.queueChoices(queueChoicesRequest { this.url = url }, headers)) { it.tasksList }
+
+    /** Adds a task to your queue; the answer is its place (1 is first). */
+    public suspend fun enqueue(task: String, url: String): Answer<Long> =
+        answer(
+            hub.enqueue(
+                enqueueRequest {
+                    this.task = task
+                    this.url = url
+                },
+                headers,
+            ),
+        ) { it.position }
+
+    /** Reads a finished run's outcome again. */
+    public suspend fun reinspect(runId: String): Answer<Run> =
+        answer(hub.reinspect(reinspectRequest { this.runId = runId }, headers)) { it.run }
+
     private companion object {
+        fun <T, R> answer(r: ResponseMessage<T>, value: (T) -> R): Answer<R> = when (r) {
+            is ResponseMessage.Success -> Answer.Ok(value(r.message))
+            is ResponseMessage.Failure -> Answer.No(describe(r.cause))
+        }
+
         val FIRST_RETRY: Duration = 250.milliseconds
         val LONGEST_RETRY: Duration = 5.seconds
 
