@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"slices"
 	"strings"
 	"time"
 )
@@ -133,11 +134,13 @@ func (d *Dispatcher) Runs(ctx context.Context) []Run {
 
 // outcome is what a transcript says about a run.
 type outcome struct {
-	code        *int   // 0 ok / 1 failed; nil when unreadable
-	reason      string // failure detail, or why the outcome is unknown
-	summary     string // last assistant text
-	unreachable bool   // unread because the machine didn't answer
-	humanNeeded bool   // auto-question handed a decision to a person
+	code        *int     // 0 ok / 1 failed; nil when unreadable
+	reason      string   // failure detail, or why the outcome is unknown
+	summary     string   // last assistant text
+	unreachable bool     // unread because the machine didn't answer
+	humanNeeded bool     // auto-question handed a decision to a person
+	humanReason string   // why, when humanNeeded
+	children    []string // subagent sessions the run started (task tool)
 }
 
 // exportedSession is the slice of `opencode export` the outcome needs.
@@ -155,6 +158,9 @@ type exportedSession struct {
 			State struct {
 				Metadata struct {
 					AutoQuestion *autoQuestionMeta `json:"autoQuestion"`
+					// task tool: the subagent's session.
+					SessionID  string `json:"sessionId"`
+					Background bool   `json:"background"`
 				} `json:"metadata"`
 			} `json:"state"`
 		} `json:"parts"`
@@ -183,6 +189,21 @@ func (s exportedSession) lastQuestion() *autoQuestionMeta {
 		}
 	}
 	return nil
+}
+
+// childSessions are the sessions of the foreground subagents the session
+// started through the task tool, in order.
+func (s exportedSession) childSessions() []string {
+	var out []string
+	for _, m := range s.Messages {
+		for _, p := range m.Parts {
+			md := p.State.Metadata
+			if p.Type == "tool" && p.Tool == "task" && md.SessionID != "" && !md.Background && !slices.Contains(out, md.SessionID) {
+				out = append(out, md.SessionID)
+			}
+		}
+	}
+	return out
 }
 
 // humanNeededReason is why a run whose agent handed a decision to a person
@@ -239,11 +260,12 @@ func judgeSession(out string) (outcome, error) {
 	// A run whose last question was handed to a person didn't finish its
 	// job, however cleanly it ended: it needs you, not a success.
 	if q := s.lastQuestion(); q != nil && q.V == 1 && q.HumanNeeded {
-		o.humanNeeded = true
+		o.humanNeeded, o.humanReason = true, humanNeededReason(q)
 		if !failed {
-			failed, o.reason = true, humanNeededReason(q)
+			failed, o.reason = true, o.humanReason
 		}
 	}
+	o.children = s.childSessions()
 	c := 0
 	if failed {
 		c = 1
@@ -298,6 +320,7 @@ func (d *Dispatcher) readOutcome(ctx context.Context, m Machine, dir, id string)
 		if err == nil {
 			var o outcome
 			if o, err = judgeSession(out); err == nil {
+				d.subagentQuestions(ctx, m, dir, &o)
 				return o
 			}
 		}
@@ -307,6 +330,47 @@ func (d *Dispatcher) readOutcome(ctx context.Context, m Machine, dir, id string)
 		}
 	}
 	return outcome{reason: last.Error(), unreachable: errors.Is(last, errUnreachable)}
+}
+
+// maxSubagentSessions bounds the subagent sessions read for one run.
+const maxSubagentSessions = 12
+
+// subagentQuestions looks in the run's subagent sessions (and theirs) for
+// a question auto-question handed to a person: it lands in the subagent's
+// own session, so a parent that carried on, or ended without escalating,
+// would otherwise count as a success. Best effort: a session that can't be
+// read is skipped.
+func (d *Dispatcher) subagentQuestions(ctx context.Context, m Machine, dir string, o *outcome) {
+	if o.humanNeeded {
+		return
+	}
+	queue, seen := slices.Clone(o.children), map[string]bool{}
+	for len(queue) > 0 && len(seen) < maxSubagentSessions && ctx.Err() == nil {
+		id := queue[0]
+		queue = queue[1:]
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		out, err := d.export(ctx, m, dir, id)
+		if err != nil {
+			continue
+		}
+		c, err := judgeSession(out)
+		if err != nil {
+			continue
+		}
+		if c.humanNeeded {
+			o.humanNeeded = true
+			o.humanReason = strings.Replace(c.humanReason, "a person must decide:", "a person must decide (in a subagent):", 1)
+			if o.code != nil && *o.code == 0 {
+				one := 1
+				o.code, o.reason = &one, o.humanReason
+			}
+			return
+		}
+		queue = append(queue, c.children...)
+	}
 }
 
 // findSession finds the opencode session a dispatch created: the oldest
