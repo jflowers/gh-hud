@@ -11,7 +11,7 @@ struct AgentsPane: View {
     @ObservedObject var ui: DashboardState
 
     var body: some View {
-        let rows = TableFilter.rows(AgentList.rows(conn.snapshot, showStale: ui.showStale),
+        let rows = TableFilter.rows(AgentList.rows(conn.snapshot, showStale: ui.showStale, liveOnly: ui.liveOnly),
                                     query: ui.agentQuery, kept: ui.agentFilters).sorted(using: ui.agentSort)
         let picked = rows.first { ui.agentSelection == $0.id }
         VSplitView {
@@ -52,7 +52,10 @@ struct AgentsPane: View {
             .frame(minHeight: 140)
             .overlay {
                 if rows.isEmpty {
-                    if !ui.agentQuery.isEmpty || !ui.agentFilters.isEmpty {
+                    if ui.liveOnly, ui.agentQuery.isEmpty, ui.agentFilters.isEmpty {
+                        ContentUnavailableView("No agents running", systemImage: "bolt.slash",
+                                               description: Text("Nothing is running or blocked right now."))
+                    } else if !ui.agentQuery.isEmpty || !ui.agentFilters.isEmpty {
                         NoMatches(query: ui.agentQuery)
                     } else {
                         ContentUnavailableView("No agent sessions", systemImage: "person.2.slash",

@@ -391,6 +391,8 @@ do {
     check(rows[1].status == "blocked" && rows[1].machine == "chai" && rows[1].name == "title s-blocked", "blocked session")
     check(rows[2].status == "running" && rows[2].tone == .pending && rows[2].machine == "local", "running session")
     check(AgentList.running(s) == 1, "running count")
+    let live = AgentList.rows(s, showStale: false, liveOnly: true, now: now)
+    check(live.map(\.id) == ["s-blocked", "s-live"], "live only: blocked and running, not the finished run: \(live.map(\.id))")
 
     // A task dispatched again on the same item and machine reuses the
     // session ID: each run is still its own row, with its own status.
