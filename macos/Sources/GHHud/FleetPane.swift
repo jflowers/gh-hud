@@ -10,7 +10,8 @@ struct FleetPane: View {
 
     var body: some View {
         let f = conn.snapshot.fleet
-        let rows = FleetList.rows(conn.snapshot).sorted(using: ui.fleetSort)
+        let rows = TableFilter.rows(FleetList.rows(conn.snapshot), query: ui.fleetQuery, kept: ui.fleetFilters)
+            .sorted(using: ui.fleetSort)
         VStack(alignment: .leading, spacing: 0) {
             header(f)
                 .padding(14)
@@ -40,8 +41,19 @@ struct FleetPane: View {
                 }
                 .width(min: 100, ideal: 280)
             }
-            .contextMenu(forSelectionType: FleetRow.ID.self) { _ in
+            .contextMenu(forSelectionType: FleetRow.ID.self) { ids in
+                if let r = rows.first(where: { ids.contains($0.id) }) {
+                    FilterMenu(row: r, filters: $ui.fleetFilters)
+                }
                 HubOrderButton(sort: $ui.fleetSort)
+            }
+            .safeAreaInset(edge: .top, spacing: 0) { FilterBar(filters: $ui.fleetFilters) }
+            .tableSearch(text: $ui.fleetQuery, kept: $ui.fleetFilters, columns: FleetRow.filterColumns,
+                         prompt: "Search or state:failed")
+            .overlay {
+                if rows.isEmpty, !ui.fleetQuery.isEmpty || !ui.fleetFilters.isEmpty {
+                    NoMatches(query: ui.fleetQuery)
+                }
             }
         }
         .confirmationDialog("Skip the drain wait?", isPresented: $ui.confirmSkipWait) {

@@ -34,6 +34,15 @@ final class DashboardState: ObservableObject {
     @Published var agentSort: [KeyPathComparator<AgentRow>] = []
     @Published var workspaceSort: [KeyPathComparator<WorkspaceRow>] = []
     @Published var fleetSort: [KeyPathComparator<FleetRow>] = []
+    /// Each table's kept column filters, the chips above it; the items'
+    /// search is `query`, the other tables have their own.
+    @Published var itemFilters: [ColumnFilter] = []
+    @Published var agentFilters: [ColumnFilter] = []
+    @Published var workspaceFilters: [ColumnFilter] = []
+    @Published var fleetFilters: [ColumnFilter] = []
+    @Published var agentQuery = ""
+    @Published var workspaceQuery = ""
+    @Published var fleetQuery = ""
 
     init(pane: Pane?, query: String) {
         self.pane = pane
@@ -148,7 +157,7 @@ struct DashboardView: View {
     }
 
     private var rows: [ItemRow] {
-        ItemList.rows(conn.snapshot, filter: filter, query: ui.query)
+        ItemList.rows(conn.snapshot, filter: filter, query: ui.query, kept: ui.itemFilters)
     }
 
     /// The selected row, when exactly one is selected and shown.
@@ -208,13 +217,15 @@ struct DashboardView: View {
         default:
             let rows = rows
             ItemTable(rows: rows, cmds: ItemCommands(conn: conn, ui: ui), ui: ui)
-                .searchable(text: $ui.query, placement: .toolbar, prompt: "Repo, title or #N")
+                .safeAreaInset(edge: .top, spacing: 0) { FilterBar(filters: $ui.itemFilters) }
+                .tableSearch(text: $ui.query, kept: $ui.itemFilters, columns: ItemRow.filterColumns,
+                             prompt: "Repo, title, #N or kind:issue")
                 .overlay {
                     if rows.isEmpty {
-                        if ui.query.isEmpty {
+                        if ui.query.isEmpty, ui.itemFilters.isEmpty {
                             ContentUnavailableView("Nothing here", systemImage: "tray")
                         } else {
-                            ContentUnavailableView.search(text: ui.query)
+                            NoMatches(query: ui.query)
                         }
                     }
                 }
@@ -329,6 +340,9 @@ struct ItemTable: View {
                 .disabled(picked.isEmpty)
             Button(picked.count > 1 ? "Copy \(picked.count) Links" : "Copy Link") { copy(picked) }
                 .disabled(picked.isEmpty)
+            if picked.count == 1, let r = picked.first {
+                FilterMenu(row: r, filters: $ui.itemFilters, except: ["title"])
+            }
             HubOrderButton(sort: $ui.itemSort)
         } primaryAction: { ids in
             open(rows.filter { ids.contains($0.id) })

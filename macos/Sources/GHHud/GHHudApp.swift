@@ -77,6 +77,8 @@ extension SnapshotMode {
     /// `--pane plan|agents|workspaces|fleet [--pick N]` shows that pane instead, with
     /// its Nth row (from 0) selected; --enroll opens the Enroll Epic sheet.
     /// --oldest-first sorts the items by their Age column, oldest first.
+    /// --search goes to the shown table's search field; --keep then keeps
+    /// its column terms as filter chips, as Return does.
     @MainActor
     static func windowIfAsked() {
         let args = CommandLine.arguments
@@ -98,7 +100,23 @@ extension SnapshotMode {
         case "workspaces": .workspaces
         default: .items(filter)
         }
-        let ui = DashboardState(pane: pane, query: arg("--search") ?? "")
+        let search = arg("--search") ?? ""
+        let ui = DashboardState(pane: pane, query: "")
+        switch pane {
+        case .agents: ui.agentQuery = search
+        case .workspaces: ui.workspaceQuery = search
+        case .fleet: ui.fleetQuery = search
+        default: ui.query = search
+        }
+        if args.contains("--keep") {
+            switch pane {
+            case .agents: ui.agentQuery = ui.agentFilters.keepTerms(of: search, columns: AgentRow.filterColumns)
+            case .workspaces:
+                ui.workspaceQuery = ui.workspaceFilters.keepTerms(of: search, columns: WorkspaceRow.filterColumns)
+            case .fleet: ui.fleetQuery = ui.fleetFilters.keepTerms(of: search, columns: FleetRow.filterColumns)
+            default: ui.query = ui.itemFilters.keepTerms(of: search, columns: ItemRow.filterColumns)
+            }
+        }
         if args.contains("--oldest-first") { ui.itemSort = [KeyPathComparator(\.ageKey, order: .reverse)] }
         let host = NSHostingController(rootView: DashboardView(conn: conn, state: ui))
         host.sceneBridgingOptions = [.toolbars, .title]
@@ -124,7 +142,7 @@ extension SnapshotMode {
                 }
             }
             if let n = arg("--select").flatMap(Int.init),
-               let row = ItemList.rows(conn.snapshot, filter: filter, query: ui.query).first(where: { $0.num == n }) {
+               let row = ItemList.rows(conn.snapshot, filter: filter, query: ui.query, kept: ui.itemFilters).first(where: { $0.num == n }) {
                 ui.selection = [row.id]
                 if args.contains("--agent") || args.contains("--queue") {
                     ui.sheet = AgentRequest(row: row, queue: args.contains("--queue"))
