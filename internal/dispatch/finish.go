@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -257,6 +258,15 @@ func judgeSession(out string) (outcome, error) {
 			failed, o.reason = true, "assistant finished with an error"
 		}
 	}
+	// A run that stopped on a tool call it wrote out as text never ran it
+	// (#9): it ends cleanly while waiting on, say, a question nobody was
+	// asked. The supervisor plugin nudges most of these back; one that
+	// still ends this way needs you.
+	if !failed && len(s.Messages) > 0 {
+		if tool, ok := textToolCall(s.lastText()); ok {
+			failed, o.reason = true, "stopped on "+tool+" tool call written as text, never run"
+		}
+	}
 	// A run whose last question was handed to a person didn't finish its
 	// job, however cleanly it ended: it needs you, not a success.
 	if q := s.lastQuestion(); q != nil && q.V == 1 && q.HumanNeeded {
@@ -272,6 +282,38 @@ func judgeSession(out string) (outcome, error) {
 	}
 	o.code = &c
 	return o, nil
+}
+
+// lastText is the last message's final text part ("" when it has none).
+func (s exportedSession) lastText() string {
+	parts := s.Messages[len(s.Messages)-1].Parts
+	for j := len(parts) - 1; j >= 0; j-- {
+		if parts[j].Type == "text" && strings.TrimSpace(parts[j].Text) != "" {
+			return parts[j].Text
+		}
+	}
+	return ""
+}
+
+var (
+	// textCallEnd matches a written-out tool call that ends the text.
+	textCallEnd  = regexp.MustCompile(`</(?:[\w-]+:)?(?:invoke|function_calls|tool_call)>\s*$`)
+	textCallName = regexp.MustCompile(`<(?:[\w-]+:)?invoke name="([^"]+)"`)
+)
+
+// textToolCall reports whether text ends on a tool call the model wrote
+// as text instead of making it, and names it ("a question", or "a" when
+// the tool isn't named).
+// Only a call that ends the text counts: one quoted mid-message is talk.
+func textToolCall(text string) (string, bool) {
+	if !textCallEnd.MatchString(text) {
+		return "", false
+	}
+	names := textCallName.FindAllStringSubmatch(text, -1)
+	if len(names) == 0 {
+		return "a", true
+	}
+	return "a " + names[len(names)-1][1], true
 }
 
 // errorText renders an opencode message error ({name, data:{message}}).
