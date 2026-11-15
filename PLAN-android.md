@@ -180,15 +180,47 @@ that are specific to one client stay in it.
 
 ### Watching an agent from the phone
 
-On the Mac, Watch opens the agent's herdr pane and Open Transcript its
-opencode session, both on the hub's machine. The phone needs the
-content instead: a hub call that returns a session's recent output
-(herdr `pane read`) and streams what follows, and one that returns a
-run's transcript as text. To decide when we get there: which of those
-the dispatcher can already give (its runners are the merge train's,
-`internal/dispatch`), and whether answering a blocked agent from the
-phone (sending it a line) is wanted, which would make the phone a
-remote control rather than a viewer.
+On the Mac, Watch opens the agent's herdr pane in a terminal and Open
+Transcript its opencode session, both on the hub's machine. The phone
+needs the content instead. The dispatcher can already read both, on any
+machine: `herdrPaneText` (`herdr pane read`, used to check a dispatch
+started) and `exportSession` (`opencode export`, used to read how a run
+ended). 4e6 puts them behind hub calls.
+
+- **`ReadPane`** (session or run, a line count): the tail of the agent's
+  pane as plain text, as `herdr pane read` gives it. A finished run's
+  pane is closed, so this is for running and blocked agents. The phone
+  asks again every two seconds while the screen is open and stops when
+  it closes, rather than the hub streaming: one more call while you
+  watch, nothing otherwise, and no state on the hub.
+- **`Transcript`** (run): the run's opencode session as messages (role,
+  time, text; tool calls as one line each, "edit main.go", "bash: go
+  test ./…"), parsed from `opencode export` on the hub. This one is for
+  finished runs, and for any run with a session.
+- Both answer FAILED_PRECONDITION with the Mac's reasons ("run finished
+  and its pane is closed", "no opencode session linked to this run").
+
+On the phone an agent's screen gets **Watch** (the pane, monospace,
+following its tail, with a pause to read back) and **Transcript** (the
+messages, newest last), where the Mac has Watch and Open Transcript.
+
+What the pane shows is what Watch shows on the Mac today: the agent's
+terminal, which can include whatever the agent printed. It goes only to
+the hub owner's own devices (4b's check), as everything else does.
+
+The two calls wrap dispatcher internals, which are the merge train's
+(`internal/dispatch`). 4e6 asks that session for two exported methods,
+`(*Dispatcher).PaneText(s Session, lines int)` and
+`(*Dispatcher).Transcript(r Run)`, or for its agreement to add them in
+the 4e6 PR; the hub, the API and the app are this plan's.
+
+**Not in 4e6: answering an agent.** Watch on the Mac attaches a
+read-write terminal, so you can type into a blocked agent there. The
+phone could do the same with `herdr pane send-text`, which would make it
+a remote control for your agents rather than a viewer. Dispatched agents
+mostly don't wait (the auto-question plugin's headless mode answers or
+escalates), so this matters for sessions you started yourself. It's a
+separate step (4e7), only if you want it.
 
 ### Sequence
 
@@ -249,8 +281,15 @@ remote control rather than a viewer.
    while a machine drains (and asking first), Retry only once one failed.
    A row per machine with the Items list's search, chips, long-press
    filters and sorts; a tap shows its whole last error.
-6. **4e6, watching from the phone.** The hub calls above, then a
-   session screen that follows its output. Planned when 4e5 is done.
+6. **4e6, watching from the phone.** `ReadPane` and `Transcript` (proto,
+   hub, API, the dispatcher's two methods), then Watch and Transcript
+   on an agent's and an item's screen. Go tests for the calls against
+   the dispatcher's stubs; JVM tests for the transcript's parsing on
+   the phone side; device tests for the two screens; tried against a
+   real running agent.
+7. **4e7, answering an agent** (only if wanted): `SendToPane` (session,
+   text) and a reply box under Watch, with what you send shown in the
+   pane before it goes.
 
 Each step is a PR with its JVM tests and device tests, tried on the
 phone (wireless debugging) before review.
