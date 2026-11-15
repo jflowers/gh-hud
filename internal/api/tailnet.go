@@ -4,10 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"connectrpc.com/connect"
 	"tailscale.com/client/tailscale/apitype"
@@ -61,6 +63,23 @@ func ownerCheck(who whoIser, owner tailcfg.UserID) func(context.Context, string,
 	}
 }
 
+// withoutRepeats drops a message that's the same as the one before it:
+// until you approve the login, tsnet logs its URL every few seconds.
+func withoutRepeats(logf func(string, ...any)) func(string, ...any) {
+	var mu sync.Mutex
+	last := ""
+	return func(format string, args ...any) {
+		msg := fmt.Sprintf(format, args...)
+		mu.Lock()
+		repeat := msg == last
+		last = msg
+		mu.Unlock()
+		if !repeat {
+			logf("%s", msg)
+		}
+	}
+}
+
 // ServeTailnet joins the tailnet as hostname and serves b there until ctx
 // ends. The first start logs a login URL (or uses TS_AUTHKEY) and waits
 // for you to approve it; logf gets that and tsnet's other messages for
@@ -71,7 +90,7 @@ func ServeTailnet(ctx context.Context, hostname, dir string, b hub.Backend, logf
 	srv := &tsnet.Server{
 		Hostname: hostname,
 		Dir:      filepath.Join(dir, TailnetDir),
-		UserLogf: logf,
+		UserLogf: withoutRepeats(logf),
 		Logf:     func(string, ...any) {},
 	}
 	defer func() { _ = srv.Close() }()
