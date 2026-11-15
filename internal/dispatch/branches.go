@@ -51,8 +51,11 @@ type BranchSweep struct {
 	Local  []BranchPrune
 	Remote []BranchPrune
 	Forks  []ForkSync // forks whose default branch is behind its parent's
-	Kept   int        // branches with an open PR, or none
-	Errors []string   // machines, checkouts or repos that could not be read
+	// Worktrees are the worktree records whose folders were gone, dropped
+	// (or, in a dry run, to drop) by `git worktree prune`, one line each.
+	Worktrees []string
+	Kept      int      // branches with an open PR, or none
+	Errors    []string // machines, checkouts or repos that could not be read
 }
 
 // ForkSync is a fork's default branch against its parent's.
@@ -99,19 +102,30 @@ type branchListing struct {
 	def      string
 	inTree   map[string]bool // checked out in some worktree
 	branches [][2]string     // name, tip
+	pruned   []string        // worktree records git dropped (or would)
 	err      bool
 }
 
 // branchesScript lists, per checkout dir: CO dir, HEAD branch, ORIGIN
 // url, DEF upstream default, WT branches checked out in a worktree, and
-// B name tip for every local branch. A dir that can't be entered prints
+// B name tip for every local branch. For a dir in prune it first runs
+// `git worktree prune` (dry with -n unless apply), which only drops the
+// records of worktrees whose folders are gone, and prints each as WP. A
+// dir that can't be entered prints
 // ERR and the rest continue.
-func branchesScript(dirs []string) string {
+func branchesScript(dirs []string, prune map[string]bool, apply bool) string {
+	dry := " -n"
+	if apply {
+		dry = ""
+	}
 	var b strings.Builder
 	for _, dir := range dirs {
 		q := shellQuoteTilde(dir)
 		b.WriteString("( cd -- " + q + " 2>/dev/null || { printf 'ERR\\t%s\\n' " + shellQuote(dir) + "; exit 0; }\n")
 		b.WriteString("printf 'CO\\t%s\\n' " + shellQuote(dir) + "\n")
+		if prune[dir] {
+			b.WriteString("git worktree prune -v" + dry + " 2>&1 | sed 's/^/WP\\t/'\n")
+		}
 		b.WriteString("printf 'HEAD\\t%s\\n' \"$(git symbolic-ref -q --short HEAD)\"\n")
 		b.WriteString("printf 'ORIGIN\\t%s\\n' \"$(git remote get-url origin 2>/dev/null)\"\n")
 		b.WriteString("printf 'DEF\\t%s\\n' \"$(git symbolic-ref -q --short refs/remotes/upstream/HEAD)\"\n")
@@ -150,6 +164,8 @@ func parseBranches(out string) []branchListing {
 			cur.def = strings.TrimPrefix(rest, "upstream/")
 		case "WT":
 			cur.inTree[rest] = true
+		case "WP":
+			cur.pruned = append(cur.pruned, rest)
 		case "B":
 			name, tip, ok := strings.Cut(rest, "\t")
 			if ok && name != "" && tip != "" {
@@ -330,10 +346,11 @@ func (d *Dispatcher) sweepBranches(ctx context.Context, apply, prune, syncForks 
 		machines = append(machines, d.remoteMachines()...)
 	}
 	type listed struct {
-		branches []localBranch
-		checked  []string // fork \x00 branch checked out in some checkout
-		forks    []string
-		errs     []string
+		branches  []localBranch
+		checked   []string // fork \x00 branch checked out in some checkout
+		forks     []string
+		worktrees []string
+		errs      []string
 	}
 	results := make([]listed, len(machines))
 	var wg sync.WaitGroup
@@ -342,7 +359,7 @@ func (d *Dispatcher) sweepBranches(ctx context.Context, apply, prune, syncForks 
 		go func() {
 			defer wg.Done()
 			r := &results[i]
-			r.branches, r.checked, r.forks, r.errs = d.listBranches(ctx, m, busy)
+			r.branches, r.checked, r.forks, r.worktrees, r.errs = d.listBranches(ctx, m, busy, prune, apply)
 		}()
 	}
 	wg.Wait()
@@ -357,6 +374,7 @@ func (d *Dispatcher) sweepBranches(ctx context.Context, apply, prune, syncForks 
 		for _, f := range r.forks {
 			forks[f] = true
 		}
+		sweep.Worktrees = append(sweep.Worktrees, r.worktrees...)
 		sweep.Errors = append(sweep.Errors, r.errs...)
 	}
 	if !prune {
@@ -443,36 +461,40 @@ func (d *Dispatcher) sweepBranches(ctx context.Context, apply, prune, syncForks 
 // branches a sweep may prune (none in busy checkouts), every branch checked
 // out anywhere (fork \x00 branch, busy checkouts included), and the forks
 // the checkouts push to (an origin that isn't the upstream repo).
-func (d *Dispatcher) listBranches(ctx context.Context, m Machine, busy map[string]bool) (bs []localBranch, checked, forks, errs []string) {
+func (d *Dispatcher) listBranches(ctx context.Context, m Machine, busy map[string]bool, prune, apply bool) (bs []localBranch, checked, forks, worktrees, errs []string) {
 	ix := d.o().LocalIndex
 	if !m.Local {
 		ix = d.remoteIndex(ctx, m)
 	}
 	if ix == nil {
 		if m.Local {
-			return nil, nil, nil, nil
+			return nil, nil, nil, nil, nil
 		}
-		return nil, nil, nil, []string{m.key() + ": unreachable (no ghws index)"}
+		return nil, nil, nil, nil, []string{m.key() + ": unreachable (no ghws index)"}
 	}
 	cos := map[string]checkoutRef{}
 	var dirs []string
+	pruneDirs := map[string]bool{}
 	for _, co := range ix.Checkouts() {
 		if !co.Instance {
 			continue
 		}
 		cos[co.Dir] = checkoutRef{workspace: co.Workspace, repo: co.Repo, dir: co.Dir}
 		dirs = append(dirs, co.Dir)
+		if prune && !busy[m.key()+"\x00"+co.Dir] {
+			pruneDirs[co.Dir] = true
+		}
 	}
 	if len(dirs) == 0 {
-		return nil, nil, nil, nil
+		return nil, nil, nil, nil, nil
 	}
 	label := m.key()
 	if label == "" {
 		label = "hub"
 	}
-	out, err := m.shell(ctx, branchesScript(dirs))
+	out, err := m.shell(ctx, branchesScript(dirs, pruneDirs, apply))
 	if err != nil && out == "" {
-		return nil, nil, nil, []string{label + ": " + err.Error()}
+		return nil, nil, nil, nil, []string{label + ": " + err.Error()}
 	}
 	for _, l := range parseBranches(out) {
 		co, ok := cos[l.dir]
@@ -482,6 +504,9 @@ func (d *Dispatcher) listBranches(ctx context.Context, m Machine, busy map[strin
 		if l.err {
 			errs = append(errs, label+": "+co.workspace+": not readable")
 			continue
+		}
+		for _, w := range l.pruned {
+			worktrees = append(worktrees, label+":"+co.workspace+": "+w)
 		}
 		head := repoFromURL(l.origin)
 		if head == "" {
@@ -503,7 +528,7 @@ func (d *Dispatcher) listBranches(ctx context.Context, m Machine, busy map[strin
 			bs = append(bs, localBranch{machine: m, co: co, name: c[0], tip: c[1], headRepo: head})
 		}
 	}
-	return bs, checked, forks, errs
+	return bs, checked, forks, worktrees, errs
 }
 
 const (
@@ -787,6 +812,9 @@ func (s BranchSweep) notice() []string {
 	var msgs []string
 	if local+remote > 0 {
 		msgs = append(msgs, fmt.Sprintf("pruned %d local branch(es) and %d fork branch(es) whose PR is done", local, remote))
+	}
+	if n := len(s.Worktrees); n > 0 {
+		msgs = append(msgs, fmt.Sprintf("dropped %d worktree record(s) whose folder was gone", n))
 	}
 	for _, f := range s.Forks {
 		switch {

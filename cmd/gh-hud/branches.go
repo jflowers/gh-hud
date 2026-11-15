@@ -25,7 +25,8 @@ behind its parent's. Nothing changes without -apply, which deletes the
 branches and fast-forwards those forks. A branch is kept when it's checked
 out, when a run is live in its checkout, when it has commits that aren't in
 the PR, or (in a fork) when it was pushed to after the PR; a fork with
-commits of its own on its default branch isn't synced. [branches] prune
+commits of its own on its default branch isn't synced. It also drops the
+records of worktrees whose folders are gone (git worktree prune). [branches] prune
 and sync_forks make the hub do this on its own every few hours.
 
 flags:
@@ -140,6 +141,13 @@ func printSweep(w io.Writer, s dispatch.BranchSweep, apply, verbose bool) {
 		}
 	}
 	fmt.Fprintf(w, "\n%s %d local branch(es) and %d fork branch(es); %d other local branch(es) have an open PR or none.\n", verb, local, remote, s.Kept)
+	for _, wt := range s.Worktrees {
+		if apply {
+			fmt.Fprintln(w, "worktree record dropped:", wt)
+		} else {
+			fmt.Fprintln(w, "worktree record to drop:", wt)
+		}
+	}
 	syncs := 0
 	for _, f := range s.Forks {
 		fmt.Fprintf(w, "fork %s %s: %d behind its parent, %s\n", f.Repo, f.Branch, f.Behind, f.Action)
@@ -147,7 +155,7 @@ func printSweep(w io.Writer, s dispatch.BranchSweep, apply, verbose bool) {
 			syncs++
 		}
 	}
-	if !apply && local+remote+syncs > 0 {
+	if !apply && local+remote+syncs+len(s.Worktrees) > 0 {
 		fmt.Fprintln(w, "Run gh-hud branches -apply to delete them.")
 	}
 	for _, e := range s.Errors {

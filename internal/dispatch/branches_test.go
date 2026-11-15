@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jflowers/gh-hud/internal/ghws"
 )
@@ -381,5 +383,49 @@ func TestPruneBatchesQueries(t *testing.T) {
 	}
 	if len(gh.queries) != 2 || len(got) != len(names) {
 		t.Errorf("%d queries for %d branches (got %d answers), want 2", len(gh.queries), len(names), len(got))
+	}
+}
+
+// #84: a worktree whose folder is gone leaves a record that keeps its
+// branch "checked out". The sweep drops it with git worktree prune; a dry
+// run only reports it, and a busy checkout is left alone.
+func TestSweepPrunesGoneWorktrees(t *testing.T) {
+	work, _ := pruneRepo(t)
+	gone := filepath.Join(t.TempDir(), "agent-tree")
+	gitRun(t, work, "worktree", "add", "-q", gone, "done")
+	if err := os.RemoveAll(gone); err != nil {
+		t.Fatal(err)
+	}
+	gh := &fakePruneGitHub{login: "me", headRe: "acme/app"}
+	d := pruneDispatcher(t, work, gh)
+
+	sweep, err := d.sweepBranches(context.Background(), false, true, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sweep.Worktrees) != 1 || !strings.HasPrefix(sweep.Worktrees[0], "hub:acme@x: ") || !strings.Contains(sweep.Worktrees[0], "agent-tree") {
+		t.Fatalf("dry run = %q", sweep.Worktrees)
+	}
+	if !strings.Contains(gitRun(t, work, "worktree", "list"), "agent-tree") {
+		t.Fatal("a dry run dropped the record")
+	}
+
+	// Busy: a live run in the checkout keeps its worktrees as they are.
+	done := time.Now()
+	d.records = []Record{{Task: TaskIssue, Ref: "acme/app#1", Dir: work, StartedAt: done, Runner: "local", PID: os.Getpid()}}
+	if sweep, _ := d.sweepBranches(context.Background(), true, true, false); len(sweep.Worktrees) != 0 {
+		t.Errorf("pruned a busy checkout: %q", sweep.Worktrees)
+	}
+	d.records = nil
+
+	sweep, err = d.sweepBranches(context.Background(), true, true, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sweep.Worktrees) != 1 || strings.Contains(gitRun(t, work, "worktree", "list"), "agent-tree") {
+		t.Errorf("apply: %q, list:\n%s", sweep.Worktrees, gitRun(t, work, "worktree", "list"))
+	}
+	if n := sweep.notice(); len(n) == 0 || n[len(n)-1] != "dropped 1 worktree record(s) whose folder was gone" {
+		t.Errorf("notice = %q", n)
 	}
 }

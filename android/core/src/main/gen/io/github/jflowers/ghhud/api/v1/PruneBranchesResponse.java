@@ -19,6 +19,7 @@ public  final class PruneBranchesResponse extends
     remote_ = emptyProtobufList();
     errors_ = emptyProtobufList();
     forks_ = emptyProtobufList();
+    worktrees_ = emptyProtobufList();
   }
   public static final int LOCAL_FIELD_NUMBER = 1;
   private com.google.protobuf.Internal.ProtobufList<io.github.jflowers.ghhud.api.v1.BranchPrune> local_;
@@ -519,6 +520,144 @@ public  final class PruneBranchesResponse extends
   private void removeForks(int index) {
     ensureForksIsMutable();
     forks_.remove(index);
+  }
+
+  public static final int WORKTREES_FIELD_NUMBER = 6;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> worktrees_;
+  /**
+   * <pre>
+   * Worktree records whose folders were gone, dropped (or to drop) by
+   * `git worktree prune`: "machine:workspace: what git said".
+   * </pre>
+   *
+   * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+   * @return A list containing the worktrees.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getWorktreesList() {
+    return worktrees_;
+  }
+  /**
+   * <pre>
+   * Worktree records whose folders were gone, dropped (or to drop) by
+   * `git worktree prune`: "machine:workspace: what git said".
+   * </pre>
+   *
+   * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+   * @return The count of worktrees.
+   */
+  @java.lang.Override
+  public int getWorktreesCount() {
+    return worktrees_.size();
+  }
+  /**
+   * <pre>
+   * Worktree records whose folders were gone, dropped (or to drop) by
+   * `git worktree prune`: "machine:workspace: what git said".
+   * </pre>
+   *
+   * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+   * @param index The index of the element to return.
+   * @return The worktrees at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getWorktrees(int index) {
+    return worktrees_.get(index);
+  }
+  /**
+   * <pre>
+   * Worktree records whose folders were gone, dropped (or to drop) by
+   * `git worktree prune`: "machine:workspace: what git said".
+   * </pre>
+   *
+   * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the worktrees at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getWorktreesBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        worktrees_.get(index));
+  }
+  private void ensureWorktreesIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        worktrees_;  if (!tmp.isModifiable()) {
+      worktrees_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <pre>
+   * Worktree records whose folders were gone, dropped (or to drop) by
+   * `git worktree prune`: "machine:workspace: what git said".
+   * </pre>
+   *
+   * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+   * @param index The index to set the value at.
+   * @param value The worktrees to set.
+   */
+  private void setWorktrees(
+      int index, java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureWorktreesIsMutable();
+    worktrees_.set(index, value);
+  }
+  /**
+   * <pre>
+   * Worktree records whose folders were gone, dropped (or to drop) by
+   * `git worktree prune`: "machine:workspace: what git said".
+   * </pre>
+   *
+   * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+   * @param value The worktrees to add.
+   */
+  private void addWorktrees(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureWorktreesIsMutable();
+    worktrees_.add(value);
+  }
+  /**
+   * <pre>
+   * Worktree records whose folders were gone, dropped (or to drop) by
+   * `git worktree prune`: "machine:workspace: what git said".
+   * </pre>
+   *
+   * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+   * @param values The worktrees to add.
+   */
+  private void addAllWorktrees(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureWorktreesIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, worktrees_);
+  }
+  /**
+   * <pre>
+   * Worktree records whose folders were gone, dropped (or to drop) by
+   * `git worktree prune`: "machine:workspace: what git said".
+   * </pre>
+   *
+   * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+   */
+  private void clearWorktrees() {
+    worktrees_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * Worktree records whose folders were gone, dropped (or to drop) by
+   * `git worktree prune`: "machine:workspace: what git said".
+   * </pre>
+   *
+   * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+   * @param value The bytes of the worktrees to add.
+   */
+  private void addWorktreesBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureWorktreesIsMutable();
+    worktrees_.add(value.toStringUtf8());
   }
 
   public static io.github.jflowers.ghhud.api.v1.PruneBranchesResponse parseFrom(
@@ -1152,6 +1291,143 @@ public  final class PruneBranchesResponse extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Worktree records whose folders were gone, dropped (or to drop) by
+     * `git worktree prune`: "machine:workspace: what git said".
+     * </pre>
+     *
+     * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+     * @return A list containing the worktrees.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getWorktreesList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getWorktreesList());
+    }
+    /**
+     * <pre>
+     * Worktree records whose folders were gone, dropped (or to drop) by
+     * `git worktree prune`: "machine:workspace: what git said".
+     * </pre>
+     *
+     * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+     * @return The count of worktrees.
+     */
+    @java.lang.Override
+    public int getWorktreesCount() {
+      return instance.getWorktreesCount();
+    }
+    /**
+     * <pre>
+     * Worktree records whose folders were gone, dropped (or to drop) by
+     * `git worktree prune`: "machine:workspace: what git said".
+     * </pre>
+     *
+     * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+     * @param index The index of the element to return.
+     * @return The worktrees at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getWorktrees(int index) {
+      return instance.getWorktrees(index);
+    }
+    /**
+     * <pre>
+     * Worktree records whose folders were gone, dropped (or to drop) by
+     * `git worktree prune`: "machine:workspace: what git said".
+     * </pre>
+     *
+     * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the worktrees at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getWorktreesBytes(int index) {
+      return instance.getWorktreesBytes(index);
+    }
+    /**
+     * <pre>
+     * Worktree records whose folders were gone, dropped (or to drop) by
+     * `git worktree prune`: "machine:workspace: what git said".
+     * </pre>
+     *
+     * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+     * @param index The index to set the value at.
+     * @param value The worktrees to set.
+     * @return This builder for chaining.
+     */
+    public Builder setWorktrees(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setWorktrees(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Worktree records whose folders were gone, dropped (or to drop) by
+     * `git worktree prune`: "machine:workspace: what git said".
+     * </pre>
+     *
+     * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+     * @param value The worktrees to add.
+     * @return This builder for chaining.
+     */
+    public Builder addWorktrees(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addWorktrees(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Worktree records whose folders were gone, dropped (or to drop) by
+     * `git worktree prune`: "machine:workspace: what git said".
+     * </pre>
+     *
+     * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+     * @param values The worktrees to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllWorktrees(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllWorktrees(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * Worktree records whose folders were gone, dropped (or to drop) by
+     * `git worktree prune`: "machine:workspace: what git said".
+     * </pre>
+     *
+     * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearWorktrees() {
+      copyOnWrite();
+      instance.clearWorktrees();
+      return this;
+    }
+    /**
+     * <pre>
+     * Worktree records whose folders were gone, dropped (or to drop) by
+     * `git worktree prune`: "machine:workspace: what git said".
+     * </pre>
+     *
+     * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+     * @param value The bytes of the worktrees to add.
+     * @return This builder for chaining.
+     */
+    public Builder addWorktreesBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addWorktreesBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.PruneBranchesResponse)
   }
   @java.lang.Override
@@ -1176,10 +1452,11 @@ public  final class PruneBranchesResponse extends
             "errors_",
             "forks_",
             io.github.jflowers.ghhud.api.v1.ForkSync.class,
+            "worktrees_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0004\u0000\u0001\u001b\u0002\u001b" +
-              "\u0003\u0004\u0004\u021a\u0005\u001b";
+              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0005\u0000\u0001\u001b\u0002\u001b" +
+              "\u0003\u0004\u0004\u021a\u0005\u001b\u0006\u021a";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

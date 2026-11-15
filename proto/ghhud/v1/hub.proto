@@ -165,6 +165,9 @@ message PruneBranchesResponse {
   int32 kept = 3; // branches with an open PR, or none
   repeated string errors = 4;
   repeated ForkSync forks = 5; // forks whose default branch is behind its parent's
+  // Worktree records whose folders were gone, dropped (or to drop) by
+  // `git worktree prune`: "machine:workspace: what git said".
+  repeated string worktrees = 6;
 }
 
 // ForkSync is a fork's default branch against its parent's.

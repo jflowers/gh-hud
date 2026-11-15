@@ -110,4 +110,49 @@ public interface PruneBranchesResponseOrBuilder extends
    * <code>repeated .ghhud.v1.ForkSync forks = 5 [json_name = "forks"];</code>
    */
   int getForksCount();
+
+  /**
+   * <pre>
+   * Worktree records whose folders were gone, dropped (or to drop) by
+   * `git worktree prune`: "machine:workspace: what git said".
+   * </pre>
+   *
+   * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+   * @return A list containing the worktrees.
+   */
+  java.util.List<java.lang.String>
+      getWorktreesList();
+  /**
+   * <pre>
+   * Worktree records whose folders were gone, dropped (or to drop) by
+   * `git worktree prune`: "machine:workspace: what git said".
+   * </pre>
+   *
+   * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+   * @return The count of worktrees.
+   */
+  int getWorktreesCount();
+  /**
+   * <pre>
+   * Worktree records whose folders were gone, dropped (or to drop) by
+   * `git worktree prune`: "machine:workspace: what git said".
+   * </pre>
+   *
+   * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+   * @param index The index of the element to return.
+   * @return The worktrees at the given index.
+   */
+  java.lang.String getWorktrees(int index);
+  /**
+   * <pre>
+   * Worktree records whose folders were gone, dropped (or to drop) by
+   * `git worktree prune`: "machine:workspace: what git said".
+   * </pre>
+   *
+   * <code>repeated string worktrees = 6 [json_name = "worktrees"];</code>
+   * @param index The index of the element to return.
+   * @return The worktrees at the given index.
+   */
+  com.google.protobuf.ByteString
+      getWorktreesBytes(int index);
 }
