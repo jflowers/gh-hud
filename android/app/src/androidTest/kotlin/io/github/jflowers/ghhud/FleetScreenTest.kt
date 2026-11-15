@@ -29,7 +29,10 @@ import io.github.jflowers.ghhud.core.HubAddress
 import io.github.jflowers.ghhud.core.HubState
 import io.github.jflowers.ghhud.core.HubStatus
 import io.github.jflowers.ghhud.core.ItemRow
+import io.github.jflowers.ghhud.core.PaneRead
 import io.github.jflowers.ghhud.core.PlanItem
+import io.github.jflowers.ghhud.core.WatchTarget
+import io.github.jflowers.ghhud.api.v1.TranscriptResponse
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -129,6 +132,8 @@ class FleetScreenTest {
             override suspend fun recheck(r: AgentRow): Answer<String> = Answer.Ok("")
             override suspend fun fleet(action: FleetAction): Answer<String> = Answer.Ok("")
             override fun updateFleet(change: (ListState<FleetSort>) -> ListState<FleetSort>) {}
+            override fun follow(t: WatchTarget) = kotlinx.coroutines.flow.emptyFlow<PaneRead>()
+            override suspend fun transcript(runId: String): Answer<TranscriptResponse> = Answer.No("none")
         }
         compose.setContent {
             val s = shown.value

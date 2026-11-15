@@ -65,6 +65,13 @@ service HubService {
   rpc WatchRun(WatchRunRequest) returns (WatchRunResponse);
   rpc OpenTranscript(OpenTranscriptRequest) returns (OpenTranscriptResponse);
 
+  // Viewers for apps on other devices: the content instead of a window.
+  // ReadPane returns the end of a live agent's herdr pane, as Watch shows
+  // it; Transcript a run's opencode session as messages. Read-only: a
+  // hub that follows another gh-hud serves them too.
+  rpc ReadPane(ReadPaneRequest) returns (ReadPaneResponse);
+  rpc Transcript(TranscriptRequest) returns (TranscriptResponse);
+
   // FleetControl drives the GitOps rollout; FAILED_PRECONDITION when the
   // fleet is off.
   rpc FleetControl(FleetControlRequest) returns (FleetControlResponse);
@@ -277,6 +284,43 @@ message OpenTranscriptRequest {
 }
 
 message OpenTranscriptResponse {}
+
+message ReadPaneRequest {
+  // A run's pane, while it runs (run IDs are unique; session IDs repeat
+  // across runs), or else a session's.
+  string run_id = 1;
+  string session_id = 2;
+  int32 lines = 3; // the pane's last lines, 1 to 2000; 0 asks for 200
+}
+
+message ReadPaneResponse {
+  string text = 1;
+}
+
+message TranscriptRequest {
+  string run_id = 1;
+  int32 last = 2; // the last messages, 1 to 500; 0 asks for 100
+}
+
+message TranscriptResponse {
+  repeated TranscriptMessage messages = 1; // oldest first
+  int32 omitted = 2; // earlier messages left out
+}
+
+// TranscriptMessage is one turn of an opencode session.
+message TranscriptMessage {
+  string role = 1; // "user" or "assistant"
+  google.protobuf.Timestamp created = 2;
+  repeated TranscriptPart parts = 3;
+}
+
+// TranscriptPart is what a message said, or a tool it called. Reasoning
+// and bookkeeping parts are left out.
+message TranscriptPart {
+  string text = 1; // the words; for a tool, what it did ("go test ./...")
+  string tool = 2; // the tool's name, for a tool call
+  bool failed = 3; // a tool call that errored
+}
 
 message FleetControlRequest {
   FleetAction action = 1;

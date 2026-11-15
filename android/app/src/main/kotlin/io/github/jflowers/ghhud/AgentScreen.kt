@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,6 +35,7 @@ import io.github.jflowers.ghhud.core.AgentRow
 import io.github.jflowers.ghhud.core.Answer
 import io.github.jflowers.ghhud.core.Links
 import io.github.jflowers.ghhud.core.Tone
+import io.github.jflowers.ghhud.core.WatchTarget
 import io.github.jflowers.ghhud.core.WorkspaceDetail
 import io.github.jflowers.ghhud.core.WorkspaceRow
 import kotlinx.coroutines.launch
@@ -67,8 +69,8 @@ private fun Detail(title: String, onBack: () -> Unit, content: @Composable () ->
 
 /**
  * An agent session: its run's outcome for a dispatch, the session's
- * identity otherwise, and its commands. Watching it from the phone comes
- * later (PLAN-android 4e6).
+ * identity otherwise, and its commands: Watch while it runs, its
+ * Transcript, Re-check once it's done.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -79,6 +81,8 @@ fun AgentScreen(
     items: ItemActions,
     say: Say,
     onBack: () -> Unit,
+    onWatch: (WatchTarget) -> Unit = {},
+    onTranscript: (runId: String, title: String) -> Unit = { _, _ -> },
     now: Instant = Instant.now(),
 ) {
     val scope = rememberCoroutineScope()
@@ -108,6 +112,15 @@ fun AgentScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
+            // As on the Mac: any live agent; the hub says so when it has no pane.
+            if (row.live) {
+                Button(onClick = { onWatch(WatchTarget.of(row)) }, modifier = Modifier.testTag("watch")) { Text("Watch") }
+            }
+            row.run?.takeIf { it.sessionId.isNotEmpty() }?.let { run ->
+                OutlinedButton(onClick = { onTranscript(run.id, row.name) }, modifier = Modifier.testTag("transcript")) {
+                    Text("Transcript")
+                }
+            }
             row.run?.takeIf { it.hasFinishedAt() }?.let { run ->
                 OutlinedButton(
                     onClick = {

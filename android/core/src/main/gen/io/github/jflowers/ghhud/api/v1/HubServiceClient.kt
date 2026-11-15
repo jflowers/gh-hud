@@ -301,6 +301,36 @@ public class HubServiceClient(
 
 
   /**
+   *  Viewers for apps on other devices: the content instead of a window.
+   *  ReadPane returns the end of a live agent's herdr pane, as Watch shows
+   *  it; Transcript a run's opencode session as messages. Read-only: a
+   *  hub that follows another gh-hud serves them too.
+   */
+  override suspend fun readPane(request: ReadPaneRequest, headers: Headers): ResponseMessage<ReadPaneResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "ghhud.v1.HubService/ReadPane",
+      io.github.jflowers.ghhud.api.v1.ReadPaneRequest::class,
+      io.github.jflowers.ghhud.api.v1.ReadPaneResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  override suspend fun transcript(request: TranscriptRequest, headers: Headers): ResponseMessage<TranscriptResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "ghhud.v1.HubService/Transcript",
+      io.github.jflowers.ghhud.api.v1.TranscriptRequest::class,
+      io.github.jflowers.ghhud.api.v1.TranscriptResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  /**
    *  FleetControl drives the GitOps rollout; FAILED_PRECONDITION when the
    *  fleet is off.
    */

@@ -89,6 +89,16 @@ public protocol Ghhud_V1_HubServiceClientInterface: Sendable {
     @available(iOS 13, *)
     func `openTranscript`(request: Ghhud_V1_OpenTranscriptRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_OpenTranscriptResponse>
 
+    /// Viewers for apps on other devices: the content instead of a window.
+    /// ReadPane returns the end of a live agent's herdr pane, as Watch shows
+    /// it; Transcript a run's opencode session as messages. Read-only: a
+    /// hub that follows another gh-hud serves them too.
+    @available(iOS 13, *)
+    func `readPane`(request: Ghhud_V1_ReadPaneRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_ReadPaneResponse>
+
+    @available(iOS 13, *)
+    func `transcript`(request: Ghhud_V1_TranscriptRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_TranscriptResponse>
+
     /// FleetControl drives the GitOps rollout; FAILED_PRECONDITION when the
     /// fleet is off.
     @available(iOS 13, *)
@@ -218,6 +228,16 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
     }
 
     @available(iOS 13, *)
+    public func `readPane`(request: Ghhud_V1_ReadPaneRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_ReadPaneResponse> {
+        return await self.client.unary(path: "/ghhud.v1.HubService/ReadPane", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `transcript`(request: Ghhud_V1_TranscriptRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_TranscriptResponse> {
+        return await self.client.unary(path: "/ghhud.v1.HubService/Transcript", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `fleetControl`(request: Ghhud_V1_FleetControlRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_FleetControlResponse> {
         return await self.client.unary(path: "/ghhud.v1.HubService/FleetControl", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -255,6 +275,8 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
             public static let watch = Connect.MethodSpec(name: "Watch", service: "ghhud.v1.HubService", type: .unary)
             public static let watchRun = Connect.MethodSpec(name: "WatchRun", service: "ghhud.v1.HubService", type: .unary)
             public static let openTranscript = Connect.MethodSpec(name: "OpenTranscript", service: "ghhud.v1.HubService", type: .unary)
+            public static let readPane = Connect.MethodSpec(name: "ReadPane", service: "ghhud.v1.HubService", type: .unary)
+            public static let transcript = Connect.MethodSpec(name: "Transcript", service: "ghhud.v1.HubService", type: .unary)
             public static let fleetControl = Connect.MethodSpec(name: "FleetControl", service: "ghhud.v1.HubService", type: .unary)
             public static let toolkitRollout = Connect.MethodSpec(name: "ToolkitRollout", service: "ghhud.v1.HubService", type: .unary)
             public static let toolkitControl = Connect.MethodSpec(name: "ToolkitControl", service: "ghhud.v1.HubService", type: .unary)

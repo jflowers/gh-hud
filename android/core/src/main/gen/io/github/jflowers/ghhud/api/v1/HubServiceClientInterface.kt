@@ -87,6 +87,16 @@ public interface HubServiceClientInterface {
   public suspend fun openTranscript(request: OpenTranscriptRequest, headers: Headers = emptyMap()): ResponseMessage<OpenTranscriptResponse>
 
   /**
+   *  Viewers for apps on other devices: the content instead of a window.
+   *  ReadPane returns the end of a live agent's herdr pane, as Watch shows
+   *  it; Transcript a run's opencode session as messages. Read-only: a
+   *  hub that follows another gh-hud serves them too.
+   */
+  public suspend fun readPane(request: ReadPaneRequest, headers: Headers = emptyMap()): ResponseMessage<ReadPaneResponse>
+
+  public suspend fun transcript(request: TranscriptRequest, headers: Headers = emptyMap()): ResponseMessage<TranscriptResponse>
+
+  /**
    *  FleetControl drives the GitOps rollout; FAILED_PRECONDITION when the
    *  fleet is off.
    */

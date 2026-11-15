@@ -6,6 +6,7 @@ package api
 
 import (
 	"errors"
+	"math"
 	"time"
 
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -845,4 +846,33 @@ func forkSyncFromPB(p *pb.ForkSync) dispatch.ForkSync {
 		Repo: p.GetRepo(), Branch: p.GetBranch(), Action: p.GetAction(),
 		Behind: int(p.GetBehind()), Ahead: int(p.GetAhead()),
 	}
+}
+
+func transcriptToPB(t hub.Transcript) *pb.TranscriptResponse {
+	out := &pb.TranscriptResponse{Omitted: clamp32(t.Omitted)}
+	for _, m := range t.Messages {
+		pm := &pb.TranscriptMessage{Role: m.Role, Created: ts(m.Created)}
+		for _, p := range m.Parts {
+			pm.Parts = append(pm.Parts, &pb.TranscriptPart{Text: p.Text, Tool: p.Tool, Failed: p.Failed})
+		}
+		out.Messages = append(out.Messages, pm)
+	}
+	return out
+}
+
+func transcriptFromPB(r *pb.TranscriptResponse) hub.Transcript {
+	t := hub.Transcript{Omitted: int(r.GetOmitted())}
+	for _, pm := range r.GetMessages() {
+		m := hub.TranscriptMessage{Role: pm.GetRole(), Created: fromTS(pm.GetCreated())}
+		for _, p := range pm.GetParts() {
+			m.Parts = append(m.Parts, hub.TranscriptPart{Text: p.GetText(), Tool: p.GetTool(), Failed: p.GetFailed()})
+		}
+		t.Messages = append(t.Messages, m)
+	}
+	return t
+}
+
+// clamp32 is n as an int32, held to its range.
+func clamp32(n int) int32 {
+	return int32(max(min(n, math.MaxInt32), math.MinInt32)) //nolint:gosec // clamped on this line
 }

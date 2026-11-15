@@ -33,6 +33,7 @@ import io.github.jflowers.ghhud.core.AgentList
 import io.github.jflowers.ghhud.core.FleetList
 import io.github.jflowers.ghhud.core.FleetSort
 import io.github.jflowers.ghhud.core.ItemCommands
+import io.github.jflowers.ghhud.core.WatchTarget
 import io.github.jflowers.ghhud.core.WorkspaceList
 import io.github.jflowers.ghhud.core.ItemFilter
 import io.github.jflowers.ghhud.core.ItemList
@@ -51,7 +52,7 @@ enum class Place(val label: String, val icon: ImageVector) {
 }
 
 /** Everything the app's screens can ask for. */
-interface AppActions : AttentionActions, ItemsControl, ItemActions, PlanActions, AgentsControl, AgentActions, FleetActions
+interface AppActions : AttentionActions, ItemsControl, ItemActions, PlanActions, AgentsControl, AgentActions, FleetActions, ViewerActions
 
 /**
  * The app: a bottom bar between the places, each a list; an item's row
@@ -60,8 +61,23 @@ interface AppActions : AttentionActions, ItemsControl, ItemActions, PlanActions,
 @Composable
 fun AppScreen(ui: Ui, items: ItemsView, agents: AgentsView, fleet: ListState<FleetSort>, act: AppActions) {
     var place by rememberSaveable { mutableStateOf(Place.INBOX) }
-    // The open detail screen, if any: "item:<url>", "agent:<id>" or "ws:<id>".
+    // The open detail screen, if any: "item:<url>", "agent:<id>", "ws:<id>",
+    // "watch:<run:id|session:id>" or "transcript:<run id>"; the viewers'
+    // titles ride along in viewTitle.
     var detail by rememberSaveable { mutableStateOf<String?>(null) }
+    var viewTitle by rememberSaveable { mutableStateOf("") }
+    // Back from a viewer returns to the screen that opened it.
+    var under by rememberSaveable { mutableStateOf<String?>(null) }
+    val watch: (WatchTarget) -> Unit = {
+        under = detail
+        viewTitle = it.title
+        detail = "watch:" + it.key
+    }
+    val transcript: (String, String) -> Unit = { id, title ->
+        under = detail
+        viewTitle = title
+        detail = "transcript:$id"
+    }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val say: Say = { text, bad ->
@@ -74,7 +90,12 @@ fun AppScreen(ui: Ui, items: ItemsView, agents: AgentsView, fleet: ListState<Fle
             )
         }
     }
-    BackHandler(enabled = detail != null) { detail = null }
+    val goBack = {
+        val d = detail
+        detail = if (d != null && (d.startsWith("watch:") || d.startsWith("transcript:"))) under else null
+        if (detail == null) under = null
+    }
+    BackHandler(enabled = detail != null) { goBack() }
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
@@ -109,18 +130,23 @@ fun AppScreen(ui: Ui, items: ItemsView, agents: AgentsView, fleet: ListState<Fle
             val d = detail
             val s = ui.hub.snapshot
             val off = ItemCommands.off(ui.hub)
-            val back = { detail = null }
+            val back = goBack
             when {
                 d != null && d.startsWith("item:") -> {
                     val id = d.removePrefix("item:")
                     val row = remember(s, id) { ItemList.rows(s, ItemFilter.ALL).firstOrNull { it.id == id } }
-                    ItemScreen(row, off, act, say, onBack = back)
+                    ItemScreen(row, off, act, say, onBack = back, onWatch = watch, onTranscript = transcript)
                 }
                 d != null && d.startsWith("agent:") -> {
                     val id = d.removePrefix("agent:")
                     val row = remember(s, id) { AgentList.rows(s, showStale = true).firstOrNull { it.id == id } }
-                    AgentScreen(row, off, act, act, say, onBack = back)
+                    AgentScreen(row, off, act, act, say, onBack = back, onWatch = watch, onTranscript = transcript)
                 }
+                d != null && d.startsWith("watch:") -> {
+                    val t = WatchTarget.parse(d.removePrefix("watch:"), viewTitle)
+                    if (t != null) WatchScreen(t, act, onBack = back)
+                }
+                d != null && d.startsWith("transcript:") -> TranscriptScreen(d.removePrefix("transcript:"), viewTitle, act, onBack = back)
                 d != null && d.startsWith("ws:") -> {
                     val id = d.removePrefix("ws:")
                     val row = remember(s, id) { WorkspaceList.rows(s).firstOrNull { it.id == id } }

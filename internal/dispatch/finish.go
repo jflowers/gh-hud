@@ -787,12 +787,60 @@ func (m Machine) shell(ctx context.Context, script string) (string, error) {
 // log). A finished TUI's pane is closed; its transcript is the record.
 func (d *Dispatcher) WatchRun(r Run) error {
 	if r.PaneID != "" {
-		if r.Status != RunRunning && r.Status != RunBlocked {
-			return fmt.Errorf("run finished and its pane is closed (t opens the transcript)")
+		s, err := runPane(r)
+		if err != nil {
+			return err
 		}
-		return d.watchHerdr(Session{Machine: r.Machine, PaneID: r.PaneID, WSID: r.WSID})
+		return d.watchHerdr(s)
 	}
 	return d.Watch(Session{ID: r.SessionID, Log: r.Log, Directory: r.Dir})
+}
+
+// runPane is the herdr pane a run's viewers use: Watch here, the apps'
+// pane text. A finished run's pane is closed; its transcript is the record.
+func runPane(r Run) (Session, error) {
+	if r.PaneID == "" {
+		return Session{}, fmt.Errorf("no herdr pane for this run (t opens the transcript)")
+	}
+	if r.Status != RunRunning && r.Status != RunBlocked {
+		return Session{}, fmt.Errorf("run finished and its pane is closed (t opens the transcript)")
+	}
+	return Session{Machine: r.Machine, PaneID: r.PaneID, WSID: r.WSID}, nil
+}
+
+// maxPaneLines caps PaneText: plenty for a phone, cheap for herdr.
+const maxPaneLines = 2000
+
+// PaneText reads the end of a session's herdr pane as plain text: what
+// Watch shows, for the apps that can't open a terminal here. lines is
+// clamped to 1..2000. Read-only, so a follower serves it too.
+func (d *Dispatcher) PaneText(ctx context.Context, s Session, lines int) (string, error) {
+	if s.PaneID == "" {
+		return "", fmt.Errorf("no herdr pane for this session (not dispatched by gh-hud)")
+	}
+	return herdrPaneText(ctx, d.machineFor(s.Machine), s.PaneID, min(max(lines, 1), maxPaneLines))
+}
+
+// RunPaneText is PaneText for a run's pane, while the run is live.
+func (d *Dispatcher) RunPaneText(ctx context.Context, r Run, lines int) (string, error) {
+	s, err := runPane(r)
+	if err != nil {
+		return "", err
+	}
+	return d.PaneText(ctx, s, lines)
+}
+
+// errNoTranscript is how every viewer says a run has no opencode session.
+var errNoTranscript = errors.New("no opencode session linked to this run")
+
+// Transcript returns the run's opencode session as `opencode export`
+// writes it (JSON), read on the run's machine. It can run to megabytes:
+// callers keep what they show. Read-only, so a follower serves it too.
+func (d *Dispatcher) Transcript(ctx context.Context, r Run) (string, error) {
+	if r.SessionID == "" {
+		return "", errNoTranscript
+	}
+	return d.export(ctx, d.machineFor(r.Machine), r.Dir, r.SessionID)
 }
 
 // termCmd opens a command in a new terminal window.
@@ -802,7 +850,7 @@ const termCmd = "/Applications/Ghostty.app/Contents/MacOS/ghostty -e"
 // its machine in a new terminal window.
 func (d *Dispatcher) OpenTranscript(r Run) error {
 	if r.SessionID == "" {
-		return fmt.Errorf("no opencode session linked to this run")
+		return errNoTranscript
 	}
 	m := d.machineFor(r.Machine)
 	if m.Local {

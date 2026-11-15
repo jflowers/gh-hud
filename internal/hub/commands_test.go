@@ -132,6 +132,21 @@ func (d *fakeDisp) OpenTranscript(r dispatch.Run) error {
 	return nil
 }
 
+func (d *fakeDisp) PaneText(_ context.Context, s dispatch.Session, lines int) (string, error) {
+	d.record("PaneText %s %d", s.ID, lines)
+	return "pane of " + s.ID, nil
+}
+
+func (d *fakeDisp) RunPaneText(_ context.Context, r dispatch.Run, lines int) (string, error) {
+	d.record("RunPaneText %s %d", r.ID, lines)
+	return "pane of " + r.ID, nil
+}
+
+func (d *fakeDisp) Transcript(_ context.Context, r dispatch.Run) (string, error) {
+	d.record("Transcript %s", r.ID)
+	return `{"messages":[{"info":{"role":"assistant","time":{"created":1000}},"parts":[{"type":"text","text":"done"}]}]}`, nil
+}
+
 // withItems is a hub whose latest refresh holds acme/r#1 (URL u1).
 func withItems(t *testing.T, d Dispatcher) *Hub {
 	t.Helper()
@@ -186,6 +201,36 @@ func TestCommandsResolveKeys(t *testing.T) {
 	case <-h.agentsReq:
 	default:
 		t.Error("no agents refresh after dispatch")
+	}
+}
+
+func TestViewersRouteByRunElseSession(t *testing.T) {
+	d := &fakeDisp{}
+	h := withItems(t, d) // a follower: viewers still work
+	ctx := t.Context()
+
+	if text, err := h.ReadPane(ctx, "run1", "", 0); err != nil || text != "pane of run1" {
+		t.Errorf("by run: %q, %v", text, err)
+	}
+	if text, err := h.ReadPane(ctx, "", "lap1/s1", 30); err != nil || text != "pane of lap1/s1" {
+		t.Errorf("by session: %q, %v", text, err)
+	}
+	if _, err := h.ReadPane(ctx, "", "gone", 30); err == nil {
+		t.Error("an unknown session read")
+	}
+	if _, err := h.ReadPane(ctx, "gone", "", 30); err == nil {
+		t.Error("an unknown run read")
+	}
+	tr, err := h.Transcript(ctx, "run1", 0)
+	if err != nil || len(tr.Messages) != 1 || tr.Messages[0].Parts[0].Text != "done" {
+		t.Errorf("transcript: %+v, %v", tr, err)
+	}
+	want := []string{"RunPaneText run1 200", "PaneText lap1/s1 30", "Transcript run1"}
+	if got := d.Calls(); !slices.Equal(got, want) {
+		t.Errorf("calls = %q, want %q", got, want)
+	}
+	if _, err := withItems(t, nil).ReadPane(ctx, "run1", "", 0); !errors.Is(err, ErrNoDispatch) {
+		t.Errorf("no dispatcher: %v", err)
 	}
 }
 
