@@ -242,3 +242,56 @@ func TestPlanLiveRunsWithoutRows(t *testing.T) {
 		t.Error("a finished run has a row")
 	}
 }
+
+// unbound-force#1060: a re-read plan was approved while three pieces were
+// running. Runs from before the approval still hold their pieces: they
+// show as running (a piece the new plan puts behind another included),
+// count toward max_active, and aren't started again.
+func TestEpicLiveRunsFromBeforeApproval(t *testing.T) {
+	d := newTestDispatcher(t, "refuse")
+	d.opts.Epics = config.EpicsConfig{MaxActive: 2, MaxRuns: 2}
+	approved := time.Now().Add(-time.Hour)
+	before := approved.Add(-3 * time.Hour)
+	withEpic(d, approved,
+		node(1, epic.NodeReady),   // running since before the approval
+		node(2, epic.NodeWaiting), // the new plan waits it on #3, but it's running
+		node(3, epic.NodeReady),   // ready, but the epic is at its limit
+	)
+	runs := []Run{
+		{Ref: "acme/app#1", Task: TaskIssue, Status: RunRunning, StartedAt: before, Machine: "lap1", Workspace: "acme@oak"},
+		{Ref: "acme/app#2", Task: TaskIssue, Status: RunBlocked, StartedAt: before, Workspace: "acme@elm"},
+	}
+	rows := rowsByRef(d.Plan(nil, runs))
+	for ref, want := range map[string]Stage{
+		"acme/app#1": {Kind: StageRunning, Task: TaskIssue},
+		"acme/app#2": {Kind: StageRunning, Task: TaskIssue},
+		"acme/app#3": {Kind: StageWait, Task: TaskIssue, Reason: "epic: 2 active (max 2)"},
+	} {
+		if r := rows[ref]; r.Stage != want {
+			t.Errorf("%s: %+v, want %+v", ref, r.Stage, want)
+		}
+	}
+
+	es := EpicsWithRuns(d.Epics(), runs)
+	got := map[string]string{}
+	for _, n := range es[0].Plan.Nodes {
+		got[n.Ref] = string(n.State) + " " + n.Note
+	}
+	for ref, want := range map[string]string{
+		"acme/app#1": string(epic.NodeRunning) + " on lap1:acme@oak",
+		"acme/app#2": string(epic.NodeRunning) + " on acme@elm",
+		"acme/app#3": string(epic.NodeReady) + " ",
+	} {
+		if got[ref] != want {
+			t.Errorf("listing %s = %q, want %q", ref, got[ref], want)
+		}
+	}
+
+	// The run count still starts at the approval: an old failed run
+	// doesn't use up the piece's runs.
+	done := before.Add(time.Hour)
+	runs = []Run{{Ref: "acme/app#3", Task: TaskIssue, Status: RunFailed, StartedAt: before, FinishedAt: &done}}
+	if r := rowsByRef(d.Plan(nil, runs))["acme/app#3"]; r.Stage.Kind != StageNext {
+		t.Errorf("an old run counted: %+v", r.Stage)
+	}
+}
