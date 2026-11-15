@@ -1171,6 +1171,74 @@ still running) · `r` retry the failed machine and resume · `F`/`esc`
 close. The main header carries a compact fleet chip while a rollout is
 active or failed.
 
+## Toolkit scaffolds
+
+A tool release (uf, replicator, gaze, dewey) reaches the machines through the
+fleet rollout above, once its mise pin is bumped. The files each tool writes
+*into* a repo with its `init` command come from the binary, so they only
+change when someone re-runs init at the new version and lands the result.
+`gh-hud toolkit scaffold` does that for every repo in a manifest (issue #74;
+the rest of the rollout story is epic #78).
+
+```sh
+gh-hud toolkit list                          # tools, fleet pins, targets
+gh-hud toolkit scaffold --dry-run            # every tool at its fleet pin
+gh-hud toolkit scaffold uf@0.22.0 --repo unbound-force/dewey
+```
+
+For each target, it:
+
+1. Adds a scratch worktree (under the state dir's `toolkit/`) of the
+   canonical ghws clone at `upstream`'s default branch. Agents' `@`
+   instances and the clone's working tree are never touched.
+2. Runs each tool's init there in manifest order, with the binary at the
+   exact version (`mise install` then `mise which --tool`), not whatever is
+   on `PATH` or pinned by the repo. A version defaults to the fleet pin in
+   `~/.config/mise/config.toml`.
+3. If anything changed, it commits on `chore/toolkit-<tool>-<version>…`,
+   pushes to `origin` (your fork), and opens one PR on the repo for all
+   the tools. When the change touches agent commands or definitions
+   (`hold_paths`), the PR gets the `hold` label (created if missing), so
+   auto-merge waits for your look. Otherwise the usual pipeline takes it:
+   bot review, auto-merge and the `ci` task.
+4. An **overlay** target (a private uf stealth mirror, such as fullsend-ai's)
+   gets the commit pushed straight to its default branch, or to the chore
+   branch when held, for you to merge.
+
+It refuses to go backwards. Commits carry `Toolkit-Scaffold: <tool>
+<version>` trailers, and PR titles name the versions. A version older than
+the newest open or merged one is refused, and so is a change that deletes
+far more than it adds (over 500 lines and more than twice what it adds),
+which usually means the repo was scaffolded from something newer
+(`--allow-shrink` lets that through). An existing chore branch is reported
+with its PR, not redone. The exit code is 1 when any target failed or was
+refused.
+
+The manifest is `~/.config/gh-hud/toolkit.toml`:
+
+```toml
+hold_paths = [".opencode/command/", ".opencode/commands/", ".opencode/agent/", ".opencode/agents/"] # the default
+hold_label = "hold"                                    # the default
+
+[[tool]]                       # runs in this order
+name = "uf"
+release = "unbound-force/unbound-force"                # for release links
+mise = "go:github.com/unbound-force/unbound-force/cmd/unbound-force"
+bin = "unbound-force"
+init = ["init"]                                        # the default
+
+[[target]]
+repo = "unbound-force/dewey"
+tools = ["uf", "replicator", "gaze", "dewey"]
+args.gaze = ["--ci", "--gaze-version", "{version}"]    # {version} is the release tag
+
+[[target]]
+overlay = "fullsend-ai/.uf/fullsend"                   # relative to the ghws root
+name = "fullsend-ai/fullsend (overlay)"
+tools = ["uf"]
+args.uf = ["--lang", "go"]
+```
+
 ## Config
 
 `~/.config/gh-hud/config.toml` (all optional; `--config` picks another path).
