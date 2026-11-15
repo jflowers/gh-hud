@@ -277,11 +277,11 @@ func (d *Dispatcher) Plan(items []model.Item, runs []Run) []PlanRow {
 		if ref == "" || queued[ref] || seen[ref] {
 			continue
 		}
-		seen[ref] = true
 		st := d.Stage(it, runs)
 		if _, shown := order[st.Kind]; !shown {
-			continue
+			continue // an epic piece hidden here still gets its epic row
 		}
+		seen[ref] = true
 		auto = append(auto, PlanRow{Item: it, Task: st.Task, Stage: st})
 	}
 	auto = append(auto, d.epicRows(runs, queued, seen)...)
