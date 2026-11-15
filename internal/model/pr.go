@@ -75,7 +75,8 @@ query($searchQuery: String!, $limit: Int!) {
         comments(last: 30) {
           nodes { author { login } createdAt }
         }
-        reviewThreads(first: 100) {
+        reviewThreads(first: 50) {
+          pageInfo { hasNextPage }
           nodes { isResolved comments(first: 1) { nodes { author { login } } } last: comments(last: 1) { nodes { author { login } } } }
         }
         reviewRequests(first: 10) {
@@ -186,6 +187,9 @@ type prNode struct {
 		} `json:"nodes"`
 	} `json:"comments"`
 	Threads struct {
+		PageInfo struct {
+			HasNextPage bool `json:"hasNextPage"`
+		} `json:"pageInfo"`
 		Nodes []struct {
 			IsResolved bool `json:"isResolved"`
 			Comments   struct {
@@ -394,6 +398,9 @@ func BuildPRItem(n prNode, me string, bots *BotFilter) Item {
 	// Unresolved threads, split by who opened them: review bots (qodo,
 	// fullsend-ai-review, ...) leave many threads that shouldn't look as
 	// urgent as a human reviewer's.
+	// The query reads 50 threads (100 cost twice the GraphQL points on every
+	// refresh); past that, unresolved ones may go uncounted.
+	it.ThreadsMore = n.Threads.PageInfo.HasNextPage
 	for _, t := range n.Threads.Nodes {
 		if t.IsResolved {
 			continue

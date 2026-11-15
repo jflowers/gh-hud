@@ -189,3 +189,16 @@ func TestUpdateHeadsOnlyTheHead(t *testing.T) {
 		t.Errorf("updated an uncovered repo: %v", updates)
 	}
 }
+
+// A PR with more review threads than the dashboard reads may hide an
+// unresolved one: the train doesn't count it ready or keep it at the head.
+func TestTrainThreadsMore(t *testing.T) {
+	pr := trainPR(1)
+	if !mergeReady(pr) || !stillHead(pr) {
+		t.Fatal("a clean PR isn't ready")
+	}
+	pr.ThreadsMore = true
+	if mergeReady(pr) || stillHead(pr) {
+		t.Error("ready with threads past what's read")
+	}
+}

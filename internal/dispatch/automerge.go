@@ -65,7 +65,7 @@ func autoMergeAction(it model.Item, cfg config.AutoMergeConfig) mergeAction {
 	}
 	// GitHub refuses auto-merge when nothing is pending. An admin's direct
 	// merge can bypass rules, so this path checks everything itself.
-	if it.ReviewDecision == "APPROVED" && it.MergeState == "CLEAN" && it.Thread == 0 &&
+	if it.ReviewDecision == "APPROVED" && it.MergeState == "CLEAN" && it.ThreadsClear() &&
 		(it.CI == model.CIOK || it.CI == model.CINone) {
 		return mergeNow
 	}

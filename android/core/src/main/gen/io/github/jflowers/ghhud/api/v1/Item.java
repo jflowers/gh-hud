@@ -898,6 +898,44 @@ public  final class Item extends
     threadsOpen_ = 0L;
   }
 
+  public static final int THREADS_MORE_FIELD_NUMBER = 45;
+  private boolean threadsMore_;
+  /**
+   * <pre>
+   * more threads than the dashboard reads; threads may undercount
+   * </pre>
+   *
+   * <code>bool threads_more = 45 [json_name = "threadsMore"];</code>
+   * @return The threadsMore.
+   */
+  @java.lang.Override
+  public boolean getThreadsMore() {
+    return threadsMore_;
+  }
+  /**
+   * <pre>
+   * more threads than the dashboard reads; threads may undercount
+   * </pre>
+   *
+   * <code>bool threads_more = 45 [json_name = "threadsMore"];</code>
+   * @param value The threadsMore to set.
+   */
+  private void setThreadsMore(boolean value) {
+    
+    threadsMore_ = value;
+  }
+  /**
+   * <pre>
+   * more threads than the dashboard reads; threads may undercount
+   * </pre>
+   *
+   * <code>bool threads_more = 45 [json_name = "threadsMore"];</code>
+   */
+  private void clearThreadsMore() {
+
+    threadsMore_ = false;
+  }
+
   public static final int LAST_ACTOR_FIELD_NUMBER = 18;
   private java.lang.String lastActor_;
   /**
@@ -3370,6 +3408,46 @@ public  final class Item extends
     }
 
     /**
+     * <pre>
+     * more threads than the dashboard reads; threads may undercount
+     * </pre>
+     *
+     * <code>bool threads_more = 45 [json_name = "threadsMore"];</code>
+     * @return The threadsMore.
+     */
+    @java.lang.Override
+    public boolean getThreadsMore() {
+      return instance.getThreadsMore();
+    }
+    /**
+     * <pre>
+     * more threads than the dashboard reads; threads may undercount
+     * </pre>
+     *
+     * <code>bool threads_more = 45 [json_name = "threadsMore"];</code>
+     * @param value The threadsMore to set.
+     * @return This builder for chaining.
+     */
+    public Builder setThreadsMore(boolean value) {
+      copyOnWrite();
+      instance.setThreadsMore(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * more threads than the dashboard reads; threads may undercount
+     * </pre>
+     *
+     * <code>bool threads_more = 45 [json_name = "threadsMore"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearThreadsMore() {
+      copyOnWrite();
+      instance.clearThreadsMore();
+      return this;
+    }
+
+    /**
      * <code>string last_actor = 18 [json_name = "lastActor"];</code>
      * @return The lastActor.
      */
@@ -4940,14 +5018,16 @@ public  final class Item extends
             "runBranch_",
             "runEvent_",
             "threadsOpen_",
+            "threadsMore_",
           };
           java.lang.String info =
-              "\u0000,\u0000\u0001\u0001,,\u0000\u0007\u0000\u0001\f\u0002\u000b\u0003\u0208\u0004" +
+              "\u0000-\u0000\u0001\u0001--\u0000\u0007\u0000\u0001\f\u0002\u000b\u0003\u0208\u0004" +
               "\u0208\u0005\u0002\u0006\u0208\u0007\u0208\b\u0007\t\u1009\u0000\n\u1009\u0001\u000b" +
               "\f\f\f\r\u0208\u000e\u0208\u000f\u0208\u0010\u0002\u0011\u0002\u0012\u0208\u0013" +
               "\u0208\u0014\u0007\u0015\u0007\u0016\u0007\u0017\u0007\u0018\u021a\u0019\u0208\u001a" +
               "\u0208\u001b\u0208\u001c\u0208\u001d\u0002\u001e\u0007\u001f\u0007 \u021a!\u021a" +
-              "\"\u0007#\u021a$\u021a%\u021a&\u0208\'\u0002(\u021a)\u0208*\u0208+\u0208,\u0002";
+              "\"\u0007#\u021a$\u021a%\u021a&\u0208\'\u0002(\u021a)\u0208*\u0208+\u0208,\u0002-" +
+              "\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -240,6 +240,16 @@ public interface ItemOrBuilder extends
   long getThreadsOpen();
 
   /**
+   * <pre>
+   * more threads than the dashboard reads; threads may undercount
+   * </pre>
+   *
+   * <code>bool threads_more = 45 [json_name = "threadsMore"];</code>
+   * @return The threadsMore.
+   */
+  boolean getThreadsMore();
+
+  /**
    * <code>string last_actor = 18 [json_name = "lastActor"];</code>
    * @return The lastActor.
    */

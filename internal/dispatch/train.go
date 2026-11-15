@@ -69,7 +69,7 @@ func approved(it model.Item) bool {
 // mergeReady reports whether nothing but checks still running stands
 // between a PR and its merge.
 func mergeReady(it model.Item) bool {
-	return !it.Draft && it.Merge != "⚠️" && approved(it) && it.Thread == 0 && it.CI != model.CIFail
+	return !it.Draft && it.Merge != "⚠️" && approved(it) && it.ThreadsClear() && it.CI != model.CIFail
 }
 
 // trainRank is how far a PR is from merging (lower merges sooner).
@@ -119,7 +119,7 @@ func inTrain(it model.Item) bool {
 // has stopped it except checks or a review its update brought back.
 func stillHead(it model.Item) bool {
 	return !it.Draft && it.Merge != "⚠️" && it.CI != model.CIFail &&
-		it.ReviewDecision != "CHANGES_REQUESTED" && it.Thread == 0
+		it.ReviewDecision != "CHANGES_REQUESTED" && it.ThreadsClear()
 }
 
 // buildTrain orders each repo's PRs and picks its head. prevHeads keeps a
