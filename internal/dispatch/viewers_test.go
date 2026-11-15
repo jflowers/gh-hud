@@ -43,7 +43,7 @@ func TestPaneTextReadsTheAgentsPane(t *testing.T) {
 	if !strings.Contains(got, "--lines 1") {
 		t.Errorf("lines not clamped up: %q", got)
 	}
-	if _, err := d.PaneText(ctx, Session{ID: "ses_x"}, 50); err == nil || !strings.Contains(err.Error(), "no herdr pane") {
+	if _, err := d.PaneText(ctx, Session{ID: "ses_x"}, 50); err == nil || err.Error() != "no herdr pane for this session" {
 		t.Errorf("a session without a pane: %v", err)
 	}
 
@@ -53,12 +53,15 @@ func TestPaneTextReadsTheAgentsPane(t *testing.T) {
 		t.Errorf("a blocked run on lap1: %q, %v", got, err)
 	}
 	done := Run{PaneID: "w1:p3", Status: RunOK}
-	if _, err := d.RunPaneText(ctx, done, 10); err == nil || !strings.Contains(err.Error(), "run finished and its pane is closed") {
+	// The apps get plain words; the TUI's Watch adds its key hint to the same check.
+	if _, err := d.RunPaneText(ctx, done, 10); err == nil || err.Error() != "run finished and its pane is closed" {
 		t.Errorf("a finished run: %v", err)
 	}
-	// Watch says the same, from the same check.
-	if err := d.WatchRun(done); err == nil || !strings.Contains(err.Error(), "run finished and its pane is closed") {
+	if err := d.WatchRun(done); err == nil || err.Error() != "run finished and its pane is closed (t opens the transcript)" {
 		t.Errorf("WatchRun on a finished run: %v", err)
+	}
+	if _, err := d.RunPaneText(ctx, Run{Status: RunRunning}, 10); err == nil || err.Error() != "no herdr pane for this run" {
+		t.Errorf("a run without a pane: %v", err)
 	}
 }
 

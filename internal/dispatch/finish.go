@@ -789,7 +789,7 @@ func (d *Dispatcher) WatchRun(r Run) error {
 	if r.PaneID != "" {
 		s, err := runPane(r)
 		if err != nil {
-			return err
+			return fmt.Errorf("%w (t opens the transcript)", err) // the TUI's key
 		}
 		return d.watchHerdr(s)
 	}
@@ -798,12 +798,13 @@ func (d *Dispatcher) WatchRun(r Run) error {
 
 // runPane is the herdr pane a run's viewers use: Watch here, the apps'
 // pane text. A finished run's pane is closed; its transcript is the record.
+// Its errors are plain words: WatchRun adds the TUI's key hint.
 func runPane(r Run) (Session, error) {
 	if r.PaneID == "" {
-		return Session{}, fmt.Errorf("no herdr pane for this run (t opens the transcript)")
+		return Session{}, errors.New("no herdr pane for this run")
 	}
 	if r.Status != RunRunning && r.Status != RunBlocked {
-		return Session{}, fmt.Errorf("run finished and its pane is closed (t opens the transcript)")
+		return Session{}, errors.New("run finished and its pane is closed")
 	}
 	return Session{Machine: r.Machine, PaneID: r.PaneID, WSID: r.WSID}, nil
 }
@@ -816,7 +817,7 @@ const maxPaneLines = 2000
 // clamped to 1..2000. Read-only, so a follower serves it too.
 func (d *Dispatcher) PaneText(ctx context.Context, s Session, lines int) (string, error) {
 	if s.PaneID == "" {
-		return "", fmt.Errorf("no herdr pane for this session (not dispatched by gh-hud)")
+		return "", errors.New("no herdr pane for this session")
 	}
 	return herdrPaneText(ctx, d.machineFor(s.Machine), s.PaneID, min(max(lines, 1), maxPaneLines))
 }

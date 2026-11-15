@@ -53,12 +53,12 @@ class ViewersTest {
         ok(readPaneResponse { text = "one" })
         server.enqueue(
             MockResponse.Builder().code(500).setHeader("Content-Type", "application/json")
-                .body("""{"code":"unknown","message":"run finished and its pane is closed (t opens the transcript)"}""").build(),
+                .body("""{"code":"unknown","message":"run finished and its pane is closed"}""").build(),
         )
         ok(readPaneResponse { text = "three" })
         val reads = Viewers.follow(hub, WatchTarget("run-1", "", "fix"), every = 10.milliseconds, lines = 50).take(3).toList()
         assertEquals(listOf("one", null, "three"), reads.map { it.text })
-        assertEquals("run finished and its pane is closed (t opens the transcript)", reads[1].error)
+        assertEquals("run finished and its pane is closed", reads[1].error)
         val req = ReadPaneRequest.parseFrom(server.takeRequest().body!!.toByteArray())
         assertEquals(Triple("run-1", "", 50), Triple(req.runId, req.sessionId, req.lines))
     }
