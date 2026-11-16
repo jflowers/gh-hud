@@ -85,6 +85,11 @@ class PlanScreenTest {
 
         asked.clear()
         scrollTo("approve-epic:acme/api#90")
+        // What the plan changed since its last approval sits above Approve;
+        // a stale plan shows none until it's reread.
+        compose.onNodeWithTag("changes:acme/api#90").assertExists()
+        compose.onNodeWithText("± #91 waits on nothing (was #92)").assertExists()
+        compose.onNodeWithTag("changes:acme/api#95").assertDoesNotExist()
         compose.onNodeWithTag("approve-epic:acme/api#90").performClick()
         scrollTo("clear:acme/widgets#63")
         compose.onNodeWithTag("clear:acme/widgets#63").performClick()

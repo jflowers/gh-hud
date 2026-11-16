@@ -329,6 +329,15 @@ struct EpicView: View {
                 .fixedSize()
                 .disabled(cmds.off != nil)
             }
+            if !row.changes.isEmpty {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Changed since you approved it:").font(.caption).foregroundStyle(.secondary)
+                    ForEach(Array(row.changes.enumerated()), id: \.offset) { _, c in
+                        Text("± \(c)").font(.caption).foregroundStyle(Tone.warn.color)
+                    }
+                }
+                .padding(.leading, 22)
+            }
             if row.planToApprove != nil {
                 Button("Approve Plan") { cmds.approve(row) }
                     .controlSize(.small)

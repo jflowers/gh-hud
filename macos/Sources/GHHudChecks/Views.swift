@@ -138,6 +138,7 @@ enum Views {
             out["\(p).status"] = e.status
             out["\(p).tone"] = tone(e.tone)
             out["\(p).planToApprove"] = e.planToApprove
+            for (j, c) in e.changes.enumerated() { out["\(p).changes[\(j)]"] = c }
             out["\(p).done"] = e.done
             out["\(p).total"] = e.total
             for (j, n) in e.open.enumerated() {

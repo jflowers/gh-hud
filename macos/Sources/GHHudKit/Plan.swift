@@ -152,6 +152,9 @@ public struct EpicRow: Identifiable, Equatable, Sendable {
     public let tone: Tone
     /// The plan to approve, when one waits for you.
     public let planToApprove: String?
+    /// What that plan changed since you last approved one, a line each:
+    /// set only when it waits for you again.
+    public let changes: [String]
     /// Pieces still to do, running and ready first.
     public let open: [Piece]
     public let done: Int
@@ -185,6 +188,7 @@ public struct EpicRow: Identifiable, Equatable, Sendable {
             }
         }
         planToApprove = e.state == "planned" && e.hasPlan && !e.plan.stale && !e.plan.id.isEmpty ? e.plan.id : nil
+        changes = planToApprove == nil ? [] : e.changes
         let repo = e.ref.split(separator: "#", maxSplits: 1).first.map(String.init) ?? e.ref
         let rank = ["running": 0, "ready": 1, "in_progress": 2, "gated": 3, "blocked": 4, "waiting": 5, "unknown": 6]
         let approved = e.state == "approved"

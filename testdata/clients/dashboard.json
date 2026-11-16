@@ -237,6 +237,7 @@
     },
     {
       "ref": "acme/api#90", "title": "API epic", "state": "planned",
+      "changes": ["#91 waits on nothing (was #92)", "new rule: don't merge #93 before the tag"],
       "plan": {
         "id": "plan-90", "created": "2026-11-15T10:00:00Z",
         "nodes": [{"ref": "acme/api#91", "state": "ready"}, {"ref": "acme/api#92", "state": "done"}]
@@ -244,6 +245,7 @@
     },
     {
       "ref": "acme/api#95", "title": "Changed epic", "state": "planned",
+      "changes": ["shown only once the stale plan is reread"],
       "plan": {"id": "plan-95", "stale": true, "nodes": [{"ref": "acme/api#96", "state": "waiting"}]}
     },
     {"ref": "acme/docs#5", "title": "Reading", "state": "reading"},

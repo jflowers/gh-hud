@@ -132,6 +132,7 @@ object Views {
             out["$p.status"] = e.status
             out["$p.tone"] = tone(e.tone)
             out["$p.planToApprove"] = e.planToApprove
+            e.changes.forEachIndexed { j, c -> out["$p.changes[$j]"] = c }
             out["$p.done"] = e.done
             out["$p.total"] = e.total
             e.open.forEachIndexed { j, n ->
