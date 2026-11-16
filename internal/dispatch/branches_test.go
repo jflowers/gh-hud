@@ -341,8 +341,8 @@ func TestSyncForkKeepsADivergedFork(t *testing.T) {
 	if len(gh.synced)+len(gh.deleted) != 0 || len(sweep.Local)+len(sweep.Remote) != 0 {
 		t.Errorf("sync-only sweep changed more: synced %q deleted %q local %d remote %d", gh.synced, gh.deleted, len(sweep.Local), len(sweep.Remote))
 	}
-	if n := sweep.notice(); len(n) != 1 || n[0] != "fork me/app main not synced: has 2 commit(s) of its own" {
-		t.Errorf("notice = %q", n)
+	if n := sweep.notice(); len(n) != 0 { // settled: every sweep would say it again
+		t.Errorf("notice = %q, want none for a fork with commits of its own", n)
 	}
 
 	gh.forkMain = "new" // in sync: nothing to report
@@ -427,5 +427,20 @@ func TestSweepPrunesGoneWorktrees(t *testing.T) {
 	}
 	if n := sweep.notice(); len(n) == 0 || n[len(n)-1] != "dropped 1 worktree record(s) whose folder was gone" {
 		t.Errorf("notice = %q", n)
+	}
+}
+
+// The notice carries what changed or failed, not the forks every sweep
+// keeps for the same reason.
+func TestSweepNoticeSkipsSettledForks(t *testing.T) {
+	s := BranchSweep{Forks: []ForkSync{
+		{Repo: "me/own", Branch: "main", Ahead: 1, Action: "kept: has 1 commit(s) of its own", settled: true},
+		{Repo: "me/odd", Branch: "trunk", Action: "kept: its default branch isn't the parent's (main)", settled: true},
+		{Repo: "me/fail", Branch: "main", Behind: 2, Action: "kept: HTTP 502"},
+		{Repo: "me/ok", Branch: "main", Behind: 4, Action: actSynced},
+	}}
+	want := []string{"fork me/fail main not synced: HTTP 502", "synced me/ok main with its parent (4 commit(s))"}
+	if n := s.notice(); strings.Join(n, "|") != strings.Join(want, "|") {
+		t.Errorf("notice = %q, want %q", n, want)
 	}
 }

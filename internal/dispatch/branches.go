@@ -65,6 +65,10 @@ type ForkSync struct {
 	Behind int    // parent commits the fork lacks
 	Ahead  int    // fork commits the parent lacks (then it isn't synced)
 	Action string // "synced", "would sync", or "kept: why"
+	// settled: kept for a reason that holds until someone changes the fork
+	// (commits of its own, another default branch), not a failure. Every
+	// sweep finds it again, so it is no news to announce.
+	settled bool
 }
 
 // Synced reports whether the fork was or would be fast-forwarded.
@@ -702,6 +706,7 @@ func (d *Dispatcher) syncFork(ctx context.Context, fi forkInfo, apply bool) (For
 	f := ForkSync{Repo: fi.repo, Branch: fi.def}
 	if fi.def != fi.parentDef {
 		f.Action = "kept: its default branch isn't the parent's (" + fi.parentDef + ")"
+		f.settled = true
 		return f, true
 	}
 	owner, _, _ := strings.Cut(fi.repo, "/")
@@ -718,6 +723,7 @@ func (d *Dispatcher) syncFork(ctx context.Context, fi forkInfo, apply bool) (For
 	switch {
 	case f.Ahead > 0:
 		f.Action = fmt.Sprintf("kept: has %d commit(s) of its own", f.Ahead)
+		f.settled = true
 	case f.Behind == 0:
 		return ForkSync{}, false
 	case !apply:
@@ -796,7 +802,9 @@ func (d *Dispatcher) AutoPruneBranches(ctx context.Context) []string {
 	return sweep.notice()
 }
 
-// notice summarizes what a sweep deleted ("" when nothing).
+// notice summarizes what a sweep changed or failed at (none when nothing).
+// Forks kept for a settled reason are left out: they come up on every
+// sweep, and `gh-hud branches` still lists them.
 func (s BranchSweep) notice() []string {
 	local, remote := 0, 0
 	for _, p := range s.Local {
@@ -820,7 +828,7 @@ func (s BranchSweep) notice() []string {
 		switch {
 		case f.Action == actSynced:
 			msgs = append(msgs, fmt.Sprintf("synced %s %s with its parent (%d commit(s))", f.Repo, f.Branch, f.Behind))
-		case !f.Synced():
+		case !f.Synced() && !f.settled:
 			msgs = append(msgs, fmt.Sprintf("fork %s %s not synced: %s", f.Repo, f.Branch, strings.TrimPrefix(f.Action, "kept: ")))
 		}
 	}
