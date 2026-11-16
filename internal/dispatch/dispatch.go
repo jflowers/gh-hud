@@ -946,9 +946,13 @@ type MenuChoice struct {
 // MenuChoices lists the row's dispatchable tasks and where each would
 // run, using cached machine state only (no I/O; safe from the UI loop).
 func (d *Dispatcher) MenuChoices(it model.Item) []MenuChoice {
-	if humanGated(it, d.o().HumanGate) {
-		return nil
-	}
+	out, _ := d.MenuChoicesWhy(it)
+	return out
+}
+
+// MenuChoicesWhy is MenuChoices plus, when it offers nothing, why not:
+// one line for a person ("an agent is already running on it (lap2:acme@x)").
+func (d *Dispatcher) MenuChoicesWhy(it model.Item) ([]MenuChoice, string) {
 	return d.choices(it, MenuTasks(it))
 }
 
@@ -956,9 +960,12 @@ func (d *Dispatcher) MenuChoices(it model.Item) []MenuChoice {
 // its kind (KindTasks), the ones its state calls for first and marked
 // Suggested, since you picked the item and know what it needs.
 func (d *Dispatcher) ItemChoices(it model.Item) []MenuChoice {
-	if humanGated(it, d.o().HumanGate) {
-		return nil
-	}
+	out, _ := d.ItemChoicesWhy(it)
+	return out
+}
+
+// ItemChoicesWhy is ItemChoices plus, when it offers nothing, why not.
+func (d *Dispatcher) ItemChoicesWhy(it model.Item) ([]MenuChoice, string) {
 	tasks := MenuTasks(it)
 	for _, t := range KindTasks(it.Kind) {
 		if !slices.Contains(tasks, t) {
@@ -980,22 +987,50 @@ func KindTasks(k model.Kind) []Task {
 	return nil
 }
 
-func (d *Dispatcher) choices(it model.Item, tasks []Task) []MenuChoice {
-	suggested := MenuTasks(it)
+// choices places each task, best target first. With none, why says why,
+// checked in the order Dispatch refuses: the human gate, a live run on the
+// item, no command for any task, then no machine or checkout free.
+func (d *Dispatcher) choices(it model.Item, tasks []Task) (out []MenuChoice, why string) {
+	if humanGated(it, d.o().HumanGate) {
+		return nil, "a person handles it (the " + d.o().HumanGate + " label)"
+	}
+	if len(tasks) == 0 {
+		return nil, "no agent task fits it now"
+	}
 	v := d.cachedView()
-	var out []MenuChoice
+	// Dispatch refuses a second agent on an item anywhere in the fleet.
+	if r, ok := v.liveRef[it.Ref()]; ok {
+		return nil, fmt.Sprintf("an agent is already running on it (%s, %s)", r.Task, recordTarget(r))
+	}
+	suggested := MenuTasks(it)
+	var whys []string
+	configured := 0
 	for _, task := range tasks {
 		tc, _, ok := taskConfig(d.o().Tasks, task, it)
 		if !ok {
 			continue
 		}
+		configured++
 		cs := candidates(v, task, it.Ref(), it.Repo, it.HeadBranch, d.o().InstancesOnly)
 		if len(cs) == 0 {
+			if w := noPlacement(v, task, it, d.o().InstancesOnly); !slices.Contains(whys, w) {
+				whys = append(whys, w)
+			}
 			continue
 		}
 		out = append(out, MenuChoice{Task: task, Cmd: tc.Command, Target: placementLabel(cs[0]), Suggested: slices.Contains(suggested, task)})
 	}
-	return out
+	switch {
+	case len(out) > 0:
+		return out, ""
+	case configured == 0:
+		names := make([]string, len(tasks))
+		for i, t := range tasks {
+			names[i] = string(t)
+		}
+		return nil, "no command is set for " + strings.Join(names, ", ") + " (config [tasks])"
+	}
+	return nil, strings.Join(whys, "; ")
 }
 
 // MachineUsage is per-machine slot usage for the status line.
@@ -1111,6 +1146,7 @@ func (d *Dispatcher) cachedViewBase(snaps map[string]agentSnapshot, reach map[st
 		reach:           reach,
 		live:            map[string]int{},
 		liveRefMachines: map[string]map[string]bool{},
+		liveRef:         map[string]Record{},
 		liveDirs:        map[string]map[string]bool{},
 		draining:        d.drainSnapshot(),
 		index:           map[string]*ghws.Index{"": d.o().LocalIndex},
@@ -1127,6 +1163,9 @@ func (d *Dispatcher) cachedViewBase(snaps map[string]agentSnapshot, reach map[st
 			v.liveRefMachines[r.Ref] = map[string]bool{}
 		}
 		v.liveRefMachines[r.Ref][r.Machine] = true
+		if _, ok := v.liveRef[r.Ref]; !ok {
+			v.liveRef[r.Ref] = r
+		}
 		if v.liveDirs[r.Machine] == nil {
 			v.liveDirs[r.Machine] = map[string]bool{}
 		}
