@@ -100,6 +100,51 @@ func TestSelect(t *testing.T) {
 	}
 }
 
+// A tool never scaffolds its own repo: there its files are the source.
+func TestOwnRepoSkipped(t *testing.T) {
+	m := mustParse(t, testManifest+`
+[[target]]
+repo = "Unbound-Force/gaze"
+tools = ["uf", "gaze"]
+`)
+	gaze, _ := m.Tool("gaze")
+	uf, _ := m.Tool("uf")
+	var own Target
+	for _, t := range m.Targets {
+		if t.Repo == "Unbound-Force/gaze" {
+			own = t
+		}
+	}
+	if own.Takes(gaze) {
+		t.Error("gaze takes its own repo")
+	}
+	if !own.Takes(uf) {
+		t.Error("uf skipped on gaze's repo")
+	}
+	if got := For(own, []Run{{Tool: uf}, {Tool: gaze}}); len(got) != 1 || got[0].Tool.Name != "uf" {
+		t.Errorf("For(gaze repo) = %v, want uf only", got)
+	}
+
+	// gaze alone: its own repo isn't a target at all.
+	_, targets, err := m.Select([]string{"gaze"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, t2 := range targets {
+		if t2.Repo == "Unbound-Force/gaze" {
+			t.Errorf("Select(gaze) picked gaze's own repo")
+		}
+	}
+	if _, _, err := m.Select([]string{"gaze"}, []string{"Unbound-Force/gaze"}); !errors.Is(err, ErrNoTargets) {
+		t.Errorf("gaze on its own repo: %v, want no targets", err)
+	}
+	// uf alone still runs there.
+	want, targets, err := m.Select([]string{"uf"}, []string{"Unbound-Force/gaze"})
+	if err != nil || len(targets) != 1 || len(want) != 1 {
+		t.Errorf("uf on gaze's repo: %v %v %v", want, targets, err)
+	}
+}
+
 func TestPins(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "config.toml")
 	if err := os.WriteFile(p, []byte(`[tools]

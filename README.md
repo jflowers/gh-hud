@@ -1299,7 +1299,7 @@ hold_label = "hold"                                    # the default
 
 [[tool]]                       # runs in this order
 name = "uf"
-release = "unbound-force/unbound-force"                # for release links
+release = "unbound-force/unbound-force"                # release links, and its own repo
 mise = "go:github.com/unbound-force/unbound-force/cmd/unbound-force"
 bin = "unbound-force"
 init = ["init"]                                        # the default
@@ -1315,6 +1315,12 @@ name = "fullsend-ai/fullsend (overlay)"
 tools = ["uf"]
 args.uf = ["--lang", "go"]
 ```
+
+A tool never scaffolds its own repo: a target whose `repo` is the tool's
+`release` skips that tool and runs the rest. The tool's repo holds the
+source of what its init writes. gaze, for one, checks that its `.opencode`
+copies match its embedded assets, so a scaffold there would only break
+that check. In the example, `dewey` skips `unbound-force/dewey`.
 
 A tool without `mise` and `bin` (an opencode plugin) only has a pin. Name
 the file that pins it in the dotfiles repo, and the pin itself:

@@ -29,6 +29,11 @@ applied_file = "APPLIED"
 [[target]]
 repo = "acme/app"
 tools = ["uf"]
+
+# uf's own repo: a rollout never scaffolds it.
+[[target]]
+repo = "unbound-force/unbound-force"
+tools = ["uf"]
 `
 
 type coordFixture struct {
