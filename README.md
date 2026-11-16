@@ -1266,10 +1266,14 @@ For each target, it:
 
 It refuses to go backwards. Commits carry `Toolkit-Scaffold: <tool>
 <version>` trailers, and PR titles name the versions. A version older than
-the newest open or merged one is refused, and so is a change that deletes
-far more than it adds (over 500 lines and more than twice what it adds),
-which usually means the repo was scaffolded from something newer
-(`--allow-shrink` lets that through). An existing chore branch is reported
+the newest open or merged one is refused. So is a change that deletes far
+more than it adds (over 500 lines and more than twice what it adds), unless
+every tool run is newer than what the repo holds, since then the shrink is
+the release's own change (gaze 2.4.0 cut its reporter agent by 500 lines).
+What the repo holds is the version gh-hud last scaffolded there, else the
+fleet's pin before this run (a rollout passes the pin it replaces). A shrink
+with nothing saying the repo is older usually means it was scaffolded from
+something newer (`--allow-shrink` lets that through). An existing chore branch is reported
 with its PR, not redone. The exit code is 1 when any target failed or was
 refused.
 

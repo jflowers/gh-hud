@@ -143,6 +143,26 @@ func downgrades(runs []Run, had map[string]string) []string {
 	return out
 }
 
+// upgrades reports whether every run moves its tool forward from what the
+// target holds: the version gh-hud last scaffolded there (had), else the
+// one it's taken to hold (since). Then a large deletion is the new
+// release's own change, so the shrink check doesn't apply.
+func upgrades(runs []Run, had, since map[string]string) bool {
+	if len(runs) == 0 {
+		return false
+	}
+	for _, r := range runs {
+		base, ok := had[r.Tool.Name]
+		if !ok {
+			base, ok = since[r.Tool.Name]
+		}
+		if !ok || !Newer(r.Version, base) {
+			return false
+		}
+	}
+	return true
+}
+
 // Newer reports whether version a is newer than b (false when either
 // can't be ordered).
 func Newer(a, b string) bool {

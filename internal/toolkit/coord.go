@@ -696,7 +696,11 @@ func (c *Coordinator) stepScaffold(ctx context.Context, m *Manifest, tool Tool, 
 		if !c.find(r.ID).Stage.Active() {
 			return nil
 		}
-		res := s.Scaffold(ctx, t, For(t, runs), Options{})
+		var since map[string]string
+		if r.From != "" {
+			since = map[string]string{tool.Name: r.From}
+		}
+		res := s.Scaffold(ctx, t, For(t, runs), Options{Since: since})
 		tr := TargetRun{Target: res.Target, Status: res.Status, Detail: res.Detail, Held: res.Held, Files: len(res.Files)}
 		switch res.Status {
 		case StatusOpened, StatusExists:
