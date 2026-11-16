@@ -503,6 +503,11 @@ public nonisolated struct Ghhud_V1_MenuChoicesResponse: Sendable {
 
   public var choices: [Ghhud_V1_MenuChoice] = []
 
+  /// Why nothing can start, in one line, when choices is empty: the
+  /// human-gate label, an agent already running on it (and where), no
+  /// command set, no machine free, no checkout, or every checkout busy.
+  public var why: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -559,9 +564,12 @@ public nonisolated struct Ghhud_V1_ItemChoicesResponse: Sendable {
   /// Clears the value of `item`. Subsequent reads from it will return its default value.
   public mutating func clearItem() {self._item = nil}
 
-  /// Suggested tasks first. Empty when none can start (no free checkout,
-  /// or the item has the human-gate label).
+  /// Suggested tasks first. Empty when none can start; why says why.
   public var choices: [Ghhud_V1_MenuChoice] = []
+
+  /// Why nothing can start, in one line, when choices is empty (see
+  /// MenuChoicesResponse.why).
+  public var why: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3192,7 +3200,7 @@ nonisolated extension Ghhud_V1_MenuChoicesRequest: SwiftProtobuf.Message, SwiftP
 
 nonisolated extension Ghhud_V1_MenuChoicesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MenuChoicesResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}choices\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}choices\0\u{1}why\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3201,6 +3209,7 @@ nonisolated extension Ghhud_V1_MenuChoicesResponse: SwiftProtobuf.Message, Swift
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeRepeatedMessageField(value: &self.choices) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.why) }()
       default: break
       }
     }
@@ -3210,11 +3219,15 @@ nonisolated extension Ghhud_V1_MenuChoicesResponse: SwiftProtobuf.Message, Swift
     if !self.choices.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.choices, fieldNumber: 1)
     }
+    if !self.why.isEmpty {
+      try visitor.visitSingularStringField(value: self.why, fieldNumber: 2)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: Ghhud_V1_MenuChoicesResponse, rhs: Ghhud_V1_MenuChoicesResponse) -> Bool {
     if lhs.choices != rhs.choices {return false}
+    if lhs.why != rhs.why {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3297,7 +3310,7 @@ nonisolated extension Ghhud_V1_ItemChoicesRequest: SwiftProtobuf.Message, SwiftP
 
 nonisolated extension Ghhud_V1_ItemChoicesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ItemChoicesResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}item\0\u{1}choices\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}item\0\u{1}choices\0\u{1}why\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3307,6 +3320,7 @@ nonisolated extension Ghhud_V1_ItemChoicesResponse: SwiftProtobuf.Message, Swift
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularMessageField(value: &self._item) }()
       case 2: try { try decoder.decodeRepeatedMessageField(value: &self.choices) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.why) }()
       default: break
       }
     }
@@ -3323,12 +3337,16 @@ nonisolated extension Ghhud_V1_ItemChoicesResponse: SwiftProtobuf.Message, Swift
     if !self.choices.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.choices, fieldNumber: 2)
     }
+    if !self.why.isEmpty {
+      try visitor.visitSingularStringField(value: self.why, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: Ghhud_V1_ItemChoicesResponse, rhs: Ghhud_V1_ItemChoicesResponse) -> Bool {
     if lhs._item != rhs._item {return false}
     if lhs.choices != rhs.choices {return false}
+    if lhs.why != rhs.why {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

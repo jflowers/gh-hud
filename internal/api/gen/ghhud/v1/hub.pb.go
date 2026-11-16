@@ -755,8 +755,12 @@ func (x *MenuChoicesRequest) GetUrl() string {
 }
 
 type MenuChoicesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Choices       []*MenuChoice          `protobuf:"bytes,1,rep,name=choices,proto3" json:"choices,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Choices []*MenuChoice          `protobuf:"bytes,1,rep,name=choices,proto3" json:"choices,omitempty"`
+	// Why nothing can start, in one line, when choices is empty: the
+	// human-gate label, an agent already running on it (and where), no
+	// command set, no machine free, no checkout, or every checkout busy.
+	Why           string `protobuf:"bytes,2,opt,name=why,proto3" json:"why,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -796,6 +800,13 @@ func (x *MenuChoicesResponse) GetChoices() []*MenuChoice {
 		return x.Choices
 	}
 	return nil
+}
+
+func (x *MenuChoicesResponse) GetWhy() string {
+	if x != nil {
+		return x.Why
+	}
+	return ""
 }
 
 // MenuChoice is a task that can start on an item now, and where.
@@ -920,9 +931,11 @@ type ItemChoicesResponse struct {
 	// The item named, as the dashboard would show it; send its url to
 	// Dispatch.
 	Item *Item `protobuf:"bytes,1,opt,name=item,proto3" json:"item,omitempty"`
-	// Suggested tasks first. Empty when none can start (no free checkout,
-	// or the item has the human-gate label).
-	Choices       []*MenuChoice `protobuf:"bytes,2,rep,name=choices,proto3" json:"choices,omitempty"`
+	// Suggested tasks first. Empty when none can start; why says why.
+	Choices []*MenuChoice `protobuf:"bytes,2,rep,name=choices,proto3" json:"choices,omitempty"`
+	// Why nothing can start, in one line, when choices is empty (see
+	// MenuChoicesResponse.why).
+	Why           string `protobuf:"bytes,3,opt,name=why,proto3" json:"why,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -969,6 +982,13 @@ func (x *ItemChoicesResponse) GetChoices() []*MenuChoice {
 		return x.Choices
 	}
 	return nil
+}
+
+func (x *ItemChoicesResponse) GetWhy() string {
+	if x != nil {
+		return x.Why
+	}
+	return ""
 }
 
 type DispatchRequest struct {
@@ -6690,9 +6710,10 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x06target\x18\x01 \x01(\x0e2\x17.ghhud.v1.RefreshTargetR\x06target\"\x11\n" +
 	"\x0fRefreshResponse\"&\n" +
 	"\x12MenuChoicesRequest\x12\x10\n" +
-	"\x03url\x18\x01 \x01(\tR\x03url\"E\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\"W\n" +
 	"\x13MenuChoicesResponse\x12.\n" +
-	"\achoices\x18\x01 \x03(\v2\x14.ghhud.v1.MenuChoiceR\achoices\"h\n" +
+	"\achoices\x18\x01 \x03(\v2\x14.ghhud.v1.MenuChoiceR\achoices\x12\x10\n" +
+	"\x03why\x18\x02 \x01(\tR\x03why\"h\n" +
 	"\n" +
 	"MenuChoice\x12\x12\n" +
 	"\x04task\x18\x01 \x01(\tR\x04task\x12\x10\n" +
@@ -6700,10 +6721,11 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x06target\x18\x03 \x01(\tR\x06target\x12\x1c\n" +
 	"\tsuggested\x18\x04 \x01(\bR\tsuggested\"&\n" +
 	"\x12ItemChoicesRequest\x12\x10\n" +
-	"\x03ref\x18\x01 \x01(\tR\x03ref\"i\n" +
+	"\x03ref\x18\x01 \x01(\tR\x03ref\"{\n" +
 	"\x13ItemChoicesResponse\x12\"\n" +
 	"\x04item\x18\x01 \x01(\v2\x0e.ghhud.v1.ItemR\x04item\x12.\n" +
-	"\achoices\x18\x02 \x03(\v2\x14.ghhud.v1.MenuChoiceR\achoices\"7\n" +
+	"\achoices\x18\x02 \x03(\v2\x14.ghhud.v1.MenuChoiceR\achoices\x12\x10\n" +
+	"\x03why\x18\x03 \x01(\tR\x03why\"7\n" +
 	"\x0fDispatchRequest\x12\x12\n" +
 	"\x04task\x18\x01 \x01(\tR\x04task\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\"\x9a\x01\n" +

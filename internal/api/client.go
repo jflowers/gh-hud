@@ -225,14 +225,14 @@ func (c *Client) RefreshWorkspaces(ctx context.Context) error {
 	return c.refresh(ctx, pb.RefreshTarget_REFRESH_TARGET_WORKSPACES)
 }
 
-func (c *Client) MenuChoices(ctx context.Context, url string) ([]dispatch.MenuChoice, error) {
-	ctx, cancel := withDeadline(ctx, callTimeout)
+func (c *Client) MenuChoices(ctx context.Context, url string) ([]dispatch.MenuChoice, string, error) {
+	ctx, cancel := withDeadline(ctx, lookupDeadline) // may look the item up on GitHub
 	defer cancel()
 	resp, err := c.rpc.MenuChoices(ctx, connect.NewRequest(&pb.MenuChoicesRequest{Url: url}))
 	if err != nil {
-		return nil, fromConnect(err)
+		return nil, "", fromConnect(err)
 	}
-	return mapSlice(resp.Msg.GetChoices(), menuChoiceFromPB), nil
+	return mapSlice(resp.Msg.GetChoices(), menuChoiceFromPB), resp.Msg.GetWhy(), nil
 }
 
 func (c *Client) Dispatch(ctx context.Context, task dispatch.Task, url string) (dispatch.Record, error) {
@@ -245,14 +245,14 @@ func (c *Client) Dispatch(ctx context.Context, task dispatch.Task, url string) (
 	return recordFromPB(resp.Msg), nil
 }
 
-func (c *Client) ItemChoices(ctx context.Context, ref string) (model.Item, []dispatch.MenuChoice, error) {
+func (c *Client) ItemChoices(ctx context.Context, ref string) (model.Item, []dispatch.MenuChoice, string, error) {
 	ctx, cancel := withDeadline(ctx, lookupDeadline)
 	defer cancel()
 	resp, err := c.rpc.ItemChoices(ctx, connect.NewRequest(&pb.ItemChoicesRequest{Ref: ref}))
 	if err != nil {
-		return model.Item{}, nil, fromConnect(err)
+		return model.Item{}, nil, "", fromConnect(err)
 	}
-	return ItemFromPB(resp.Msg.GetItem()), mapSlice(resp.Msg.GetChoices(), menuChoiceFromPB), nil
+	return ItemFromPB(resp.Msg.GetItem()), mapSlice(resp.Msg.GetChoices(), menuChoiceFromPB), resp.Msg.GetWhy(), nil
 }
 
 func (c *Client) Reinspect(ctx context.Context, runID string) (dispatch.Run, error) {

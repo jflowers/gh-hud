@@ -961,7 +961,7 @@ func (m *Model) openActionFor(it model.Item, queue bool) {
 		m.actionMode = true
 		return
 	}
-	choices, err := m.backend.MenuChoices(ctx(), it.URL)
+	choices, why, err := m.backend.MenuChoices(ctx(), it.URL)
 	if err != nil {
 		m.flash("agent menu failed: " + err.Error())
 		return
@@ -973,9 +973,12 @@ func (m *Model) openActionFor(it model.Item, queue bool) {
 		}
 	}
 	if len(m.actions) == 0 {
-		if len(tasks) == 0 {
+		switch {
+		case len(tasks) == 0:
 			m.flash("no agent actions for this row")
-		} else {
+		case why != "":
+			m.flash("nothing can start: " + why)
+		default:
 			m.flash("no idle ghws checkout for " + it.Repo)
 		}
 		return

@@ -42,10 +42,16 @@ public object ItemCommands {
         return when (val a = hub.menuChoices(row.id)) {
             is Answer.No -> Answer.No("The agent menu failed: ${a.why}")
             is Answer.Ok ->
-                if (a.value.isEmpty()) {
-                    Answer.No("Nothing can start on this item now: no agent task fits it, or no checkout of ${row.repo} is free.")
+                if (a.value.choicesCount == 0) {
+                    Answer.No(
+                        nothingCanStart(
+                            row.ref,
+                            a.value.why,
+                            "no agent task fits it, or no checkout of ${row.repo} is free",
+                        ),
+                    )
                 } else {
-                    Answer.Ok(a.value.map { AgentChoice(it.task, it.target, it.cmd) })
+                    Answer.Ok(a.value.choicesList.map { AgentChoice(it.task, it.target, it.cmd) })
                 }
         }
     }
@@ -82,8 +88,11 @@ public object ItemCommands {
                 val named = NamedItem(it.url, "${it.repo}#${it.num}", it.title, it.kind == ItemKind.ITEM_KIND_PR)
                 if (a.value.choicesCount == 0) {
                     Answer.No(
-                        "Nothing can start on ${named.ref} now: no checkout of ${it.repo} is free, " +
-                            "or a person handles it (human-gate).",
+                        nothingCanStart(
+                            named.ref,
+                            a.value.why,
+                            "no checkout of ${it.repo} is free, or a person handles it (human-gate)",
+                        ),
                     )
                 } else {
                     Answer.Ok(named to a.value.choicesList.map { c -> AgentChoice(c.task, c.target, c.cmd, c.suggested) })
@@ -125,4 +134,11 @@ public object ItemCommands {
         val words = RunTag.words(r.status)
         return if (r.summary.isEmpty()) words else "$words — ${r.summary}"
     }
+
+    /**
+     * Says why nothing can start on ref: the hub's reason, or, from a hub
+     * too old to give one, the likely causes.
+     */
+    internal fun nothingCanStart(ref: String, why: String, guess: String): String =
+        "Nothing can start on $ref now: ${why.ifEmpty { guess }}."
 }

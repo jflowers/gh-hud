@@ -38,8 +38,9 @@ type Dispatcher interface {
 	Approve(id string) error
 	Reject(id string) error
 
-	MenuChoices(it model.Item) []dispatch.MenuChoice
-	ItemChoices(it model.Item) []dispatch.MenuChoice
+	// The *Why variants say why nothing can start when the list is empty.
+	MenuChoicesWhy(it model.Item) ([]dispatch.MenuChoice, string)
+	ItemChoicesWhy(it model.Item) ([]dispatch.MenuChoice, string)
 	Dispatch(ctx context.Context, task dispatch.Task, it model.Item, auto bool) (dispatch.Record, error)
 	Reinspect(ctx context.Context, id string) (dispatch.Run, error)
 	PruneBranches(ctx context.Context, apply bool) (dispatch.BranchSweep, error)
@@ -111,12 +112,15 @@ type Backend interface {
 
 	// Dispatch. These need dispatch configured; the dispatcher refuses
 	// changes when another gh-hud owns dispatch.
-	MenuChoices(ctx context.Context, url string) ([]dispatch.MenuChoice, error)
+	// MenuChoices lists the tasks a row can start now, and where; when
+	// none can, why says so in one line.
+	MenuChoices(ctx context.Context, url string) (choices []dispatch.MenuChoice, why string, err error)
 	Dispatch(ctx context.Context, task dispatch.Task, url string) (dispatch.Record, error)
 	// ItemChoices looks up an issue or PR you name (a GitHub URL or
 	// owner/repo#N), in the latest refresh or else on GitHub, and lists
-	// every task that fits it. Dispatch takes the item's URL after.
-	ItemChoices(ctx context.Context, ref string) (model.Item, []dispatch.MenuChoice, error)
+	// every task that fits it, or why none can start. Dispatch takes the
+	// item's URL after.
+	ItemChoices(ctx context.Context, ref string) (it model.Item, choices []dispatch.MenuChoice, why string, err error)
 	Reinspect(ctx context.Context, runID string) (dispatch.Run, error)
 	// PruneBranches sweeps for branches whose PR is done; apply deletes them.
 	PruneBranches(ctx context.Context, apply bool) (dispatch.BranchSweep, error)

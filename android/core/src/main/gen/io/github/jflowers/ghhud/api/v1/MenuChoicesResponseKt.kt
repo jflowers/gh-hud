@@ -99,6 +99,35 @@ public object MenuChoicesResponseKt {
     public fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.MenuChoice, ChoicesProxy>.clear() {
       _builder.clearChoices()
     }
+
+    /**
+     * ```
+     * Why nothing can start, in one line, when choices is empty: the
+     * human-gate label, an agent already running on it (and where), no
+     * command set, no machine free, no checkout, or every checkout busy.
+     * ```
+     *
+     * `string why = 2 [json_name = "why"];`
+     */
+    public var why: kotlin.String
+      @kotlin.jvm.JvmName("getWhy")
+        get() = _builder.why
+      @kotlin.jvm.JvmName("setWhy")
+        set(value) {
+        _builder.why = value
+      }
+    /**
+     * ```
+     * Why nothing can start, in one line, when choices is empty: the
+     * human-gate label, an agent already running on it (and where), no
+     * command set, no machine free, no checkout, or every checkout busy.
+     * ```
+     *
+     * `string why = 2 [json_name = "why"];`
+     */
+    public fun clearWhy() {
+      _builder.clearWhy()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.MenuChoicesResponse.copy(block: `io.github.jflowers.ghhud.api.v1`.MenuChoicesResponseKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.MenuChoicesResponse =

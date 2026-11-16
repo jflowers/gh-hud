@@ -16,6 +16,7 @@ public  final class MenuChoicesResponse extends
     MenuChoicesResponseOrBuilder {
   private MenuChoicesResponse() {
     choices_ = emptyProtobufList();
+    why_ = "";
   }
   public static final int CHOICES_FIELD_NUMBER = 1;
   private com.google.protobuf.Internal.ProtobufList<io.github.jflowers.ghhud.api.v1.MenuChoice> choices_;
@@ -109,6 +110,83 @@ public  final class MenuChoicesResponse extends
   private void removeChoices(int index) {
     ensureChoicesIsMutable();
     choices_.remove(index);
+  }
+
+  public static final int WHY_FIELD_NUMBER = 2;
+  private java.lang.String why_;
+  /**
+   * <pre>
+   * Why nothing can start, in one line, when choices is empty: the
+   * human-gate label, an agent already running on it (and where), no
+   * command set, no machine free, no checkout, or every checkout busy.
+   * </pre>
+   *
+   * <code>string why = 2 [json_name = "why"];</code>
+   * @return The why.
+   */
+  @java.lang.Override
+  public java.lang.String getWhy() {
+    return why_;
+  }
+  /**
+   * <pre>
+   * Why nothing can start, in one line, when choices is empty: the
+   * human-gate label, an agent already running on it (and where), no
+   * command set, no machine free, no checkout, or every checkout busy.
+   * </pre>
+   *
+   * <code>string why = 2 [json_name = "why"];</code>
+   * @return The bytes for why.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getWhyBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(why_);
+  }
+  /**
+   * <pre>
+   * Why nothing can start, in one line, when choices is empty: the
+   * human-gate label, an agent already running on it (and where), no
+   * command set, no machine free, no checkout, or every checkout busy.
+   * </pre>
+   *
+   * <code>string why = 2 [json_name = "why"];</code>
+   * @param value The why to set.
+   */
+  private void setWhy(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    why_ = value;
+  }
+  /**
+   * <pre>
+   * Why nothing can start, in one line, when choices is empty: the
+   * human-gate label, an agent already running on it (and where), no
+   * command set, no machine free, no checkout, or every checkout busy.
+   * </pre>
+   *
+   * <code>string why = 2 [json_name = "why"];</code>
+   */
+  private void clearWhy() {
+
+    why_ = getDefaultInstance().getWhy();
+  }
+  /**
+   * <pre>
+   * Why nothing can start, in one line, when choices is empty: the
+   * human-gate label, an agent already running on it (and where), no
+   * command set, no machine free, no checkout, or every checkout busy.
+   * </pre>
+   *
+   * <code>string why = 2 [json_name = "why"];</code>
+   * @param value The bytes for why to set.
+   */
+  private void setWhyBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    why_ = value.toStringUtf8();
+
   }
 
   public static io.github.jflowers.ghhud.api.v1.MenuChoicesResponse parseFrom(
@@ -310,6 +388,85 @@ public  final class MenuChoicesResponse extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Why nothing can start, in one line, when choices is empty: the
+     * human-gate label, an agent already running on it (and where), no
+     * command set, no machine free, no checkout, or every checkout busy.
+     * </pre>
+     *
+     * <code>string why = 2 [json_name = "why"];</code>
+     * @return The why.
+     */
+    @java.lang.Override
+    public java.lang.String getWhy() {
+      return instance.getWhy();
+    }
+    /**
+     * <pre>
+     * Why nothing can start, in one line, when choices is empty: the
+     * human-gate label, an agent already running on it (and where), no
+     * command set, no machine free, no checkout, or every checkout busy.
+     * </pre>
+     *
+     * <code>string why = 2 [json_name = "why"];</code>
+     * @return The bytes for why.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getWhyBytes() {
+      return instance.getWhyBytes();
+    }
+    /**
+     * <pre>
+     * Why nothing can start, in one line, when choices is empty: the
+     * human-gate label, an agent already running on it (and where), no
+     * command set, no machine free, no checkout, or every checkout busy.
+     * </pre>
+     *
+     * <code>string why = 2 [json_name = "why"];</code>
+     * @param value The why to set.
+     * @return This builder for chaining.
+     */
+    public Builder setWhy(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setWhy(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Why nothing can start, in one line, when choices is empty: the
+     * human-gate label, an agent already running on it (and where), no
+     * command set, no machine free, no checkout, or every checkout busy.
+     * </pre>
+     *
+     * <code>string why = 2 [json_name = "why"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearWhy() {
+      copyOnWrite();
+      instance.clearWhy();
+      return this;
+    }
+    /**
+     * <pre>
+     * Why nothing can start, in one line, when choices is empty: the
+     * human-gate label, an agent already running on it (and where), no
+     * command set, no machine free, no checkout, or every checkout busy.
+     * </pre>
+     *
+     * <code>string why = 2 [json_name = "why"];</code>
+     * @param value The bytes for why to set.
+     * @return This builder for chaining.
+     */
+    public Builder setWhyBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setWhyBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.MenuChoicesResponse)
   }
   @java.lang.Override
@@ -328,9 +485,11 @@ public  final class MenuChoicesResponse extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "choices_",
             io.github.jflowers.ghhud.api.v1.MenuChoice.class,
+            "why_",
           };
           java.lang.String info =
-              "\u0000\u0001\u0000\u0000\u0001\u0001\u0001\u0000\u0001\u0000\u0001\u001b";
+              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0001\u0000\u0001\u001b\u0002\u0208" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -128,6 +128,10 @@ message MenuChoicesRequest {
 
 message MenuChoicesResponse {
   repeated MenuChoice choices = 1;
+  // Why nothing can start, in one line, when choices is empty: the
+  // human-gate label, an agent already running on it (and where), no
+  // command set, no machine free, no checkout, or every checkout busy.
+  string why = 2;
 }
 
 // MenuChoice is a task that can start on an item now, and where.
@@ -150,9 +154,11 @@ message ItemChoicesResponse {
   // The item named, as the dashboard would show it; send its url to
   // Dispatch.
   Item item = 1;
-  // Suggested tasks first. Empty when none can start (no free checkout,
-  // or the item has the human-gate label).
+  // Suggested tasks first. Empty when none can start; why says why.
   repeated MenuChoice choices = 2;
+  // Why nothing can start, in one line, when choices is empty (see
+  // MenuChoicesResponse.why).
+  string why = 3;
 }
 
 message DispatchRequest {

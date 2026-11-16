@@ -183,10 +183,11 @@ final class AgentSheetModel: ObservableObject {
             }
         } else {
             switch await conn.menuChoices(url: row.id) {
-            case .success(let cs):
-                phase = cs.isEmpty
-                    ? .failed("Nothing can start on this item now: no agent task fits it, or no checkout of \(row.repo) is free.")
-                    : .choices(cs.map { Choice(task: $0.task, target: $0.target, cmd: $0.cmd) })
+            case .success(let res):
+                phase = res.choices.isEmpty
+                    ? .failed(HubConnection.nothingCanStart(on: row.ref, why: res.why,
+                                                            guess: "no agent task fits it, or no checkout of \(row.repo) is free"))
+                    : .choices(res.choices.map { Choice(task: $0.task, target: $0.target, cmd: $0.cmd) })
             case .failure(let why):
                 phase = .failed("The agent menu failed: \(why)")
             }
@@ -204,7 +205,8 @@ final class AgentSheetModel: ObservableObject {
         case .success(let res):
             found = res.item
             phase = res.choices.isEmpty
-                ? .failed("Nothing can start on \(res.item.repo)#\(res.item.num) now: no checkout of \(res.item.repo) is free, or a person handles it (human-gate).")
+                ? .failed(HubConnection.nothingCanStart(on: "\(res.item.repo)#\(res.item.num)", why: res.why,
+                                                        guess: "no checkout of \(res.item.repo) is free, or a person handles it (human-gate)"))
                 : .choices(res.choices.map { Choice(task: $0.task, target: $0.target, cmd: $0.cmd, suggested: $0.suggested) })
         case .failure(let why):
             phase = .failed("\(why)")

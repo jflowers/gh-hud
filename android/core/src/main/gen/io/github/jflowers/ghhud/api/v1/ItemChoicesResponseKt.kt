@@ -79,8 +79,7 @@ public object ItemChoicesResponseKt {
     public class ChoicesProxy private constructor() : com.google.protobuf.kotlin.DslProxy()
     /**
      * ```
-     * Suggested tasks first. Empty when none can start (no free checkout,
-     * or the item has the human-gate label).
+     * Suggested tasks first. Empty when none can start; why says why.
      * ```
      *
      * `repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];`
@@ -92,8 +91,7 @@ public object ItemChoicesResponseKt {
       )
     /**
      * ```
-     * Suggested tasks first. Empty when none can start (no free checkout,
-     * or the item has the human-gate label).
+     * Suggested tasks first. Empty when none can start; why says why.
      * ```
      *
      * `repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];`
@@ -106,8 +104,7 @@ public object ItemChoicesResponseKt {
     }
     /**
      * ```
-     * Suggested tasks first. Empty when none can start (no free checkout,
-     * or the item has the human-gate label).
+     * Suggested tasks first. Empty when none can start; why says why.
      * ```
      *
      * `repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];`
@@ -121,8 +118,7 @@ public object ItemChoicesResponseKt {
     }
     /**
      * ```
-     * Suggested tasks first. Empty when none can start (no free checkout,
-     * or the item has the human-gate label).
+     * Suggested tasks first. Empty when none can start; why says why.
      * ```
      *
      * `repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];`
@@ -135,8 +131,7 @@ public object ItemChoicesResponseKt {
     }
     /**
      * ```
-     * Suggested tasks first. Empty when none can start (no free checkout,
-     * or the item has the human-gate label).
+     * Suggested tasks first. Empty when none can start; why says why.
      * ```
      *
      * `repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];`
@@ -150,8 +145,7 @@ public object ItemChoicesResponseKt {
     }
     /**
      * ```
-     * Suggested tasks first. Empty when none can start (no free checkout,
-     * or the item has the human-gate label).
+     * Suggested tasks first. Empty when none can start; why says why.
      * ```
      *
      * `repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];`
@@ -165,8 +159,7 @@ public object ItemChoicesResponseKt {
     }
     /**
      * ```
-     * Suggested tasks first. Empty when none can start (no free checkout,
-     * or the item has the human-gate label).
+     * Suggested tasks first. Empty when none can start; why says why.
      * ```
      *
      * `repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];`
@@ -175,6 +168,33 @@ public object ItemChoicesResponseKt {
 @kotlin.jvm.JvmName("clearChoices")
     public fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.MenuChoice, ChoicesProxy>.clear() {
       _builder.clearChoices()
+    }
+
+    /**
+     * ```
+     * Why nothing can start, in one line, when choices is empty (see
+     * MenuChoicesResponse.why).
+     * ```
+     *
+     * `string why = 3 [json_name = "why"];`
+     */
+    public var why: kotlin.String
+      @kotlin.jvm.JvmName("getWhy")
+        get() = _builder.why
+      @kotlin.jvm.JvmName("setWhy")
+        set(value) {
+        _builder.why = value
+      }
+    /**
+     * ```
+     * Why nothing can start, in one line, when choices is empty (see
+     * MenuChoicesResponse.why).
+     * ```
+     *
+     * `string why = 3 [json_name = "why"];`
+     */
+    public fun clearWhy() {
+      _builder.clearWhy()
     }
   }
 }

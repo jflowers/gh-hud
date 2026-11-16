@@ -136,11 +136,11 @@ func (s *Server) Refresh(ctx context.Context, req *connect.Request[pb.RefreshReq
 }
 
 func (s *Server) MenuChoices(ctx context.Context, req *connect.Request[pb.MenuChoicesRequest]) (*connect.Response[pb.MenuChoicesResponse], error) {
-	cs, err := s.b.MenuChoices(ctx, req.Msg.GetUrl())
+	cs, why, err := s.b.MenuChoices(ctx, req.Msg.GetUrl())
 	if err != nil {
 		return nil, toConnect(err)
 	}
-	return connect.NewResponse(&pb.MenuChoicesResponse{Choices: mapSlice(cs, menuChoiceToPB)}), nil
+	return connect.NewResponse(&pb.MenuChoicesResponse{Choices: mapSlice(cs, menuChoiceToPB), Why: why}), nil
 }
 
 func (s *Server) Dispatch(ctx context.Context, req *connect.Request[pb.DispatchRequest]) (*connect.Response[pb.DispatchResponse], error) {
@@ -152,11 +152,11 @@ func (s *Server) Dispatch(ctx context.Context, req *connect.Request[pb.DispatchR
 }
 
 func (s *Server) ItemChoices(ctx context.Context, req *connect.Request[pb.ItemChoicesRequest]) (*connect.Response[pb.ItemChoicesResponse], error) {
-	it, cs, err := s.b.ItemChoices(ctx, req.Msg.GetRef())
+	it, cs, why, err := s.b.ItemChoices(ctx, req.Msg.GetRef())
 	if err != nil {
 		return nil, toConnect(err)
 	}
-	return connect.NewResponse(&pb.ItemChoicesResponse{Item: ItemToPB(it), Choices: mapSlice(cs, menuChoiceToPB)}), nil
+	return connect.NewResponse(&pb.ItemChoicesResponse{Item: ItemToPB(it), Choices: mapSlice(cs, menuChoiceToPB), Why: why}), nil
 }
 
 func (s *Server) Reinspect(ctx context.Context, req *connect.Request[pb.ReinspectRequest]) (*connect.Response[pb.ReinspectResponse], error) {
