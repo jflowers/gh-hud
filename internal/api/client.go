@@ -13,6 +13,7 @@ import (
 	"github.com/jflowers/gh-hud/internal/api/gen/ghhud/v1/ghhudv1connect"
 	"github.com/jflowers/gh-hud/internal/dispatch"
 	"github.com/jflowers/gh-hud/internal/hub"
+	"github.com/jflowers/gh-hud/internal/model"
 )
 
 // Deadlines for calls made without one (the TUI calls with
@@ -22,6 +23,7 @@ const (
 	callTimeout      = 15 * time.Second
 	snapshotTimeout  = 2 * time.Second
 	dispatchDeadline = 3 * time.Minute
+	lookupDeadline   = time.Minute     // the hub allows a GitHub lookup 30s
 	pruneDeadline    = 6 * time.Minute // the hub allows a sweep 5
 )
 
@@ -241,6 +243,16 @@ func (c *Client) Dispatch(ctx context.Context, task dispatch.Task, url string) (
 		return dispatch.Record{}, fromConnect(err)
 	}
 	return recordFromPB(resp.Msg), nil
+}
+
+func (c *Client) ItemChoices(ctx context.Context, ref string) (model.Item, []dispatch.MenuChoice, error) {
+	ctx, cancel := withDeadline(ctx, lookupDeadline)
+	defer cancel()
+	resp, err := c.rpc.ItemChoices(ctx, connect.NewRequest(&pb.ItemChoicesRequest{Ref: ref}))
+	if err != nil {
+		return model.Item{}, nil, fromConnect(err)
+	}
+	return ItemFromPB(resp.Msg.GetItem()), mapSlice(resp.Msg.GetChoices(), menuChoiceFromPB), nil
 }
 
 func (c *Client) Reinspect(ctx context.Context, runID string) (dispatch.Run, error) {

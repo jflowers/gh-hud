@@ -78,6 +78,10 @@ func (d *fakeDisp) MenuChoices(it model.Item) []dispatch.MenuChoice {
 	return []dispatch.MenuChoice{{Task: dispatch.TaskCI, Target: "ws:" + it.Ref()}}
 }
 
+func (d *fakeDisp) ItemChoices(it model.Item) []dispatch.MenuChoice {
+	return []dispatch.MenuChoice{{Task: dispatch.KindTasks(it.Kind)[0], Target: "ws:" + it.Ref()}}
+}
+
 func (d *fakeDisp) Dispatch(_ context.Context, task dispatch.Task, it model.Item, auto bool) (dispatch.Record, error) {
 	d.record("Dispatch %s %s auto=%v", task, it.Ref(), auto)
 	return dispatch.Record{Task: task, Ref: it.Ref(), Workspace: "ws"}, nil
@@ -439,5 +443,43 @@ func TestToolkitCommands(t *testing.T) {
 	case <-tk.ran:
 	case <-time.After(5 * time.Second):
 		t.Error("the hub didn't run the toolkit")
+	}
+}
+
+func TestItemChoicesNamesAnyItem(t *testing.T) {
+	d := &fakeDisp{owner: true}
+	h := withItems(t, d)
+	ctx := t.Context()
+	var looked []string
+	h.opts.Lookup = func(_ context.Context, ref string) (model.Item, error) {
+		looked = append(looked, ref)
+		if ref == "acme/r#9" {
+			return model.Item{Kind: model.KindIssue, Repo: "acme/r", Num: 9, URL: "https://github.com/acme/r/issues/9"}, nil
+		}
+		return model.Item{}, errors.New("not found")
+	}
+	// In the refresh: found by ref, whatever the URL's form, no lookup.
+	it, cs, err := h.ItemChoices(ctx, "https://github.com/acme/r/pull/1/files")
+	if err != nil || it.URL != "u1" || len(cs) != 1 || cs[0].Task != dispatch.TaskRebase || len(looked) != 0 {
+		t.Errorf("ItemChoices(refreshed) = %+v, %v, %v; looked %v", it, cs, err, looked)
+	}
+	// Outside it: looked up.
+	it, cs, err = h.ItemChoices(ctx, "acme/r#9")
+	if err != nil || it.Num != 9 || len(cs) != 1 || cs[0].Task != dispatch.TaskIssue {
+		t.Errorf("ItemChoices(looked up) = %+v, %v, %v", it, cs, err)
+	}
+	if _, _, err := h.ItemChoices(ctx, "not a url"); err == nil {
+		t.Error("ItemChoices of garbage succeeded")
+	}
+	// Dispatch takes the looked-up item's URL, and refuses a task that
+	// doesn't fit its kind.
+	if rec, err := h.Dispatch(ctx, dispatch.TaskIssue, "https://github.com/acme/r/issues/9"); err != nil || rec.Ref != "acme/r#9" {
+		t.Errorf("Dispatch(looked up) = %+v, %v", rec, err)
+	}
+	if _, err := h.Dispatch(ctx, dispatch.TaskReview, "https://github.com/acme/r/issues/9"); err == nil || !strings.Contains(err.Error(), "an issue") {
+		t.Errorf("Dispatch(review on an issue) = %v", err)
+	}
+	if _, err := h.Dispatch(ctx, dispatch.TaskIssue, "u1"); err == nil {
+		t.Error("Dispatch(issue on a PR) succeeded")
 	}
 }

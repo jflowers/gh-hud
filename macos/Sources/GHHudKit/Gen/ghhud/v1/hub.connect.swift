@@ -33,6 +33,14 @@ public protocol Ghhud_V1_HubServiceClientInterface: Sendable {
     @available(iOS 13, *)
     func `dispatch`(request: Ghhud_V1_DispatchRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_DispatchResponse>
 
+    /// ItemChoices looks up an issue or PR you name, in the latest refresh
+    /// or else on GitHub, and lists every task that fits it (MenuChoices
+    /// lists only those its state calls for, and only for refreshed items).
+    /// Dispatch then takes the item's URL. INVALID_ARGUMENT when ref isn't
+    /// an issue or PR.
+    @available(iOS 13, *)
+    func `itemChoices`(request: Ghhud_V1_ItemChoicesRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_ItemChoicesResponse>
+
     @available(iOS 13, *)
     func `reinspect`(request: Ghhud_V1_ReinspectRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_ReinspectResponse>
 
@@ -148,6 +156,11 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
     }
 
     @available(iOS 13, *)
+    public func `itemChoices`(request: Ghhud_V1_ItemChoicesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_ItemChoicesResponse> {
+        return await self.client.unary(path: "/ghhud.v1.HubService/ItemChoices", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `reinspect`(request: Ghhud_V1_ReinspectRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_ReinspectResponse> {
         return await self.client.unary(path: "/ghhud.v1.HubService/Reinspect", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -259,6 +272,7 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
             public static let refresh = Connect.MethodSpec(name: "Refresh", service: "ghhud.v1.HubService", type: .unary)
             public static let menuChoices = Connect.MethodSpec(name: "MenuChoices", service: "ghhud.v1.HubService", type: .unary)
             public static let dispatch = Connect.MethodSpec(name: "Dispatch", service: "ghhud.v1.HubService", type: .unary)
+            public static let itemChoices = Connect.MethodSpec(name: "ItemChoices", service: "ghhud.v1.HubService", type: .unary)
             public static let reinspect = Connect.MethodSpec(name: "Reinspect", service: "ghhud.v1.HubService", type: .unary)
             public static let pruneBranches = Connect.MethodSpec(name: "PruneBranches", service: "ghhud.v1.HubService", type: .unary)
             public static let queueChoices = Connect.MethodSpec(name: "QueueChoices", service: "ghhud.v1.HubService", type: .unary)

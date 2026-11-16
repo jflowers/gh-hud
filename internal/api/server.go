@@ -13,6 +13,7 @@ import (
 	"github.com/jflowers/gh-hud/internal/api/gen/ghhud/v1/ghhudv1connect"
 	"github.com/jflowers/gh-hud/internal/dispatch"
 	"github.com/jflowers/gh-hud/internal/hub"
+	"github.com/jflowers/gh-hud/internal/model"
 )
 
 // Server serves a hub.Backend as the HubService.
@@ -41,6 +42,10 @@ func toConnect(err error) error {
 	}
 	switch {
 	case errors.Is(err, hub.ErrNoDispatch), errors.Is(err, hub.ErrNoFleet), errors.Is(err, hub.ErrNoToolkit):
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	case errors.Is(err, model.ErrBadRef):
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	case errors.Is(err, model.ErrNotOpen):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, context.Canceled):
 		return connect.NewError(connect.CodeCanceled, err)
@@ -144,6 +149,14 @@ func (s *Server) Dispatch(ctx context.Context, req *connect.Request[pb.DispatchR
 		return nil, toConnect(err)
 	}
 	return connect.NewResponse(recordToPB(rec)), nil
+}
+
+func (s *Server) ItemChoices(ctx context.Context, req *connect.Request[pb.ItemChoicesRequest]) (*connect.Response[pb.ItemChoicesResponse], error) {
+	it, cs, err := s.b.ItemChoices(ctx, req.Msg.GetRef())
+	if err != nil {
+		return nil, toConnect(err)
+	}
+	return connect.NewResponse(&pb.ItemChoicesResponse{Item: ItemToPB(it), Choices: mapSlice(cs, menuChoiceToPB)}), nil
 }
 
 func (s *Server) Reinspect(ctx context.Context, req *connect.Request[pb.ReinspectRequest]) (*connect.Response[pb.ReinspectResponse], error) {

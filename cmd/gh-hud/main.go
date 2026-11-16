@@ -353,7 +353,10 @@ func buildHub(cfg *config.Config, cfgPath string, client *gh.Client, stateDir st
 		ConfigPath:      cfgPath,
 		DispatchOptions: dispOptions,
 		// The current config, so a reload's orgs and repos apply.
-		Fetch:    func(ctx context.Context) *model.FetchResult { return model.FetchAll(ctx, client, h.Config()) },
+		Fetch: func(ctx context.Context) *model.FetchResult { return model.FetchAll(ctx, client, h.Config()) },
+		Lookup: func(ctx context.Context, ref string) (model.Item, error) {
+			return model.FetchItem(ctx, client, h.Config(), ref)
+		},
 		Notifier: notify.OSAScript{},
 	}
 	// Leave nil pointers out: a nil *Dispatcher in an interface is not nil.

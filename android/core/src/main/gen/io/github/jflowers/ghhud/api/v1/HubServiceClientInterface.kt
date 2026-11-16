@@ -34,6 +34,15 @@ public interface HubServiceClientInterface {
 
   public suspend fun dispatch(request: DispatchRequest, headers: Headers = emptyMap()): ResponseMessage<DispatchResponse>
 
+  /**
+   *  ItemChoices looks up an issue or PR you name, in the latest refresh
+   *  or else on GitHub, and lists every task that fits it (MenuChoices
+   *  lists only those its state calls for, and only for refreshed items).
+   *  Dispatch then takes the item's URL. INVALID_ARGUMENT when ref isn't
+   *  an issue or PR.
+   */
+  public suspend fun itemChoices(request: ItemChoicesRequest, headers: Headers = emptyMap()): ResponseMessage<ItemChoicesResponse>
+
   public suspend fun reinspect(request: ReinspectRequest, headers: Headers = emptyMap()): ResponseMessage<ReinspectResponse>
 
   /**

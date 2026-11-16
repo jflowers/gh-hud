@@ -55,6 +55,8 @@ const (
 	HubServiceMenuChoicesProcedure = "/ghhud.v1.HubService/MenuChoices"
 	// HubServiceDispatchProcedure is the fully-qualified name of the HubService's Dispatch RPC.
 	HubServiceDispatchProcedure = "/ghhud.v1.HubService/Dispatch"
+	// HubServiceItemChoicesProcedure is the fully-qualified name of the HubService's ItemChoices RPC.
+	HubServiceItemChoicesProcedure = "/ghhud.v1.HubService/ItemChoices"
 	// HubServiceReinspectProcedure is the fully-qualified name of the HubService's Reinspect RPC.
 	HubServiceReinspectProcedure = "/ghhud.v1.HubService/Reinspect"
 	// HubServicePruneBranchesProcedure is the fully-qualified name of the HubService's PruneBranches
@@ -120,6 +122,12 @@ type HubServiceClient interface {
 	// and the hub refuses changes while another gh-hud owns dispatch.
 	MenuChoices(context.Context, *connect.Request[v1.MenuChoicesRequest]) (*connect.Response[v1.MenuChoicesResponse], error)
 	Dispatch(context.Context, *connect.Request[v1.DispatchRequest]) (*connect.Response[v1.DispatchResponse], error)
+	// ItemChoices looks up an issue or PR you name, in the latest refresh
+	// or else on GitHub, and lists every task that fits it (MenuChoices
+	// lists only those its state calls for, and only for refreshed items).
+	// Dispatch then takes the item's URL. INVALID_ARGUMENT when ref isn't
+	// an issue or PR.
+	ItemChoices(context.Context, *connect.Request[v1.ItemChoicesRequest]) (*connect.Response[v1.ItemChoicesResponse], error)
 	Reinspect(context.Context, *connect.Request[v1.ReinspectRequest]) (*connect.Response[v1.ReinspectResponse], error)
 	// PruneBranches finds the dispatch checkouts' branches whose PR is
 	// merged or closed, and your forks' (gh-hud branches); with apply it
@@ -199,6 +207,12 @@ func NewHubServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			httpClient,
 			baseURL+HubServiceDispatchProcedure,
 			connect.WithSchema(hubServiceMethods.ByName("Dispatch")),
+			connect.WithClientOptions(opts...),
+		),
+		itemChoices: connect.NewClient[v1.ItemChoicesRequest, v1.ItemChoicesResponse](
+			httpClient,
+			baseURL+HubServiceItemChoicesProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("ItemChoices")),
 			connect.WithClientOptions(opts...),
 		),
 		reinspect: connect.NewClient[v1.ReinspectRequest, v1.ReinspectResponse](
@@ -337,6 +351,7 @@ type hubServiceClient struct {
 	refresh         *connect.Client[v1.RefreshRequest, v1.RefreshResponse]
 	menuChoices     *connect.Client[v1.MenuChoicesRequest, v1.MenuChoicesResponse]
 	dispatch        *connect.Client[v1.DispatchRequest, v1.DispatchResponse]
+	itemChoices     *connect.Client[v1.ItemChoicesRequest, v1.ItemChoicesResponse]
 	reinspect       *connect.Client[v1.ReinspectRequest, v1.ReinspectResponse]
 	pruneBranches   *connect.Client[v1.PruneBranchesRequest, v1.PruneBranchesResponse]
 	queueChoices    *connect.Client[v1.QueueChoicesRequest, v1.QueueChoicesResponse]
@@ -383,6 +398,11 @@ func (c *hubServiceClient) MenuChoices(ctx context.Context, req *connect.Request
 // Dispatch calls ghhud.v1.HubService.Dispatch.
 func (c *hubServiceClient) Dispatch(ctx context.Context, req *connect.Request[v1.DispatchRequest]) (*connect.Response[v1.DispatchResponse], error) {
 	return c.dispatch.CallUnary(ctx, req)
+}
+
+// ItemChoices calls ghhud.v1.HubService.ItemChoices.
+func (c *hubServiceClient) ItemChoices(ctx context.Context, req *connect.Request[v1.ItemChoicesRequest]) (*connect.Response[v1.ItemChoicesResponse], error) {
+	return c.itemChoices.CallUnary(ctx, req)
 }
 
 // Reinspect calls ghhud.v1.HubService.Reinspect.
@@ -504,6 +524,12 @@ type HubServiceHandler interface {
 	// and the hub refuses changes while another gh-hud owns dispatch.
 	MenuChoices(context.Context, *connect.Request[v1.MenuChoicesRequest]) (*connect.Response[v1.MenuChoicesResponse], error)
 	Dispatch(context.Context, *connect.Request[v1.DispatchRequest]) (*connect.Response[v1.DispatchResponse], error)
+	// ItemChoices looks up an issue or PR you name, in the latest refresh
+	// or else on GitHub, and lists every task that fits it (MenuChoices
+	// lists only those its state calls for, and only for refreshed items).
+	// Dispatch then takes the item's URL. INVALID_ARGUMENT when ref isn't
+	// an issue or PR.
+	ItemChoices(context.Context, *connect.Request[v1.ItemChoicesRequest]) (*connect.Response[v1.ItemChoicesResponse], error)
 	Reinspect(context.Context, *connect.Request[v1.ReinspectRequest]) (*connect.Response[v1.ReinspectResponse], error)
 	// PruneBranches finds the dispatch checkouts' branches whose PR is
 	// merged or closed, and your forks' (gh-hud branches); with apply it
@@ -579,6 +605,12 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 		HubServiceDispatchProcedure,
 		svc.Dispatch,
 		connect.WithSchema(hubServiceMethods.ByName("Dispatch")),
+		connect.WithHandlerOptions(opts...),
+	)
+	hubServiceItemChoicesHandler := connect.NewUnaryHandler(
+		HubServiceItemChoicesProcedure,
+		svc.ItemChoices,
+		connect.WithSchema(hubServiceMethods.ByName("ItemChoices")),
 		connect.WithHandlerOptions(opts...),
 	)
 	hubServiceReinspectHandler := connect.NewUnaryHandler(
@@ -719,6 +751,8 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 			hubServiceMenuChoicesHandler.ServeHTTP(w, r)
 		case HubServiceDispatchProcedure:
 			hubServiceDispatchHandler.ServeHTTP(w, r)
+		case HubServiceItemChoicesProcedure:
+			hubServiceItemChoicesHandler.ServeHTTP(w, r)
 		case HubServiceReinspectProcedure:
 			hubServiceReinspectHandler.ServeHTTP(w, r)
 		case HubServicePruneBranchesProcedure:
@@ -788,6 +822,10 @@ func (UnimplementedHubServiceHandler) MenuChoices(context.Context, *connect.Requ
 
 func (UnimplementedHubServiceHandler) Dispatch(context.Context, *connect.Request[v1.DispatchRequest]) (*connect.Response[v1.DispatchResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.Dispatch is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) ItemChoices(context.Context, *connect.Request[v1.ItemChoicesRequest]) (*connect.Response[v1.ItemChoicesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.ItemChoices is not implemented"))
 }
 
 func (UnimplementedHubServiceHandler) Reinspect(context.Context, *connect.Request[v1.ReinspectRequest]) (*connect.Response[v1.ReinspectResponse], error) {
