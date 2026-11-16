@@ -154,6 +154,11 @@ public data class EpicRow(
     val tone: Tone,
     /** The plan to approve, when one waits for you. */
     val planToApprove: String?,
+    /**
+     * What that plan changed since you last approved one, a line each:
+     * set only when it waits for you again.
+     */
+    val changes: List<String> = emptyList(),
     /** Pieces still to do, running and ready first. */
     val open: List<Piece>,
     val done: Int,
@@ -209,13 +214,15 @@ public data class EpicRow(
                         clearable = approved && n.state == "gated" && n.gate.isNotEmpty() && !n.cleared,
                     )
                 }
+            val toApprove = if (e.state == "planned" && e.hasPlan() && !e.plan.stale && e.plan.id.isNotEmpty()) e.plan.id else null
             return EpicRow(
                 ref = e.ref,
                 title = e.title,
                 url = e.url.ifEmpty { null } ?: Links.forRef(e.ref),
                 status = status,
                 tone = tone,
-                planToApprove = if (e.state == "planned" && e.hasPlan() && !e.plan.stale && e.plan.id.isNotEmpty()) e.plan.id else null,
+                planToApprove = toApprove,
+                changes = if (toApprove == null) emptyList() else e.changesList,
                 open = open,
                 done = done,
                 total = nodes.size,

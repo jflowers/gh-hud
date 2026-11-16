@@ -284,6 +284,18 @@ private fun EpicView(
             }
         }
         Text(e.status, style = MaterialTheme.typography.bodySmall, color = e.tone.color(), modifier = Modifier.padding(end = 16.dp))
+        if (e.changes.isNotEmpty()) {
+            Column(Modifier.padding(top = 4.dp, end = 16.dp).testTag("changes:" + e.ref)) {
+                Text(
+                    "Changed since you approved it:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                for (c in e.changes) {
+                    Text("± $c", style = MaterialTheme.typography.bodySmall, color = Tone.WARN.color())
+                }
+            }
+        }
         if (e.planToApprove != null) {
             Button(onClick = onApprove, enabled = enabled, modifier = Modifier.padding(top = 6.dp).testTag("approve-epic:" + e.ref)) {
                 Text("Approve plan")

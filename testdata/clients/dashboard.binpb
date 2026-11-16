@@ -106,14 +106,14 @@ Tool piece:waiting#
 acme/widgets#65
 Done piece:done)
 acme/widgets#66Dropped piece:dropped4
-acme/widgets#67Blocked piece:blockedB	needs #612ÀŽÌ×¢^
+acme/widgets#67Blocked piece:blockedB	needs #612ÀŽÌ×¢¨
 acme/api#90API epic*planned:<
 plan-90
 acme/api#91:ready
-acme/api#92:done2 …æ×¢I
+acme/api#92:done2 …æ×r#91 waits on nothing (was #92)r(new rule: don't merge #93 before the tag¢s
 acme/api#95Changed epic*planned:#
 plan-95
-acme/api#96:waiting@¢
+acme/api#96:waiting@r(shown only once the stale plan is reread¢
 acme/docs#5Reading*reading¢+
 acme/docs#6Broken*error2no such issue¢
 acme/docs#7Fresh*planned²Ý
