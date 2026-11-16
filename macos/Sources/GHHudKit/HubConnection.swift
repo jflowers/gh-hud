@@ -152,6 +152,15 @@ public final class HubConnection {
         return Self.result(await client.menuChoices(request: req, headers: hub.authHeaders)).map(\.choices)
     }
 
+    /// Looks up an issue or PR you name (a GitHub URL or owner/repo#N), on
+    /// the dashboard or else on GitHub, and every task that can start on it.
+    public func itemChoices(ref: String) async -> Result<Ghhud_V1_ItemChoicesResponse, CommandError> {
+        guard let hub, let client = commands else { return .failure(.notConnected) }
+        var req = Ghhud_V1_ItemChoicesRequest()
+        req.ref = ref
+        return Self.result(await client.itemChoices(request: req, headers: hub.authHeaders))
+    }
+
     /// Starts an agent task on an item.
     public func dispatch(task: String, url: String) async -> Result<Ghhud_V1_DispatchResponse, CommandError> {
         guard let hub, let client = commands else { return .failure(.notConnected) }

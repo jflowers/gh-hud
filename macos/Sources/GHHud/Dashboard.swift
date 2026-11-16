@@ -136,6 +136,14 @@ struct DashboardView: View {
             .help(cmds.off ?? (one == nil ? "Select an item to queue" : "Add \(one!.ref) to your queue"))
             .keyboardShortcut("d", modifiers: [.command, .shift])
             .disabled(one == nil || cmds.off != nil)
+            Button {
+                cmds.startAgentOnURL()
+            } label: {
+                Label("Start Agent on URL", systemImage: "link.badge.plus")
+            }
+            .help(cmds.off ?? "Start an agent on any issue or PR, by its link")
+            .keyboardShortcut("u", modifiers: [.command, .shift])
+            .disabled(cmds.off != nil)
         }
     }
 

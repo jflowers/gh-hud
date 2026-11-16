@@ -641,6 +641,14 @@ do {
 
     check(Links.forRef("acme/r#12")?.absoluteString == "https://github.com/acme/r/issues/12", "ref link")
     check(Links.forRef("acme/r") == nil && Links.forRef("r#1") == nil && Links.forRef("a/b#x") == nil, "bad refs")
+    for s in ["https://github.com/acme/r/pull/12", " github.com/acme/r/issues/3#issuecomment-9\n",
+              "https://github.com/acme/r/pull/12/files"] {
+        check(Links.isItemLink(s), "item link \(s)")
+    }
+    for s in ["", "https://github.com/acme/r", "https://github.com/acme/r/commit/abc", "https://gitlab.com/a/r/pull/1",
+              "https://github.com/acme/r/pull/0", "see https://github.com/acme/r/pull/1"] {
+        check(!Links.isItemLink(s), "not an item link \(s)")
+    }
     var alert = Ghhud_V1_Alert()
     alert.run.ref = "acme/r#7"
     check(Links.forAlert(alert)?.absoluteString == "https://github.com/acme/r/issues/7", "alert falls back to its run")

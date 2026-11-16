@@ -15,4 +15,15 @@ public enum Links {
     public static func forAlert(_ a: Ghhud_V1_Alert) -> URL? {
         forRef(a.ref) ?? forRef(a.run.ref) ?? forRef(a.session.ref)
     }
+
+    /// Whether text (say, the clipboard) is one GitHub issue or PR link,
+    /// for Start Agent on URL to fill in. The hub reads it properly.
+    public static func isItemLink(_ s: String) -> Bool {
+        let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.contains(where: \.isWhitespace), let u = URL(string: t.contains("://") ? t : "https://" + t),
+              let host = u.host?.lowercased(), host == "github.com" || host == "www.github.com"
+        else { return false }
+        let p = u.pathComponents.filter { $0 != "/" }
+        return p.count >= 4 && (p[2] == "pull" || p[2] == "issues") && Int(p[3]).map { $0 > 0 } == true
+    }
 }
