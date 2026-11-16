@@ -254,8 +254,12 @@ func (s *Scaffolder) Scaffold(ctx context.Context, t Target, runs []Run, o Optio
 	}
 	if out, _ := g("ls-remote", "--heads", push, branch); strings.TrimSpace(out) != "" {
 		res.Status, res.Detail = StatusExists, push+"/"+branch
-		if t.Repo != "" {
-			if url := s.prFor(ctx, src, t.Repo, branch); url != "" {
+		repo := t.Repo
+		if t.Overlay != "" {
+			repo = s.overlayRepo(ctx, src, push)
+		}
+		if repo != "" {
+			if url := s.prFor(ctx, src, repo, branch); url != "" {
 				res.Detail = url
 			}
 		}
@@ -276,6 +280,14 @@ func (s *Scaffolder) Scaffold(ctx context.Context, t Target, runs []Run, o Optio
 			}
 			res.Branch, res.Base = push+"/"+branch, push+"/"+def
 			res.Status, res.Detail = StatusHeld, fmt.Sprintf("%s/%s: changes agent commands or definitions; merge it into %s after a look", push, branch, def)
+			// On GitHub, a PR from the branch is where you look and merge.
+			url, err := s.HeldOverlayPR(ctx, t, res.Branch, res.Base, Title(runs), prBody(runs, ran, res, s.Manifest.HoldLabel))
+			switch {
+			case err != nil:
+				res.Detail += " (no PR: " + err.Error() + ")"
+			case url != "":
+				res.Status, res.Detail = StatusOpened, url
+			}
 			return res
 		}
 		if _, err := w("push", "-q", push, "HEAD:refs/heads/"+def); err != nil {
@@ -409,6 +421,61 @@ func (s *Scaffolder) prTitles(ctx context.Context, dir, repo string) ([]string, 
 		}
 	}
 	return titles, nil
+}
+
+// HeldOverlayPR opens a held PR from an overlay's branch ("remote/name")
+// into its default branch ("remote/main"), or finds the one already open,
+// and returns its URL. It returns "" when the remote isn't on GitHub.
+func (s *Scaffolder) HeldOverlayPR(ctx context.Context, t Target, branch, base, title, body string) (string, error) {
+	dir := t.Overlay
+	if dir == "" {
+		return "", fmt.Errorf("%s isn't an overlay", t.Label())
+	}
+	if !filepath.IsAbs(dir) {
+		dir = filepath.Join(s.GHWSRoot, dir)
+	}
+	remote, name, ok := strings.Cut(branch, "/")
+	_, def, ok2 := strings.Cut(base, "/")
+	if !ok || !ok2 {
+		return "", fmt.Errorf("can't read branch %q into %q", branch, base)
+	}
+	repo := s.overlayRepo(ctx, dir, remote)
+	if repo == "" {
+		return "", nil
+	}
+	if url := s.prFor(ctx, dir, repo, name); url != "" {
+		return url, nil
+	}
+	if err := s.ensureLabel(ctx, dir, repo); err != nil {
+		return "", err
+	}
+	out, err := s.Run.Run(ctx, dir, "gh", "pr", "create", "--repo", repo, "--base", def, "--head", name,
+		"--title", title, "--body", body, "--label", s.Manifest.HoldLabel)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(lastLine(out)), nil
+}
+
+// overlayRepo is the GitHub "owner/name" an overlay's remote points at
+// ("" when it isn't on GitHub).
+func (s *Scaffolder) overlayRepo(ctx context.Context, dir, remote string) string {
+	url, err := s.Run.Run(ctx, dir, "git", "remote", "get-url", remote)
+	if err != nil {
+		return ""
+	}
+	return githubRepo(url)
+}
+
+var githubURL = regexp.MustCompile(`^(?:https://(?:[^@/]+@)?github\.com/|git@github\.com:|ssh://git@github\.com/)([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+?)(?:\.git)?/?$`)
+
+// githubRepo is the "owner/name" in a GitHub remote URL ("" for any other
+// host).
+func githubRepo(url string) string {
+	if m := githubURL.FindStringSubmatch(strings.TrimSpace(url)); m != nil {
+		return m[1] + "/" + m[2]
+	}
+	return ""
 }
 
 // prFor returns the URL of the PR from branch ("" when there is none).

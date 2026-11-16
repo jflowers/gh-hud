@@ -95,7 +95,7 @@ public struct Attention: Equatable, Sendable {
 
     /// What needs you in a snapshot: agents waiting on you, supervisor
     /// proposals and epic plans to approve, epic gates to clear, tool releases to roll out,
-    /// reviews requested of you, and
+    /// repos in tool rollouts held, refused or failing, reviews requested of you, and
     /// your PRs ready for a maintainer. Newest first.
     public init(_ s: Ghhud_V1_Snapshot) {
         let items = s.result.items
@@ -127,6 +127,7 @@ public struct Attention: Equatable, Sendable {
             AttentionSection(id: "epics", title: "Epic plans awaiting approval", rows: Self.epics(s)),
             AttentionSection(id: "gates", title: "Epic gates only you can clear", rows: Self.gates(s)),
             AttentionSection(id: "releases", title: "Tool releases awaiting approval", rows: Self.releases(s)),
+            AttentionSection(id: "rollouts", title: "Tool rollouts waiting on you", rows: Self.rollouts(s)),
             AttentionSection(id: "review", title: "Review requested", rows: rows(.reviewRequested)),
             AttentionSection(id: "ready", title: "Ready for a maintainer", rows: rows(.readyForMaintainer)),
         ]
@@ -186,6 +187,25 @@ public struct Attention: Equatable, Sendable {
                     url: r.notesURL.isEmpty ? nil : URL(string: r.notesURL),
                     updated: r.hasStarted ? r.started.date : nil,
                     approval: .release(id: r.id, tool: r.tool, version: r.version))
+            }
+    }
+
+    /// Repos in tool rollouts that wait on you (held for a look, refused,
+    /// failed, or failing CI), as the hub says, newest rollout first. A
+    /// cancelled rollout's don't: you stopped it. The row opens the PR when
+    /// there is one.
+    static func rollouts(_ s: Ghhud_V1_Snapshot) -> [AttentionRow] {
+        s.toolkit.rollouts.filter { $0.stage != "cancelled" && $0.stage != "proposed" }
+            .flatMap { r in
+                r.targets.filter { !$0.needsYou.isEmpty }.map { t in
+                    let place = t.url.isEmpty ? (t.branch.isEmpty ? t.detail : t.branch) : ""
+                    return AttentionRow(
+                        id: "rollout:\(r.id) \(t.target)",
+                        title: "\(r.tool) \(r.version) on \(t.target)",
+                        detail: [t.needsYou, place].filter { !$0.isEmpty }.joined(separator: " · "),
+                        url: t.url.isEmpty ? nil : URL(string: t.url),
+                        updated: r.hasUpdated ? r.updated.date : nil)
+                }
             }
     }
 

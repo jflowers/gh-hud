@@ -377,3 +377,41 @@ func TestRolloutShrinkFromPin(t *testing.T) {
 		t.Fatalf("rollout %+v", r)
 	}
 }
+
+// A branch held before held overlays got PRs gets one while the rollout
+// tracks it, and you hear of it.
+func TestTrackOpensPRForHeldBranch(t *testing.T) {
+	fx := newCoord(t)
+	f, err := os.OpenFile(fx.c.opts.ManifestPath, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = f.WriteString("\n[[target]]\noverlay = \"acme/agents\"\nname = \"acme/agents\"\ntools = [\"uf\"]\n")
+	_ = f.Close()
+	fx.f.answers["git remote get-url origin"] = "git@github.com:acme/agents.git\n"
+	fx.f.answers["gh pr list --repo acme/agents"] = "\n"
+	fx.f.answers["gh pr create --repo acme/agents"] = "https://github.com/acme/agents/pull/3\n"
+	fx.f.fails = map[string]bool{"git merge-base --is-ancestor": true}
+	fx.c.rollouts = []Rollout{{ID: "uf@0.22.0", Tool: "uf", Version: "0.22.0", Stage: StageTrack, Targets: []TargetRun{{
+		Target: "acme/agents", Status: StatusHeld, Held: true,
+		Branch: "origin/chore/toolkit-uf-0.22.0", Base: "origin/main",
+	}}}}
+	fx.c.Step(context.Background())
+	tr := fx.rollout(t, "uf@0.22.0").Targets[0]
+	if tr.URL != "https://github.com/acme/agents/pull/3" || tr.PRState != PROpen || tr.NeedsYou() != "held" {
+		t.Fatalf("target %+v", tr)
+	}
+	c := fx.f.ran("gh pr create --repo acme/agents")
+	if len(c) != 1 || c[0].dir != "/ghws/acme/agents" ||
+		!strings.Contains(c[0].line, "--base main --head chore/toolkit-uf-0.22.0 --title chore(toolkit): re-scaffold with uf 0.22.0") ||
+		!strings.HasSuffix(c[0].line, "--label hold") {
+		t.Errorf("pr create %+v", c)
+	}
+	if len(fx.notes) != 1 || !strings.Contains(fx.notes[0], "acme/agents is held for a look: https://github.com/acme/agents/pull/3") {
+		t.Errorf("notes %q", fx.notes)
+	}
+	fx.c.Step(context.Background()) // tracked by its PR from now on
+	if len(fx.f.ran("gh pr create --repo acme/agents")) != 1 {
+		t.Error("opened a second PR")
+	}
+}

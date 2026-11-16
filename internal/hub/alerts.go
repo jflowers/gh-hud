@@ -31,6 +31,9 @@ const (
 	AlertRunFinished
 	// AlertToolRelease: a tool released, and its rollout waits for you.
 	AlertToolRelease
+	// AlertToolkitTarget: a repo in a tool rollout waits for you: its
+	// scaffold was held for a look, refused, failed, or fails CI.
+	AlertToolkitTarget
 )
 
 // Alert is one thing worth interrupting the operator for. It stays
@@ -59,6 +62,9 @@ type Alerter struct {
 	finished map[string]bool
 	// proposed: IDs of proposed toolkit rollouts (nil until seeded).
 	proposed map[string]bool
+	// targets: toolkit targets waiting on you, by ToolkitTargetKey (nil
+	// until seeded).
+	targets map[string]bool
 }
 
 // NewAlerter builds an Alerter from the notify settings in cfg.
@@ -172,17 +178,22 @@ func (a *Alerter) Runs(runs []dispatch.Run) []Alert {
 }
 
 // Toolkit alerts once per toolkit rollout newly proposed since the
-// previous call. The first call only seeds, so proposals already waiting
-// when gh-hud started stay quiet.
+// previous call, and once per repo in a rollout that newly waits on you
+// (again when it gets a PR to look at). The first call only seeds, so
+// what already waited when gh-hud started stays quiet.
 func (a *Alerter) Toolkit(snap toolkit.Snapshot) []Alert {
 	seen := map[string]bool{}
+	waiting := map[string]bool{}
 	for _, r := range snap.Rollouts {
 		if r.Stage == toolkit.StageProposed {
 			seen[r.ID] = true
 		}
+		for _, t := range ToolkitWaiting(r) {
+			waiting[ToolkitTargetKey(r, t)] = true
+		}
 	}
-	prev := a.proposed
-	a.proposed = seen
+	prev, prevWaiting := a.proposed, a.targets
+	a.proposed, a.targets = seen, waiting
 	if prev == nil || !a.notify {
 		return nil
 	}
@@ -194,7 +205,58 @@ func (a *Alerter) Toolkit(snap toolkit.Snapshot) []Alert {
 		text := fmt.Sprintf("%s %s released (the fleet runs %s): its rollout waits for your go-ahead", r.Tool, r.Version, r.From)
 		out = append(out, Alert{Type: AlertToolRelease, Ref: r.ID, Text: text})
 	}
+	for _, r := range snap.Rollouts {
+		for _, t := range ToolkitWaiting(r) {
+			if prevWaiting[ToolkitTargetKey(r, t)] {
+				continue
+			}
+			ref := r.ID
+			if repo, num, err := model.ParseItemRef(t.URL); err == nil {
+				ref = fmt.Sprintf("%s#%d", repo, num)
+			}
+			out = append(out, Alert{Type: AlertToolkitTarget, Ref: ref, Text: toolkitTargetText(r, t)})
+		}
+	}
 	return out
+}
+
+// ToolkitWaiting is a rollout's repos that wait on you. A cancelled
+// rollout's don't: you stopped it.
+func ToolkitWaiting(r toolkit.Rollout) []toolkit.TargetRun {
+	if r.Stage == toolkit.StageCancelled || r.Stage == toolkit.StageProposed {
+		return nil
+	}
+	var out []toolkit.TargetRun
+	for _, t := range r.Targets {
+		if t.NeedsYou() != "" {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// ToolkitTargetKey names a waiting repo by why it waits and where to
+// look, so a held branch that gets a PR is news again.
+func ToolkitTargetKey(r toolkit.Rollout, t toolkit.TargetRun) string {
+	return r.ID + " " + t.Target + " " + t.NeedsYou() + " " + t.URL
+}
+
+func toolkitTargetText(r toolkit.Rollout, t toolkit.TargetRun) string {
+	head := fmt.Sprintf("%s %s on %s", r.Tool, r.Version, t.Target)
+	switch why := t.NeedsYou(); why {
+	case "held":
+		if t.URL != "" {
+			return head + " is held for a look: merge its PR once it looks right"
+		}
+		return head + " is held on " + t.Branch + ": merge it after a look"
+	case "CI failing":
+		return head + ": the scaffold PR's CI fails"
+	default:
+		if t.Detail != "" {
+			return head + " " + why + ": " + truncate(t.Detail, 120)
+		}
+		return head + " " + why
+	}
 }
 
 func finishedText(r dispatch.Run) string {

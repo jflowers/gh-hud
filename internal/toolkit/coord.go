@@ -701,14 +701,13 @@ func (c *Coordinator) stepScaffold(ctx context.Context, m *Manifest, tool Tool, 
 			since = map[string]string{tool.Name: r.From}
 		}
 		res := s.Scaffold(ctx, t, For(t, runs), Options{Since: since})
-		tr := TargetRun{Target: res.Target, Status: res.Status, Detail: res.Detail, Held: res.Held, Files: len(res.Files)}
+		tr := TargetRun{Target: res.Target, Status: res.Status, Detail: res.Detail, Held: res.Held, Files: len(res.Files),
+			Branch: res.Branch, Base: res.Base}
 		switch res.Status {
 		case StatusOpened, StatusExists:
 			if strings.HasPrefix(res.Detail, "https://") {
 				tr.URL, tr.Detail, tr.PRState = res.Detail, "", PROpen
 			}
-		case StatusHeld:
-			tr.Branch, tr.Base = res.Branch, res.Base
 		}
 		if !c.update(r.ID, func(x *Rollout) { x.Targets = append(x.Targets, tr) }) {
 			return nil
@@ -734,6 +733,11 @@ func (c *Coordinator) stepTrack(ctx context.Context, tool Tool, r Rollout) {
 		case t.Status == StatusHeld && t.PRState == "":
 			if c.overlayMerged(ctx, t) {
 				r.Targets[i].PRState = PRMerged
+			} else if url := c.heldPR(ctx, r, t); url != "" {
+				// A branch held before held overlays got PRs: open one,
+				// so you hear of it and can merge it from the app.
+				r.Targets[i].URL, r.Targets[i].PRState, r.Targets[i].Detail = url, PROpen, ""
+				c.notify("toolkit: "+r.ID, t.Target+" is held for a look: "+url)
 			}
 		}
 	}
@@ -772,6 +776,28 @@ func (c *Coordinator) overlayMerged(ctx context.Context, t TargetRun) bool {
 	}
 	_, err = c.opts.Run.Run(ctx, dir, "git", "merge-base", "--is-ancestor", t.Branch, t.Base)
 	return err == nil
+}
+
+// heldPR opens (or finds) the PR for a held overlay branch that has none.
+// "" when it can't, or the overlay isn't on GitHub.
+func (c *Coordinator) heldPR(ctx context.Context, r Rollout, t TargetRun) string {
+	m, err := Load(c.opts.ManifestPath)
+	if err != nil || t.Branch == "" || t.Base == "" {
+		return ""
+	}
+	i := slices.IndexFunc(m.Targets, func(x Target) bool { return x.Label() == t.Target })
+	if i < 0 || m.Targets[i].Overlay == "" {
+		return ""
+	}
+	tool, _ := m.Tool(r.Tool)
+	runs := []Run{{Tool: tool, Version: r.Version}}
+	body := fmt.Sprintf("Re-scaffolds this overlay with %s's `init` at %s. Opened by gh-hud's toolkit rollout for a branch it held.\n\n", r.Tool, r.Version) +
+		fmt.Sprintf("**Held for a look** (`%s`): this changes agent commands or definitions. Merge it once it looks right.\n", m.HoldLabel)
+	url, err := c.scaffolder(m).HeldOverlayPR(ctx, m.Targets[i], t.Branch, t.Base, Title(runs), body)
+	if err != nil {
+		return ""
+	}
+	return url
 }
 
 // prStatus is what gh says about a PR.
