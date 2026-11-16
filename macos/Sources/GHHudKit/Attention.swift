@@ -190,14 +190,24 @@ public struct Attention: Equatable, Sendable {
             }
     }
 
-    /// Repos in tool rollouts that wait on you (held for a look, refused,
-    /// failed, or failing CI), as the hub says, newest rollout first. A
-    /// cancelled rollout's don't: you stopped it. The row opens the PR when
-    /// there is one.
+    /// Tool rollouts that wait on you: a pin PR to merge (nothing goes on
+    /// until it does), then repos held for a look, refused, failed, or
+    /// failing CI, as the hub says, newest rollout first. A cancelled
+    /// rollout's don't: you stopped it. The row opens the PR when there is
+    /// one.
     static func rollouts(_ s: Ghhud_V1_Snapshot) -> [AttentionRow] {
         s.toolkit.rollouts.filter { $0.stage != "cancelled" && $0.stage != "proposed" }
             .flatMap { r in
-                r.targets.filter { !$0.needsYou.isEmpty }.map { t in
+                var rows: [AttentionRow] = []
+                if pinWaits(r) {
+                    rows.append(AttentionRow(
+                        id: "rollout:\(r.id) pin",
+                        title: "Merge the \(r.tool) \(r.version) pin",
+                        detail: ["pin PR open", prRef(r.pinPr)].filter { !$0.isEmpty }.joined(separator: " · "),
+                        url: URL(string: r.pinPr),
+                        updated: r.hasUpdated ? r.updated.date : nil))
+                }
+                return rows + r.targets.filter { !$0.needsYou.isEmpty }.map { t in
                     let place = t.url.isEmpty ? (t.branch.isEmpty ? t.detail : t.branch) : ""
                     return AttentionRow(
                         id: "rollout:\(r.id) \(t.target)",
@@ -207,6 +217,18 @@ public struct Attention: Equatable, Sendable {
                         updated: r.hasUpdated ? r.updated.date : nil)
                 }
             }
+    }
+
+    /// "owner/repo#N" for a GitHub PR URL, "" for anything else.
+    static func prRef(_ url: String) -> String {
+        let p = (URLComponents(string: url)?.path ?? "").split(separator: "/")
+        guard p.count == 4, p[2] == "pull", Int(p[3]) != nil else { return "" }
+        return "\(p[0])/\(p[1])#\(p[3])"
+    }
+
+    /// Whether a rollout waits for you to merge its pin PR.
+    static func pinWaits(_ r: Ghhud_V1_ToolkitRolloutState) -> Bool {
+        r.stage == "pin" && !r.pinPr.isEmpty && r.pinState != "MERGED" && r.pinState != "CLOSED"
     }
 
     /// Pieces of approved epics held only by a gate: everything they wait

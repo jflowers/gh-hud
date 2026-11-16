@@ -279,6 +279,12 @@
         ]
       },
       {
+        "id": "aq@0.4.2", "tool": "aq", "version": "0.4.2", "from": "0.4.1", "stage": "pin",
+        "started": "2026-11-15T09:40:00Z", "updated": "2026-11-15T09:45:00Z",
+        "pinPr": "https://github.com/jflowers/dotfiles/pull/31", "pinState": "OPEN",
+        "summary": "pin PR open"
+      },
+      {
         "id": "dewey@3.6.0", "tool": "dewey", "version": "3.6.0", "from": "3.5.0", "stage": "cancelled",
         "started": "2026-11-14T09:00:00Z", "updated": "2026-11-14T09:30:00Z", "summary": "repos 0/1 landed, 1 failed",
         "targets": [
