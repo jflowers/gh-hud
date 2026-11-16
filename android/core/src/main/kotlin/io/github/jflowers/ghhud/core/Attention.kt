@@ -3,6 +3,7 @@ package io.github.jflowers.ghhud.core
 import com.google.protobuf.Timestamp
 import io.github.jflowers.ghhud.api.v1.Item
 import io.github.jflowers.ghhud.api.v1.Snapshot
+import io.github.jflowers.ghhud.api.v1.ToolkitRolloutState
 import java.time.Duration
 import java.time.Instant
 
@@ -182,15 +183,25 @@ public data class Attention(
                 }
 
         /**
-         * Repos in tool rollouts that wait on you (held for a look,
-         * refused, failed, or failing CI), as the hub says, newest rollout
-         * first. A cancelled rollout's don't: you stopped it. The row opens
-         * the PR when there is one.
+         * Tool rollouts that wait on you: a pin PR to merge (nothing goes
+         * on until it does), then repos held for a look, refused, failed,
+         * or failing CI, as the hub says, newest rollout first. A cancelled
+         * rollout's don't: you stopped it. The row opens the PR when there
+         * is one.
          */
         internal fun rollouts(s: Snapshot): List<AttentionRow> =
             s.toolkit.rolloutsList.filter { it.stage != "cancelled" && it.stage != "proposed" }
                 .flatMap { r ->
-                    r.targetsList.filter { it.needsYou.isNotEmpty() }.map { t ->
+                    val pin = if (!pinWaits(r)) emptyList() else listOf(
+                        AttentionRow(
+                            id = "rollout:${r.id} pin",
+                            title = "Merge the ${r.tool} ${r.version} pin",
+                            detail = listOf("pin PR open", prRef(r.pinPr)).filter { it.isNotEmpty() }.joinToString(" · "),
+                            url = r.pinPr,
+                            updated = if (r.hasUpdated()) r.updated.instant else null,
+                        ),
+                    )
+                    pin + r.targetsList.filter { it.needsYou.isNotEmpty() }.map { t ->
                         val place = if (t.url.isEmpty()) t.branch.ifEmpty { t.detail } else ""
                         AttentionRow(
                             id = "rollout:${r.id} ${t.target}",
@@ -201,6 +212,16 @@ public data class Attention(
                         )
                     }
                 }
+
+        /** Whether a rollout waits for you to merge its pin PR. */
+        internal fun pinWaits(r: ToolkitRolloutState): Boolean =
+            r.stage == "pin" && r.pinPr.isNotEmpty() && r.pinState != "MERGED" && r.pinState != "CLOSED"
+
+        /** "owner/repo#N" for a GitHub PR URL, "" for anything else. */
+        internal fun prRef(url: String): String {
+            val p = Regex("""^https://github\.com/([^/]+)/([^/]+)/pull/(\d+)/?$""").find(url) ?: return ""
+            return "${p.groupValues[1]}/${p.groupValues[2]}#${p.groupValues[3]}"
+        }
 
         /**
          * Pieces of approved epics held only by a gate: everything they

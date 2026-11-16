@@ -1421,6 +1421,8 @@ release; **Cancel**, **Retry** and **Dismiss** act on a rollout; **Check
 Now** is `x`. A repo that waits on you (held, refused, failed, or failing
 CI) is also in the list of what needs you, under "Tool rollouts waiting on
 you", and notifies; it opens its PR, or the Tools view when there is none.
+So does a rollout's open pin PR ("Merge the uf 0.22.0 pin"), since nothing
+goes on until you merge it; the row opens that PR.
 
 ```sh
 gh-hud toolkit status
