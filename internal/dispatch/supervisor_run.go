@@ -431,7 +431,7 @@ type supervisorSpec struct {
 // without the bot token. The prompt is $1; HUD_SUPERVISOR_SESSION continues
 // an earlier run's session (a retry), HUD_SUPERVISOR_MODEL picks the model.
 // agent-env holds plain KEY=value lines, so set -a exports them to opencode.
-const supervisorShell = `if [ -r "$HOME/.config/agent-env" ]; then set -a; . "$HOME/.config/agent-env"; set +a; fi
+const supervisorShell = agentEnvLoad + `
 unset ` + botTokenVar + ` GH_TOKEN
 set -- "$1" --agent ` + supervisorAgentName + ` --format json --title "$HUD_SUPERVISOR_TITLE"
 if [ -n "$HUD_SUPERVISOR_MODEL" ]; then set -- "$@" --model "$HUD_SUPERVISOR_MODEL"; fi

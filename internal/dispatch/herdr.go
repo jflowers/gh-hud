@@ -335,16 +335,19 @@ func paneSetupResult(raw json.RawMessage) error {
 // Plugin versions without headless mode ignore both variables.
 const headlessQuestions = `export AUTO_QUESTION_HEADLESS=1 AUTO_QUESTION_ESCALATION="$HOME/.config/opencode/auto-question/escalation-gh-hud.md"`
 
-// paneSetup is the shell line typed into a fresh dispatch pane. A bot pane
+// paneSetup is the shell line typed into a fresh dispatch pane. Every pane
+// loads agent-env first, so its current keys win over the herdr server's
+// (#119); a plain pane then drops the bot token. A bot pane
 // prints -notoken instead of the ready probe when it can't switch account,
 // so the agent never starts as the operator. The line names the variable
 // and never holds its value, so the pane transcript stays clean.
 func paneSetup(bot bool) string {
-	line := "export OPENCODE_PERMISSION=" + shellQuote(dispatchPermission) + " && " + headlessQuestions
+	line := "export OPENCODE_PERMISSION=" + shellQuote(dispatchPermission) + " && " + headlessQuestions + "; " + agentEnvLoad
 	if !bot {
-		return line + " && echo ghhud-$RANDOM-ready"
+		// agent-env carries the bot token too; a plain pane runs as you.
+		return line + "; unset " + botTokenVar + " && echo ghhud-$RANDOM-ready"
 	}
-	return line + "; " + botLoad + `; if [ -n "$` + botTokenVar + `" ] && [ -x "` + botGuardDir + `/gh" ]; then ` + botExport + ` && echo ghhud-$RANDOM-ready; else echo ghhud-$RANDOM-notoken; fi`
+	return line + `; if [ -n "$` + botTokenVar + `" ] && [ -x "` + botGuardDir + `/gh" ]; then ` + botExport + ` && echo ghhud-$RANDOM-ready; else echo ghhud-$RANDOM-notoken; fi`
 }
 
 // herdrPaneText reads the tail of a pane's transcript (plain text).
