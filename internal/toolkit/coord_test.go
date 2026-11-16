@@ -358,3 +358,22 @@ func TestPinReadWrite(t *testing.T) {
 		t.Error("a pin-only tool as a scaffold target parsed")
 	}
 }
+
+// A rollout passes the pin it replaces, so a release that shrinks the
+// scaffolding opens its PR instead of being refused as a repo that's ahead.
+func TestRolloutShrinkFromPin(t *testing.T) {
+	fx := newCoord(t)
+	ctx := context.Background()
+	fx.f.answers["git diff --cached --numstat"] = "100\t900\t.opencode/agents/gaze-reporter.md\n"
+	id, err := fx.c.Start(ctx, "uf", "0.22.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fx.c.Step(ctx) // pin PR
+	fx.f.answers["gh pr view https://github.com/jflowers/dotfiles/pull/30"] = `{"state":"MERGED"}`
+	fx.c.Step(ctx) // scaffold
+	r := fx.rollout(t, id)
+	if r.From != "0.21.0" || len(r.Targets) != 1 || r.Targets[0].Status == StatusRefused {
+		t.Fatalf("rollout %+v", r)
+	}
+}

@@ -113,7 +113,7 @@ func runToolkit(args []string, stdout, stderr io.Writer) int {
 	for _, r := range runs {
 		fmt.Fprintf(stdout, "%s %s: %s\n", r.Tool.Name, r.Version, r.Path)
 	}
-	opts := toolkit.Options{DryRun: *dryRun, AllowShrink: *shrink}
+	opts := toolkit.Options{DryRun: *dryRun, AllowShrink: *shrink, Since: sinceFleetPins(m, runs)}
 	var results []toolkit.Result
 	for _, t := range targets {
 		fmt.Fprintf(stdout, "%s …\n", t.Label())
@@ -122,6 +122,23 @@ func runToolkit(args []string, stdout, stderr io.Writer) int {
 		results = append(results, res)
 	}
 	return printResults(results, stdout)
+}
+
+// sinceFleetPins is what a target is taken to hold of each tool when
+// gh-hud has no record there: the fleet's mise pin. A run newer than the
+// pin may then shrink a repo (the release's own change).
+func sinceFleetPins(m *toolkit.Manifest, runs []toolkit.Run) map[string]string {
+	pins, err := toolkit.Pins(m.MiseConfig)
+	if err != nil {
+		return nil
+	}
+	since := map[string]string{}
+	for _, r := range runs {
+		if v := pins[r.Tool.Mise]; v != "" {
+			since[r.Tool.Name] = v
+		}
+	}
+	return since
 }
 
 // canonicalClone is the repo's non-instance ghws checkout ("" if none).

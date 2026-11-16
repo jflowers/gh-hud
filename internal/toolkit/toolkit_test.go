@@ -332,6 +332,40 @@ func TestScaffoldShrinkAndDryRun(t *testing.T) {
 	}
 }
 
+// A large deletion goes through when the run is newer than what the
+// target holds: gh-hud's record there, else the version it's taken to
+// hold (the fleet's previous pin).
+func TestScaffoldShrinkFromOlder(t *testing.T) {
+	shrink := "100\t900\t.opencode/agents/gaze-reporter.md\n"
+	for _, tc := range []struct {
+		name   string
+		titles string
+		since  map[string]string
+		ok     bool
+	}{
+		{"no record, no baseline", "[]", nil, false},
+		{"fleet pins older", "[]", map[string]string{"uf": "0.21.0", "gaze": "2.3.0"}, true},
+		{"one tool not newer", "[]", map[string]string{"uf": "0.21.0", "gaze": "2.4.0"}, false},
+		{"one tool unknown", "[]", map[string]string{"uf": "0.21.0"}, false},
+		{"recorded older", `[{"title":"chore(toolkit): re-scaffold with uf 0.21.0, gaze 2.3.0","state":"MERGED"}]`, nil, true},
+		// The record wins over the baseline: gh-hud put 0.22.0 there already.
+		{"recorded same", `[{"title":"chore(toolkit): re-scaffold with uf 0.22.0, gaze 2.4.0","state":"MERGED"}]`,
+			map[string]string{"uf": "0.21.0", "gaze": "2.3.0"}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			a := prAnswers()
+			a["git diff --cached --numstat"] = shrink
+			a["gh pr list --repo acme/app --state all --limit"] = tc.titles
+			f := &fakeRunner{t: t, answers: a}
+			s, runs := newScaffolder(t, f)
+			res := s.Scaffold(context.Background(), s.Manifest.Targets[0], runs, Options{Since: tc.since, DryRun: true})
+			if got := res.Status == StatusDryRun; got != tc.ok {
+				t.Errorf("went through %v, want %v: %+v", got, tc.ok, res)
+			}
+		})
+	}
+}
+
 func TestScaffoldExistingBranch(t *testing.T) {
 	a := prAnswers()
 	a["git ls-remote --heads origin chore/toolkit-"] = "abc\trefs/heads/chore/toolkit-uf-0.22.0-gaze-2.4.0\n"

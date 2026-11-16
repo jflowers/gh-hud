@@ -80,6 +80,12 @@ type Options struct {
 	// AllowShrink lets through a change that deletes far more than it
 	// adds, which usually means the repo is ahead of the version run.
 	AllowShrink bool
+	// Since is the version of each tool a target is taken to hold when
+	// gh-hud has no record of scaffolding it there: the fleet's pin
+	// before this run (a rollout passes the pin it replaces). A run
+	// newer than what the target holds may shrink it; that's the
+	// release, not a repo that's ahead.
+	Since map[string]string
 }
 
 // Scaffolder re-scaffolds targets.
@@ -234,8 +240,8 @@ func (s *Scaffolder) Scaffold(ctx context.Context, t Target, runs []Run, o Optio
 		return fail(StatusCurrent, "")
 	}
 	res.Held = held(res.Files, s.Manifest.HoldPaths)
-	if res.Deleted > 500 && res.Deleted > 2*res.Added && !o.AllowShrink {
-		return fail(StatusRefused, "deletes %d lines and adds %d: the repo looks newer than %s (rerun with --allow-shrink if that's intended)",
+	if res.Deleted > 500 && res.Deleted > 2*res.Added && !o.AllowShrink && !upgrades(runs, had, o.Since) {
+		return fail(StatusRefused, "deletes %d lines and adds %d, and nothing says the repo is older than %s: it may be ahead (rerun with --allow-shrink if that's intended)",
 			res.Deleted, res.Added, versionsText(runs))
 	}
 	if o.DryRun {
