@@ -155,11 +155,12 @@ func (s *Scaffolder) Resolve(ctx context.Context, want map[string]string) ([]Run
 	return runs, nil
 }
 
-// For returns the runs a target takes, in manifest order.
+// For returns the runs a target takes, in manifest order (never a tool on
+// its own repo).
 func For(t Target, runs []Run) []Run {
 	var out []Run
 	for _, r := range runs {
-		if slices.Contains(t.Tools, r.Tool.Name) {
+		if t.Takes(r.Tool) {
 			out = append(out, r)
 		}
 	}

@@ -88,6 +88,17 @@ type Target struct {
 	Args map[string][]string `toml:"args"`
 }
 
+// Takes reports whether the target runs tool: it lists it, and it isn't
+// the tool's own repo. A tool's repo holds the source of what its init
+// writes (gaze checks its .opencode copies match its embedded assets), so
+// scaffolding it from a release would only rewrite that source.
+func (t Target) Takes(tool Tool) bool {
+	if !slices.Contains(t.Tools, tool.Name) {
+		return false
+	}
+	return t.Repo == "" || tool.Release == "" || !strings.EqualFold(t.Repo, tool.Release)
+}
+
 // Label is how the target appears in output and matches --repo.
 func (t Target) Label() string {
 	switch {
@@ -296,7 +307,11 @@ func (m *Manifest) Select(toolArgs, repos []string) (map[string]string, []Target
 			continue
 		}
 		matched[t.Label()] = true
-		if slices.ContainsFunc(t.Tools, func(n string) bool { _, ok := want[n]; return ok }) {
+		if slices.ContainsFunc(t.Tools, func(n string) bool {
+			tool, _ := m.Tool(n)
+			_, ok := want[n]
+			return ok && t.Takes(tool)
+		}) {
 			targets = append(targets, t)
 		}
 	}
@@ -310,7 +325,8 @@ func (m *Manifest) Select(toolArgs, repos []string) (map[string]string, []Target
 	}
 	// Only install what some selected target runs.
 	for name := range want {
-		if !slices.ContainsFunc(targets, func(t Target) bool { return slices.Contains(t.Tools, name) }) {
+		tool, _ := m.Tool(name)
+		if !slices.ContainsFunc(targets, func(t Target) bool { return t.Takes(tool) }) {
 			delete(want, name)
 		}
 	}

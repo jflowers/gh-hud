@@ -698,7 +698,7 @@ func (c *Coordinator) stepScaffold(ctx context.Context, m *Manifest, tool Tool, 
 		done[t.Target] = true
 	}
 	for _, t := range m.Targets {
-		if !slices.Contains(t.Tools, tool.Name) || done[t.Label()] {
+		if !t.Takes(tool) || done[t.Label()] {
 			continue
 		}
 		if !c.find(r.ID).Stage.Active() {
@@ -1033,7 +1033,7 @@ func (c *Coordinator) readStatus(ctx context.Context) ([]ToolStatus, error) {
 			}
 		}
 		for _, target := range m.Targets {
-			if !slices.Contains(target.Tools, t.Name) {
+			if !target.Takes(t) {
 				continue
 			}
 			label := target.Label()
