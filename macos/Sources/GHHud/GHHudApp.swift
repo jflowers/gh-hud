@@ -96,7 +96,8 @@ extension SnapshotMode {
     /// --oldest-first sorts the items by their Age column, oldest first.
     /// --search goes to the shown table's search field; --keep then keeps
     /// its column terms as filter chips, as Return does. --live-only turns
-    /// on the Agents pane's Live Only.
+    /// on the Agents pane's Live Only. --url REF opens Start Agent on URL
+    /// with REF looked up ("" for the empty sheet).
     @MainActor
     static func windowIfAsked() {
         let args = CommandLine.arguments
@@ -148,6 +149,7 @@ extension SnapshotMode {
             }
             if args.contains("--enroll") { ui.enrolling = true }
             if args.contains("--live-only") { ui.liveOnly = true }
+            if let ref = arg("--url") { ui.sheet = AgentRequest(named: ref) }
             if let n = arg("--pick").flatMap(Int.init) {
                 if pane == .plan {
                     let rows = PlanList.groups(conn.snapshot).flatMap(\.rows)
