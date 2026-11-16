@@ -54,9 +54,9 @@ func runToolkitHub(args []string, stdout, stderr io.Writer) int {
 		}
 		fmt.Fprintln(stdout, "checking; see gh-hud toolkit status in a minute")
 		return 0
-	case "rollout":
+	case "rollout", "approve":
 		if len(rest) != 1 {
-			fmt.Fprintln(stderr, "gh-hud toolkit rollout: want one tool[@version]")
+			fmt.Fprintf(stderr, "gh-hud toolkit %s: want one tool[@version]\n", cmd)
 			return 2
 		}
 		tool, version, _ := strings.Cut(rest[0], "@")
@@ -71,7 +71,9 @@ func runToolkitHub(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "gh-hud toolkit %s: want one rollout (tool@version)\n", cmd)
 		return 2
 	}
-	action := map[string]hub.ToolkitAction{"cancel": hub.ToolkitCancel, "retry": hub.ToolkitRetry, "dismiss": hub.ToolkitDismiss}[cmd]
+	action := map[string]hub.ToolkitAction{
+		"cancel": hub.ToolkitCancel, "retry": hub.ToolkitRetry, "dismiss": hub.ToolkitDismiss, "decline": hub.ToolkitDismiss,
+	}[cmd]
 	if err := c.ToolkitControl(ctx, action, rest[0]); err != nil {
 		return fail(err)
 	}
@@ -108,6 +110,9 @@ func printToolkit(s toolkit.Snapshot, w io.Writer) {
 	fmt.Fprintln(w, "\nROLLOUTS")
 	for _, r := range s.Rollouts {
 		fmt.Fprintf(w, "%s  %s  %s\n", r.ID, r.Stage, r.Summary())
+		if r.Stage == toolkit.StageProposed && r.NotesURL != "" {
+			fmt.Fprintf(w, "  release  %s (gh-hud toolkit approve|decline %s)\n", r.NotesURL, r.ID)
+		}
 		if r.PinPR != "" {
 			fmt.Fprintf(w, "  pin  %s %s\n", r.PinPR, strings.ToLower(r.PinState))
 		}

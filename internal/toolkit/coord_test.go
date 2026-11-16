@@ -240,6 +240,99 @@ func TestCheckStatus(t *testing.T) {
 	}
 }
 
+func TestProposals(t *testing.T) {
+	fx := newCoord(t)
+	ctx := context.Background()
+	fx.f.answers["npm view opencode-auto-question version"] = "0.4.1\n" // aq is current
+	fx.f.answers["gh api repos/unbound-force/unbound-force/releases/tags/v0.22.0"] = "## Fixes\n- faster\n"
+	fx.c.checkStatus(ctx)
+	s := fx.c.Snapshot()
+	if len(s.Rollouts) != 1 {
+		t.Fatalf("rollouts %+v", s.Rollouts)
+	}
+	p := s.Rollouts[0]
+	if p.ID != "uf@0.22.0" || p.Stage != StageProposed || p.From != "0.21.0" || p.Notes != "## Fixes\n- faster" ||
+		p.NotesURL != "https://github.com/unbound-force/unbound-force/releases/tag/v0.22.0" {
+		t.Fatalf("proposal %+v", p)
+	}
+	if p.Stage.Active() || len(fx.notes) != 0 {
+		t.Errorf("a proposal is active or notified: %v", fx.notes)
+	}
+	fx.c.Step(ctx)
+	if len(fx.f.ran("gh pr create")) != 0 {
+		t.Error("a proposal opened a PR before you approved it")
+	}
+	if err := fx.c.Retry(p.ID); err == nil {
+		t.Error("retry started a proposal")
+	}
+	if err := fx.c.Cancel(p.ID); err == nil {
+		t.Error("cancelled a proposal")
+	}
+
+	// Checking again doesn't propose it twice.
+	fx.c.checkStatus(ctx)
+	if n := len(fx.c.Snapshot().Rollouts); n != 1 {
+		t.Fatalf("%d rollouts after a second check", n)
+	}
+
+	// A newer release replaces it.
+	fx.f.answers["gh api repos/unbound-force/unbound-force/releases/latest"] = "v0.23.0\n"
+	fx.f.fails = map[string]bool{"gh api repos/unbound-force/unbound-force/releases/tags/v0.23.0": true}
+	fx.c.checkStatus(ctx)
+	s = fx.c.Snapshot()
+	if len(s.Rollouts) != 1 || s.Rollouts[0].ID != "uf@0.23.0" || s.Rollouts[0].Notes != "" ||
+		s.Rollouts[0].NotesURL != "https://github.com/unbound-force/unbound-force/releases" {
+		t.Fatalf("after 0.23.0: %+v", s.Rollouts)
+	}
+
+	// Declined stays declined, across a restart.
+	if err := fx.c.Dismiss("uf@0.23.0"); err != nil {
+		t.Fatal(err)
+	}
+	c2, err := NewCoordinator(fx.c.opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c2.checkStatus(ctx)
+	if n := len(c2.Snapshot().Rollouts); n != 0 {
+		t.Fatalf("a declined release came back: %+v", c2.Snapshot().Rollouts)
+	}
+
+	// Approving is starting it; it answers the tool's proposal.
+	fx.f.answers["gh api repos/unbound-force/unbound-force/releases/latest"] = "v0.24.0\n"
+	fx.c.checkStatus(ctx)
+	if r := fx.c.Snapshot().Rollouts; len(r) != 1 || r[0].ID != "uf@0.24.0" {
+		t.Fatalf("0.24.0 not proposed: %+v", r)
+	}
+	if _, err := fx.c.Start(ctx, "uf", "0.24.0"); err != nil {
+		t.Fatal(err)
+	}
+	if r := fx.c.Snapshot().Rollouts; len(r) != 1 || r[0].Stage != StagePin {
+		t.Fatalf("after approving: %+v", r)
+	}
+	// While it rolls out, nothing new is proposed for uf.
+	fx.f.answers["gh api repos/unbound-force/unbound-force/releases/latest"] = "v0.25.0\n"
+	fx.c.checkStatus(ctx)
+	if n := len(fx.c.Snapshot().Rollouts); n != 1 {
+		t.Errorf("proposed during a rollout: %+v", fx.c.Snapshot().Rollouts)
+	}
+}
+
+func TestProposalCaughtUp(t *testing.T) {
+	fx := newCoord(t)
+	ctx := context.Background()
+	fx.c.checkStatus(ctx)
+	if n := len(fx.c.Snapshot().Rollouts); n != 1 {
+		t.Fatalf("%d rollouts", n)
+	}
+	// The pin moved without gh-hud (a PR by hand): the proposal goes.
+	fx.f.answers["git show origin/main:mise.toml"] = "[tools]\n\"go:example.com/uf\" = \"0.22.0\"\n"
+	fx.c.checkStatus(ctx)
+	if r := fx.c.Snapshot().Rollouts; len(r) != 0 {
+		t.Errorf("stale proposal kept: %+v", r)
+	}
+}
+
 func TestPinReadWrite(t *testing.T) {
 	m := mustParse(t, coordManifest)
 	uf, _ := m.Tool("uf")

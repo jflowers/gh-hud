@@ -334,6 +334,9 @@ public nonisolated enum Ghhud_V1_AlertType: SwiftProtobuf.Enum, Swift.CaseIterab
   /// an agent has waited on you too long
   case blocked // = 2
   case runFinished // = 3
+
+  /// a tool released; its rollout waits for you (ref is tool@version)
+  case toolRelease // = 4
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -346,6 +349,7 @@ public nonisolated enum Ghhud_V1_AlertType: SwiftProtobuf.Enum, Swift.CaseIterab
     case 1: self = .ready
     case 2: self = .blocked
     case 3: self = .runFinished
+    case 4: self = .toolRelease
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -356,6 +360,7 @@ public nonisolated enum Ghhud_V1_AlertType: SwiftProtobuf.Enum, Swift.CaseIterab
     case .ready: return 1
     case .blocked: return 2
     case .runFinished: return 3
+    case .toolRelease: return 4
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -366,6 +371,7 @@ public nonisolated enum Ghhud_V1_AlertType: SwiftProtobuf.Enum, Swift.CaseIterab
     .ready,
     .blocked,
     .runFinished,
+    .toolRelease,
   ]
 
 }
@@ -2714,59 +2720,103 @@ public nonisolated struct Ghhud_V1_ToolkitRepo: Sendable {
   public init() {}
 }
 
-public nonisolated struct Ghhud_V1_ToolkitRolloutState: Sendable {
+public nonisolated struct Ghhud_V1_ToolkitRolloutState: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var id: String = String()
+  public var id: String {
+    get {_storage._id}
+    set {_uniqueStorage()._id = newValue}
+  }
 
-  public var tool: String = String()
+  public var tool: String {
+    get {_storage._tool}
+    set {_uniqueStorage()._tool = newValue}
+  }
 
-  public var version: String = String()
+  public var version: String {
+    get {_storage._version}
+    set {_uniqueStorage()._version = newValue}
+  }
 
-  public var from: String = String()
+  public var from: String {
+    get {_storage._from}
+    set {_uniqueStorage()._from = newValue}
+  }
 
-  /// pin, scaffold, track, done, failed, cancelled
-  public var stage: String = String()
+  /// proposed, pin, scaffold, track, done, failed, cancelled
+  public var stage: String {
+    get {_storage._stage}
+    set {_uniqueStorage()._stage = newValue}
+  }
 
   public var started: SwiftProtobuf.Google_Protobuf_Timestamp {
-    get {_started ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
-    set {_started = newValue}
+    get {_storage._started ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_uniqueStorage()._started = newValue}
   }
   /// Returns true if `started` has been explicitly set.
-  public var hasStarted: Bool {self._started != nil}
+  public var hasStarted: Bool {_storage._started != nil}
   /// Clears the value of `started`. Subsequent reads from it will return its default value.
-  public mutating func clearStarted() {self._started = nil}
+  public mutating func clearStarted() {_uniqueStorage()._started = nil}
 
   public var updated: SwiftProtobuf.Google_Protobuf_Timestamp {
-    get {_updated ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
-    set {_updated = newValue}
+    get {_storage._updated ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_uniqueStorage()._updated = newValue}
   }
   /// Returns true if `updated` has been explicitly set.
-  public var hasUpdated: Bool {self._updated != nil}
+  public var hasUpdated: Bool {_storage._updated != nil}
   /// Clears the value of `updated`. Subsequent reads from it will return its default value.
-  public mutating func clearUpdated() {self._updated = nil}
+  public mutating func clearUpdated() {_uniqueStorage()._updated = nil}
 
-  public var pinPr: String = String()
+  public var pinPr: String {
+    get {_storage._pinPr}
+    set {_uniqueStorage()._pinPr = newValue}
+  }
 
-  public var pinState: String = String()
+  public var pinState: String {
+    get {_storage._pinState}
+    set {_uniqueStorage()._pinState = newValue}
+  }
 
-  public var applied: Bool = false
+  public var applied: Bool {
+    get {_storage._applied}
+    set {_uniqueStorage()._applied = newValue}
+  }
 
-  public var targets: [Ghhud_V1_ToolkitTarget] = []
+  public var targets: [Ghhud_V1_ToolkitTarget] {
+    get {_storage._targets}
+    set {_uniqueStorage()._targets = newValue}
+  }
 
-  public var error: String = String()
+  public var error: String {
+    get {_storage._error}
+    set {_uniqueStorage()._error = newValue}
+  }
 
   /// progress on one line
-  public var summary: String = String()
+  public var summary: String {
+    get {_storage._summary}
+    set {_uniqueStorage()._summary = newValue}
+  }
+
+  /// the release's notes (proposals)
+  public var notes: String {
+    get {_storage._notes}
+    set {_uniqueStorage()._notes = newValue}
+  }
+
+  /// the release's page (proposals)
+  public var notesURL: String {
+    get {_storage._notesURL}
+    set {_uniqueStorage()._notesURL = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _started: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
-  fileprivate var _updated: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public nonisolated struct Ghhud_V1_ToolkitTarget: Sendable {
@@ -2830,7 +2880,7 @@ nonisolated extension Ghhud_V1_EventKind: SwiftProtobuf._ProtoNameProviding {
 }
 
 nonisolated extension Ghhud_V1_AlertType: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ALERT_TYPE_UNSPECIFIED\0\u{1}ALERT_TYPE_READY\0\u{1}ALERT_TYPE_BLOCKED\0\u{1}ALERT_TYPE_RUN_FINISHED\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ALERT_TYPE_UNSPECIFIED\0\u{1}ALERT_TYPE_READY\0\u{1}ALERT_TYPE_BLOCKED\0\u{1}ALERT_TYPE_RUN_FINISHED\0\u{1}ALERT_TYPE_TOOL_RELEASE\0")
 }
 
 nonisolated extension Ghhud_V1_GetSnapshotRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -7170,93 +7220,167 @@ nonisolated extension Ghhud_V1_ToolkitRepo: SwiftProtobuf.Message, SwiftProtobuf
 
 nonisolated extension Ghhud_V1_ToolkitRolloutState: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ToolkitRolloutState"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}tool\0\u{1}version\0\u{1}from\0\u{1}stage\0\u{1}started\0\u{1}updated\0\u{3}pin_pr\0\u{3}pin_state\0\u{1}applied\0\u{1}targets\0\u{1}error\0\u{1}summary\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}tool\0\u{1}version\0\u{1}from\0\u{1}stage\0\u{1}started\0\u{1}updated\0\u{3}pin_pr\0\u{3}pin_state\0\u{1}applied\0\u{1}targets\0\u{1}error\0\u{1}summary\0\u{1}notes\0\u{3}notes_url\0")
+
+  fileprivate class _StorageClass {
+    var _id: String = String()
+    var _tool: String = String()
+    var _version: String = String()
+    var _from: String = String()
+    var _stage: String = String()
+    var _started: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+    var _updated: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+    var _pinPr: String = String()
+    var _pinState: String = String()
+    var _applied: Bool = false
+    var _targets: [Ghhud_V1_ToolkitTarget] = []
+    var _error: String = String()
+    var _summary: String = String()
+    var _notes: String = String()
+    var _notesURL: String = String()
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _id = source._id
+      _tool = source._tool
+      _version = source._version
+      _from = source._from
+      _stage = source._stage
+      _started = source._started
+      _updated = source._updated
+      _pinPr = source._pinPr
+      _pinState = source._pinState
+      _applied = source._applied
+      _targets = source._targets
+      _error = source._error
+      _summary = source._summary
+      _notes = source._notes
+      _notesURL = source._notesURL
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.tool) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.version) }()
-      case 4: try { try decoder.decodeSingularStringField(value: &self.from) }()
-      case 5: try { try decoder.decodeSingularStringField(value: &self.stage) }()
-      case 6: try { try decoder.decodeSingularMessageField(value: &self._started) }()
-      case 7: try { try decoder.decodeSingularMessageField(value: &self._updated) }()
-      case 8: try { try decoder.decodeSingularStringField(value: &self.pinPr) }()
-      case 9: try { try decoder.decodeSingularStringField(value: &self.pinState) }()
-      case 10: try { try decoder.decodeSingularBoolField(value: &self.applied) }()
-      case 11: try { try decoder.decodeRepeatedMessageField(value: &self.targets) }()
-      case 12: try { try decoder.decodeSingularStringField(value: &self.error) }()
-      case 13: try { try decoder.decodeSingularStringField(value: &self.summary) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._id) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._tool) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._version) }()
+        case 4: try { try decoder.decodeSingularStringField(value: &_storage._from) }()
+        case 5: try { try decoder.decodeSingularStringField(value: &_storage._stage) }()
+        case 6: try { try decoder.decodeSingularMessageField(value: &_storage._started) }()
+        case 7: try { try decoder.decodeSingularMessageField(value: &_storage._updated) }()
+        case 8: try { try decoder.decodeSingularStringField(value: &_storage._pinPr) }()
+        case 9: try { try decoder.decodeSingularStringField(value: &_storage._pinState) }()
+        case 10: try { try decoder.decodeSingularBoolField(value: &_storage._applied) }()
+        case 11: try { try decoder.decodeRepeatedMessageField(value: &_storage._targets) }()
+        case 12: try { try decoder.decodeSingularStringField(value: &_storage._error) }()
+        case 13: try { try decoder.decodeSingularStringField(value: &_storage._summary) }()
+        case 14: try { try decoder.decodeSingularStringField(value: &_storage._notes) }()
+        case 15: try { try decoder.decodeSingularStringField(value: &_storage._notesURL) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if !self.id.isEmpty {
-      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
-    }
-    if !self.tool.isEmpty {
-      try visitor.visitSingularStringField(value: self.tool, fieldNumber: 2)
-    }
-    if !self.version.isEmpty {
-      try visitor.visitSingularStringField(value: self.version, fieldNumber: 3)
-    }
-    if !self.from.isEmpty {
-      try visitor.visitSingularStringField(value: self.from, fieldNumber: 4)
-    }
-    if !self.stage.isEmpty {
-      try visitor.visitSingularStringField(value: self.stage, fieldNumber: 5)
-    }
-    try { if let v = self._started {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
-    } }()
-    try { if let v = self._updated {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
-    } }()
-    if !self.pinPr.isEmpty {
-      try visitor.visitSingularStringField(value: self.pinPr, fieldNumber: 8)
-    }
-    if !self.pinState.isEmpty {
-      try visitor.visitSingularStringField(value: self.pinState, fieldNumber: 9)
-    }
-    if self.applied != false {
-      try visitor.visitSingularBoolField(value: self.applied, fieldNumber: 10)
-    }
-    if !self.targets.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.targets, fieldNumber: 11)
-    }
-    if !self.error.isEmpty {
-      try visitor.visitSingularStringField(value: self.error, fieldNumber: 12)
-    }
-    if !self.summary.isEmpty {
-      try visitor.visitSingularStringField(value: self.summary, fieldNumber: 13)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._id.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._id, fieldNumber: 1)
+      }
+      if !_storage._tool.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._tool, fieldNumber: 2)
+      }
+      if !_storage._version.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._version, fieldNumber: 3)
+      }
+      if !_storage._from.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._from, fieldNumber: 4)
+      }
+      if !_storage._stage.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._stage, fieldNumber: 5)
+      }
+      try { if let v = _storage._started {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+      } }()
+      try { if let v = _storage._updated {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
+      } }()
+      if !_storage._pinPr.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._pinPr, fieldNumber: 8)
+      }
+      if !_storage._pinState.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._pinState, fieldNumber: 9)
+      }
+      if _storage._applied != false {
+        try visitor.visitSingularBoolField(value: _storage._applied, fieldNumber: 10)
+      }
+      if !_storage._targets.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._targets, fieldNumber: 11)
+      }
+      if !_storage._error.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._error, fieldNumber: 12)
+      }
+      if !_storage._summary.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._summary, fieldNumber: 13)
+      }
+      if !_storage._notes.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._notes, fieldNumber: 14)
+      }
+      if !_storage._notesURL.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._notesURL, fieldNumber: 15)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: Ghhud_V1_ToolkitRolloutState, rhs: Ghhud_V1_ToolkitRolloutState) -> Bool {
-    if lhs.id != rhs.id {return false}
-    if lhs.tool != rhs.tool {return false}
-    if lhs.version != rhs.version {return false}
-    if lhs.from != rhs.from {return false}
-    if lhs.stage != rhs.stage {return false}
-    if lhs._started != rhs._started {return false}
-    if lhs._updated != rhs._updated {return false}
-    if lhs.pinPr != rhs.pinPr {return false}
-    if lhs.pinState != rhs.pinState {return false}
-    if lhs.applied != rhs.applied {return false}
-    if lhs.targets != rhs.targets {return false}
-    if lhs.error != rhs.error {return false}
-    if lhs.summary != rhs.summary {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._id != rhs_storage._id {return false}
+        if _storage._tool != rhs_storage._tool {return false}
+        if _storage._version != rhs_storage._version {return false}
+        if _storage._from != rhs_storage._from {return false}
+        if _storage._stage != rhs_storage._stage {return false}
+        if _storage._started != rhs_storage._started {return false}
+        if _storage._updated != rhs_storage._updated {return false}
+        if _storage._pinPr != rhs_storage._pinPr {return false}
+        if _storage._pinState != rhs_storage._pinState {return false}
+        if _storage._applied != rhs_storage._applied {return false}
+        if _storage._targets != rhs_storage._targets {return false}
+        if _storage._error != rhs_storage._error {return false}
+        if _storage._summary != rhs_storage._summary {return false}
+        if _storage._notes != rhs_storage._notes {return false}
+        if _storage._notesURL != rhs_storage._notesURL {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -637,6 +637,13 @@ func (h *Hub) publish() {
 	snap := h.snap
 	h.mu.Unlock()
 
+	if ts != nil && h.ownsDispatch() {
+		h.alertMu.Lock()
+		alerts := h.alerter.Toolkit(*ts)
+		h.alertMu.Unlock()
+		defer h.post(alerts) // after the snapshot that shows them
+	}
+
 	h.subsMu.Lock()
 	defer h.subsMu.Unlock()
 	for s := range h.subs {

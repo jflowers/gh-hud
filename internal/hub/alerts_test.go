@@ -10,6 +10,7 @@ import (
 	"github.com/jflowers/gh-hud/internal/dispatch"
 	"github.com/jflowers/gh-hud/internal/model"
 	"github.com/jflowers/gh-hud/internal/notify"
+	"github.com/jflowers/gh-hud/internal/toolkit"
 )
 
 func texts(alerts []Alert) []string {
@@ -43,6 +44,28 @@ func TestRunsSeedsThenAlerts(t *testing.T) {
 	}
 	if got[0].Type != AlertRunFinished || got[0].Run == nil || got[0].Run.ID != "new" {
 		t.Errorf("alert = %+v", got[0])
+	}
+}
+
+func TestToolkitSeedsThenAlerts(t *testing.T) {
+	a := NewAlerter(on())
+	snap := func(rs ...toolkit.Rollout) toolkit.Snapshot { return toolkit.Snapshot{Rollouts: rs} }
+	old := toolkit.Rollout{ID: "uf@0.22.0", Tool: "uf", Version: "0.22.0", From: "0.21.0", Stage: toolkit.StageProposed}
+	if got := a.Toolkit(snap(old)); got != nil {
+		t.Fatalf("first look must only seed, got %q", texts(got))
+	}
+	aq := toolkit.Rollout{ID: "aq@0.5.0", Tool: "aq", Version: "0.5.0", From: "0.4.2", Stage: toolkit.StageProposed}
+	running := toolkit.Rollout{ID: "gaze@2.4.0", Tool: "gaze", Stage: toolkit.StagePin}
+	got := a.Toolkit(snap(aq, running, old))
+	want := []string{"aq 0.5.0 released (the fleet runs 0.4.2): its rollout waits for your go-ahead"}
+	if !reflect.DeepEqual(texts(got), want) {
+		t.Errorf("alerts = %q, want %q", texts(got), want)
+	}
+	if got[0].Type != AlertToolRelease || got[0].Ref != "aq@0.5.0" {
+		t.Errorf("alert = %+v", got[0])
+	}
+	if got := a.Toolkit(snap(aq, running, old)); got != nil {
+		t.Errorf("alerted twice: %q", texts(got))
 	}
 }
 

@@ -1310,9 +1310,18 @@ Select a tool with a newer release and press `u` twice. The hub then:
    Failed and refused targets, held PRs and failing CI show as waiting on
    you.
 
+**New releases are proposed.** Each status check (every 30 minutes, or `x`)
+looks at every tool's latest release. One newer than the fleet's pin
+becomes a proposed rollout (`◆`) in `T`, with its release notes, and a
+notification on the Mac and the phone. Nothing starts until you approve it:
+`a` twice on the proposal (or `u` twice on the tool). `d` declines it, and
+that release isn't proposed again; `u` still rolls it out. A newer release
+replaces an older proposal, and a proposal goes once the pin catches up
+some other way. Nothing is proposed for a tool while it rolls out.
+
 Other keys: `c` cancels a rollout (its PRs stay open), `R` retries a failed
 or cancelled one (scaffolding only the targets that failed), `d` dismisses a
-finished one, `o` opens the PR waiting on you (or a tool's releases), and `x`
+finished one, `o` opens the PR waiting on you (a proposal's release, or a tool's releases), and `x`
 checks releases and versions now (otherwise every 30 minutes). Rollouts
 survive restarts (`~/.local/state/gh-hud/toolkit.json`), and notifications
 mark the pin PR, the merge, the finish and failures. The same is on the
@@ -1321,6 +1330,7 @@ command line:
 ```sh
 gh-hud toolkit status
 gh-hud toolkit rollout uf          # the latest release; or uf@0.22.0
+gh-hud toolkit approve|decline uf@0.22.0   # a proposed release
 gh-hud toolkit cancel|retry|dismiss uf@0.22.0
 gh-hud toolkit check
 ```

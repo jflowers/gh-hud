@@ -99,7 +99,7 @@ public object ToolkitRolloutStateKt {
 
     /**
      * ```
-     * pin, scaffold, track, done, failed, cancelled
+     * proposed, pin, scaffold, track, done, failed, cancelled
      * ```
      *
      * `string stage = 5 [json_name = "stage"];`
@@ -113,7 +113,7 @@ public object ToolkitRolloutStateKt {
       }
     /**
      * ```
-     * pin, scaffold, track, done, failed, cancelled
+     * proposed, pin, scaffold, track, done, failed, cancelled
      * ```
      *
      * `string stage = 5 [json_name = "stage"];`
@@ -338,6 +338,56 @@ public object ToolkitRolloutStateKt {
      */
     public fun clearSummary() {
       _builder.clearSummary()
+    }
+
+    /**
+     * ```
+     * the release's notes (proposals)
+     * ```
+     *
+     * `string notes = 14 [json_name = "notes"];`
+     */
+    public var notes: kotlin.String
+      @kotlin.jvm.JvmName("getNotes")
+        get() = _builder.notes
+      @kotlin.jvm.JvmName("setNotes")
+        set(value) {
+        _builder.notes = value
+      }
+    /**
+     * ```
+     * the release's notes (proposals)
+     * ```
+     *
+     * `string notes = 14 [json_name = "notes"];`
+     */
+    public fun clearNotes() {
+      _builder.clearNotes()
+    }
+
+    /**
+     * ```
+     * the release's page (proposals)
+     * ```
+     *
+     * `string notes_url = 15 [json_name = "notesUrl"];`
+     */
+    public var notesUrl: kotlin.String
+      @kotlin.jvm.JvmName("getNotesUrl")
+        get() = _builder.notesUrl
+      @kotlin.jvm.JvmName("setNotesUrl")
+        set(value) {
+        _builder.notesUrl = value
+      }
+    /**
+     * ```
+     * the release's page (proposals)
+     * ```
+     *
+     * `string notes_url = 15 [json_name = "notesUrl"];`
+     */
+    public fun clearNotesUrl() {
+      _builder.clearNotesUrl()
     }
   }
 }

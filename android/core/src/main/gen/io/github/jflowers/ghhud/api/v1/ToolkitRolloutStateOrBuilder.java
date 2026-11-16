@@ -60,7 +60,7 @@ public interface ToolkitRolloutStateOrBuilder extends
 
   /**
    * <pre>
-   * pin, scaffold, track, done, failed, cancelled
+   * proposed, pin, scaffold, track, done, failed, cancelled
    * </pre>
    *
    * <code>string stage = 5 [json_name = "stage"];</code>
@@ -69,7 +69,7 @@ public interface ToolkitRolloutStateOrBuilder extends
   java.lang.String getStage();
   /**
    * <pre>
-   * pin, scaffold, track, done, failed, cancelled
+   * proposed, pin, scaffold, track, done, failed, cancelled
    * </pre>
    *
    * <code>string stage = 5 [json_name = "stage"];</code>
@@ -175,4 +175,44 @@ public interface ToolkitRolloutStateOrBuilder extends
    */
   com.google.protobuf.ByteString
       getSummaryBytes();
+
+  /**
+   * <pre>
+   * the release's notes (proposals)
+   * </pre>
+   *
+   * <code>string notes = 14 [json_name = "notes"];</code>
+   * @return The notes.
+   */
+  java.lang.String getNotes();
+  /**
+   * <pre>
+   * the release's notes (proposals)
+   * </pre>
+   *
+   * <code>string notes = 14 [json_name = "notes"];</code>
+   * @return The bytes for notes.
+   */
+  com.google.protobuf.ByteString
+      getNotesBytes();
+
+  /**
+   * <pre>
+   * the release's page (proposals)
+   * </pre>
+   *
+   * <code>string notes_url = 15 [json_name = "notesUrl"];</code>
+   * @return The notesUrl.
+   */
+  java.lang.String getNotesUrl();
+  /**
+   * <pre>
+   * the release's page (proposals)
+   * </pre>
+   *
+   * <code>string notes_url = 15 [json_name = "notesUrl"];</code>
+   * @return The bytes for notesUrl.
+   */
+  com.google.protobuf.ByteString
+      getNotesUrlBytes();
 }

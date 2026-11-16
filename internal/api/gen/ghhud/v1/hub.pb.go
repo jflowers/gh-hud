@@ -370,6 +370,7 @@ const (
 	AlertType_ALERT_TYPE_READY        AlertType = 1 // your PR is ready for a maintainer
 	AlertType_ALERT_TYPE_BLOCKED      AlertType = 2 // an agent has waited on you too long
 	AlertType_ALERT_TYPE_RUN_FINISHED AlertType = 3
+	AlertType_ALERT_TYPE_TOOL_RELEASE AlertType = 4 // a tool released; its rollout waits for you (ref is tool@version)
 )
 
 // Enum value maps for AlertType.
@@ -379,12 +380,14 @@ var (
 		1: "ALERT_TYPE_READY",
 		2: "ALERT_TYPE_BLOCKED",
 		3: "ALERT_TYPE_RUN_FINISHED",
+		4: "ALERT_TYPE_TOOL_RELEASE",
 	}
 	AlertType_value = map[string]int32{
 		"ALERT_TYPE_UNSPECIFIED":  0,
 		"ALERT_TYPE_READY":        1,
 		"ALERT_TYPE_BLOCKED":      2,
 		"ALERT_TYPE_RUN_FINISHED": 3,
+		"ALERT_TYPE_TOOL_RELEASE": 4,
 	}
 )
 
@@ -6247,7 +6250,7 @@ type ToolkitRolloutState struct {
 	Tool          string                 `protobuf:"bytes,2,opt,name=tool,proto3" json:"tool,omitempty"`
 	Version       string                 `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
 	From          string                 `protobuf:"bytes,4,opt,name=from,proto3" json:"from,omitempty"`
-	Stage         string                 `protobuf:"bytes,5,opt,name=stage,proto3" json:"stage,omitempty"` // pin, scaffold, track, done, failed, cancelled
+	Stage         string                 `protobuf:"bytes,5,opt,name=stage,proto3" json:"stage,omitempty"` // proposed, pin, scaffold, track, done, failed, cancelled
 	Started       *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=started,proto3" json:"started,omitempty"`
 	Updated       *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated,proto3" json:"updated,omitempty"`
 	PinPr         string                 `protobuf:"bytes,8,opt,name=pin_pr,json=pinPr,proto3" json:"pin_pr,omitempty"`
@@ -6255,7 +6258,9 @@ type ToolkitRolloutState struct {
 	Applied       bool                   `protobuf:"varint,10,opt,name=applied,proto3" json:"applied,omitempty"`
 	Targets       []*ToolkitTarget       `protobuf:"bytes,11,rep,name=targets,proto3" json:"targets,omitempty"`
 	Error         string                 `protobuf:"bytes,12,opt,name=error,proto3" json:"error,omitempty"`
-	Summary       string                 `protobuf:"bytes,13,opt,name=summary,proto3" json:"summary,omitempty"` // progress on one line
+	Summary       string                 `protobuf:"bytes,13,opt,name=summary,proto3" json:"summary,omitempty"`                   // progress on one line
+	Notes         string                 `protobuf:"bytes,14,opt,name=notes,proto3" json:"notes,omitempty"`                       // the release's notes (proposals)
+	NotesUrl      string                 `protobuf:"bytes,15,opt,name=notes_url,json=notesUrl,proto3" json:"notes_url,omitempty"` // the release's page (proposals)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6377,6 +6382,20 @@ func (x *ToolkitRolloutState) GetError() string {
 func (x *ToolkitRolloutState) GetSummary() string {
 	if x != nil {
 		return x.Summary
+	}
+	return ""
+}
+
+func (x *ToolkitRolloutState) GetNotes() string {
+	if x != nil {
+		return x.Notes
+	}
+	return ""
+}
+
+func (x *ToolkitRolloutState) GetNotesUrl() string {
+	if x != nil {
+		return x.NotesUrl
 	}
 	return ""
 }
@@ -6982,7 +7001,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\vToolkitRepo\x12\x16\n" +
 	"\x06target\x18\x01 \x01(\tR\x06target\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\tR\x05error\"\x9a\x03\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"\xcd\x03\n" +
 	"\x13ToolkitRolloutState\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04tool\x18\x02 \x01(\tR\x04tool\x12\x18\n" +
@@ -6997,7 +7016,9 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	" \x01(\bR\aapplied\x121\n" +
 	"\atargets\x18\v \x03(\v2\x17.ghhud.v1.ToolkitTargetR\atargets\x12\x14\n" +
 	"\x05error\x18\f \x01(\tR\x05error\x12\x18\n" +
-	"\asummary\x18\r \x01(\tR\asummary\"\x87\x02\n" +
+	"\asummary\x18\r \x01(\tR\asummary\x12\x14\n" +
+	"\x05notes\x18\x0e \x01(\tR\x05notes\x12\x1b\n" +
+	"\tnotes_url\x18\x0f \x01(\tR\bnotesUrl\"\x87\x02\n" +
 	"\rToolkitTarget\x12\x16\n" +
 	"\x06target\x18\x01 \x01(\tR\x06target\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\x12\x16\n" +
@@ -7045,12 +7066,13 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\tEventKind\x12\x1a\n" +
 	"\x16EVENT_KIND_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11EVENT_KIND_NOTICE\x10\x01\x12\x14\n" +
-	"\x10EVENT_KIND_ALERT\x10\x02*r\n" +
+	"\x10EVENT_KIND_ALERT\x10\x02*\x8f\x01\n" +
 	"\tAlertType\x12\x1a\n" +
 	"\x16ALERT_TYPE_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10ALERT_TYPE_READY\x10\x01\x12\x16\n" +
 	"\x12ALERT_TYPE_BLOCKED\x10\x02\x12\x1b\n" +
-	"\x17ALERT_TYPE_RUN_FINISHED\x10\x032\x96\x0f\n" +
+	"\x17ALERT_TYPE_RUN_FINISHED\x10\x03\x12\x1b\n" +
+	"\x17ALERT_TYPE_TOOL_RELEASE\x10\x042\x96\x0f\n" +
 	"\n" +
 	"HubService\x12J\n" +
 	"\vGetSnapshot\x12\x1c.ghhud.v1.GetSnapshotRequest\x1a\x1d.ghhud.v1.GetSnapshotResponse\x12F\n" +

@@ -35,6 +35,14 @@ public enum AlertType
    * <code>ALERT_TYPE_RUN_FINISHED = 3;</code>
    */
   ALERT_TYPE_RUN_FINISHED(3),
+  /**
+   * <pre>
+   * a tool released; its rollout waits for you (ref is tool&#64;version)
+   * </pre>
+   *
+   * <code>ALERT_TYPE_TOOL_RELEASE = 4;</code>
+   */
+  ALERT_TYPE_TOOL_RELEASE(4),
   UNRECOGNIZED(-1),
   ;
 
@@ -62,6 +70,14 @@ public enum AlertType
    * <code>ALERT_TYPE_RUN_FINISHED = 3;</code>
    */
   public static final int ALERT_TYPE_RUN_FINISHED_VALUE = 3;
+  /**
+   * <pre>
+   * a tool released; its rollout waits for you (ref is tool&#64;version)
+   * </pre>
+   *
+   * <code>ALERT_TYPE_TOOL_RELEASE = 4;</code>
+   */
+  public static final int ALERT_TYPE_TOOL_RELEASE_VALUE = 4;
 
 
   @java.lang.Override
@@ -88,6 +104,7 @@ public enum AlertType
       case 1: return ALERT_TYPE_READY;
       case 2: return ALERT_TYPE_BLOCKED;
       case 3: return ALERT_TYPE_RUN_FINISHED;
+      case 4: return ALERT_TYPE_TOOL_RELEASE;
       default: return null;
     }
   }

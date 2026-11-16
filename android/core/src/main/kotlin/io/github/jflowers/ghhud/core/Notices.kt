@@ -13,6 +13,7 @@ public object Notices {
         AlertType.ALERT_TYPE_READY -> "Ready for review"
         AlertType.ALERT_TYPE_BLOCKED -> "An agent is waiting on you"
         AlertType.ALERT_TYPE_RUN_FINISHED -> "Agent run finished"
+        AlertType.ALERT_TYPE_TOOL_RELEASE -> "A tool released"
         else -> "gh-hud"
     }
 

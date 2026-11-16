@@ -13,6 +13,7 @@ import (
 	"github.com/jflowers/gh-hud/internal/dispatch"
 	"github.com/jflowers/gh-hud/internal/model"
 	"github.com/jflowers/gh-hud/internal/notify"
+	"github.com/jflowers/gh-hud/internal/toolkit"
 )
 
 // AlertTitle is the title every gh-hud desktop alert carries.
@@ -28,6 +29,8 @@ const (
 	AlertBlocked
 	// AlertRunFinished: a dispatched run ended.
 	AlertRunFinished
+	// AlertToolRelease: a tool released, and its rollout waits for you.
+	AlertToolRelease
 )
 
 // Alert is one thing worth interrupting the operator for. It stays
@@ -54,6 +57,8 @@ type Alerter struct {
 	blocked map[string]bool
 	// finished: IDs of runs seen finished (nil until seeded).
 	finished map[string]bool
+	// proposed: IDs of proposed toolkit rollouts (nil until seeded).
+	proposed map[string]bool
 }
 
 // NewAlerter builds an Alerter from the notify settings in cfg.
@@ -162,6 +167,32 @@ func (a *Alerter) Runs(runs []dispatch.Run) []Alert {
 		}
 		run := r
 		out = append(out, Alert{Type: AlertRunFinished, Ref: r.Ref, Run: &run, Text: finishedText(r)})
+	}
+	return out
+}
+
+// Toolkit alerts once per toolkit rollout newly proposed since the
+// previous call. The first call only seeds, so proposals already waiting
+// when gh-hud started stay quiet.
+func (a *Alerter) Toolkit(snap toolkit.Snapshot) []Alert {
+	seen := map[string]bool{}
+	for _, r := range snap.Rollouts {
+		if r.Stage == toolkit.StageProposed {
+			seen[r.ID] = true
+		}
+	}
+	prev := a.proposed
+	a.proposed = seen
+	if prev == nil || !a.notify {
+		return nil
+	}
+	var out []Alert
+	for _, r := range snap.Rollouts {
+		if !seen[r.ID] || prev[r.ID] {
+			continue
+		}
+		text := fmt.Sprintf("%s %s released (the fleet runs %s): its rollout waits for your go-ahead", r.Tool, r.Version, r.From)
+		out = append(out, Alert{Type: AlertToolRelease, Ref: r.ID, Text: text})
 	}
 	return out
 }
