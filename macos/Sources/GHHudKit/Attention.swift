@@ -30,12 +30,24 @@ public enum Approval: Equatable, Sendable {
     /// A gate on a piece of an approved epic, cleared by the epic's ref and
     /// the piece's.
     case gate(ref: String, piece: String)
+    /// A tool release proposed for rollout (a toolkit rollout in stage
+    /// "proposed"): approving rolls it out, declining keeps it from being
+    /// proposed again.
+    case release(id: String, tool: String, version: String)
 
-    /// Whether it can be rejected (an epic plan is approved or left, a
-    /// gate cleared or left).
+    /// Whether it can be turned down: a proposal or a release (an epic
+    /// plan is approved or left, a gate cleared or left).
     public var rejectable: Bool {
-        if case .proposal = self { return true }
-        return false
+        switch self {
+        case .proposal, .release: return true
+        default: return false
+        }
+    }
+
+    /// The button that says no, when there is one.
+    public var rejectVerb: String {
+        if case .release = self { return "Decline" }
+        return "Reject"
     }
 
     /// The button that says yes: "Clear" for a gate, "Approve" otherwise.
@@ -82,7 +94,8 @@ public struct Attention: Equatable, Sendable {
     public static let empty = Attention(sections: [], count: 0)
 
     /// What needs you in a snapshot: agents waiting on you, supervisor
-    /// proposals and epic plans to approve, epic gates to clear, reviews requested of you, and
+    /// proposals and epic plans to approve, epic gates to clear, tool releases to roll out,
+    /// reviews requested of you, and
     /// your PRs ready for a maintainer. Newest first.
     public init(_ s: Ghhud_V1_Snapshot) {
         let items = s.result.items
@@ -113,6 +126,7 @@ public struct Attention: Equatable, Sendable {
             AttentionSection(id: "proposals", title: "Proposals awaiting approval", rows: Self.proposals(s)),
             AttentionSection(id: "epics", title: "Epic plans awaiting approval", rows: Self.epics(s)),
             AttentionSection(id: "gates", title: "Epic gates only you can clear", rows: Self.gates(s)),
+            AttentionSection(id: "releases", title: "Tool releases awaiting approval", rows: Self.releases(s)),
             AttentionSection(id: "review", title: "Review requested", rows: rows(.reviewRequested)),
             AttentionSection(id: "ready", title: "Ready for a maintainer", rows: rows(.readyForMaintainer)),
         ]
@@ -157,6 +171,21 @@ public struct Attention: Equatable, Sendable {
                     url: URL(string: e.url) ?? Links.forRef(e.ref),
                     updated: e.plan.hasCreated ? e.plan.created.date : nil,
                     approval: .epic(ref: e.ref, planID: e.plan.id))
+            }
+    }
+
+    /// Tool releases the toolkit proposes, oldest first.
+    static func releases(_ s: Ghhud_V1_Snapshot) -> [AttentionRow] {
+        s.toolkit.rollouts.filter { $0.stage == "proposed" }
+            .sorted { $0.started.date < $1.started.date }
+            .map { r in
+                AttentionRow(
+                    id: "release:" + r.id,
+                    title: "\(r.tool) \(r.version)",
+                    detail: r.from.isEmpty ? "new release" : "new release · the fleet runs \(r.from)",
+                    url: r.notesURL.isEmpty ? nil : URL(string: r.notesURL),
+                    updated: r.hasStarted ? r.started.date : nil,
+                    approval: .release(id: r.id, tool: r.tool, version: r.version))
             }
     }
 

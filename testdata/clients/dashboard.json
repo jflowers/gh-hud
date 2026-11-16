@@ -249,5 +249,23 @@
     {"ref": "acme/docs#5", "title": "Reading", "state": "reading"},
     {"ref": "acme/docs#6", "title": "Broken", "state": "error", "error": "no such issue"},
     {"ref": "acme/docs#7", "title": "Fresh", "state": "planned"}
-  ]
+  ],
+  "toolkit": {
+    "tools": [
+      {"name": "uf", "release": "acme/uf", "pin": "0.21.0", "applied": "0.21.0", "latest": "0.22.0", "scaffolds": true}
+    ],
+    "rollouts": [
+      {
+        "id": "uf@0.22.0", "tool": "uf", "version": "0.22.0", "from": "0.21.0", "stage": "proposed",
+        "started": "2026-11-15T10:00:00Z", "updated": "2026-11-15T10:00:00Z",
+        "summary": "new release, waiting for your go-ahead (fleet on 0.21.0)",
+        "notes": "## Fixes\n- faster", "notesUrl": "https://github.com/acme/uf/releases/tag/v0.22.0"
+      },
+      {
+        "id": "gaze@2.4.0", "tool": "gaze", "version": "2.4.0", "from": "2.3.0", "stage": "track",
+        "started": "2026-11-15T09:00:00Z", "updated": "2026-11-15T09:30:00Z", "summary": "fleet …"
+      }
+    ],
+    "checkedAt": "2026-11-15T10:00:00Z"
+  }
 }

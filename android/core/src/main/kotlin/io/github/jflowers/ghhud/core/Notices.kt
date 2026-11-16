@@ -26,6 +26,7 @@ public object Notices {
         is Approval.Proposal -> "A proposal awaits your approval"
         is Approval.Epic -> "An epic plan awaits your approval"
         is Approval.Gate -> "An epic gate only you can clear"
+        is Approval.Release -> "A tool release awaits your go-ahead"
     }
 }
 

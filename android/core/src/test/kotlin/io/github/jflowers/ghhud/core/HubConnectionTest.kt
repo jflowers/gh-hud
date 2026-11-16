@@ -2,6 +2,9 @@ package io.github.jflowers.ghhud.core
 
 import io.github.jflowers.ghhud.api.v1.AlertType
 import io.github.jflowers.ghhud.api.v1.ApproveProposalRequest
+import io.github.jflowers.ghhud.api.v1.ToolkitAction
+import io.github.jflowers.ghhud.api.v1.ToolkitControlRequest
+import io.github.jflowers.ghhud.api.v1.ToolkitRolloutRequest
 import io.github.jflowers.ghhud.api.v1.EventKind
 import io.github.jflowers.ghhud.api.v1.SubscribeResponse
 import io.github.jflowers.ghhud.api.v1.alert
@@ -162,7 +165,22 @@ class HubConnectionTest {
                 .build(),
         )
         assertEquals("plan replaced", hub.approve(Approval.Epic("o/r#1", "old")))
-        assertEquals("only a proposal can be rejected", hub.reject(Approval.Gate("o/r#1", "o/r#2")))
+        assertEquals("only a proposal or a release can be turned down", hub.reject(Approval.Gate("o/r#1", "o/r#2")))
+
+        server.enqueue(MockResponse.Builder().setHeader("Content-Type", "application/proto").build())
+        assertNull(hub.approve(Approval.Release("uf@0.22.0", "uf", "0.22.0")))
+        var r = server.takeRequest() // the failed epic approval
+        r = server.takeRequest()
+        assertEquals("/ghhud.v1.HubService/ToolkitRollout", r.url.encodedPath)
+        val roll = ToolkitRolloutRequest.parseFrom(r.body!!.toByteArray())
+        assertEquals("uf" to "0.22.0", roll.tool to roll.version)
+
+        server.enqueue(MockResponse.Builder().setHeader("Content-Type", "application/proto").build())
+        assertNull(hub.reject(Approval.Release("uf@0.22.0", "uf", "0.22.0")))
+        r = server.takeRequest()
+        assertEquals("/ghhud.v1.HubService/ToolkitControl", r.url.encodedPath)
+        val ctl = ToolkitControlRequest.parseFrom(r.body!!.toByteArray())
+        assertEquals(ToolkitAction.TOOLKIT_ACTION_DISMISS to "uf@0.22.0", ctl.action to ctl.id)
     }
 
     @Test

@@ -37,6 +37,9 @@ import io.github.jflowers.ghhud.api.v1.refreshRequest
 import io.github.jflowers.ghhud.api.v1.rejectProposalRequest
 import io.github.jflowers.ghhud.api.v1.subscribeRequest
 import io.github.jflowers.ghhud.api.v1.RefreshTarget
+import io.github.jflowers.ghhud.api.v1.ToolkitAction
+import io.github.jflowers.ghhud.api.v1.toolkitControlRequest
+import io.github.jflowers.ghhud.api.v1.toolkitRolloutRequest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -211,12 +214,33 @@ public class HubConnection(
                 headers,
             ),
         )
+        is Approval.Release -> why(
+            hub.toolkitRollout(
+                toolkitRolloutRequest {
+                    tool = a.tool
+                    version = a.version
+                },
+                headers,
+            ),
+        )
     }
 
-    /** Rejects a supervisor proposal. Returns why it failed, if it did. */
-    public suspend fun reject(a: Approval): String? {
-        if (a !is Approval.Proposal) return "only a proposal can be rejected"
-        return why(hub.rejectProposal(rejectProposalRequest { id = a.id }, headers))
+    /**
+     * Rejects a supervisor proposal, or declines a tool release. Returns why
+     * it failed, if it did.
+     */
+    public suspend fun reject(a: Approval): String? = when (a) {
+        is Approval.Proposal -> why(hub.rejectProposal(rejectProposalRequest { id = a.id }, headers))
+        is Approval.Release -> why(
+            hub.toolkitControl(
+                toolkitControlRequest {
+                    action = ToolkitAction.TOOLKIT_ACTION_DISMISS
+                    id = a.id
+                },
+                headers,
+            ),
+        )
+        else -> "only a proposal or a release can be turned down"
     }
 
     /** Where an agent task could start on an item now. */

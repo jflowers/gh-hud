@@ -39,11 +39,21 @@ public sealed interface Approval {
     /** A gate on a piece of an approved epic, cleared by both refs. */
     public data class Gate(val ref: String, val piece: String) : Approval
 
-    /** Whether it can be rejected: only a proposal. */
-    public val rejectable: Boolean get() = this is Proposal
+    /**
+     * A tool release proposed for rollout (a toolkit rollout in stage
+     * "proposed"): approving rolls it out, declining keeps it from being
+     * proposed again.
+     */
+    public data class Release(val id: String, val tool: String, val version: String) : Approval
+
+    /** Whether it can be turned down: a proposal or a release. */
+    public val rejectable: Boolean get() = this is Proposal || this is Release
 
     /** The button that says yes. */
     public val verb: String get() = if (this is Gate) "Clear" else "Approve"
+
+    /** The button that says no, when there is one. */
+    public val rejectVerb: String get() = if (this is Release) "Decline" else "Reject"
 }
 
 /** One row on the screen. */
@@ -71,7 +81,8 @@ public data class Attention(
 
         /**
          * What needs you in a snapshot: agents waiting on you, supervisor
-         * proposals and epic plans to approve, epic gates to clear,
+         * proposals and epic plans to approve, epic gates to clear, tool
+         * releases to roll out,
          * reviews requested of you, and your PRs ready for a maintainer.
          */
         public fun of(s: Snapshot): Attention {
@@ -104,6 +115,7 @@ public data class Attention(
                 AttentionSection("proposals", "Proposals awaiting approval", proposals(s)),
                 AttentionSection("epics", "Epic plans awaiting approval", epics(s)),
                 AttentionSection("gates", "Epic gates only you can clear", gates(s)),
+                AttentionSection("releases", "Tool releases awaiting approval", releases(s)),
                 AttentionSection("review", "Review requested", rows(Category.REVIEW_REQUESTED)),
                 AttentionSection("ready", "Ready for a maintainer", rows(Category.READY_FOR_MAINTAINER)),
             )
@@ -150,6 +162,21 @@ public data class Attention(
                         url = e.url.ifEmpty { null } ?: Links.forRef(e.ref),
                         updated = if (e.plan.hasCreated()) e.plan.created.instant else null,
                         approval = Approval.Epic(e.ref, e.plan.id),
+                    )
+                }
+
+        /** Tool releases the toolkit proposes, oldest first. */
+        internal fun releases(s: Snapshot): List<AttentionRow> =
+            s.toolkit.rolloutsList.filter { it.stage == "proposed" }
+                .sortedBy { it.started.instant }
+                .map { r ->
+                    AttentionRow(
+                        id = "release:" + r.id,
+                        title = "${r.tool} ${r.version}",
+                        detail = if (r.from.isEmpty()) "new release" else "new release · the fleet runs ${r.from}",
+                        url = r.notesUrl.ifEmpty { null },
+                        updated = if (r.hasStarted()) r.started.instant else null,
+                        approval = Approval.Release(r.id, r.tool, r.version),
                     )
                 }
 

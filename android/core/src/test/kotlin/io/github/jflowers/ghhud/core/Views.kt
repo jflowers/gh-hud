@@ -164,6 +164,7 @@ object Views {
                     is Approval.Proposal -> "proposal ${ap.id}"
                     is Approval.Epic -> "epic ${ap.ref} ${ap.planId}"
                     is Approval.Gate -> "gate ${ap.ref} ${ap.piece}"
+                    is Approval.Release -> "release ${ap.id} ${ap.tool} ${ap.version}"
                     null -> null
                 }
             }
