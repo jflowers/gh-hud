@@ -2,6 +2,9 @@ package io.github.jflowers.ghhud.core
 
 import com.google.protobuf.MessageLite
 import io.github.jflowers.ghhud.api.v1.DispatchRequest
+import io.github.jflowers.ghhud.api.v1.ItemChoicesRequest
+import io.github.jflowers.ghhud.api.v1.ItemKind
+import io.github.jflowers.ghhud.api.v1.itemChoicesResponse
 import io.github.jflowers.ghhud.api.v1.dispatchResponse
 import io.github.jflowers.ghhud.api.v1.enqueueResponse
 import io.github.jflowers.ghhud.api.v1.item
@@ -107,6 +110,52 @@ class ItemCommandsTest {
         )
         refused("no such run")
         assertEquals(Answer.No("Can't re-check fix on acme/r#7: no such run"), ItemCommands.recheck(hub, row))
+    }
+
+    @Test
+    fun startsOneYouName() = runBlocking {
+        ok(
+            itemChoicesResponse {
+                item = item {
+                    kind = ItemKind.ITEM_KIND_PR
+                    url = "https://github.com/acme/r/pull/9"
+                    repo = "acme/r"
+                    num = 9
+                    title = "nine"
+                }
+                choices += menuChoice { task = "ci"; target = "oak"; suggested = true }
+                choices += menuChoice { task = "rebase"; target = "oak" }
+            },
+        )
+        val found = ItemCommands.lookUp(hub, "  https://github.com/acme/r/pull/9/files ")
+        val named = NamedItem("https://github.com/acme/r/pull/9", "acme/r#9", "nine", isPR = true)
+        assertEquals(Answer.Ok(named to listOf(AgentChoice("ci", "oak", suggested = true), AgentChoice("rebase", "oak"))), found)
+        val req = ItemChoicesRequest.parseFrom(server.takeRequest().body!!.toByteArray())
+        assertEquals("https://github.com/acme/r/pull/9/files", req.ref)
+        assertEquals("PR acme/r#9 · nine", named.line)
+
+        ok(dispatchResponse { task = "rebase"; workspace = "oak" })
+        assertEquals(Answer.Ok("Started rebase on acme/r#9 in local:oak"), ItemCommands.run(hub, named, AgentChoice("rebase", "oak")))
+        val d = DispatchRequest.parseFrom(server.takeRequest().body!!.toByteArray())
+        assertEquals("rebase" to "https://github.com/acme/r/pull/9", d.task to d.url)
+
+        ok(itemChoicesResponse { item = item { repo = "acme/r"; num = 3; kind = ItemKind.ITEM_KIND_ISSUE } })
+        assertEquals(
+            Answer.No("Nothing can start on acme/r#3 now: no checkout of acme/r is free, or a person handles it (human-gate)."),
+            ItemCommands.lookUp(hub, "acme/r#3"),
+        )
+        assertEquals(Answer.No("Name an issue or PR"), ItemCommands.lookUp(hub, "  "))
+    }
+
+    @Test
+    fun findsASharedLink() {
+        assertEquals(
+            "https://github.com/acme/r/pull/12",
+            ItemCommands.sharedLink("Fix the thing by ann · Pull Request #12 · acme/r https://github.com/acme/r/pull/12"),
+        )
+        assertEquals("https://github.com/acme/r/issues/4#x", ItemCommands.sharedLink("https://github.com/acme/r/issues/4#x"))
+        assertEquals(null, ItemCommands.sharedLink("https://github.com/acme/r"))
+        assertEquals(null, ItemCommands.sharedLink("acme/r#4"))
     }
 
     @Test

@@ -1,14 +1,24 @@
 package io.github.jflowers.ghhud.core
 
+import io.github.jflowers.ghhud.api.v1.ItemKind
 import io.github.jflowers.ghhud.api.v1.Run
 
 // The commands on an item: start an agent, add one to your queue, re-check
 // its last run. The hub does the work; these say how it went, in the Mac's
 // words (macos/Sources/GHHud/ItemCommands.swift).
 
-/** An agent task you can pick for an item. */
-public data class AgentChoice(val task: String, val target: String, val cmd: String = "") {
+/**
+ * An agent task you can pick for an item. suggested: the item's state
+ * calls for it (only told apart for an item you named).
+ */
+public data class AgentChoice(val task: String, val target: String, val cmd: String = "", val suggested: Boolean = false) {
     val id: String get() = "$task|$target"
+}
+
+/** An issue or PR you named, as the hub found it. */
+public data class NamedItem(val url: String, val ref: String, val title: String, val isPR: Boolean) {
+    /** "PR owner/repo#N · title". */
+    val line: String get() = (if (isPR) "PR " else "Issue ") + "$ref · $title"
 }
 
 public object ItemCommands {
@@ -57,6 +67,49 @@ public object ItemCommands {
             }
         }
     }
+
+    /**
+     * Asks the hub about an issue or PR you name (a GitHub URL or
+     * owner/repo#N): what it is, and every task that can start on it.
+     */
+    public suspend fun lookUp(hub: HubConnection, text: String): Answer<Pair<NamedItem, List<AgentChoice>>> {
+        val ref = text.trim()
+        if (ref.isEmpty()) return Answer.No("Name an issue or PR")
+        return when (val a = hub.itemChoices(ref)) {
+            is Answer.No -> a
+            is Answer.Ok -> {
+                val it = a.value.item
+                val named = NamedItem(it.url, "${it.repo}#${it.num}", it.title, it.kind == ItemKind.ITEM_KIND_PR)
+                if (a.value.choicesCount == 0) {
+                    Answer.No(
+                        "Nothing can start on ${named.ref} now: no checkout of ${it.repo} is free, " +
+                            "or a person handles it (human-gate).",
+                    )
+                } else {
+                    Answer.Ok(named to a.value.choicesList.map { c -> AgentChoice(c.task, c.target, c.cmd, c.suggested) })
+                }
+            }
+        }
+    }
+
+    /** Starts a choice on an item you named; the answer is what to say. */
+    public suspend fun run(hub: HubConnection, item: NamedItem, c: AgentChoice): Answer<String> =
+        when (val a = hub.dispatch(c.task, item.url)) {
+            is Answer.No -> a
+            is Answer.Ok -> {
+                val rec = a.value
+                val at = if (rec.workspace.isEmpty()) "" else " in ${rec.machine.ifEmpty { "local" }}:${rec.workspace}"
+                Answer.Ok("Started ${rec.task.ifEmpty { c.task }} on ${item.ref}$at")
+            }
+        }
+
+    /**
+     * The first GitHub issue or PR link in shared text (a browser shares
+     * "title https://…"), or null.
+     */
+    public fun sharedLink(text: String): String? = itemLink.find(text)?.value
+
+    private val itemLink = Regex("""https?://(www\.)?github\.com/[\w.-]+/[\w.-]+/(pull|issues)/[1-9]\d*\S*""")
 
     /** Reads the item's last run's outcome again; the answer is what to say. */
     public suspend fun recheck(hub: HubConnection, row: ItemRow): Answer<String> {

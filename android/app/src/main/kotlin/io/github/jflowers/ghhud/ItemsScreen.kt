@@ -24,6 +24,8 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import io.github.jflowers.ghhud.core.ItemCommands
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -83,7 +85,14 @@ interface ItemsControl {
 /** The dashboard's items: a filter's rows, searched, narrowed and sorted. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ItemsScreen(ui: Ui, view: ItemsView, ctl: ItemsControl, onOpenItem: (ItemRow) -> Unit, now: Instant = Instant.now()) {
+fun ItemsScreen(
+    ui: Ui,
+    view: ItemsView,
+    ctl: ItemsControl,
+    onOpenItem: (ItemRow) -> Unit,
+    now: Instant = Instant.now(),
+    onNamed: (() -> Unit)? = null,
+) {
     val s = ui.hub.snapshot
     val counts = remember(s) { ItemList.counts(s) }
     val rows = remember(s, view, now.epochSecond / 60) {
@@ -94,7 +103,15 @@ fun ItemsScreen(ui: Ui, view: ItemsView, ctl: ItemsControl, onOpenItem: (ItemRow
         topBar = {
             TopAppBar(
                 title = { Text(view.filter.title, modifier = Modifier.testTag("items-title")) },
-                actions = { SortMenu(view, ctl) },
+                actions = {
+                    // Start an agent on any issue or PR, by its link.
+                    if (onNamed != null) {
+                        IconButton(onClick = onNamed, enabled = ItemCommands.off(ui.hub) == null, modifier = Modifier.testTag("start-named")) {
+                            Icon(Icons.Filled.Add, contentDescription = "Start an agent on a link")
+                        }
+                    }
+                    SortMenu(view, ctl)
+                },
             )
         },
     ) { inner ->

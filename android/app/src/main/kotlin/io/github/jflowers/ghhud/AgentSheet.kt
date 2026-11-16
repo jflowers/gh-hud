@@ -1,5 +1,14 @@
 package io.github.jflowers.ghhud
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import io.github.jflowers.ghhud.core.NamedItem
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +19,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -63,41 +73,150 @@ fun AgentSheet(row: ItemRow, queue: Boolean, act: ItemActions, onDone: (String?)
                     )
                 }
                 is Answer.No -> Text(c.why, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("choices-none"))
-                is Answer.Ok -> for (choice in c.value) {
-                    OutlinedCard(
-                        onClick = {
-                            running = choice.id
-                            error = null
-                            scope.launch {
-                                when (val a = act.run(row, choice, queue)) {
-                                    is Answer.Ok -> onDone(a.value)
-                                    is Answer.No -> error = a.why
-                                }
-                                running = null
+                is Answer.Ok -> ChoiceCards(c.value, running, showSuggested = false) { choice ->
+                    running = choice.id
+                    error = null
+                    scope.launch {
+                        when (val r = act.run(row, choice, queue)) {
+                            is Answer.Ok -> onDone(r.value)
+                            is Answer.No -> error = r.why
+                        }
+                        running = null
+                    }
+                }
+            }
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("sheet-error")) }
+        }
+    }
+}
+
+/** The choices as cards; picking one calls pick. */
+@Composable
+private fun ChoiceCards(choices: List<AgentChoice>, running: String?, showSuggested: Boolean, pick: (AgentChoice) -> Unit) {
+    for (choice in choices) {
+        OutlinedCard(
+            onClick = { pick(choice) },
+            enabled = running == null,
+            modifier = Modifier.fillMaxWidth().testTag("choice:" + choice.id),
+        ) {
+            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(choice.task, style = MaterialTheme.typography.bodyLarge)
+                        if (showSuggested && choice.suggested) {
+                            Text(
+                                "suggested",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier
+                                    .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(50))
+                                    .padding(horizontal = 6.dp, vertical = 1.dp)
+                                    .testTag("suggested:" + choice.task),
+                            )
+                        }
+                    }
+                    if (choice.cmd.isNotEmpty()) {
+                        Text(
+                            choice.cmd,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                if (running == choice.id) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(choice.target, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Start an agent on any issue or PR: you name it (a link, or
+ * owner/repo#N; initial fills the field and is looked up at once), the
+ * hub says what it is and offers every task that fits, the ones it looks
+ * like it needs marked. onDone gets what to say, or null when closed.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NamedAgentSheet(initial: String, act: ItemActions, onDone: (String?) -> Unit) {
+    var text by remember { mutableStateOf(initial) }
+    var looking by remember { mutableStateOf(false) }
+    var found by remember { mutableStateOf<Answer<Pair<NamedItem, List<AgentChoice>>>?>(null) }
+    var running by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val lookUp = {
+        if (text.isNotBlank() && !looking) {
+            looking = true
+            found = null
+            error = null
+            scope.launch {
+                found = act.lookUp(text)
+                looking = false
+            }
+        }
+    }
+    LaunchedEffect(Unit) { if (initial.isNotBlank()) lookUp() }
+    // Fully open: the field brings up the keyboard, and the choices come
+    // under it.
+    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = { onDone(null) }, sheetState = state, modifier = Modifier.testTag("named-sheet")) {
+        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Start an agent", style = MaterialTheme.typography.titleMedium)
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                label = { Text("Issue or PR link, or owner/repo#N") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { lookUp() }),
+                trailingIcon = {
+                    TextButton(onClick = { lookUp() }, enabled = text.isNotBlank() && !looking && running == null, modifier = Modifier.testTag("look-up")) {
+                        Text("Look up")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().testTag("named-target"),
+            )
+            when (val f = found) {
+                null -> if (looking) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Text("Asking the hub about it…", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 8.dp))
+                    }
+                } else {
+                    Text(
+                        "Paste a link to any open issue or pull request, or share one to gh-hud from your browser. " +
+                            "The hub offers every task that fits it, the ones it looks like it needs first.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                is Answer.No -> Text(f.why, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("choices-none"))
+                is Answer.Ok -> {
+                    val (item, choices) = f.value
+                    Text(
+                        item.line,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.testTag("named-item"),
+                    )
+                    ChoiceCards(choices, running, showSuggested = true) { choice ->
+                        running = choice.id
+                        error = null
+                        scope.launch {
+                            when (val r = act.run(item, choice)) {
+                                is Answer.Ok -> onDone(r.value)
+                                is Answer.No -> error = r.why
                             }
-                        },
-                        enabled = running == null,
-                        modifier = Modifier.fillMaxWidth().testTag("choice:" + choice.id),
-                    ) {
-                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(choice.task, style = MaterialTheme.typography.bodyLarge)
-                                if (choice.cmd.isNotEmpty()) {
-                                    Text(
-                                        choice.cmd,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontFamily = FontFamily.Monospace,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                            }
-                            if (running == choice.id) {
-                                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                            } else {
-                                Text(choice.target, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
+                            running = null
                         }
                     }
                 }

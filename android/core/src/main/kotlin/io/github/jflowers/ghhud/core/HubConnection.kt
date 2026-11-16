@@ -13,6 +13,8 @@ import io.github.jflowers.ghhud.api.v1.HubServiceClient
 import io.github.jflowers.ghhud.api.v1.Snapshot
 import io.github.jflowers.ghhud.api.v1.SubscribeResponse
 import io.github.jflowers.ghhud.api.v1.DispatchResponse
+import io.github.jflowers.ghhud.api.v1.ItemChoicesResponse
+import io.github.jflowers.ghhud.api.v1.itemChoicesRequest
 import io.github.jflowers.ghhud.api.v1.MenuChoice
 import io.github.jflowers.ghhud.api.v1.Run
 import io.github.jflowers.ghhud.api.v1.approveEpicRequest
@@ -246,6 +248,13 @@ public class HubConnection(
     /** Where an agent task could start on an item now. */
     public suspend fun menuChoices(url: String): Answer<List<MenuChoice>> =
         answer(hub.menuChoices(menuChoicesRequest { this.url = url }, headers)) { it.choicesList }
+
+    /**
+     * Looks up an issue or PR you name (a GitHub URL or owner/repo#N), on
+     * the dashboard or else on GitHub, and every task that can start on it.
+     */
+    public suspend fun itemChoices(ref: String): Answer<ItemChoicesResponse> =
+        answer(hub.itemChoices(itemChoicesRequest { this.ref = ref }, headers)) { it }
 
     /** Starts an agent task on an item. */
     public suspend fun dispatch(task: String, url: String): Answer<DispatchResponse> =

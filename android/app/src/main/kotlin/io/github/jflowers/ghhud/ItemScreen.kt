@@ -38,6 +38,7 @@ import io.github.jflowers.ghhud.core.AgentChoice
 import io.github.jflowers.ghhud.core.Answer
 import io.github.jflowers.ghhud.core.HubSummary
 import io.github.jflowers.ghhud.core.ItemRow
+import io.github.jflowers.ghhud.core.NamedItem
 import io.github.jflowers.ghhud.core.WatchTarget
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -49,6 +50,11 @@ interface ItemActions {
     suspend fun choices(row: ItemRow, queue: Boolean): Answer<List<AgentChoice>>
     suspend fun run(row: ItemRow, c: AgentChoice, queue: Boolean): Answer<String>
     suspend fun recheck(row: ItemRow): Answer<String>
+
+    /** An issue or PR you name, and every task that can start on it. */
+    suspend fun lookUp(text: String): Answer<Pair<NamedItem, List<AgentChoice>>> = Answer.No("Not available")
+
+    suspend fun run(item: NamedItem, c: AgentChoice): Answer<String> = Answer.No("Not available")
 }
 
 /** A command's outcome, for the snackbar: failures stay until dismissed. */

@@ -19,6 +19,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jflowers.ghhud.api.v1.FleetAction
@@ -37,6 +39,7 @@ import io.github.jflowers.ghhud.core.PlanCommands
 import io.github.jflowers.ghhud.core.PlanItem
 import io.github.jflowers.ghhud.core.ItemCommands
 import io.github.jflowers.ghhud.core.ItemRow
+import io.github.jflowers.ghhud.core.NamedItem
 import io.github.jflowers.ghhud.core.HubAddress
 
 /**
@@ -61,6 +64,10 @@ class MainActivity : ComponentActivity() {
         override suspend fun run(row: ItemRow, c: AgentChoice, queue: Boolean) = ItemCommands.run(model.connection, row, c, queue)
 
         override suspend fun recheck(row: ItemRow) = ItemCommands.recheck(model.connection, row)
+
+        override suspend fun lookUp(text: String) = ItemCommands.lookUp(model.connection, text)
+
+        override suspend fun run(item: NamedItem, c: AgentChoice) = ItemCommands.run(model.connection, item, c)
 
         override fun updateAgents(change: (AgentsView) -> AgentsView) = model.updateAgents(change)
 
@@ -137,13 +144,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         takeAddress(intent)
+        takeShared(intent)
         setContent {
             MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
                 val ui by model.ui.collectAsStateWithLifecycle()
                 val items by model.items.collectAsStateWithLifecycle()
                 val agents by model.agents.collectAsStateWithLifecycle()
                 val fleet by model.fleet.collectAsStateWithLifecycle()
-                AppScreen(ui, items, agents, fleet, actions)
+                AppScreen(ui, items, agents, fleet, actions, shared = shared, onShared = { shared = null })
             }
         }
     }
@@ -151,6 +159,17 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         takeAddress(intent)
+        takeShared(intent)
+    }
+
+    // A GitHub issue or PR link shared to gh-hud (from a browser or the
+    // GitHub app) opens Start an agent with it.
+    private var shared by mutableStateOf<String?>(null)
+
+    private fun takeShared(intent: Intent) {
+        if (intent.action != Intent.ACTION_SEND) return
+        val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: return
+        shared = ItemCommands.sharedLink(text) ?: text.trim()
     }
 
     private fun takeAddress(intent: Intent) {

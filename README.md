@@ -208,6 +208,14 @@ a terminal on the hub's machine. A result shows along the bottom of the
 window. The commands are off when the hub has no dispatcher or only
 follows another gh-hud.
 
+**Start Agent on URL…** (⇧⌘U) works on any open issue or PR, on the
+dashboard or not: paste its link (or `owner/repo#N`; a link on the
+clipboard is filled in). The hub reads it from GitHub and offers every
+task that fits it, a PR's rebase, ci, feedback and review or an issue's
+issue, the ones its state calls for marked **suggested**. It runs as a
+Start Agent would, so `human_gate` and a free checkout of its repo still
+apply.
+
 With a dispatcher, the sidebar also has **Plan** (the TUI's `p`),
 **Agents** (`6`) and **Workspaces** (`9`). Plan shows the open cases
 (Approve or Reject a supervisor's proposal), the enrolled epics (Approve
@@ -313,6 +321,11 @@ it notifies you of the hub's alerts (as the Mac app does) and of
 proposals, epic plans and gates that start waiting on you. Android shows
 this as a silent "gh-hud" notification saying whether the hub is there.
 It starts again when the phone restarts or the app is updated.
+
+To start an agent on any open issue or PR, tap **+** on Items and paste
+its link, or share the link to gh-hud from your browser or the GitHub
+app. As on the Mac (Start Agent on URL), it offers every task that fits,
+the suggested ones marked.
 
 **Install.** Each release (a `v*` tag) carries `gh-hud-VERSION.apk`, for
 any phone or tablet on Android 10 or later. Open the release page on the

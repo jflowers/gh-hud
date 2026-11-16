@@ -36,6 +36,7 @@ import io.github.jflowers.ghhud.core.HubStatus
 import io.github.jflowers.ghhud.core.ItemList
 import io.github.jflowers.ghhud.core.ItemRow
 import io.github.jflowers.ghhud.core.ItemSort
+import io.github.jflowers.ghhud.core.NamedItem
 import io.github.jflowers.ghhud.core.keepingTerms
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -156,6 +157,18 @@ class ItemsScreenTest {
             return Answer.Ok("Started ${c.task} on ${row.ref} in ${c.target}")
         }
         override suspend fun recheck(row: ItemRow): Answer<String> = Answer.No("Can't re-check fix on ${row.ref}: gone")
+        override suspend fun lookUp(text: String): Answer<Pair<NamedItem, List<AgentChoice>>> {
+            asked += "look up $text"
+            if (!text.contains("/pull/9")) return Answer.No("\"$text\" isn't a GitHub issue or pull request URL")
+            return Answer.Ok(
+                NamedItem("https://github.com/acme/r/pull/9", "acme/r#9", "Nine", isPR = true) to
+                    listOf(AgentChoice("ci", "oak", "/uf.fix-ci {num}", suggested = true), AgentChoice("rebase", "oak")),
+            )
+        }
+        override suspend fun run(item: NamedItem, c: AgentChoice): Answer<String> {
+            asked += "run ${c.task} ${item.url}"
+            return Answer.Ok("Started ${c.task} on ${item.ref} in ${c.target}")
+        }
     }
 
     private fun item(id: String, off: String? = null) {
@@ -194,5 +207,34 @@ class ItemsScreenTest {
         compose.onNodeWithTag("start").assertIsNotEnabled()
         compose.onNodeWithTag("open").performClick()
         assertEquals(listOf("open https://github.com/acme/r/pull/1"), asked)
+    }
+
+    @Test
+    fun startsOneYouName() {
+        var closed: String? = "open"
+        compose.setContent { MaterialTheme { NamedAgentSheet("", act, onDone = { closed = it }) } }
+        compose.onNodeWithTag("look-up").assertIsNotEnabled()
+        compose.onNodeWithTag("named-target").performTextReplacement("nonsense")
+        compose.onNodeWithTag("named-target").performImeAction()
+        compose.waitUntil(5_000) { asked.isNotEmpty() }
+        compose.onNodeWithTag("choices-none").assertTextContains("isn't a GitHub issue", substring = true)
+
+        compose.onNodeWithTag("named-target").performTextReplacement("https://github.com/acme/r/pull/9")
+        compose.onNodeWithTag("look-up").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("named-item").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("named-item").assertTextEquals("PR acme/r#9 · Nine")
+        compose.onNodeWithTag("suggested:ci", useUnmergedTree = true).assertIsDisplayed()
+        compose.onAllNodesWithTag("suggested:rebase", useUnmergedTree = true).assertCountEquals(0)
+        compose.onNodeWithTag("choice:rebase|oak").performClick()
+        compose.waitUntil(5_000) { closed != "open" }
+        assertEquals("Started rebase on acme/r#9 in oak", closed)
+        assertEquals(listOf("look up nonsense", "look up https://github.com/acme/r/pull/9", "run rebase https://github.com/acme/r/pull/9"), asked)
+    }
+
+    @Test
+    fun aSharedLinkIsLookedUpAtOnce() {
+        compose.setContent { MaterialTheme { NamedAgentSheet("https://github.com/acme/r/pull/9", act, onDone = {}) } }
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("named-item").fetchSemanticsNodes().isNotEmpty() }
+        assertEquals(listOf("look up https://github.com/acme/r/pull/9"), asked)
     }
 }
