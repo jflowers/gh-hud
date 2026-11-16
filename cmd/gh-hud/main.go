@@ -26,6 +26,7 @@ import (
 	"github.com/jflowers/gh-hud/internal/hub"
 	"github.com/jflowers/gh-hud/internal/model"
 	"github.com/jflowers/gh-hud/internal/notify"
+	"github.com/jflowers/gh-hud/internal/selfrestart"
 	"github.com/jflowers/gh-hud/internal/ui"
 )
 
@@ -123,7 +124,7 @@ func run() int {
 			return runTUI(cfg, c)
 		}
 	}
-	h, cleanup := buildHub(cfg, *configPath, client, dir)
+	h, cleanup, _ := buildHub(cfg, *configPath, client, dir, false)
 	defer cleanup()
 	ctx, stop := context.WithCancel(context.Background())
 	served := make(chan struct{})
@@ -229,7 +230,8 @@ func runTUI(cfg *config.Config, b hub.Backend) int {
 }
 
 // runServe runs the hub with no TUI until SIGINT or SIGTERM, logging its
-// notices and alerts to stderr.
+// notices and alerts to stderr. When its binary is replaced it restarts
+// itself into the new one, in place (the same pid and terminal pane).
 func runServe(cfg *config.Config, cfgPath string, client *gh.Client, dir, sock string) int {
 	// Claim the socket first: a second hub must not touch the dispatch lock.
 	l, err := api.ListenUnix(sock)
@@ -237,8 +239,8 @@ func runServe(cfg *config.Config, cfgPath string, client *gh.Client, dir, sock s
 		fmt.Fprintln(os.Stderr, "gh-hud serve:", err)
 		return 1
 	}
-	h, cleanup := buildHub(cfg, cfgPath, client, dir)
-	defer cleanup()
+	selfRestart := cfg.Hub.Restarts()
+	h, cleanup, quiet := buildHub(cfg, cfgPath, client, dir, selfRestart)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go h.Run(ctx)
@@ -247,12 +249,39 @@ func runServe(cfg *config.Config, cfgPath string, client *gh.Client, dir, sock s
 	for _, w := range cfg.Warnings {
 		log.Print(w)
 	}
+	restart := make(chan string, 1) // the binary to exec, once the hub has stopped
+	if selfRestart {
+		go func() {
+			path := selfrestart.Wait(ctx, selfrestart.Options{Watch: selfrestart.New(), Logf: log.Printf})
+			if path == "" {
+				return
+			}
+			quiet(ctx) // held until exec: no rollout step starts meanwhile
+			if ctx.Err() != nil {
+				return
+			}
+			log.Printf("restarting into %s", path)
+			restart <- path
+			stop()
+		}()
+	}
 	tcpReady := func(d api.Discovery) {
 		log.Printf("apps reach the hub at %s (token in %s)", d.URL, filepath.Join(dir, api.DiscoveryName))
 	}
-	if err := serveHub(ctx, cfg, h, dir, l, tcpReady); err != nil {
+	err = serveHub(ctx, cfg, h, dir, l, tcpReady)
+	cleanup()
+	if err != nil {
 		log.Printf("serve: %v", err)
 		return 1
+	}
+	select {
+	case restartTo := <-restart:
+		// The socket and the dispatch lock are released: the new binary
+		// claims them as a fresh start would.
+		err := syscall.Exec(restartTo, append([]string{restartTo}, os.Args[1:]...), os.Environ()) //nolint:gosec // gh-hud from PATH, just verified to run
+		log.Printf("restart into %s failed: %v; start gh-hud serve again", restartTo, err)
+		return 1
+	default:
 	}
 	log.Print("gh-hud: hub stopped")
 	return 0
@@ -290,7 +319,11 @@ func logEvents(ctx context.Context, h *hub.Hub) {
 // nil when off or failing to start). cleanup releases the dispatch lock.
 // buildHub builds the hub, its dispatcher and its fleet from cfg. The hub
 // watches cfgPath and applies what it can of each change.
-func buildHub(cfg *config.Config, cfgPath string, client *gh.Client, stateDir string) (h *hub.Hub, cleanup func()) {
+//
+// quiet blocks until no fleet machine is applying and no toolkit step is
+// running, then keeps the next toolkit step from starting: a hub about to
+// restart itself calls it last.
+func buildHub(cfg *config.Config, cfgPath string, client *gh.Client, stateDir string, selfRestart bool) (h *hub.Hub, cleanup func(), quiet func(context.Context)) {
 	cleanup = func() {}
 	idx, idxErr := ghws.Discover(cfg.GhwsRoot)
 	if idxErr != nil {
@@ -337,7 +370,7 @@ func buildHub(cfg *config.Config, cfgPath string, client *gh.Client, stateDir st
 		if disp != nil {
 			sched = disp
 		}
-		c, err := fleet.New(fleet.Options{Config: cfg.Fleet, Machines: fleetMachines, Scheduler: sched, StateDir: stateDir})
+		c, err := fleet.New(fleet.Options{Config: cfg.Fleet, Machines: fleetMachines, Scheduler: sched, StateDir: stateDir, SelfRestart: selfRestart})
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "fleet:", err)
 		} else {
@@ -370,7 +403,19 @@ func buildHub(cfg *config.Config, cfgPath string, client *gh.Client, stateDir st
 		hopts.Toolkit = tk
 	}
 	h = hub.New(hopts)
-	return h, cleanup
+	quiet = func(ctx context.Context) {
+		for fleetCoord != nil && fleetCoord.Busy() {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(5 * time.Second):
+			}
+		}
+		if tk != nil {
+			tk.Hold() // never released: the process execs or exits
+		}
+	}
+	return h, cleanup, quiet
 }
 
 // dispatchOptions are the dispatcher's options for cfg; the checkout dirs

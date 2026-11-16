@@ -176,6 +176,16 @@ your dashboards after the agent to attach to it from the start.
 The hub reads its config when it starts: restart it after editing
 `config.toml`.
 
+`gh-hud serve` restarts itself when its binary is replaced, whether by
+`go install` or a fleet apply. It waits until the new binary has stopped
+changing for 30 seconds and `gh-hud -version` runs. It also waits until no
+machine is applying a fleet rollout and no toolkit step is running. Then it
+stops serving and execs the new binary in place, keeping the same pid and
+terminal (or herdr pane). A binary that fails to run is skipped until it
+changes again, so a broken build leaves the running hub alone. Set
+`[hub] self_restart = false` to restart it yourself. A dashboard running
+its own hub never restarts itself.
+
 ## Mac app
 
 A Mac app, in the Dock and ⌘-Tab, with the dashboard in a window (it
@@ -1232,8 +1242,9 @@ timeout, cancellable) → `verifying` (`fleet-apply --check` plus `--status`
 == target) → `current`, undrain, next machine. A failure records the last
 ~20 output lines, **pauses** the rollout, notifies, and leaves the machine
 drained; an unreachable machine is skipped for the round and retried on the
-next poll. After the local apply succeeds a banner reminds you to restart
-gh-hud so the new binaries load.
+next poll. After the local apply succeeds, a banner says gh-hud restarts
+into the new binary once idle (see "The hub"). With `self_restart = false`
+it reminds you to restart it.
 
 `F` opens the fleet view: per-machine table (name, reachable, slots,
 applied vs target sha, state, drain wait, last error) with target/CI/pause

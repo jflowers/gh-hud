@@ -118,6 +118,16 @@ type HubConfig struct {
 	// on your local network, e.g. "0.0.0.0:7377"; "" (the default) is off.
 	// Plain HTTP with the LAN token: use it only on a network you trust.
 	LAN string `toml:"lan"`
+	// SelfRestart has gh-hud serve restart itself, in place, when its
+	// binary is replaced (go install, a fleet apply): once the new binary
+	// has settled and runs, and no rollout step is in progress. Default on;
+	// false leaves the restart to you.
+	SelfRestart *bool `toml:"self_restart"`
+}
+
+// Restarts reports whether gh-hud serve restarts itself into a new binary.
+func (h HubConfig) Restarts() bool {
+	return h.SelfRestart == nil || *h.SelfRestart
 }
 
 // Default returns the built-in defaults.

@@ -16,6 +16,7 @@ import (
 	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/dispatch"
 	"github.com/jflowers/gh-hud/internal/gh"
+	"github.com/jflowers/gh-hud/internal/selfrestart"
 )
 
 // State is one machine's rollout state.
@@ -63,6 +64,9 @@ type Options struct {
 	// one after a local apply ("" for unchanged); the restart banner shows
 	// only then. Default: compare PATH's gh-hud with the start-time binary.
 	BinaryChanged func() string
+	// SelfRestart says the hub restarts itself into a replaced binary, so
+	// the banner says it will instead of asking for a restart.
+	SelfRestart bool
 }
 
 // Coordinator runs the GitOps rollout. All state mutation happens on the
@@ -145,7 +149,11 @@ func New(opts Options) (*Coordinator, error) {
 		opts.Clock = wallClock{}
 	}
 	if opts.BinaryChanged == nil {
-		opts.BinaryChanged = newBinaryWatch().changed
+		w := selfrestart.New()
+		opts.BinaryChanged = func() string {
+			what, _ := w.Changed()
+			return what
+		}
 	}
 	c := &Coordinator{
 		opts:      opts,
@@ -482,10 +490,26 @@ func (c *Coordinator) doVerify(ctx context.Context, name, target string) bool {
 		// come fresh from mise each session and need no hub restart.
 		if what := c.opts.BinaryChanged(); what != "" {
 			c.banner = "fleet applied locally: " + what + "; restart gh-hud to run it"
+			if c.opts.SelfRestart {
+				c.banner = "fleet applied locally: " + what + "; gh-hud restarts into it once idle"
+			}
 		}
 	}
 	c.syncDrainLocked()
 	c.persistLocked()
+	return false
+}
+
+// Busy reports whether a machine is applying or verifying a rollout, which
+// a hub restart would cut short.
+func (c *Coordinator) Busy() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, ms := range c.machines {
+		if ms.State == StateApplying || ms.State == StateVerifying {
+			return true
+		}
+	}
 	return false
 }
 
