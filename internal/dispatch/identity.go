@@ -31,11 +31,17 @@ const (
 	// shell: $HOME is expanded where the line runs.
 	botGuardDir = `$HOME/.local/share/gh-hud/guard`
 
-	// botLoad finds the token in a shell that doesn't have it: a mac login
-	// bash never reads env.sh, so a hub pane only has what the herdr server
-	// was started with. Reading agent-env here means a new token needs no
-	// server restart.
-	botLoad = `if [ -z "$` + botTokenVar + `" ] && [ -r "$HOME/.config/agent-env" ]; then . "$HOME/.config/agent-env"; fi`
+	// agentEnvLoad exports agent-env's current values (model keys, the bot
+	// token) into the shell, over whatever it inherited. A pane otherwise
+	// has only what its herdr server started with (a mac login bash never
+	// reads env.sh), so a rotated key would reach new agents only after a
+	// server restart (#119). agent-env holds plain KEY=value lines; set -a
+	// exports them.
+	agentEnvLoad = `if [ -r "$HOME/.config/agent-env" ]; then set -a; . "$HOME/.config/agent-env"; set +a; fi`
+
+	// botLoad finds the token for a bot shell: always from agent-env when
+	// the file is there, so a rotated token wins over an inherited one.
+	botLoad = agentEnvLoad
 
 	// botExport switches the shell to the bot account.
 	botExport = `export GH_TOKEN="$` + botTokenVar + `" PATH="` + botGuardDir + `:$PATH"`

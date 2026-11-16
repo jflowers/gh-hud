@@ -42,11 +42,31 @@ func TestRunsAsBotMatrix(t *testing.T) {
 	}
 }
 
+// #119: a plain pane takes agent-env's current values over what its herdr
+// server started with, so a rotated key reaches the next agent, and it
+// runs as you: no bot token, no GH_TOKEN, no guard.
 func TestPaneSetupOtherTasksStayOnOperator(t *testing.T) {
 	line := paneSetup(false)
-	for _, s := range []string{"GH_TOKEN", botGuardDir, "agent-env"} {
+	for _, s := range []string{"export GH_TOKEN", botGuardDir} {
 		if strings.Contains(line, s) {
 			t.Errorf("plain pane setup mentions %q: %s", s, line)
+		}
+	}
+	for _, shell := range []string{"sh", "bash", "zsh"} {
+		if _, err := exec.LookPath(shell); err != nil {
+			continue
+		}
+		home := fakeHome(t, "ENMAAS_KEY=new\n"+botTokenVar+"="+testBotToken+"\n")
+		script := line + `; printf 'key=%s token=%s gh_token=%s\n' "$ENMAAS_KEY" "$` + botTokenVar + `" "$GH_TOKEN"; sh -c 'printf "child=%s\n" "$ENMAAS_KEY"'`
+		cmd := exec.Command(shell, "-c", script)
+		cmd.Env = []string{"HOME=" + home, "PATH=" + os.Getenv("PATH"), "ENMAAS_KEY=old", botTokenVar + "=stale"}
+		raw, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("%s: %v: %s", shell, err, raw)
+		}
+		out := string(raw)
+		if !strings.Contains(out, "-ready\n") || !strings.Contains(out, "key=new token= gh_token=\n") || !strings.Contains(out, "child=new\n") {
+			t.Errorf("%s: want agent-env's key exported and no token, got %q", shell, out)
 		}
 	}
 }
@@ -91,6 +111,8 @@ func TestPaneSetupBot(t *testing.T) {
 		wantBot bool
 	}{
 		{name: "in the pane env", env: testBotToken, wantBot: true},
+		// #119: agent-env's rotated token wins over the one herdr started with.
+		{name: "rotated in agent-env", env: "stale", file: botTokenVar + "=" + testBotToken + "\n", wantBot: true},
 		{name: "only in agent-env", file: botTokenVar + "=" + testBotToken + "\n", wantBot: true},
 		{name: "exported in agent-env", file: "export " + botTokenVar + "=" + testBotToken + "\n", wantBot: true},
 		{name: "nowhere"},
