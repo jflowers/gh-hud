@@ -251,6 +251,10 @@ func piecePlan(e epic.Epic, n epic.Node) string {
 		desc += ", " + oneLine(n.Phase)
 	}
 	desc += ". Do only this issue; the epic's other pieces are separate runs."
+	// gh-hud#118: progress written into the epic's body sent it back for approval.
+	// The markers are named, not written: a literal HTML comment inside a
+	// plan file line could read as the file's own metadata.
+	desc += fmt.Sprintf(" Don't edit epic %s's body to record progress: gh-hud keeps a progress comment on it. A progress note that must be in the body goes between the HTML comments gh-hud:status and /gh-hud:status.", e.Ref)
 	if rep, ok := e.Report(n.Ref); ok && rep.Verdict == epic.VerdictRetry {
 		desc += fmt.Sprintf(" A previous run (on %s) ended without a PR; the supervisor's read: %s", rep.On, strings.TrimSuffix(oneLine(rep.Why), "."))
 		if rep.Hint != "" {

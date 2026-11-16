@@ -27,6 +27,9 @@ public  final class Epic extends
     approvedPlan_ = "";
     log_ = "";
     reports_ = emptyProtobufList();
+    changes_ = emptyProtobufList();
+    statusComment_ = "";
+    statusHash_ = "";
   }
   private int bitField0_;
   public static final int REF_FIELD_NUMBER = 1;
@@ -742,6 +745,325 @@ public  final class Epic extends
   private void removeReports(int index) {
     ensureReportsIsMutable();
     reports_.remove(index);
+  }
+
+  public static final int APPROVED_SNAPSHOT_FIELD_NUMBER = 13;
+  private io.github.jflowers.ghhud.api.v1.EpicPlan approvedSnapshot_;
+  /**
+   * <pre>
+   * the plan you approved (unset before one is)
+   * </pre>
+   *
+   * <code>.ghhud.v1.EpicPlan approved_snapshot = 13 [json_name = "approvedSnapshot"];</code>
+   */
+  @java.lang.Override
+  public boolean hasApprovedSnapshot() {
+    return ((bitField0_ & 0x00000010) != 0);
+  }
+  /**
+   * <pre>
+   * the plan you approved (unset before one is)
+   * </pre>
+   *
+   * <code>.ghhud.v1.EpicPlan approved_snapshot = 13 [json_name = "approvedSnapshot"];</code>
+   */
+  @java.lang.Override
+  public io.github.jflowers.ghhud.api.v1.EpicPlan getApprovedSnapshot() {
+    return approvedSnapshot_ == null ? io.github.jflowers.ghhud.api.v1.EpicPlan.getDefaultInstance() : approvedSnapshot_;
+  }
+  /**
+   * <pre>
+   * the plan you approved (unset before one is)
+   * </pre>
+   *
+   * <code>.ghhud.v1.EpicPlan approved_snapshot = 13 [json_name = "approvedSnapshot"];</code>
+   */
+  private void setApprovedSnapshot(io.github.jflowers.ghhud.api.v1.EpicPlan value) {
+    java.util.Objects.requireNonNull(value);
+    approvedSnapshot_ = value;
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <pre>
+   * the plan you approved (unset before one is)
+   * </pre>
+   *
+   * <code>.ghhud.v1.EpicPlan approved_snapshot = 13 [json_name = "approvedSnapshot"];</code>
+   */
+  @java.lang.SuppressWarnings("ReferenceEquality")
+  private void mergeApprovedSnapshot(io.github.jflowers.ghhud.api.v1.EpicPlan value) {
+    java.util.Objects.requireNonNull(value);
+    if (approvedSnapshot_ != null &&
+        approvedSnapshot_ != io.github.jflowers.ghhud.api.v1.EpicPlan.getDefaultInstance()) {
+      approvedSnapshot_ =
+        io.github.jflowers.ghhud.api.v1.EpicPlan.newBuilder(approvedSnapshot_).mergeFrom(value).buildPartial();
+    } else {
+      approvedSnapshot_ = value;
+    }
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <pre>
+   * the plan you approved (unset before one is)
+   * </pre>
+   *
+   * <code>.ghhud.v1.EpicPlan approved_snapshot = 13 [json_name = "approvedSnapshot"];</code>
+   */
+  private void clearApprovedSnapshot() {
+    approvedSnapshot_ = null;
+    bitField0_ = (bitField0_ & ~0x00000010);
+  }
+
+  public static final int CHANGES_FIELD_NUMBER = 14;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> changes_;
+  /**
+   * <pre>
+   * What the plan changed from the approved one, one line each, while it
+   * waits for approval again: show them next to Approve Plan.
+   * </pre>
+   *
+   * <code>repeated string changes = 14 [json_name = "changes"];</code>
+   * @return A list containing the changes.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getChangesList() {
+    return changes_;
+  }
+  /**
+   * <pre>
+   * What the plan changed from the approved one, one line each, while it
+   * waits for approval again: show them next to Approve Plan.
+   * </pre>
+   *
+   * <code>repeated string changes = 14 [json_name = "changes"];</code>
+   * @return The count of changes.
+   */
+  @java.lang.Override
+  public int getChangesCount() {
+    return changes_.size();
+  }
+  /**
+   * <pre>
+   * What the plan changed from the approved one, one line each, while it
+   * waits for approval again: show them next to Approve Plan.
+   * </pre>
+   *
+   * <code>repeated string changes = 14 [json_name = "changes"];</code>
+   * @param index The index of the element to return.
+   * @return The changes at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getChanges(int index) {
+    return changes_.get(index);
+  }
+  /**
+   * <pre>
+   * What the plan changed from the approved one, one line each, while it
+   * waits for approval again: show them next to Approve Plan.
+   * </pre>
+   *
+   * <code>repeated string changes = 14 [json_name = "changes"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the changes at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getChangesBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        changes_.get(index));
+  }
+  private void ensureChangesIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        changes_;  if (!tmp.isModifiable()) {
+      changes_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <pre>
+   * What the plan changed from the approved one, one line each, while it
+   * waits for approval again: show them next to Approve Plan.
+   * </pre>
+   *
+   * <code>repeated string changes = 14 [json_name = "changes"];</code>
+   * @param index The index to set the value at.
+   * @param value The changes to set.
+   */
+  private void setChanges(
+      int index, java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureChangesIsMutable();
+    changes_.set(index, value);
+  }
+  /**
+   * <pre>
+   * What the plan changed from the approved one, one line each, while it
+   * waits for approval again: show them next to Approve Plan.
+   * </pre>
+   *
+   * <code>repeated string changes = 14 [json_name = "changes"];</code>
+   * @param value The changes to add.
+   */
+  private void addChanges(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureChangesIsMutable();
+    changes_.add(value);
+  }
+  /**
+   * <pre>
+   * What the plan changed from the approved one, one line each, while it
+   * waits for approval again: show them next to Approve Plan.
+   * </pre>
+   *
+   * <code>repeated string changes = 14 [json_name = "changes"];</code>
+   * @param values The changes to add.
+   */
+  private void addAllChanges(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureChangesIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, changes_);
+  }
+  /**
+   * <pre>
+   * What the plan changed from the approved one, one line each, while it
+   * waits for approval again: show them next to Approve Plan.
+   * </pre>
+   *
+   * <code>repeated string changes = 14 [json_name = "changes"];</code>
+   */
+  private void clearChanges() {
+    changes_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * What the plan changed from the approved one, one line each, while it
+   * waits for approval again: show them next to Approve Plan.
+   * </pre>
+   *
+   * <code>repeated string changes = 14 [json_name = "changes"];</code>
+   * @param value The bytes of the changes to add.
+   */
+  private void addChangesBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureChangesIsMutable();
+    changes_.add(value.toStringUtf8());
+  }
+
+  public static final int STATUS_COMMENT_FIELD_NUMBER = 15;
+  private java.lang.String statusComment_;
+  /**
+   * <pre>
+   * node ID of gh-hud's progress comment on the epic
+   * </pre>
+   *
+   * <code>string status_comment = 15 [json_name = "statusComment"];</code>
+   * @return The statusComment.
+   */
+  @java.lang.Override
+  public java.lang.String getStatusComment() {
+    return statusComment_;
+  }
+  /**
+   * <pre>
+   * node ID of gh-hud's progress comment on the epic
+   * </pre>
+   *
+   * <code>string status_comment = 15 [json_name = "statusComment"];</code>
+   * @return The bytes for statusComment.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getStatusCommentBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(statusComment_);
+  }
+  /**
+   * <pre>
+   * node ID of gh-hud's progress comment on the epic
+   * </pre>
+   *
+   * <code>string status_comment = 15 [json_name = "statusComment"];</code>
+   * @param value The statusComment to set.
+   */
+  private void setStatusComment(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    statusComment_ = value;
+  }
+  /**
+   * <pre>
+   * node ID of gh-hud's progress comment on the epic
+   * </pre>
+   *
+   * <code>string status_comment = 15 [json_name = "statusComment"];</code>
+   */
+  private void clearStatusComment() {
+
+    statusComment_ = getDefaultInstance().getStatusComment();
+  }
+  /**
+   * <pre>
+   * node ID of gh-hud's progress comment on the epic
+   * </pre>
+   *
+   * <code>string status_comment = 15 [json_name = "statusComment"];</code>
+   * @param value The bytes for statusComment to set.
+   */
+  private void setStatusCommentBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    statusComment_ = value.toStringUtf8();
+
+  }
+
+  public static final int STATUS_HASH_FIELD_NUMBER = 16;
+  private java.lang.String statusHash_;
+  /**
+   * <code>string status_hash = 16 [json_name = "statusHash"];</code>
+   * @return The statusHash.
+   */
+  @java.lang.Override
+  public java.lang.String getStatusHash() {
+    return statusHash_;
+  }
+  /**
+   * <code>string status_hash = 16 [json_name = "statusHash"];</code>
+   * @return The bytes for statusHash.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getStatusHashBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(statusHash_);
+  }
+  /**
+   * <code>string status_hash = 16 [json_name = "statusHash"];</code>
+   * @param value The statusHash to set.
+   */
+  private void setStatusHash(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    statusHash_ = value;
+  }
+  /**
+   * <code>string status_hash = 16 [json_name = "statusHash"];</code>
+   */
+  private void clearStatusHash() {
+
+    statusHash_ = getDefaultInstance().getStatusHash();
+  }
+  /**
+   * <code>string status_hash = 16 [json_name = "statusHash"];</code>
+   * @param value The bytes for statusHash to set.
+   */
+  private void setStatusHashBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    statusHash_ = value.toStringUtf8();
+
   }
 
   public static io.github.jflowers.ghhud.api.v1.Epic parseFrom(
@@ -1590,6 +1912,332 @@ public  final class Epic extends
       return this;
     }
 
+    /**
+     * <pre>
+     * the plan you approved (unset before one is)
+     * </pre>
+     *
+     * <code>.ghhud.v1.EpicPlan approved_snapshot = 13 [json_name = "approvedSnapshot"];</code>
+     */
+    @java.lang.Override
+    public boolean hasApprovedSnapshot() {
+      return instance.hasApprovedSnapshot();
+    }
+    /**
+     * <pre>
+     * the plan you approved (unset before one is)
+     * </pre>
+     *
+     * <code>.ghhud.v1.EpicPlan approved_snapshot = 13 [json_name = "approvedSnapshot"];</code>
+     */
+    @java.lang.Override
+    public io.github.jflowers.ghhud.api.v1.EpicPlan getApprovedSnapshot() {
+      return instance.getApprovedSnapshot();
+    }
+    /**
+     * <pre>
+     * the plan you approved (unset before one is)
+     * </pre>
+     *
+     * <code>.ghhud.v1.EpicPlan approved_snapshot = 13 [json_name = "approvedSnapshot"];</code>
+     */
+    public Builder setApprovedSnapshot(io.github.jflowers.ghhud.api.v1.EpicPlan value) {
+      copyOnWrite();
+      instance.setApprovedSnapshot(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * the plan you approved (unset before one is)
+     * </pre>
+     *
+     * <code>.ghhud.v1.EpicPlan approved_snapshot = 13 [json_name = "approvedSnapshot"];</code>
+     */
+    public Builder setApprovedSnapshot(
+        io.github.jflowers.ghhud.api.v1.EpicPlan.Builder builderForValue) {
+      copyOnWrite();
+      instance.setApprovedSnapshot(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * the plan you approved (unset before one is)
+     * </pre>
+     *
+     * <code>.ghhud.v1.EpicPlan approved_snapshot = 13 [json_name = "approvedSnapshot"];</code>
+     */
+    public Builder mergeApprovedSnapshot(io.github.jflowers.ghhud.api.v1.EpicPlan value) {
+      copyOnWrite();
+      instance.mergeApprovedSnapshot(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * the plan you approved (unset before one is)
+     * </pre>
+     *
+     * <code>.ghhud.v1.EpicPlan approved_snapshot = 13 [json_name = "approvedSnapshot"];</code>
+     */
+    public Builder clearApprovedSnapshot() {  copyOnWrite();
+      instance.clearApprovedSnapshot();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * What the plan changed from the approved one, one line each, while it
+     * waits for approval again: show them next to Approve Plan.
+     * </pre>
+     *
+     * <code>repeated string changes = 14 [json_name = "changes"];</code>
+     * @return A list containing the changes.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getChangesList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getChangesList());
+    }
+    /**
+     * <pre>
+     * What the plan changed from the approved one, one line each, while it
+     * waits for approval again: show them next to Approve Plan.
+     * </pre>
+     *
+     * <code>repeated string changes = 14 [json_name = "changes"];</code>
+     * @return The count of changes.
+     */
+    @java.lang.Override
+    public int getChangesCount() {
+      return instance.getChangesCount();
+    }
+    /**
+     * <pre>
+     * What the plan changed from the approved one, one line each, while it
+     * waits for approval again: show them next to Approve Plan.
+     * </pre>
+     *
+     * <code>repeated string changes = 14 [json_name = "changes"];</code>
+     * @param index The index of the element to return.
+     * @return The changes at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getChanges(int index) {
+      return instance.getChanges(index);
+    }
+    /**
+     * <pre>
+     * What the plan changed from the approved one, one line each, while it
+     * waits for approval again: show them next to Approve Plan.
+     * </pre>
+     *
+     * <code>repeated string changes = 14 [json_name = "changes"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the changes at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getChangesBytes(int index) {
+      return instance.getChangesBytes(index);
+    }
+    /**
+     * <pre>
+     * What the plan changed from the approved one, one line each, while it
+     * waits for approval again: show them next to Approve Plan.
+     * </pre>
+     *
+     * <code>repeated string changes = 14 [json_name = "changes"];</code>
+     * @param index The index to set the value at.
+     * @param value The changes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setChanges(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setChanges(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * What the plan changed from the approved one, one line each, while it
+     * waits for approval again: show them next to Approve Plan.
+     * </pre>
+     *
+     * <code>repeated string changes = 14 [json_name = "changes"];</code>
+     * @param value The changes to add.
+     * @return This builder for chaining.
+     */
+    public Builder addChanges(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addChanges(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * What the plan changed from the approved one, one line each, while it
+     * waits for approval again: show them next to Approve Plan.
+     * </pre>
+     *
+     * <code>repeated string changes = 14 [json_name = "changes"];</code>
+     * @param values The changes to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllChanges(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllChanges(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * What the plan changed from the approved one, one line each, while it
+     * waits for approval again: show them next to Approve Plan.
+     * </pre>
+     *
+     * <code>repeated string changes = 14 [json_name = "changes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearChanges() {
+      copyOnWrite();
+      instance.clearChanges();
+      return this;
+    }
+    /**
+     * <pre>
+     * What the plan changed from the approved one, one line each, while it
+     * waits for approval again: show them next to Approve Plan.
+     * </pre>
+     *
+     * <code>repeated string changes = 14 [json_name = "changes"];</code>
+     * @param value The bytes of the changes to add.
+     * @return This builder for chaining.
+     */
+    public Builder addChangesBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addChangesBytes(value);
+      return this;
+    }
+
+    /**
+     * <pre>
+     * node ID of gh-hud's progress comment on the epic
+     * </pre>
+     *
+     * <code>string status_comment = 15 [json_name = "statusComment"];</code>
+     * @return The statusComment.
+     */
+    @java.lang.Override
+    public java.lang.String getStatusComment() {
+      return instance.getStatusComment();
+    }
+    /**
+     * <pre>
+     * node ID of gh-hud's progress comment on the epic
+     * </pre>
+     *
+     * <code>string status_comment = 15 [json_name = "statusComment"];</code>
+     * @return The bytes for statusComment.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getStatusCommentBytes() {
+      return instance.getStatusCommentBytes();
+    }
+    /**
+     * <pre>
+     * node ID of gh-hud's progress comment on the epic
+     * </pre>
+     *
+     * <code>string status_comment = 15 [json_name = "statusComment"];</code>
+     * @param value The statusComment to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStatusComment(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setStatusComment(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * node ID of gh-hud's progress comment on the epic
+     * </pre>
+     *
+     * <code>string status_comment = 15 [json_name = "statusComment"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearStatusComment() {
+      copyOnWrite();
+      instance.clearStatusComment();
+      return this;
+    }
+    /**
+     * <pre>
+     * node ID of gh-hud's progress comment on the epic
+     * </pre>
+     *
+     * <code>string status_comment = 15 [json_name = "statusComment"];</code>
+     * @param value The bytes for statusComment to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStatusCommentBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setStatusCommentBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>string status_hash = 16 [json_name = "statusHash"];</code>
+     * @return The statusHash.
+     */
+    @java.lang.Override
+    public java.lang.String getStatusHash() {
+      return instance.getStatusHash();
+    }
+    /**
+     * <code>string status_hash = 16 [json_name = "statusHash"];</code>
+     * @return The bytes for statusHash.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getStatusHashBytes() {
+      return instance.getStatusHashBytes();
+    }
+    /**
+     * <code>string status_hash = 16 [json_name = "statusHash"];</code>
+     * @param value The statusHash to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStatusHash(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setStatusHash(value);
+      return this;
+    }
+    /**
+     * <code>string status_hash = 16 [json_name = "statusHash"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearStatusHash() {
+      copyOnWrite();
+      instance.clearStatusHash();
+      return this;
+    }
+    /**
+     * <code>string status_hash = 16 [json_name = "statusHash"];</code>
+     * @param value The bytes for statusHash to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStatusHashBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setStatusHashBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.Epic)
   }
   @java.lang.Override
@@ -1620,11 +2268,16 @@ public  final class Epic extends
             "log_",
             "reports_",
             io.github.jflowers.ghhud.api.v1.EpicReport.class,
+            "approvedSnapshot_",
+            "changes_",
+            "statusComment_",
+            "statusHash_",
           };
           java.lang.String info =
-              "\u0000\f\u0000\u0001\u0001\f\f\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
-              "\u0004\u1009\u0000\u0005\u0208\u0006\u0208\u0007\u1009\u0001\b\u1009\u0002\t\u0208" +
-              "\n\u1009\u0003\u000b\u0208\f\u001b";
+              "\u0000\u0010\u0000\u0001\u0001\u0010\u0010\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0208\u0004\u1009\u0000\u0005\u0208\u0006\u0208\u0007\u1009\u0001\b\u1009" +
+              "\u0002\t\u0208\n\u1009\u0003\u000b\u0208\f\u001b\r\u1009\u0004\u000e\u021a\u000f" +
+              "\u0208\u0010\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

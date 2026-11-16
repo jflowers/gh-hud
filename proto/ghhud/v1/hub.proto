@@ -670,6 +670,12 @@ message Epic {
   google.protobuf.Timestamp checked_at = 10;
   string log = 11; // the planner run's output on the hub's machine
   repeated EpicReport reports = 12; // the latest report of each piece whose run left no PR
+  EpicPlan approved_snapshot = 13; // the plan you approved (unset before one is)
+  // What the plan changed from the approved one, one line each, while it
+  // waits for approval again: show them next to Approve Plan.
+  repeated string changes = 14;
+  string status_comment = 15; // node ID of gh-hud's progress comment on the epic
+  string status_hash = 16;
 }
 
 // EpicReport is what a piece's run that left no PR did, and the

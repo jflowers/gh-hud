@@ -319,8 +319,17 @@ func TestEpicRereadsAnEditedEpic(t *testing.T) {
 	if e.State != epic.StatePlanned || e.ApprovedPlan == e.Plan.ID || len(d.approvedEpics()) != 0 {
 		t.Fatalf("after a changed-plan reread: %+v", e)
 	}
-	if !strings.Contains(notes, "the plan changed") {
+	if !strings.Contains(notes, "the plan changed: new rule: Keep it small.") {
 		t.Errorf("notes = %s", notes)
+	}
+	if strings.Join(e.Changes, "|") != "new rule: Keep it small." {
+		t.Errorf("changes = %q, want the added rule", e.Changes)
+	}
+	if err := d.ApproveEpic(ref, e.Plan.ID); err != nil {
+		t.Fatal(err)
+	}
+	if e := d.Epics()[0]; len(e.Changes) != 0 || e.ApprovedSnapshot == nil || e.ApprovedSnapshot.ID != e.Plan.ID {
+		t.Errorf("after approving: changes %q, snapshot %+v", e.Changes, e.ApprovedSnapshot)
 	}
 }
 

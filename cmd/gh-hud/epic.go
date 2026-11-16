@@ -194,6 +194,12 @@ func printEpics(w io.Writer, epics []epic.Epic) {
 			fmt.Fprintf(w, "  approved %s\n", e.Approved.Local().Format("Jan 2 15:04"))
 		case e.State == epic.StatePlanned:
 			fmt.Fprintf(w, "  waiting for your approval: gh-hud epic approve %s\n", e.Ref)
+			if len(e.Changes) > 0 {
+				fmt.Fprintln(w, "  changed since you approved it:")
+				for _, c := range e.Changes {
+					fmt.Fprintf(w, "    ± %s\n", c)
+				}
+			}
 		}
 		repo, _, _ := epic.ParseRef(e.Ref)
 		phase := ""

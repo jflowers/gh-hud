@@ -836,9 +836,32 @@ for you, and `C` clears the gate of the selected piece.
   epic's caps. A plan has an ID, so you approve the plan you saw.
 - **Edits.** When the epic's body changes, nothing more starts and gh-hud
   reads it again on its own. The reader gets its previous plan and keeps
-  what the edit didn't touch as it was. If the new plan is the same, it
-  stays approved and the pieces carry on. If it differs, it waits for your
-  approval again.
+  what the edit didn't touch as it was. Then gh-hud compares the new plan
+  with the one you approved:
+  - **The same,** or **only reworded:** a gate's or a rule's text changed,
+    and nothing else. It stays approved, the pieces carry on, and a notice
+    lists what was reworded.
+  - **Changed:** a piece added or removed, a phase or a wait changed, a
+    gate added or removed, or a rule added or removed. It waits for your
+    approval again, and the Plan tab, `gh-hud epic list` and the apps show
+    what changed (`± #1056 waits on nothing (was #1029)`).
+
+  Rewording is told apart by text: a rule counts as reworded when it
+  shares at least half its words with an old one.
+- **Progress.** gh-hud keeps an approved epic's progress in one comment on
+  the epic, edited in place as pieces move: a tally and a row per piece.
+  It isn't part of the plan, and the reader never sees comments. Progress
+  written into the body would count as an edit, so piece agents are told
+  not to. A progress note that has to be in the body goes in a block the
+  reader skips:
+
+  ```
+  <!-- gh-hud:status -->
+  #938: the unification shipped in #582; only the wording fix remains.
+  <!-- /gh-hud:status -->
+  ```
+
+  `status_comment = false` under `[epics]` turns the comment off.
 - **Gates.** A gated piece waits until you clear its gate
   (`gh-hud epic clear`, or `C` in the Plan tab), saying the condition
   holds. A cleared gate stays cleared across rereads while the piece has
@@ -885,6 +908,7 @@ auto pass starts them like any other step:
 [epics]
 max_active = 2   # pieces of one epic active at once
 max_runs = 2     # runs per piece before it's left to you
+status_comment = true  # keep an approved epic's progress in a comment on it
 ```
 
 Epics are kept in `epics.json` in the state dir.

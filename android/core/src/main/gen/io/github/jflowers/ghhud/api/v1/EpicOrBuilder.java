@@ -187,4 +187,100 @@ public interface EpicOrBuilder extends
    * <code>repeated .ghhud.v1.EpicReport reports = 12 [json_name = "reports"];</code>
    */
   int getReportsCount();
+
+  /**
+   * <pre>
+   * the plan you approved (unset before one is)
+   * </pre>
+   *
+   * <code>.ghhud.v1.EpicPlan approved_snapshot = 13 [json_name = "approvedSnapshot"];</code>
+   * @return Whether the approvedSnapshot field is set.
+   */
+  boolean hasApprovedSnapshot();
+  /**
+   * <pre>
+   * the plan you approved (unset before one is)
+   * </pre>
+   *
+   * <code>.ghhud.v1.EpicPlan approved_snapshot = 13 [json_name = "approvedSnapshot"];</code>
+   * @return The approvedSnapshot.
+   */
+  io.github.jflowers.ghhud.api.v1.EpicPlan getApprovedSnapshot();
+
+  /**
+   * <pre>
+   * What the plan changed from the approved one, one line each, while it
+   * waits for approval again: show them next to Approve Plan.
+   * </pre>
+   *
+   * <code>repeated string changes = 14 [json_name = "changes"];</code>
+   * @return A list containing the changes.
+   */
+  java.util.List<java.lang.String>
+      getChangesList();
+  /**
+   * <pre>
+   * What the plan changed from the approved one, one line each, while it
+   * waits for approval again: show them next to Approve Plan.
+   * </pre>
+   *
+   * <code>repeated string changes = 14 [json_name = "changes"];</code>
+   * @return The count of changes.
+   */
+  int getChangesCount();
+  /**
+   * <pre>
+   * What the plan changed from the approved one, one line each, while it
+   * waits for approval again: show them next to Approve Plan.
+   * </pre>
+   *
+   * <code>repeated string changes = 14 [json_name = "changes"];</code>
+   * @param index The index of the element to return.
+   * @return The changes at the given index.
+   */
+  java.lang.String getChanges(int index);
+  /**
+   * <pre>
+   * What the plan changed from the approved one, one line each, while it
+   * waits for approval again: show them next to Approve Plan.
+   * </pre>
+   *
+   * <code>repeated string changes = 14 [json_name = "changes"];</code>
+   * @param index The index of the element to return.
+   * @return The changes at the given index.
+   */
+  com.google.protobuf.ByteString
+      getChangesBytes(int index);
+
+  /**
+   * <pre>
+   * node ID of gh-hud's progress comment on the epic
+   * </pre>
+   *
+   * <code>string status_comment = 15 [json_name = "statusComment"];</code>
+   * @return The statusComment.
+   */
+  java.lang.String getStatusComment();
+  /**
+   * <pre>
+   * node ID of gh-hud's progress comment on the epic
+   * </pre>
+   *
+   * <code>string status_comment = 15 [json_name = "statusComment"];</code>
+   * @return The bytes for statusComment.
+   */
+  com.google.protobuf.ByteString
+      getStatusCommentBytes();
+
+  /**
+   * <code>string status_hash = 16 [json_name = "statusHash"];</code>
+   * @return The statusHash.
+   */
+  java.lang.String getStatusHash();
+  /**
+   * <code>string status_hash = 16 [json_name = "statusHash"];</code>
+   * @return The bytes for statusHash.
+   */
+  com.google.protobuf.ByteString
+      getStatusHashBytes();
 }

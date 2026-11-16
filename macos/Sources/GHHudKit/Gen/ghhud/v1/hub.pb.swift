@@ -2390,6 +2390,34 @@ public nonisolated struct Ghhud_V1_Epic: @unchecked Sendable {
     set {_uniqueStorage()._reports = newValue}
   }
 
+  /// the plan you approved (unset before one is)
+  public var approvedSnapshot: Ghhud_V1_EpicPlan {
+    get {_storage._approvedSnapshot ?? Ghhud_V1_EpicPlan()}
+    set {_uniqueStorage()._approvedSnapshot = newValue}
+  }
+  /// Returns true if `approvedSnapshot` has been explicitly set.
+  public var hasApprovedSnapshot: Bool {_storage._approvedSnapshot != nil}
+  /// Clears the value of `approvedSnapshot`. Subsequent reads from it will return its default value.
+  public mutating func clearApprovedSnapshot() {_uniqueStorage()._approvedSnapshot = nil}
+
+  /// What the plan changed from the approved one, one line each, while it
+  /// waits for approval again: show them next to Approve Plan.
+  public var changes: [String] {
+    get {_storage._changes}
+    set {_uniqueStorage()._changes = newValue}
+  }
+
+  /// node ID of gh-hud's progress comment on the epic
+  public var statusComment: String {
+    get {_storage._statusComment}
+    set {_uniqueStorage()._statusComment = newValue}
+  }
+
+  public var statusHash: String {
+    get {_storage._statusHash}
+    set {_uniqueStorage()._statusHash = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -6468,7 +6496,7 @@ nonisolated extension Ghhud_V1_Proposal: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Epic"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}url\0\u{1}title\0\u{1}enrolled\0\u{1}state\0\u{1}error\0\u{1}plan\0\u{1}approved\0\u{3}approved_plan\0\u{3}checked_at\0\u{1}log\0\u{1}reports\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}url\0\u{1}title\0\u{1}enrolled\0\u{1}state\0\u{1}error\0\u{1}plan\0\u{1}approved\0\u{3}approved_plan\0\u{3}checked_at\0\u{1}log\0\u{1}reports\0\u{3}approved_snapshot\0\u{1}changes\0\u{3}status_comment\0\u{3}status_hash\0")
 
   fileprivate class _StorageClass {
     var _ref: String = String()
@@ -6483,6 +6511,10 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _checkedAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
     var _log: String = String()
     var _reports: [Ghhud_V1_EpicReport] = []
+    var _approvedSnapshot: Ghhud_V1_EpicPlan? = nil
+    var _changes: [String] = []
+    var _statusComment: String = String()
+    var _statusHash: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -6505,6 +6537,10 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _checkedAt = source._checkedAt
       _log = source._log
       _reports = source._reports
+      _approvedSnapshot = source._approvedSnapshot
+      _changes = source._changes
+      _statusComment = source._statusComment
+      _statusHash = source._statusHash
     }
   }
 
@@ -6535,6 +6571,10 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 10: try { try decoder.decodeSingularMessageField(value: &_storage._checkedAt) }()
         case 11: try { try decoder.decodeSingularStringField(value: &_storage._log) }()
         case 12: try { try decoder.decodeRepeatedMessageField(value: &_storage._reports) }()
+        case 13: try { try decoder.decodeSingularMessageField(value: &_storage._approvedSnapshot) }()
+        case 14: try { try decoder.decodeRepeatedStringField(value: &_storage._changes) }()
+        case 15: try { try decoder.decodeSingularStringField(value: &_storage._statusComment) }()
+        case 16: try { try decoder.decodeSingularStringField(value: &_storage._statusHash) }()
         default: break
         }
       }
@@ -6583,6 +6623,18 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
       if !_storage._reports.isEmpty {
         try visitor.visitRepeatedMessageField(value: _storage._reports, fieldNumber: 12)
       }
+      try { if let v = _storage._approvedSnapshot {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+      } }()
+      if !_storage._changes.isEmpty {
+        try visitor.visitRepeatedStringField(value: _storage._changes, fieldNumber: 14)
+      }
+      if !_storage._statusComment.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._statusComment, fieldNumber: 15)
+      }
+      if !_storage._statusHash.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._statusHash, fieldNumber: 16)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -6604,6 +6656,10 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._checkedAt != rhs_storage._checkedAt {return false}
         if _storage._log != rhs_storage._log {return false}
         if _storage._reports != rhs_storage._reports {return false}
+        if _storage._approvedSnapshot != rhs_storage._approvedSnapshot {return false}
+        if _storage._changes != rhs_storage._changes {return false}
+        if _storage._statusComment != rhs_storage._statusComment {return false}
+        if _storage._statusHash != rhs_storage._statusHash {return false}
         return true
       }
       if !storagesAreEqual {return false}

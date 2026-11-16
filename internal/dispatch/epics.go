@@ -65,16 +65,23 @@ func (d *Dispatcher) Epics() []epic.Epic {
 	return out
 }
 
-func cloneEpic(e epic.Epic) epic.Epic {
-	if e.Plan != nil {
-		p := *e.Plan
-		p.Nodes = slices.Clone(p.Nodes)
-		for i := range p.Nodes {
-			p.Nodes[i].After = slices.Clone(p.Nodes[i].After)
-		}
-		p.Sources, p.Rules, p.Skipped = slices.Clone(p.Sources), slices.Clone(p.Rules), slices.Clone(p.Skipped)
-		e.Plan = &p
+func clonePlan(in *epic.Plan) *epic.Plan {
+	if in == nil {
+		return nil
 	}
+	p := *in
+	p.Nodes = slices.Clone(p.Nodes)
+	for i := range p.Nodes {
+		p.Nodes[i].After = slices.Clone(p.Nodes[i].After)
+	}
+	p.Sources, p.Rules, p.Skipped = slices.Clone(p.Sources), slices.Clone(p.Rules), slices.Clone(p.Skipped)
+	return &p
+}
+
+func cloneEpic(e epic.Epic) epic.Epic {
+	e.Plan = clonePlan(e.Plan)
+	e.ApprovedSnapshot = clonePlan(e.ApprovedSnapshot)
+	e.Changes = slices.Clone(e.Changes)
 	if e.Approved != nil {
 		t := *e.Approved
 		e.Approved = &t
@@ -168,6 +175,7 @@ func (d *Dispatcher) ApproveEpic(ref, planID string) error {
 	}
 	now := time.Now()
 	e.Approved, e.ApprovedPlan, e.State = &now, e.Plan.ID, epic.StateApproved
+	e.ApprovedSnapshot, e.Changes = clonePlan(e.Plan), nil
 	d.saveEpicsLocked()
 	return nil
 }
@@ -231,7 +239,10 @@ func (d *Dispatcher) epicPass() []string {
 	}
 	if due && !d.epicChecking {
 		d.epicChecking = true
-		d.goEpic(d.checkEpics)
+		d.goEpic(func() {
+			d.checkEpics()
+			d.writeEpicStatus()
+		})
 	}
 	d.epicReviewsLocked()
 	return notes
@@ -300,6 +311,20 @@ func (d *Dispatcher) readEpic(ref string) {
 		return
 	}
 	e.Plan, e.Error, e.CheckedAt = plan, "", time.Now()
+	e.Changes = nil
+	// Against the plan you approved: rewording alone keeps the approval
+	// (gh-hud#118), anything structural asks you again and says what.
+	var diff epic.PlanDiff
+	if wasApproved != "" && wasApproved != plan.ID && e.ApprovedSnapshot != nil {
+		repo, _, _ := epic.ParseRef(ref)
+		short := func(r string) string { return epic.Short(repo, r) }
+		diff = epic.Diff(e.ApprovedSnapshot, plan)
+		if !diff.Structural() {
+			e.ApprovedPlan, e.ApprovedSnapshot = plan.ID, clonePlan(plan)
+		} else {
+			e.Changes = diff.Lines(short)
+		}
+	}
 	if e.ApprovedPlan == plan.ID {
 		e.State = epic.StateApproved
 	} else {
@@ -309,6 +334,12 @@ func (d *Dispatcher) readEpic(ref string) {
 	switch {
 	case wasApproved != "" && wasApproved == plan.ID:
 		d.epicNotes = append(d.epicNotes, fmt.Sprintf("epic %s: read again; the plan is the same, so it stays approved", ref))
+	case wasApproved != "" && e.State == epic.StateApproved:
+		d.epicNotes = append(d.epicNotes, fmt.Sprintf("epic %s: read again; only wording changed, so it stays approved: %s",
+			ref, clip(strings.Join(diff.Lines(func(r string) string { return r }), "; "), 400)))
+	case wasApproved != "" && len(e.Changes) > 0:
+		d.epicNotes = append(d.epicNotes, fmt.Sprintf("epic %s: read again and the plan changed: %s; its pieces wait for you: approve it in the Plan tab (E) or with gh-hud epic approve %s",
+			ref, clip(strings.Join(e.Changes, "; "), 400), ref))
 	case wasApproved != "":
 		d.epicNotes = append(d.epicNotes, fmt.Sprintf("epic %s: read again and the plan changed (%d pieces: %d done, %d ready); its pieces wait for you: approve it in the Plan tab (E) or with gh-hud epic approve %s",
 			ref, len(plan.Nodes), c[epic.NodeDone], c[epic.NodeReady], ref))
@@ -366,7 +397,7 @@ func (d *Dispatcher) planEpic(ctx context.Context, ref string, prev *epic.Plan) 
 		facts[r] = f
 	}
 	epic.Refresh(plan, repo, facts)
-	plan.Created, plan.BodyHash = time.Now(), bodyHash(iss.Body)
+	plan.Created, plan.BodyHash = time.Now(), planHash(iss.Body)
 	plan.ID = planID(plan)
 	return plan, iss, log, nil
 }
@@ -376,6 +407,22 @@ var checkbox = regexp.MustCompile(`(?m)^(\s*[-*+]\s+)\[[ xX]\]`)
 
 // bodyHash hashes an epic's body with its checkboxes unticked: status
 // comes from GitHub, so ticking a box doesn't make the plan stale.
+// planHash is what a plan records of its body: bodyHash with blank-line
+// runs and the ends trimmed, so the blank lines a removed progress block
+// leaves behind (gh-hud#118) don't count as an edit.
+func planHash(body string) string {
+	return bodyHash(strings.TrimSpace(blankRun.ReplaceAllString(strings.ReplaceAll(body, "\r\n", "\n"), "\n\n")))
+}
+
+var blankRun = regexp.MustCompile(`\n[ \t]*\n(?:[ \t]*\n)+`)
+
+// bodyMatches reports whether body (progress blocks already stripped) is
+// the one a plan was read from. Plans read before planHash hold bodyHash,
+// and older ones a raw hash.
+func bodyMatches(body, hash string) bool {
+	return planHash(body) == hash || bodyHash(body) == hash || shortHash(body) == hash
+}
+
 func bodyHash(body string) string {
 	return shortHash(checkbox.ReplaceAllString(strings.ReplaceAll(body, "\r\n", "\n"), "${1}[ ]"))
 }
@@ -516,7 +563,7 @@ func (d *Dispatcher) checkEpics() {
 		stale := e.Plan.Stale
 		if iss, err := d.fetchEpicIssue(ctx, e.Ref); err == nil {
 			// A raw hash is what plans read before bodyHash existed hold.
-			stale = bodyHash(iss.Body) != e.Plan.BodyHash && shortHash(iss.Body) != e.Plan.BodyHash
+			stale = !bodyMatches(iss.Body, e.Plan.BodyHash)
 		}
 		results[e.Ref] = result{e.Plan, stale}
 	}
@@ -667,7 +714,9 @@ func (d *Dispatcher) fetchEpicIssue(ctx context.Context, ref string) (epicIssue,
 		return epicIssue{}, fmt.Errorf("%s isn't an issue GitHub knows", ref)
 	}
 	i := data.Repository.Issue
-	return epicIssue{Title: i.Title, URL: i.URL, Body: i.Body}, nil
+	// The progress block isn't plan: editing it neither changes the hash
+	// nor reaches the planner (gh-hud#118).
+	return epicIssue{Title: i.Title, URL: i.URL, Body: epic.StripStatus(i.Body)}, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -684,6 +733,12 @@ func (d *Dispatcher) loadEpicsLocked() {
 	}
 	var es []epic.Epic
 	if json.Unmarshal(data, &es) == nil {
+		for i := range es {
+			// Approved before gh-hud kept the approved plan: the current one is it.
+			if e := &es[i]; e.ApprovedSnapshot == nil && e.Plan != nil && e.ApprovedPlan == e.Plan.ID {
+				e.ApprovedSnapshot = clonePlan(e.Plan)
+			}
+		}
 		d.epics = es
 	}
 }

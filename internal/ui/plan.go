@@ -515,6 +515,7 @@ func (m *Model) epicLines(w int) []string {
 		if e.Plan == nil {
 			continue
 		}
+		out = append(out, epicChangeLines(e, w)...)
 		repo, _, _ := epic.ParseRef(e.Ref)
 		var open []epic.Node
 		for _, n := range e.Plan.Nodes {
@@ -539,6 +540,25 @@ func (m *Model) epicLines(w int) []string {
 			}
 			out = append(out, style.Render(truncatePlain(line, max(w-2, 10))))
 		}
+	}
+	return out
+}
+
+// epicChangeLines show what a plan waiting for approval again changed
+// from the one you approved (gh-hud#118), so E is an informed yes.
+func epicChangeLines(e epic.Epic, w int) []string {
+	if e.State != epic.StatePlanned || len(e.Changes) == 0 {
+		return nil
+	}
+	orange := lipgloss.NewStyle().Foreground(cOrange)
+	dim := lipgloss.NewStyle().Foreground(cDim)
+	out := []string{dim.Render("      changed since you approved it:")}
+	for i, c := range e.Changes {
+		if i == epicShown {
+			out = append(out, dim.Render(fmt.Sprintf("      +%d more (gh-hud epic list)", len(e.Changes)-epicShown)))
+			break
+		}
+		out = append(out, orange.Render(truncatePlain("      ± "+c, max(w-2, 10))))
 	}
 	return out
 }
