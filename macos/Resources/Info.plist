@@ -13,9 +13,13 @@
   <!-- A regular app: in the Dock and ⌘-Tab, with the menu bar extra too. -->
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>NSHumanReadableCopyright</key><string>Apache-2.0</string>
-  <!-- A hub on another Mac is plain HTTP on the local network. -->
+  <!-- A hub on another Mac is plain HTTP on the local network, under
+       whatever name you reach it by: .local, an IP, or your own DNS name
+       (which ATS's local-networking exception doesn't cover). The hub's LAN
+       listener answers only private addresses and needs its token. The
+       app's only other HTTP is to the hub on this Mac. -->
   <key>NSAppTransportSecurity</key>
-  <dict><key>NSAllowsLocalNetworking</key><true/></dict>
+  <dict><key>NSAllowsArbitraryLoads</key><true/></dict>
   <key>NSLocalNetworkUsageDescription</key>
   <string>gh-hud connects to the gh-hud hub on another Mac on your network, when you set one in Settings.</string>
 </dict>

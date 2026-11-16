@@ -96,17 +96,25 @@ public enum HubSource: Equatable, Sendable {
     }
 
     /// The address as a URL the app can use: "macbook.local:7377" becomes
-    /// "http://macbook.local:7377", without a trailing slash. Nil when it
-    /// has no host or isn't http(s).
+    /// "http://macbook.local:7377", without a trailing slash, and a bare
+    /// host gets the hub's usual port, 7377. Nil when it has no host or
+    /// isn't http(s).
     public static func normalize(_ s: String) -> String? {
         var t = s.trimmingCharacters(in: .whitespacesAndNewlines)
         if t.isEmpty { return nil }
-        if !t.contains("://") { t = "http://" + t }
+        let bare = !t.contains("://")
+        if bare { t = "http://" + t }
         guard let c = URLComponents(string: t), let scheme = c.scheme?.lowercased(),
               scheme == "http" || scheme == "https", let host = c.host, !host.isEmpty,
               c.path.isEmpty || c.path == "/", c.query == nil, c.user == nil
         else { return nil }
-        let h = host.contains(":") ? "[\(host)]" : host // IPv6
-        return "\(scheme)://\(h)" + (c.port.map { ":\($0)" } ?? "")
+        // URLComponents keeps IPv6 brackets on host; add them only if missing.
+        let h = host.contains(":") && !host.hasPrefix("[") ? "[\(host)]" : host
+        let port = c.port ?? (bare ? lanPort : nil)
+        return "\(scheme)://\(h)" + (port.map { ":\($0)" } ?? "")
     }
+
+    /// The port a bare address gets: the one the README and Settings suggest
+    /// for [hub] lan.
+    public static let lanPort = 7377
 }
