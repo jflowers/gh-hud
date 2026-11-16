@@ -293,6 +293,40 @@ func TestMachinesAtTargetAreCurrent(t *testing.T) {
 	}
 }
 
+func TestBannerWhenTheHubRestartsItself(t *testing.T) {
+	h := newHarness(t, t.TempDir(), map[string]string{
+		"lap1": oldSHA, "lap2": oldSHA, "local": oldSHA,
+	})
+	h.coord.opts.SelfRestart = true
+	h.bin = "gh-hud at /x/gh-hud was replaced"
+	h.coord.poll(context.Background())
+	snap := h.coord.Snapshot()
+	if !strings.Contains(snap.Banner, "restarts into it once idle") || strings.Contains(snap.Banner, "restart gh-hud") {
+		t.Errorf("banner = %q, want it to say the hub restarts itself", snap.Banner)
+	}
+}
+
+func TestBusyWhileApplying(t *testing.T) {
+	h := newHarness(t, t.TempDir(), map[string]string{"lap1": oldSHA})
+	if h.coord.Busy() {
+		t.Fatal("Busy before any rollout")
+	}
+	for _, st := range []State{StateApplying, StateVerifying} {
+		h.coord.mu.Lock()
+		h.coord.machineLocked("lap1").State = st
+		h.coord.mu.Unlock()
+		if !h.coord.Busy() {
+			t.Errorf("Busy = false with lap1 %s", st)
+		}
+	}
+	h.coord.mu.Lock()
+	h.coord.machineLocked("lap1").State = StateCurrent
+	h.coord.mu.Unlock()
+	if h.coord.Busy() {
+		t.Error("Busy with every machine settled")
+	}
+}
+
 func TestRolloutHappyPath(t *testing.T) {
 	h := newHarness(t, t.TempDir(), map[string]string{
 		"lap1": oldSHA, "lap2": oldSHA, "local": oldSHA,

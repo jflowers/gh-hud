@@ -482,6 +482,14 @@ func (c *Coordinator) Run(ctx context.Context) {
 	}
 }
 
+// Hold waits for a step in progress to finish and keeps the next from
+// starting until release is called. A hub restarting itself holds it so
+// no PR or push is cut short.
+func (c *Coordinator) Hold() (release func()) {
+	c.stepMu.Lock()
+	return c.stepMu.Unlock
+}
+
 // Step advances every active rollout once.
 func (c *Coordinator) Step(ctx context.Context) {
 	c.stepMu.Lock()

@@ -415,3 +415,26 @@ func TestTrackOpensPRForHeldBranch(t *testing.T) {
 		t.Error("opened a second PR")
 	}
 }
+
+// A hub restarting itself holds the step lock: Step waits for the release
+// and runs nothing meanwhile.
+func TestHoldBlocksSteps(t *testing.T) {
+	fx := newCoord(t)
+	release := fx.c.Hold()
+	stepped := make(chan struct{})
+	go func() {
+		fx.c.Step(context.Background())
+		close(stepped)
+	}()
+	select {
+	case <-stepped:
+		t.Fatal("Step ran while held")
+	case <-time.After(100 * time.Millisecond):
+	}
+	release()
+	select {
+	case <-stepped:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Step still blocked after release")
+	}
+}
