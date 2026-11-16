@@ -20,6 +20,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,8 +60,25 @@ interface AppActions : AttentionActions, ItemsControl, ItemActions, PlanActions,
  * opens its own screen, and Back returns to the list.
  */
 @Composable
-fun AppScreen(ui: Ui, items: ItemsView, agents: AgentsView, fleet: ListState<FleetSort>, act: AppActions) {
+fun AppScreen(
+    ui: Ui,
+    items: ItemsView,
+    agents: AgentsView,
+    fleet: ListState<FleetSort>,
+    act: AppActions,
+    shared: String? = null,
+    onShared: () -> Unit = {},
+) {
     var place by rememberSaveable { mutableStateOf(Place.INBOX) }
+    // Start an agent on an item you name: the field's first text, or null
+    // while closed. A link shared to the app opens it.
+    var named by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(shared) {
+        if (shared != null) {
+            named = shared
+            onShared()
+        }
+    }
     // The open detail screen, if any: "item:<url>", "agent:<id>", "ws:<id>",
     // "watch:<run:id|session:id>" or "transcript:<run id>"; the viewers'
     // titles ride along in viewTitle.
@@ -153,7 +171,7 @@ fun AppScreen(ui: Ui, items: ItemsView, agents: AgentsView, fleet: ListState<Fle
                     WorkspaceScreen(row, act, onBack = back)
                 }
                 place == Place.INBOX -> AttentionScreen(ui, act)
-                place == Place.ITEMS -> ItemsScreen(ui, items, act, onOpenItem = { detail = "item:" + it.id })
+                place == Place.ITEMS -> ItemsScreen(ui, items, act, onOpenItem = { detail = "item:" + it.id }, onNamed = { named = "" })
                 place == Place.PLAN -> PlanScreen(ui, act, act, say, refresh = act::refresh)
                 place == Place.AGENTS -> AgentsScreen(
                     ui,
@@ -166,5 +184,11 @@ fun AppScreen(ui: Ui, items: ItemsView, agents: AgentsView, fleet: ListState<Fle
                 place == Place.FLEET -> AttentionScreen(ui, act) // the fleet went off: back to the inbox
             }
         }
+    }
+    named?.let { initial ->
+        NamedAgentSheet(initial, act, onDone = { said ->
+            named = null
+            said?.let { say(it, false) }
+        })
     }
 }
