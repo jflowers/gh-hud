@@ -895,7 +895,10 @@ nothing else.
 
 The same sweep keeps each fork's default branch in step with its parent's:
 it fast-forwards it when the fork has no commits of its own there, and
-reports a fork that has.
+leaves alone a fork that has. `gh-hud branches` lists those forks; the
+hub's notice after a sweep only reports what it pruned or synced, and what
+failed, so a fork kept for the same reason every time isn't announced
+every 6 hours.
 
 ```sh
 gh-hud branches          # what would be pruned or synced (-v for each branch)
