@@ -696,7 +696,7 @@ func toolkitToPB(t toolkit.Snapshot) *pb.ToolkitSnapshot {
 			return &pb.ToolkitRolloutState{
 				Id: r.ID, Tool: r.Tool, Version: r.Version, From: r.From, Stage: string(r.Stage),
 				Started: ts(r.Started), Updated: ts(r.Updated), PinPr: r.PinPR, PinState: r.PinState,
-				Applied: r.Applied, Error: r.Error, Summary: r.Summary(),
+				Applied: r.Applied, Error: r.Error, Summary: r.Summary(), Notes: r.Notes, NotesUrl: r.NotesURL,
 				Targets: mapSlice(r.Targets, func(x toolkit.TargetRun) *pb.ToolkitTarget {
 					return &pb.ToolkitTarget{
 						Target: x.Target, Status: string(x.Status), Detail: x.Detail, Url: x.URL,
@@ -727,7 +727,7 @@ func toolkitFromPB(p *pb.ToolkitSnapshot) toolkit.Snapshot {
 			return toolkit.Rollout{
 				ID: r.GetId(), Tool: r.GetTool(), Version: r.GetVersion(), From: r.GetFrom(),
 				Stage: toolkit.Stage(r.GetStage()), Started: fromTS(r.GetStarted()), Updated: fromTS(r.GetUpdated()),
-				PinPR: r.GetPinPr(), PinState: r.GetPinState(), Applied: r.GetApplied(), Error: r.GetError(),
+				PinPR: r.GetPinPr(), PinState: r.GetPinState(), Applied: r.GetApplied(), Error: r.GetError(), Notes: r.GetNotes(), NotesURL: r.GetNotesUrl(),
 				Targets: mapSlice(r.GetTargets(), func(x *pb.ToolkitTarget) toolkit.TargetRun {
 					return toolkit.TargetRun{
 						Target: x.GetTarget(), Status: toolkit.Status(x.GetStatus()), Detail: x.GetDetail(),

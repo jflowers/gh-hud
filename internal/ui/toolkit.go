@@ -61,7 +61,7 @@ func (m *Model) handleToolkitKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.sync()
 	}
 	key := msg.String()
-	if key != "u" {
+	if key != "u" && key != "a" {
 		m.rolloutArmed = ""
 	}
 	switch key {
@@ -92,10 +92,28 @@ func (m *Model) handleToolkitKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.rolloutArmed, m.rolloutAt = t.Name, time.Now()
 			m.flash(fmt.Sprintf("press u again to roll %s out at %s (pin PR, then scaffold PRs)", t.Name, t.Latest))
 		}
+	case "a":
+		r, ok := m.selectedRollout()
+		switch {
+		case !ok || r.Stage != toolkit.StageProposed:
+			m.rolloutArmed = ""
+			m.flash("select a proposed release to approve (◆)")
+		case m.rolloutArmed == r.ID && time.Since(m.rolloutAt) < rolloutConfirmWindow:
+			m.rolloutArmed = ""
+			id, err := m.backend.ToolkitRollout(ctx(), r.Tool, r.Version)
+			do(err, "rolling out "+id)
+		default:
+			m.rolloutArmed, m.rolloutAt = r.ID, time.Now()
+			m.flash(fmt.Sprintf("press a again to roll %s out (pin PR, then scaffold PRs)", r.ID))
+		}
 	case "c", "R", "d":
 		r, ok := m.selectedRollout()
 		if !ok {
 			m.flash("select a rollout")
+			break
+		}
+		if key == "d" && r.Stage == toolkit.StageProposed {
+			do(m.backend.ToolkitControl(ctx(), hub.ToolkitDismiss, r.ID), "declined "+r.ID+"; u still rolls it out")
 			break
 		}
 		action, done := map[string]hub.ToolkitAction{"c": hub.ToolkitCancel, "R": hub.ToolkitRetry, "d": hub.ToolkitDismiss}[key],
@@ -119,6 +137,9 @@ func (m *Model) handleToolkitKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // rolloutLink is what o opens for a rollout: the first PR waiting on you,
 // else the pin PR.
 func rolloutLink(r toolkit.Rollout) string {
+	if r.Stage == toolkit.StageProposed {
+		return r.NotesURL
+	}
 	for _, t := range r.Targets {
 		if t.URL != "" && t.NeedsYou() != "" {
 			return t.URL
@@ -216,6 +237,9 @@ func (m *Model) toolkitView() string {
 		if len(snap.Tools)+i != m.toolkitSel {
 			continue
 		}
+		if r.Stage == toolkit.StageProposed {
+			lines = append(lines, releaseNotes(r, comment, dim)...)
+		}
 		if r.PinPR != "" {
 			lines = append(lines, dim.Render("      pin  ")+fg.Render(strings.ToLower(orDash(r.PinState))+" "+r.PinPR))
 		}
@@ -245,7 +269,7 @@ func (m *Model) toolkitView() string {
 	if m.statusMsg != "" && time.Since(m.statusAt) < 4*time.Second {
 		lines = append(lines, comment.Render(" "+m.statusMsg))
 	}
-	lines = append(lines, comment.Render("↑↓ select · u roll out latest (twice) · c cancel · R retry · d dismiss · o open · x check · T/esc close"))
+	lines = append(lines, comment.Render("↑↓ select · u roll out latest (twice) · a approve ◆ (twice) · c cancel · R retry · d dismiss · o open · x check · T/esc close"))
 
 	box := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
@@ -289,9 +313,39 @@ func rolloutGlyph(s toolkit.Stage) (string, lipgloss.Color) {
 		return "✗", cRed
 	case toolkit.StageCancelled:
 		return "⊘", cDim
+	case toolkit.StageProposed:
+		return "◆", cYellow
 	default:
 		return "●", cTeal
 	}
+}
+
+// maxNoteLines is how much of a proposal's release notes the view shows.
+const maxNoteLines = 8
+
+// releaseNotes are a proposal's notes, cut to fit, and its release page.
+func releaseNotes(r toolkit.Rollout, comment, dim lipgloss.Style) []string {
+	var out []string
+	var lines []string
+	for l := range strings.SplitSeq(r.Notes, "\n") {
+		if l = strings.TrimRight(l, " \r"); l != "" {
+			lines = append(lines, l)
+		}
+	}
+	if len(lines) == 0 {
+		out = append(out, dim.Render("      no release notes"))
+	}
+	for i, l := range lines {
+		if i == maxNoteLines {
+			out = append(out, dim.Render(fmt.Sprintf("      … %d more line(s): o opens the release", len(lines)-i)))
+			break
+		}
+		out = append(out, "      "+comment.Render(truncatePlain(l, 90)))
+	}
+	if r.NotesURL != "" {
+		out = append(out, dim.Render("      "+r.NotesURL))
+	}
+	return out
 }
 
 func orDash(s string) string {

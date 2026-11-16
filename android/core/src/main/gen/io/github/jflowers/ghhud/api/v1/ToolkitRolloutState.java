@@ -25,6 +25,8 @@ public  final class ToolkitRolloutState extends
     targets_ = emptyProtobufList();
     error_ = "";
     summary_ = "";
+    notes_ = "";
+    notesUrl_ = "";
   }
   private int bitField0_;
   public static final int ID_FIELD_NUMBER = 1;
@@ -219,7 +221,7 @@ public  final class ToolkitRolloutState extends
   private java.lang.String stage_;
   /**
    * <pre>
-   * pin, scaffold, track, done, failed, cancelled
+   * proposed, pin, scaffold, track, done, failed, cancelled
    * </pre>
    *
    * <code>string stage = 5 [json_name = "stage"];</code>
@@ -231,7 +233,7 @@ public  final class ToolkitRolloutState extends
   }
   /**
    * <pre>
-   * pin, scaffold, track, done, failed, cancelled
+   * proposed, pin, scaffold, track, done, failed, cancelled
    * </pre>
    *
    * <code>string stage = 5 [json_name = "stage"];</code>
@@ -244,7 +246,7 @@ public  final class ToolkitRolloutState extends
   }
   /**
    * <pre>
-   * pin, scaffold, track, done, failed, cancelled
+   * proposed, pin, scaffold, track, done, failed, cancelled
    * </pre>
    *
    * <code>string stage = 5 [json_name = "stage"];</code>
@@ -258,7 +260,7 @@ public  final class ToolkitRolloutState extends
   }
   /**
    * <pre>
-   * pin, scaffold, track, done, failed, cancelled
+   * proposed, pin, scaffold, track, done, failed, cancelled
    * </pre>
    *
    * <code>string stage = 5 [json_name = "stage"];</code>
@@ -269,7 +271,7 @@ public  final class ToolkitRolloutState extends
   }
   /**
    * <pre>
-   * pin, scaffold, track, done, failed, cancelled
+   * proposed, pin, scaffold, track, done, failed, cancelled
    * </pre>
    *
    * <code>string stage = 5 [json_name = "stage"];</code>
@@ -704,6 +706,140 @@ public  final class ToolkitRolloutState extends
 
   }
 
+  public static final int NOTES_FIELD_NUMBER = 14;
+  private java.lang.String notes_;
+  /**
+   * <pre>
+   * the release's notes (proposals)
+   * </pre>
+   *
+   * <code>string notes = 14 [json_name = "notes"];</code>
+   * @return The notes.
+   */
+  @java.lang.Override
+  public java.lang.String getNotes() {
+    return notes_;
+  }
+  /**
+   * <pre>
+   * the release's notes (proposals)
+   * </pre>
+   *
+   * <code>string notes = 14 [json_name = "notes"];</code>
+   * @return The bytes for notes.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getNotesBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(notes_);
+  }
+  /**
+   * <pre>
+   * the release's notes (proposals)
+   * </pre>
+   *
+   * <code>string notes = 14 [json_name = "notes"];</code>
+   * @param value The notes to set.
+   */
+  private void setNotes(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    notes_ = value;
+  }
+  /**
+   * <pre>
+   * the release's notes (proposals)
+   * </pre>
+   *
+   * <code>string notes = 14 [json_name = "notes"];</code>
+   */
+  private void clearNotes() {
+
+    notes_ = getDefaultInstance().getNotes();
+  }
+  /**
+   * <pre>
+   * the release's notes (proposals)
+   * </pre>
+   *
+   * <code>string notes = 14 [json_name = "notes"];</code>
+   * @param value The bytes for notes to set.
+   */
+  private void setNotesBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    notes_ = value.toStringUtf8();
+
+  }
+
+  public static final int NOTES_URL_FIELD_NUMBER = 15;
+  private java.lang.String notesUrl_;
+  /**
+   * <pre>
+   * the release's page (proposals)
+   * </pre>
+   *
+   * <code>string notes_url = 15 [json_name = "notesUrl"];</code>
+   * @return The notesUrl.
+   */
+  @java.lang.Override
+  public java.lang.String getNotesUrl() {
+    return notesUrl_;
+  }
+  /**
+   * <pre>
+   * the release's page (proposals)
+   * </pre>
+   *
+   * <code>string notes_url = 15 [json_name = "notesUrl"];</code>
+   * @return The bytes for notesUrl.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getNotesUrlBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(notesUrl_);
+  }
+  /**
+   * <pre>
+   * the release's page (proposals)
+   * </pre>
+   *
+   * <code>string notes_url = 15 [json_name = "notesUrl"];</code>
+   * @param value The notesUrl to set.
+   */
+  private void setNotesUrl(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    notesUrl_ = value;
+  }
+  /**
+   * <pre>
+   * the release's page (proposals)
+   * </pre>
+   *
+   * <code>string notes_url = 15 [json_name = "notesUrl"];</code>
+   */
+  private void clearNotesUrl() {
+
+    notesUrl_ = getDefaultInstance().getNotesUrl();
+  }
+  /**
+   * <pre>
+   * the release's page (proposals)
+   * </pre>
+   *
+   * <code>string notes_url = 15 [json_name = "notesUrl"];</code>
+   * @param value The bytes for notesUrl to set.
+   */
+  private void setNotesUrlBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    notesUrl_ = value.toStringUtf8();
+
+  }
+
   public static io.github.jflowers.ghhud.api.v1.ToolkitRolloutState parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -999,7 +1135,7 @@ public  final class ToolkitRolloutState extends
 
     /**
      * <pre>
-     * pin, scaffold, track, done, failed, cancelled
+     * proposed, pin, scaffold, track, done, failed, cancelled
      * </pre>
      *
      * <code>string stage = 5 [json_name = "stage"];</code>
@@ -1011,7 +1147,7 @@ public  final class ToolkitRolloutState extends
     }
     /**
      * <pre>
-     * pin, scaffold, track, done, failed, cancelled
+     * proposed, pin, scaffold, track, done, failed, cancelled
      * </pre>
      *
      * <code>string stage = 5 [json_name = "stage"];</code>
@@ -1024,7 +1160,7 @@ public  final class ToolkitRolloutState extends
     }
     /**
      * <pre>
-     * pin, scaffold, track, done, failed, cancelled
+     * proposed, pin, scaffold, track, done, failed, cancelled
      * </pre>
      *
      * <code>string stage = 5 [json_name = "stage"];</code>
@@ -1039,7 +1175,7 @@ public  final class ToolkitRolloutState extends
     }
     /**
      * <pre>
-     * pin, scaffold, track, done, failed, cancelled
+     * proposed, pin, scaffold, track, done, failed, cancelled
      * </pre>
      *
      * <code>string stage = 5 [json_name = "stage"];</code>
@@ -1052,7 +1188,7 @@ public  final class ToolkitRolloutState extends
     }
     /**
      * <pre>
-     * pin, scaffold, track, done, failed, cancelled
+     * proposed, pin, scaffold, track, done, failed, cancelled
      * </pre>
      *
      * <code>string stage = 5 [json_name = "stage"];</code>
@@ -1506,6 +1642,144 @@ public  final class ToolkitRolloutState extends
       return this;
     }
 
+    /**
+     * <pre>
+     * the release's notes (proposals)
+     * </pre>
+     *
+     * <code>string notes = 14 [json_name = "notes"];</code>
+     * @return The notes.
+     */
+    @java.lang.Override
+    public java.lang.String getNotes() {
+      return instance.getNotes();
+    }
+    /**
+     * <pre>
+     * the release's notes (proposals)
+     * </pre>
+     *
+     * <code>string notes = 14 [json_name = "notes"];</code>
+     * @return The bytes for notes.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getNotesBytes() {
+      return instance.getNotesBytes();
+    }
+    /**
+     * <pre>
+     * the release's notes (proposals)
+     * </pre>
+     *
+     * <code>string notes = 14 [json_name = "notes"];</code>
+     * @param value The notes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setNotes(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setNotes(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * the release's notes (proposals)
+     * </pre>
+     *
+     * <code>string notes = 14 [json_name = "notes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearNotes() {
+      copyOnWrite();
+      instance.clearNotes();
+      return this;
+    }
+    /**
+     * <pre>
+     * the release's notes (proposals)
+     * </pre>
+     *
+     * <code>string notes = 14 [json_name = "notes"];</code>
+     * @param value The bytes for notes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setNotesBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setNotesBytes(value);
+      return this;
+    }
+
+    /**
+     * <pre>
+     * the release's page (proposals)
+     * </pre>
+     *
+     * <code>string notes_url = 15 [json_name = "notesUrl"];</code>
+     * @return The notesUrl.
+     */
+    @java.lang.Override
+    public java.lang.String getNotesUrl() {
+      return instance.getNotesUrl();
+    }
+    /**
+     * <pre>
+     * the release's page (proposals)
+     * </pre>
+     *
+     * <code>string notes_url = 15 [json_name = "notesUrl"];</code>
+     * @return The bytes for notesUrl.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getNotesUrlBytes() {
+      return instance.getNotesUrlBytes();
+    }
+    /**
+     * <pre>
+     * the release's page (proposals)
+     * </pre>
+     *
+     * <code>string notes_url = 15 [json_name = "notesUrl"];</code>
+     * @param value The notesUrl to set.
+     * @return This builder for chaining.
+     */
+    public Builder setNotesUrl(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setNotesUrl(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * the release's page (proposals)
+     * </pre>
+     *
+     * <code>string notes_url = 15 [json_name = "notesUrl"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearNotesUrl() {
+      copyOnWrite();
+      instance.clearNotesUrl();
+      return this;
+    }
+    /**
+     * <pre>
+     * the release's page (proposals)
+     * </pre>
+     *
+     * <code>string notes_url = 15 [json_name = "notesUrl"];</code>
+     * @param value The bytes for notesUrl to set.
+     * @return This builder for chaining.
+     */
+    public Builder setNotesUrlBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setNotesUrlBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.ToolkitRolloutState)
   }
   @java.lang.Override
@@ -1537,11 +1811,13 @@ public  final class ToolkitRolloutState extends
             io.github.jflowers.ghhud.api.v1.ToolkitTarget.class,
             "error_",
             "summary_",
+            "notes_",
+            "notesUrl_",
           };
           java.lang.String info =
-              "\u0000\r\u0000\u0001\u0001\r\r\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
-              "\u0004\u0208\u0005\u0208\u0006\u1009\u0000\u0007\u1009\u0001\b\u0208\t\u0208\n\u0007" +
-              "\u000b\u001b\f\u0208\r\u0208";
+              "\u0000\u000f\u0000\u0001\u0001\u000f\u000f\u0000\u0001\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u1009\u0000\u0007\u1009\u0001\b\u0208" +
+              "\t\u0208\n\u0007\u000b\u001b\f\u0208\r\u0208\u000e\u0208\u000f\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

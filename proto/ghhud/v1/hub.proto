@@ -751,6 +751,7 @@ enum AlertType {
   ALERT_TYPE_READY = 1; // your PR is ready for a maintainer
   ALERT_TYPE_BLOCKED = 2; // an agent has waited on you too long
   ALERT_TYPE_RUN_FINISHED = 3;
+  ALERT_TYPE_TOOL_RELEASE = 4; // a tool released; its rollout waits for you (ref is tool@version)
 }
 
 message Alert {
@@ -792,7 +793,7 @@ message ToolkitRolloutState {
   string tool = 2;
   string version = 3;
   string from = 4;
-  string stage = 5; // pin, scaffold, track, done, failed, cancelled
+  string stage = 5; // proposed, pin, scaffold, track, done, failed, cancelled
   google.protobuf.Timestamp started = 6;
   google.protobuf.Timestamp updated = 7;
   string pin_pr = 8;
@@ -801,6 +802,8 @@ message ToolkitRolloutState {
   repeated ToolkitTarget targets = 11;
   string error = 12;
   string summary = 13; // progress on one line
+  string notes = 14; // the release's notes (proposals)
+  string notes_url = 15; // the release's page (proposals)
 }
 
 message ToolkitTarget {

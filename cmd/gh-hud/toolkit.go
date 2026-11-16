@@ -24,6 +24,7 @@ const toolkitUsage = `usage: gh-hud toolkit list [flags]
        gh-hud toolkit scaffold [flags] [tool[@version] ...]
        gh-hud toolkit status                  tools, versions and rollouts (from the hub)
        gh-hud toolkit rollout tool[@version]  roll a release out: pin PR, scaffold PRs, fleet
+       gh-hud toolkit approve|decline <tool@version>   answer a proposed release
        gh-hud toolkit cancel|retry|dismiss <tool@version>
        gh-hud toolkit check                   look for releases and versions now
 
@@ -43,7 +44,7 @@ func (r *repoFlags) String() string     { return strings.Join(*r, ",") }
 func (r *repoFlags) Set(v string) error { *r = append(*r, v); return nil }
 
 func runToolkit(args []string, stdout, stderr io.Writer) int {
-	if len(args) > 0 && slices.Contains([]string{"status", "rollout", "cancel", "retry", "dismiss", "check"}, args[0]) {
+	if len(args) > 0 && slices.Contains([]string{"status", "rollout", "approve", "decline", "cancel", "retry", "dismiss", "check"}, args[0]) {
 		return runToolkitHub(args, stdout, stderr)
 	}
 	if len(args) == 0 || (args[0] != "list" && args[0] != "scaffold") {

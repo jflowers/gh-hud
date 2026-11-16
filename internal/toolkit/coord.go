@@ -25,6 +25,7 @@ import (
 type Stage string
 
 const (
+	StageProposed  Stage = "proposed" // a new release waits for your go-ahead
 	StagePin       Stage = "pin"      // the dotfiles pin PR is open
 	StageScaffold  Stage = "scaffold" // re-scaffolding the targets
 	StageTrack     Stage = "track"    // following the scaffold PRs and the fleet
@@ -98,10 +99,19 @@ type Rollout struct {
 	Applied  bool        `json:"applied,omitempty"` // this machine (the fleet's last) has the pin
 	Targets  []TargetRun `json:"targets,omitempty"`
 	Error    string      `json:"error,omitempty"`
+	Notes    string      `json:"notes,omitempty"`     // the release's notes (proposals)
+	NotesURL string      `json:"notes_url,omitempty"` // the release's page (proposals)
 }
 
 // Summary is the rollout's progress on one line.
 func (r Rollout) Summary() string {
+	if r.Stage == StageProposed {
+		s := "new release, waiting for your go-ahead"
+		if r.From != "" {
+			s += " (fleet on " + r.From + ")"
+		}
+		return s
+	}
 	var parts []string
 	switch {
 	case r.PinPR == "" && r.Stage == StagePin:
@@ -208,6 +218,7 @@ type Coordinator struct {
 
 	mu       sync.Mutex
 	rollouts []Rollout
+	declined []string // proposals you dismissed (IDs), not proposed again
 	status   Snapshot // Tools, CheckedAt, Checking, Err
 
 	wake, check chan struct{}
@@ -244,13 +255,11 @@ func NewCoordinator(o CoordOptions) (*Coordinator, error) {
 	case err != nil:
 		return nil, err
 	default:
-		var st struct {
-			Rollouts []Rollout `json:"rollouts"`
-		}
+		var st coordState
 		if err := json.Unmarshal(data, &st); err != nil {
 			return nil, fmt.Errorf("%s: %w", c.statePath(), err)
 		}
-		c.rollouts = st.Rollouts
+		c.rollouts, c.declined = st.Rollouts, st.Declined
 	}
 	return c, nil
 }
@@ -258,11 +267,18 @@ func NewCoordinator(o CoordOptions) (*Coordinator, error) {
 func (c *Coordinator) statePath() string { return filepath.Join(c.opts.StateDir, "toolkit.json") }
 func (c *Coordinator) workDir() string   { return filepath.Join(c.opts.StateDir, "toolkit") }
 
+// coordState is what toolkit.json holds.
+type coordState struct {
+	Rollouts []Rollout `json:"rollouts"`
+	Declined []string  `json:"declined,omitempty"`
+}
+
+// maxDeclined bounds the declined list; the oldest go first.
+const maxDeclined = 100
+
 // save writes the rollouts; the caller holds mu.
 func (c *Coordinator) save() {
-	data, err := json.MarshalIndent(struct {
-		Rollouts []Rollout `json:"rollouts"`
-	}{c.rollouts}, "", "  ")
+	data, err := json.MarshalIndent(coordState{c.rollouts, c.declined}, "", "  ")
 	if err != nil {
 		return
 	}
@@ -335,7 +351,10 @@ func (c *Coordinator) Start(ctx context.Context, tool, version string) (string, 
 	}
 	now := c.opts.Now()
 	r := Rollout{ID: tool + "@" + version, Tool: tool, Version: version, Stage: StagePin, Started: now, Updated: now}
-	c.rollouts = slices.DeleteFunc(c.rollouts, func(x Rollout) bool { return x.ID == r.ID })
+	// Starting answers the tool's proposal, whichever version it named.
+	c.rollouts = slices.DeleteFunc(c.rollouts, func(x Rollout) bool {
+		return x.ID == r.ID || x.Tool == tool && x.Stage == StageProposed
+	})
 	c.rollouts = append(c.rollouts, r)
 	c.save()
 	c.poke(c.wake)
@@ -357,8 +376,11 @@ func (c *Coordinator) Cancel(id string) error {
 // targets that failed or were refused.
 func (c *Coordinator) Retry(id string) error {
 	err := c.edit(id, func(r *Rollout) error {
-		if r.Stage.Active() {
+		switch r.Stage {
+		case StagePin, StageScaffold, StageTrack:
 			return fmt.Errorf("%s is still running", id)
+		case StageProposed:
+			return fmt.Errorf("%s is a proposal; roll it out to start it", id)
 		}
 		r.Stage, r.Error = StagePin, ""
 		r.Targets = slices.DeleteFunc(r.Targets, func(t TargetRun) bool {
@@ -370,7 +392,8 @@ func (c *Coordinator) Retry(id string) error {
 	return err
 }
 
-// Dismiss forgets a finished rollout.
+// Dismiss forgets a finished rollout, or declines a proposal: that release
+// isn't proposed again (u still rolls it out).
 func (c *Coordinator) Dismiss(id string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -380,6 +403,12 @@ func (c *Coordinator) Dismiss(id string) error {
 	}
 	if c.rollouts[i].Stage.Active() {
 		return fmt.Errorf("%s is still running; cancel it first", id)
+	}
+	if c.rollouts[i].Stage == StageProposed && !slices.Contains(c.declined, id) {
+		c.declined = append(c.declined, id)
+		if n := len(c.declined) - maxDeclined; n > 0 {
+			c.declined = slices.Delete(c.declined, 0, n)
+		}
 	}
 	c.rollouts = slices.Delete(c.rollouts, i, i+1)
 	c.save()
@@ -834,15 +863,105 @@ func (c *Coordinator) checkStatus(ctx context.Context) {
 	c.mu.Unlock()
 	tools, err := c.readStatus(ctx)
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	c.status.Checking = false
 	c.status.CheckedAt = c.opts.Now()
 	c.status.Err = ""
 	if err != nil {
 		c.status.Err = err.Error()
+	} else {
+		c.status.Tools = tools
+	}
+	c.mu.Unlock()
+	if err == nil {
+		c.propose(ctx, tools)
+	}
+}
+
+// propose turns each tool's release newer than its pin into a proposed
+// rollout, unless one exists, the tool is rolling out, or you declined it.
+// A proposal the pin has caught up with goes.
+func (c *Coordinator) propose(ctx context.Context, tools []ToolStatus) {
+	m, err := Load(c.opts.ManifestPath)
+	if err != nil {
 		return
 	}
-	c.status.Tools = tools
+	c.mu.Lock()
+	var want []ToolStatus
+	pins := map[string]string{}
+	for _, ts := range tools {
+		pins[ts.Name] = ts.Pin
+		if ts.Pin == "" || !Newer(ts.Latest, ts.Pin) {
+			continue
+		}
+		id := ts.Name + "@" + ts.Latest
+		if slices.Contains(c.declined, id) || slices.ContainsFunc(c.rollouts, func(r Rollout) bool {
+			return r.ID == id || r.Tool == ts.Name && r.Stage.Active()
+		}) {
+			continue
+		}
+		want = append(want, ts)
+	}
+	n := len(c.rollouts)
+	c.rollouts = slices.DeleteFunc(c.rollouts, func(r Rollout) bool {
+		pin, known := pins[r.Tool]
+		return r.Stage == StageProposed && known && !Newer(r.Version, pin)
+	})
+	changed := len(c.rollouts) != n
+	c.mu.Unlock()
+
+	var add []Rollout
+	for _, ts := range want {
+		r := Rollout{ID: ts.Name + "@" + ts.Latest, Tool: ts.Name, Version: ts.Latest, From: ts.Pin, Stage: StageProposed}
+		if t, ok := m.Tool(ts.Name); ok {
+			r.Notes, r.NotesURL = c.releaseNotes(ctx, t, ts.Latest)
+		}
+		add = append(add, r)
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	now := c.opts.Now()
+	for _, r := range add {
+		if slices.ContainsFunc(c.rollouts, func(x Rollout) bool { return x.ID == r.ID || x.Tool == r.Tool && x.Stage.Active() }) {
+			continue // started meanwhile
+		}
+		// A newer release replaces the tool's older proposal.
+		c.rollouts = slices.DeleteFunc(c.rollouts, func(x Rollout) bool { return x.Tool == r.Tool && x.Stage == StageProposed })
+		r.Started, r.Updated = now, now
+		c.rollouts = append(c.rollouts, r)
+		changed = true
+	}
+	if changed {
+		c.save()
+	}
+}
+
+// maxNotes bounds a proposal's release notes.
+const maxNotes = 4000
+
+// releaseNotes are a release's notes and page; the page alone when the
+// notes can't be read.
+func (c *Coordinator) releaseNotes(ctx context.Context, t Tool, version string) (notes, url string) {
+	switch {
+	case t.Release != "":
+		prefix := "v"
+		if t.TagPrefix != nil {
+			prefix = *t.TagPrefix
+		}
+		tag := prefix + version
+		url = "https://github.com/" + t.Release + "/releases/tag/" + tag
+		out, err := c.opts.Run.Run(ctx, c.workDir(), "gh", "api", "repos/"+t.Release+"/releases/tags/"+tag, "--jq", ".body")
+		if err != nil {
+			return "", "https://github.com/" + t.Release + "/releases"
+		}
+		notes = strings.TrimSpace(out)
+	case t.Npm != "":
+		url = "https://www.npmjs.com/package/" + t.Npm + "/v/" + version
+	}
+	if len(notes) > maxNotes {
+		notes = strings.ToValidUTF8(notes[:maxNotes], "") + "\n…"
+	}
+	return notes, url
 }
 
 func (c *Coordinator) readStatus(ctx context.Context) ([]ToolStatus, error) {

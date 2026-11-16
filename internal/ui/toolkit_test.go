@@ -111,3 +111,47 @@ func TestToolkitIndicator(t *testing.T) {
 		t.Error("indicator for a finished rollout")
 	}
 }
+
+func TestToolkitProposal(t *testing.T) {
+	fake := &hubtest.Fake{}
+	snap := toolkitTestSnapshot()
+	notes := "## What's new\n" + strings.Repeat("- a change\n", 12)
+	snap.Rollouts = append([]toolkit.Rollout{{
+		ID: "uf@0.22.0", Tool: "uf", Version: "0.22.0", From: "0.21.0", Stage: toolkit.StageProposed,
+		Notes: notes, NotesURL: "https://github.com/unbound-force/unbound-force/releases/tag/v0.22.0",
+	}}, snap.Rollouts...)
+	fake.SetSnap(hub.Snapshot{Seq: 1, Toolkit: &snap})
+	m := New(config.Default(), fake)
+	m.width, m.height = 140, 50
+
+	pressKey(t, m, "T")
+	pressKey(t, m, "a") // a tool row: nothing to approve
+	pressKey(t, m, "j")
+	pressKey(t, m, "j") // the proposal
+	out := m.toolkitView()
+	for _, want := range []string{"◆", "waiting for your go-ahead (fleet on 0.21.0)", "What's new", "… 5 more line(s)",
+		"releases/tag/v0.22.0", "a approve"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("proposal view missing %q", want)
+		}
+	}
+	if got := rolloutLink(snap.Rollouts[0]); got != snap.Rollouts[0].NotesURL {
+		t.Errorf("o opens %q", got)
+	}
+	if snap.Rollouts[0].Stage.Active() || toolkitIndicatorText(paint{}, toolkit.Snapshot{Rollouts: snap.Rollouts[:1]}) != "" {
+		t.Error("a proposal counts as rolling out")
+	}
+	pressKey(t, m, "a") // arms
+	if len(fake.Calls) != 0 {
+		t.Fatalf("one a approved: %v", fake.Calls)
+	}
+	pressKey(t, m, "a") // approves
+	pressKey(t, m, "d") // declines
+	want := []string{"ToolkitRollout uf 0.22.0", "ToolkitControl dismiss uf@0.22.0"}
+	if !slices.Equal(fake.Calls, want) {
+		t.Errorf("calls =\n%q\nwant\n%q", fake.Calls, want)
+	}
+	if !strings.Contains(m.statusMsg, "declined uf@0.22.0") {
+		t.Errorf("status %q", m.statusMsg)
+	}
+}
