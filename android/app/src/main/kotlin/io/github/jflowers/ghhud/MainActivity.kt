@@ -25,6 +25,9 @@ import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jflowers.ghhud.api.v1.FleetAction
 import io.github.jflowers.ghhud.api.v1.RefreshTarget
+import io.github.jflowers.ghhud.api.v1.ToolkitAction
+import io.github.jflowers.ghhud.core.RolloutRow
+import io.github.jflowers.ghhud.core.ToolkitCommands
 import io.github.jflowers.ghhud.core.FleetCommands
 import io.github.jflowers.ghhud.core.Viewers
 import io.github.jflowers.ghhud.core.WatchTarget
@@ -80,6 +83,14 @@ class MainActivity : ComponentActivity() {
         override suspend fun fleet(action: FleetAction) = FleetCommands.run(model.connection, action, model.ui.value.hub.snapshot.fleet)
 
         override fun updateFleet(change: (ListState<FleetSort>) -> ListState<FleetSort>) = model.updateFleet(change)
+
+        override suspend fun checkTools() = ToolkitCommands.check(model.connection)
+
+        override suspend fun rollOut(tool: String, version: String) = ToolkitCommands.rollOut(model.connection, tool, version)
+
+        override suspend fun decline(id: String) = ToolkitCommands.decline(model.connection, id)
+
+        override suspend fun toolkit(action: ToolkitAction, r: RolloutRow) = ToolkitCommands.control(model.connection, action, r)
 
         override fun follow(t: WatchTarget) = Viewers.follow(model.connection, t)
 

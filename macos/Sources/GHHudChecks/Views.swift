@@ -153,6 +153,44 @@ enum Views {
             }
         }
 
+        if s.hasToolkit {
+            out["toolkit.state"] = ToolkitList.state(s)
+            out["toolkit.waiting"] = ToolkitList.waiting(s)
+        }
+        for (i, t) in ToolkitList.tools(s).enumerated() {
+            let p = "toolkit.tools[\(i)]"
+            out[p] = t.name
+            out["\(p).pin"] = t.pin
+            out["\(p).latest"] = t.latest
+            out["\(p).mark"] = t.mark
+            out["\(p).tone"] = tone(t.tone)
+            out["\(p).rolling"] = t.rolling
+            out["\(p).proposal"] = t.proposal
+            out["\(p).canRollOut"] = t.canRollOut
+            out["\(p).repos"] = t.repos
+            out["\(p).error"] = t.error
+        }
+        for (i, r) in ToolkitList.rollouts(s).enumerated() {
+            let p = "toolkit.rollouts[\(i)]"
+            out[p] = r.id
+            out["\(p).stage"] = r.stage
+            out["\(p).tone"] = tone(r.tone)
+            out["\(p).counts"] = r.counts
+            out["\(p).summary"] = r.summary
+            out["\(p).error"] = r.error
+            out["\(p).pinPR"] = r.pinPR?.absoluteString
+            out["\(p).actions"] = [r.canCancel ? "cancel" : nil, r.canRetry ? "retry" : nil, r.canDismiss ? "dismiss" : nil]
+                .compactMap { $0 }
+            for (j, t) in r.targets.enumerated() {
+                let q = "\(p).targets[\(j)]"
+                out[q] = t.target
+                out["\(q).state"] = t.state
+                out["\(q).tone"] = tone(t.tone)
+                out["\(q).url"] = t.url?.absoluteString
+                out["\(q).note"] = t.note
+            }
+        }
+
         out["summary"] = HubSummary.line(s, now: now)
         let a = Attention(s)
         out["attention.count"] = a.count

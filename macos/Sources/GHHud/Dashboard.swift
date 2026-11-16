@@ -10,6 +10,7 @@ enum Pane: Hashable {
     case agents
     case workspaces
     case fleet
+    case toolkit
 }
 
 /// The window's own state. Not @State (a macro only Xcode ships): see
@@ -30,6 +31,13 @@ final class DashboardState: ObservableObject {
     @Published var dropping: EpicRow?
     @Published var enrolling = false
     @Published var confirmSkipWait = false
+    @Published var toolSelection: ToolRow.ID?
+    @Published var rolloutSelection: RolloutRow.ID?
+    /// The tool whose waiting release the notes sheet shows.
+    @Published var release: String?
+    @Published var releaseBusy = false
+    @Published var releaseError: String?
+    @Published var confirmRollOut: ToolRow?
     /// Each table's sort, from its clicked headers; empty is the hub's order.
     @Published var itemSort: [KeyPathComparator<ItemRow>] = []
     @Published var agentSort: [KeyPathComparator<AgentRow>] = []
@@ -84,6 +92,7 @@ struct DashboardView: View {
             if case .items = ui.pane { itemTools }
             if ui.pane == .plan { PlanTools(conn: conn, ui: ui) }
             if ui.pane == .fleet { FleetTools(conn: conn, ui: ui) }
+            if ui.pane == .toolkit { ToolkitTools(conn: conn, ui: ui) }
             if ui.pane == .agents {
                 ToolbarItem {
                     Toggle(isOn: $ui.liveOnly) {
@@ -112,6 +121,12 @@ struct DashboardView: View {
         .frame(minWidth: 760, minHeight: 360)
         .sheet(item: $ui.sheet) { req in
             AgentSheet(conn: conn, req: req, ui: ui)
+        }
+        .onReceive(DashboardOpener.shared.$pane) { p in
+            if let p {
+                ui.pane = p
+                DashboardOpener.shared.pane = nil
+            }
         }
     }
 
@@ -190,6 +205,7 @@ struct DashboardView: View {
         switch ui.pane {
         case .plan: return "Plan"
         case .fleet: return "Fleet"
+        case .toolkit: return "Toolkit"
         case .agents: return "Agents"
         case .workspaces: return "Workspaces"
         default: return filter.title
@@ -225,6 +241,8 @@ struct DashboardView: View {
             PlanPane(conn: conn, ui: ui)
         case .fleet:
             FleetPane(conn: conn, ui: ui)
+        case .toolkit:
+            ToolkitPane(conn: conn, ui: ui)
         case .agents:
             AgentsPane(conn: conn, ui: ui)
         case .workspaces:
@@ -286,6 +304,15 @@ struct Sidebar: View {
                         .help("The GitOps rollout across your machines")
                         .badge(Text(FleetList.progress(conn.snapshot)))
                         .tag(Pane.fleet)
+                }
+            }
+            if conn.snapshot.hasToolkit {
+                Section("Toolkit") {
+                    let waiting = ToolkitList.waiting(conn.snapshot)
+                    Label("Tools", systemImage: "wrench.and.screwdriver")
+                        .help("The tools the fleet pins, and their rollouts")
+                        .badge(waiting)
+                        .tag(Pane.toolkit)
                 }
             }
         }

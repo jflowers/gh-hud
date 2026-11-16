@@ -31,6 +31,8 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         content.sound = .default
         if let url = Links.forAlert(alert) {
             content.userInfo = ["url": url.absoluteString]
+        } else if alert.type == .toolkitTarget || alert.type == .toolRelease {
+            content.userInfo = ["pane": "toolkit"]
         }
         center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
     }
@@ -49,9 +51,11 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse
     ) async {
-        let link = response.notification.request.content.userInfo["url"] as? String
-        if let link, let url = URL(string: link) {
+        let info = response.notification.request.content.userInfo
+        if let link = info["url"] as? String, let url = URL(string: link) {
             await MainActor.run { _ = NSWorkspace.shared.open(url) }
+        } else if info["pane"] as? String == "toolkit" {
+            await MainActor.run { DashboardOpener.shared.open(.toolkit) }
         }
     }
 

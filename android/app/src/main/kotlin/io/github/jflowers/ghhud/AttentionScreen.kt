@@ -68,7 +68,7 @@ fun statusLine(ui: Ui, now: Instant = Instant.now()): String = when (val s = ui.
 /** What needs you, by section, with approvals under their rows. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AttentionScreen(ui: Ui, act: AttentionActions) {
+fun AttentionScreen(ui: Ui, act: AttentionActions, onToolkit: (rollout: String) -> Unit = {}) {
     var editing by remember { mutableStateOf(false) }
     Scaffold(
         contentWindowInsets = WindowInsets(0),
@@ -100,7 +100,7 @@ fun AttentionScreen(ui: Ui, act: AttentionActions) {
                     onRefresh = act::refresh,
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    Sections(ui, act)
+                    Sections(ui, act, onToolkit)
                 }
             }
         }
@@ -132,7 +132,7 @@ private fun NoHub(onSet: () -> Unit) {
 }
 
 @Composable
-private fun Sections(ui: Ui, act: AttentionActions) {
+private fun Sections(ui: Ui, act: AttentionActions, onToolkit: (String) -> Unit) {
     val sections = ui.hub.attention.sections
     val now = Instant.now()
     LazyColumn(Modifier.fillMaxSize().testTag("sections")) {
@@ -155,7 +155,7 @@ private fun Sections(ui: Ui, act: AttentionActions) {
                 )
             }
             items(section.rows, key = { it.id }) { row ->
-                RowView(row, pending = row.id in ui.pending, error = ui.errors[row.id], now = now, act = act)
+                RowView(row, pending = row.id in ui.pending, error = ui.errors[row.id], now = now, act = act, onToolkit = onToolkit)
                 HorizontalDivider()
             }
         }
@@ -163,8 +163,12 @@ private fun Sections(ui: Ui, act: AttentionActions) {
 }
 
 @Composable
-private fun RowView(row: AttentionRow, pending: Boolean, error: String?, now: Instant, act: AttentionActions) {
-    val open = row.url?.let { url -> Modifier.clickable { act.open(url) } } ?: Modifier
+private fun RowView(row: AttentionRow, pending: Boolean, error: String?, now: Instant, act: AttentionActions, onToolkit: (String) -> Unit) {
+    // A rollout's repo without a PR opens the Tools screen on its rollout.
+    val rollout = row.id.removePrefix("rollout:").substringBefore(' ').takeIf { row.id.startsWith("rollout:") }
+    val open = row.url?.let { url -> Modifier.clickable { act.open(url) } }
+        ?: rollout?.let { r -> Modifier.clickable { onToolkit(r) } }
+        ?: Modifier
     Column(open.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp).testTag("row:" + row.id)) {
         Row(verticalAlignment = Alignment.Top) {
             Text(

@@ -240,6 +240,26 @@ public final class HubConnection {
         return Self.why(await client.fleetControl(request: req, headers: hub.authHeaders))
     }
 
+    /// Starts rolling a tool out at version ("" for its latest release).
+    /// Returns why it failed, if it did.
+    public func rollOut(tool: String, version: String = "") async -> String? {
+        guard let hub, let client = commands else { return "not connected" }
+        var req = Ghhud_V1_ToolkitRolloutRequest()
+        req.tool = tool
+        req.version = version
+        return Self.why(await client.toolkitRollout(request: req, headers: hub.authHeaders))
+    }
+
+    /// Cancels, retries or dismisses a rollout, or checks the tools' releases
+    /// now (id ""). Returns why it failed, if it did.
+    public func toolkit(_ action: Ghhud_V1_ToolkitAction, id: String = "") async -> String? {
+        guard let hub, let client = commands else { return "not connected" }
+        var req = Ghhud_V1_ToolkitControlRequest()
+        req.action = action
+        req.id = id
+        return Self.why(await client.toolkitControl(request: req, headers: hub.authHeaders))
+    }
+
     /// Opens a terminal attached to an agent session's pane.
     public func watch(sessionID: String) async -> String? {
         if isRemote { return Self.remoteTerminalWhy }

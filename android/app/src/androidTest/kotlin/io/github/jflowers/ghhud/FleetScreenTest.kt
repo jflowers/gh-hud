@@ -16,6 +16,7 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.jflowers.ghhud.api.v1.FleetAction
+import io.github.jflowers.ghhud.api.v1.ToolkitAction
 import io.github.jflowers.ghhud.api.v1.Snapshot
 import io.github.jflowers.ghhud.core.AgentChoice
 import io.github.jflowers.ghhud.core.AgentRow
@@ -31,6 +32,7 @@ import io.github.jflowers.ghhud.core.HubStatus
 import io.github.jflowers.ghhud.core.ItemRow
 import io.github.jflowers.ghhud.core.PaneRead
 import io.github.jflowers.ghhud.core.PlanItem
+import io.github.jflowers.ghhud.core.RolloutRow
 import io.github.jflowers.ghhud.core.WatchTarget
 import io.github.jflowers.ghhud.api.v1.TranscriptResponse
 import org.junit.Assert.assertEquals
@@ -103,43 +105,11 @@ class FleetScreenTest {
     @Test
     fun theFleetPlaceComesAndGoes() {
         val shown = mutableStateOf(snap)
-        val noop = object : AppActions {
-            override fun open(url: String) {}
-            override fun approve(row: AttentionRow) {}
-            override fun reject(row: AttentionRow) {}
-            override fun refresh() {}
-            override fun setAddress(a: HubAddress) {}
-            override fun setNotify(on: Boolean) {}
-            override fun update(change: (ItemsView) -> ItemsView) {}
-            override fun keepTerms() {}
-            override fun copy(text: String) {}
-            override suspend fun choices(row: ItemRow, queue: Boolean): Answer<List<AgentChoice>> = Answer.Ok(emptyList())
-            override suspend fun run(row: ItemRow, c: AgentChoice, queue: Boolean): Answer<String> = Answer.Ok("")
-            override suspend fun recheck(row: ItemRow): Answer<String> = Answer.Ok("")
-            override suspend fun enqueue(r: PlanItem): Answer<String> = Answer.Ok("")
-            override suspend fun move(r: PlanItem, by: Long): Answer<String> = Answer.Ok("")
-            override suspend fun unqueue(r: PlanItem): Answer<String> = Answer.Ok("")
-            override suspend fun approve(c: CaseRow): Answer<String> = Answer.Ok("")
-            override suspend fun reject(c: CaseRow): Answer<String> = Answer.Ok("")
-            override suspend fun approve(e: EpicRow): Answer<String> = Answer.Ok("")
-            override suspend fun reread(e: EpicRow): Answer<String> = Answer.Ok("")
-            override suspend fun drop(e: EpicRow): Answer<String> = Answer.Ok("")
-            override suspend fun clearGate(epic: String, piece: String): Answer<String> = Answer.Ok("")
-            override suspend fun enroll(target: String): Answer<String> = Answer.Ok("")
-            override fun updateAgents(change: (AgentsView) -> AgentsView) {}
-            override fun refreshAgents() {}
-            override fun refreshWorkspaces() {}
-            override suspend fun recheck(r: AgentRow): Answer<String> = Answer.Ok("")
-            override suspend fun fleet(action: FleetAction): Answer<String> = Answer.Ok("")
-            override fun updateFleet(change: (ListState<FleetSort>) -> ListState<FleetSort>) {}
-            override fun follow(t: WatchTarget) = kotlinx.coroutines.flow.emptyFlow<PaneRead>()
-            override suspend fun transcript(runId: String): Answer<TranscriptResponse> = Answer.No("none")
-        }
         compose.setContent {
             val s = shown.value
             MaterialTheme {
                 AppScreen(Ui(HubAddress("https://hub"), HubState(HubStatus.Connected, s, Attention.of(s))), ItemsView(), AgentsView(),
-                    ListState(FleetSort.HUB), noop)
+                    ListState(FleetSort.HUB), NoopActions)
             }
         }
         compose.onNodeWithText("1/6", useUnmergedTree = true).assertExists()

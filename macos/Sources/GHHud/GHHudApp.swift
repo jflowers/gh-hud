@@ -91,12 +91,13 @@ extension SnapshotMode {
     /// for the hub, and draws the window (the real AppKit views, table and
     /// toolbar included) to a PNG. --select selects the row numbered N;
     /// --agent or --queue then opens its sheet, drawn to out-sheet.png.
-    /// `--pane plan|agents|workspaces|fleet [--pick N]` shows that pane instead, with
+    /// `--pane plan|agents|workspaces|fleet|toolkit [--pick N]` shows that pane instead, with
     /// its Nth row (from 0) selected; --enroll opens the Enroll Epic sheet.
     /// --oldest-first sorts the items by their Age column, oldest first.
     /// --search goes to the shown table's search field; --keep then keeps
     /// its column terms as filter chips, as Return does. --live-only turns
-    /// on the Agents pane's Live Only. --url REF opens Start Agent on URL
+    /// on the Agents pane's Live Only. --release TOOL opens the Toolkit pane's
+    /// release notes for TOOL. --url REF opens Start Agent on URL
     /// with REF looked up ("" for the empty sheet).
     @MainActor
     static func windowIfAsked() {
@@ -115,6 +116,7 @@ extension SnapshotMode {
         let pane: Pane = switch arg("--pane") {
         case "plan": .plan
         case "fleet": .fleet
+        case "toolkit": .toolkit
         case "agents": .agents
         case "workspaces": .workspaces
         default: .items(filter)
@@ -149,6 +151,7 @@ extension SnapshotMode {
             }
             if args.contains("--enroll") { ui.enrolling = true }
             if args.contains("--live-only") { ui.liveOnly = true }
+            if let tool = arg("--release") { ui.release = tool }
             if let ref = arg("--url") { ui.sheet = AgentRequest(named: ref) }
             if let n = arg("--pick").flatMap(Int.init) {
                 if pane == .plan {
@@ -157,6 +160,9 @@ extension SnapshotMode {
                 } else if pane == .agents {
                     let rows = AgentList.rows(conn.snapshot, showStale: false)
                     if n < rows.count { ui.agentSelection = rows[n].id }
+                } else if pane == .toolkit {
+                    let rows = ToolkitList.rollouts(conn.snapshot)
+                    if n < rows.count { ui.rolloutSelection = rows[n].id }
                 } else if pane == .workspaces {
                     let rows = WorkspaceList.rows(conn.snapshot)
                     if n < rows.count { ui.workspaceSelection = rows[n].id }
@@ -217,9 +223,11 @@ final class AppModel {
 /// delegate). SwiftUI only hands openWindow to views, so the menu bar label,
 /// the one view that exists from launch, passes it on.
 @MainActor
-final class DashboardOpener {
+final class DashboardOpener: ObservableObject {
     static let shared = DashboardOpener()
     private var openWindow: OpenWindowAction?
+    /// A pane to show, taken by the dashboard once it's open.
+    @Published var pane: Pane?
 
     /// Takes openWindow from a view; the first time, at launch, it opens
     /// the dashboard.
@@ -231,6 +239,12 @@ final class DashboardOpener {
 
     func open() {
         if let openWindow { DashboardView.open(openWindow) }
+    }
+
+    /// Opens the dashboard on a pane.
+    func open(_ p: Pane) {
+        pane = p
+        open()
     }
 }
 

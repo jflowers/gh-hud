@@ -147,6 +147,45 @@ object Views {
             }
         }
 
+        if (s.hasToolkit()) {
+            out["toolkit.state"] = ToolkitList.state(s)
+            out["toolkit.waiting"] = ToolkitList.waiting(s)
+        }
+        ToolkitList.tools(s).forEachIndexed { i, t ->
+            val p = "toolkit.tools[$i]"
+            out[p] = t.name
+            out["$p.pin"] = t.pin
+            out["$p.latest"] = t.latest
+            out["$p.mark"] = t.mark
+            out["$p.tone"] = tone(t.tone)
+            out["$p.rolling"] = t.rolling
+            out["$p.proposal"] = t.proposal
+            out["$p.canRollOut"] = t.canRollOut
+            out["$p.repos"] = t.repos
+            out["$p.error"] = t.error
+        }
+        ToolkitList.rollouts(s).forEachIndexed { i, r ->
+            val p = "toolkit.rollouts[$i]"
+            out[p] = r.id
+            out["$p.stage"] = r.stage
+            out["$p.tone"] = tone(r.tone)
+            out["$p.counts"] = r.counts
+            out["$p.summary"] = r.summary
+            out["$p.error"] = r.error
+            out["$p.pinPR"] = r.pinPr
+            out["$p.actions"] = listOfNotNull(
+                "cancel".takeIf { r.canCancel }, "retry".takeIf { r.canRetry }, "dismiss".takeIf { r.canDismiss },
+            )
+            r.targets.forEachIndexed { j, t ->
+                val q = "$p.targets[$j]"
+                out[q] = t.target
+                out["$q.state"] = t.state
+                out["$q.tone"] = tone(t.tone)
+                out["$q.url"] = t.url
+                out["$q.note"] = t.note
+            }
+        }
+
         out["summary"] = HubSummary.line(s, now)
         val a = Attention.of(s)
         out["attention.count"] = a.count
