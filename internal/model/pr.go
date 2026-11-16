@@ -15,6 +15,15 @@ query($searchQuery: String!, $limit: Int!) {
   search(query: $searchQuery, type: ISSUE, first: $limit) {
     nodes {
       ... on PullRequest {
+` + prFields + `
+      }
+    }
+  }
+}`
+
+// prFields are the PullRequest fields an Item is built from, shared by the
+// dashboard's search and the lookup of one item (lookup.go).
+const prFields = `
         id
         number
         title
@@ -87,10 +96,7 @@ query($searchQuery: String!, $limit: Int!) {
           }
         }
         assignees(first: 10) { nodes { login } }
-      }
-    }
-  }
-}`
+`
 
 type prSearchResult struct {
 	Search struct {

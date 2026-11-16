@@ -12,6 +12,15 @@ query($searchQuery: String!, $limit: Int!) {
   search(query: $searchQuery, type: ISSUE, first: $limit) {
     nodes {
       ... on Issue {
+` + issueFields + `
+      }
+    }
+  }
+}`
+
+// issueFields are the Issue fields an Item is built from, shared by the
+// dashboard's search and the lookup of one item (lookup.go).
+const issueFields = `
         number
         title
         url
@@ -23,10 +32,7 @@ query($searchQuery: String!, $limit: Int!) {
           nodes { author { login } createdAt }
         }
         assignees(first: 10) { nodes { login } }
-      }
-    }
-  }
-}`
+`
 
 type issueSearchResult struct {
 	Search struct {

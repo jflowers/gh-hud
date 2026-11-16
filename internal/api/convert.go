@@ -779,11 +779,11 @@ func EventFromPB(p *pb.Event) hub.Event {
 // commands
 
 func menuChoiceToPB(c dispatch.MenuChoice) *pb.MenuChoice {
-	return &pb.MenuChoice{Task: string(c.Task), Cmd: c.Cmd, Target: c.Target}
+	return &pb.MenuChoice{Task: string(c.Task), Cmd: c.Cmd, Target: c.Target, Suggested: c.Suggested}
 }
 
 func menuChoiceFromPB(p *pb.MenuChoice) dispatch.MenuChoice {
-	return dispatch.MenuChoice{Task: dispatch.Task(p.GetTask()), Cmd: p.GetCmd(), Target: p.GetTarget()}
+	return dispatch.MenuChoice{Task: dispatch.Task(p.GetTask()), Cmd: p.GetCmd(), Target: p.GetTarget(), Suggested: p.GetSuggested()}
 }
 
 // recordToPB keeps the part of a dispatch record a client shows: where

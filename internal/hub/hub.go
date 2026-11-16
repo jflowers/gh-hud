@@ -39,6 +39,7 @@ type Dispatcher interface {
 	Reject(id string) error
 
 	MenuChoices(it model.Item) []dispatch.MenuChoice
+	ItemChoices(it model.Item) []dispatch.MenuChoice
 	Dispatch(ctx context.Context, task dispatch.Task, it model.Item, auto bool) (dispatch.Record, error)
 	Reinspect(ctx context.Context, id string) (dispatch.Run, error)
 	PruneBranches(ctx context.Context, apply bool) (dispatch.BranchSweep, error)
@@ -112,6 +113,10 @@ type Backend interface {
 	// changes when another gh-hud owns dispatch.
 	MenuChoices(ctx context.Context, url string) ([]dispatch.MenuChoice, error)
 	Dispatch(ctx context.Context, task dispatch.Task, url string) (dispatch.Record, error)
+	// ItemChoices looks up an issue or PR you name (a GitHub URL or
+	// owner/repo#N), in the latest refresh or else on GitHub, and lists
+	// every task that fits it. Dispatch takes the item's URL after.
+	ItemChoices(ctx context.Context, ref string) (model.Item, []dispatch.MenuChoice, error)
 	Reinspect(ctx context.Context, runID string) (dispatch.Run, error)
 	// PruneBranches sweeps for branches whose PR is done; apply deletes them.
 	PruneBranches(ctx context.Context, apply bool) (dispatch.BranchSweep, error)
@@ -172,6 +177,9 @@ type Options struct {
 	DispatchOptions func(*config.Config) dispatch.Options
 	// Fetch reads GitHub (model.FetchAll in production).
 	Fetch func(ctx context.Context) *model.FetchResult
+	// Lookup reads one issue or PR outside the latest refresh
+	// (model.FetchItem in production); nil means only refreshed items.
+	Lookup func(ctx context.Context, ref string) (model.Item, error)
 	// Dispatcher and Fleet are nil when dispatch / the fleet are off.
 	Dispatcher Dispatcher
 	Fleet      Fleet

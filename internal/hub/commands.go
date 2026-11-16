@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/jflowers/gh-hud/internal/dispatch"
@@ -43,6 +45,46 @@ func (h *Hub) item(url string) (model.Item, error) {
 	return model.Item{}, fmt.Errorf("%s isn't in the latest refresh", url)
 }
 
+// lookupTimeout bounds reading one item from GitHub.
+const lookupTimeout = 30 * time.Second
+
+// named finds the issue or PR a URL or owner/repo#N names: in the latest
+// refresh, else on GitHub.
+func (h *Hub) named(ctx context.Context, ref string) (model.Item, error) {
+	repo, num, err := model.ParseItemRef(ref)
+	if err != nil {
+		return model.Item{}, err
+	}
+	want := fmt.Sprintf("%s#%d", repo, num)
+	if s := h.Snapshot(); s.Res != nil {
+		for _, it := range s.Res.Items {
+			if (it.Kind == model.KindPR || it.Kind == model.KindIssue) && strings.EqualFold(it.Ref(), want) {
+				return it, nil
+			}
+		}
+	}
+	if h.opts.Lookup == nil {
+		return model.Item{}, fmt.Errorf("%s isn't in the latest refresh", want)
+	}
+	ctx, cancel := context.WithTimeout(ctx, lookupTimeout)
+	defer cancel()
+	return h.opts.Lookup(ctx, want)
+}
+
+// ItemChoices lists every task that fits an issue or PR you name, and
+// where each would run.
+func (h *Hub) ItemChoices(ctx context.Context, ref string) (model.Item, []dispatch.MenuChoice, error) {
+	d, err := h.disp()
+	if err != nil {
+		return model.Item{}, nil, err
+	}
+	it, err := h.named(ctx, ref)
+	if err != nil {
+		return model.Item{}, nil, err
+	}
+	return it, d.ItemChoices(it), nil
+}
+
 func (h *Hub) run(id string) (dispatch.Run, error) {
 	for _, r := range h.Snapshot().Runs {
 		if r.ID == id {
@@ -71,9 +113,19 @@ func (h *Hub) Dispatch(ctx context.Context, task dispatch.Task, url string) (dis
 	if err != nil {
 		return dispatch.Record{}, err
 	}
+	// An item you named with ItemChoices may not be in the refresh.
 	it, err := h.item(url)
 	if err != nil {
-		return dispatch.Record{}, err
+		if it, err = h.named(ctx, url); err != nil {
+			return dispatch.Record{}, err
+		}
+	}
+	if !slices.Contains(dispatch.KindTasks(it.Kind), task) {
+		what := "an issue"
+		if it.Kind == model.KindPR {
+			what = "a pull request"
+		}
+		return dispatch.Record{}, fmt.Errorf("%s doesn't run on %s, %s", task, it.Ref(), what)
 	}
 	ctx, cancel := context.WithTimeout(ctx, dispatchTimeout)
 	defer cancel()

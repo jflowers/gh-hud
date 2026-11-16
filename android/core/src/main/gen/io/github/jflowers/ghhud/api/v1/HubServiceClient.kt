@@ -88,6 +88,25 @@ public class HubServiceClient(
   )
 
 
+  /**
+   *  ItemChoices looks up an issue or PR you name, in the latest refresh
+   *  or else on GitHub, and lists every task that fits it (MenuChoices
+   *  lists only those its state calls for, and only for refreshed items).
+   *  Dispatch then takes the item's URL. INVALID_ARGUMENT when ref isn't
+   *  an issue or PR.
+   */
+  override suspend fun itemChoices(request: ItemChoicesRequest, headers: Headers): ResponseMessage<ItemChoicesResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "ghhud.v1.HubService/ItemChoices",
+      io.github.jflowers.ghhud.api.v1.ItemChoicesRequest::class,
+      io.github.jflowers.ghhud.api.v1.ItemChoicesResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
   override suspend fun reinspect(request: ReinspectRequest, headers: Headers): ResponseMessage<ReinspectResponse> = client.unary(
     request,
     headers,

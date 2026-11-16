@@ -53,4 +53,14 @@ public interface MenuChoiceOrBuilder extends
    */
   com.google.protobuf.ByteString
       getTargetBytes();
+
+  /**
+   * <pre>
+   * The item's state calls for this task (always, from MenuChoices).
+   * </pre>
+   *
+   * <code>bool suggested = 4 [json_name = "suggested"];</code>
+   * @return The suggested.
+   */
+  boolean getSuggested();
 }

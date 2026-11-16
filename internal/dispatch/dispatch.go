@@ -938,6 +938,9 @@ type MenuChoice struct {
 	Task   Task
 	Cmd    string
 	Target string // "workspace" locally, "machine:workspace" remotely
+	// Suggested: the item's state calls for the task (MenuTasks). Only
+	// ItemChoices offers others.
+	Suggested bool
 }
 
 // MenuChoices lists the row's dispatchable tasks and where each would
@@ -946,9 +949,42 @@ func (d *Dispatcher) MenuChoices(it model.Item) []MenuChoice {
 	if humanGated(it, d.o().HumanGate) {
 		return nil
 	}
+	return d.choices(it, MenuTasks(it))
+}
+
+// ItemChoices is MenuChoices for an item you name: every task that fits
+// its kind (KindTasks), the ones its state calls for first and marked
+// Suggested, since you picked the item and know what it needs.
+func (d *Dispatcher) ItemChoices(it model.Item) []MenuChoice {
+	if humanGated(it, d.o().HumanGate) {
+		return nil
+	}
+	tasks := MenuTasks(it)
+	for _, t := range KindTasks(it.Kind) {
+		if !slices.Contains(tasks, t) {
+			tasks = append(tasks, t)
+		}
+	}
+	return d.choices(it, tasks)
+}
+
+// KindTasks are the tasks that can run on an item of kind k, in TaskOrder:
+// a PR's (rebase, ci, feedback, review), or an issue's.
+func KindTasks(k model.Kind) []Task {
+	switch k {
+	case model.KindPR:
+		return []Task{TaskRebase, TaskCI, TaskFeedback, TaskReview}
+	case model.KindIssue:
+		return []Task{TaskIssue}
+	}
+	return nil
+}
+
+func (d *Dispatcher) choices(it model.Item, tasks []Task) []MenuChoice {
+	suggested := MenuTasks(it)
 	v := d.cachedView()
 	var out []MenuChoice
-	for _, task := range MenuTasks(it) {
+	for _, task := range tasks {
 		tc, _, ok := taskConfig(d.o().Tasks, task, it)
 		if !ok {
 			continue
@@ -957,7 +993,7 @@ func (d *Dispatcher) MenuChoices(it model.Item) []MenuChoice {
 		if len(cs) == 0 {
 			continue
 		}
-		out = append(out, MenuChoice{Task: task, Cmd: tc.Command, Target: placementLabel(cs[0])})
+		out = append(out, MenuChoice{Task: task, Cmd: tc.Command, Target: placementLabel(cs[0]), Suggested: slices.Contains(suggested, task)})
 	}
 	return out
 }

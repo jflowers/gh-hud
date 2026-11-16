@@ -9,6 +9,7 @@ import (
 
 	"github.com/jflowers/gh-hud/internal/dispatch"
 	"github.com/jflowers/gh-hud/internal/hub"
+	"github.com/jflowers/gh-hud/internal/model"
 )
 
 // Fake is a hub.Backend that serves Snap and records every command as a
@@ -21,6 +22,7 @@ type Fake struct {
 	Err   error
 
 	Menu      []dispatch.MenuChoice
+	Item      model.Item // what ItemChoices found (with Menu)
 	QueueOpts []dispatch.Task
 	Record    dispatch.Record
 	Run       dispatch.Run
@@ -90,6 +92,13 @@ func (f *Fake) MenuChoices(_ context.Context, url string) ([]dispatch.MenuChoice
 		return nil, err
 	}
 	return f.Menu, nil
+}
+
+func (f *Fake) ItemChoices(_ context.Context, ref string) (model.Item, []dispatch.MenuChoice, error) {
+	if err := f.call("ItemChoices %s", ref); err != nil {
+		return model.Item{}, nil, err
+	}
+	return f.Item, f.Menu, nil
 }
 
 func (f *Fake) Dispatch(_ context.Context, task dispatch.Task, url string) (dispatch.Record, error) {

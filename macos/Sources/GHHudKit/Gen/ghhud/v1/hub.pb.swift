@@ -515,9 +515,53 @@ public nonisolated struct Ghhud_V1_MenuChoice: Sendable {
   /// "workspace" locally, "machine:workspace" remotely.
   public var target: String = String()
 
+  /// The item's state calls for this task (always, from MenuChoices).
+  public var suggested: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+}
+
+public nonisolated struct Ghhud_V1_ItemChoicesRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// A GitHub issue or pull request URL (anything after the number is
+  /// ignored), or "owner/repo#123".
+  public var ref: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Ghhud_V1_ItemChoicesResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// The item named, as the dashboard would show it; send its url to
+  /// Dispatch.
+  public var item: Ghhud_V1_Item {
+    get {_item ?? Ghhud_V1_Item()}
+    set {_item = newValue}
+  }
+  /// Returns true if `item` has been explicitly set.
+  public var hasItem: Bool {self._item != nil}
+  /// Clears the value of `item`. Subsequent reads from it will return its default value.
+  public mutating func clearItem() {self._item = nil}
+
+  /// Suggested tasks first. Empty when none can start (no free checkout,
+  /// or the item has the human-gate label).
+  public var choices: [Ghhud_V1_MenuChoice] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _item: Ghhud_V1_Item? = nil
 }
 
 public nonisolated struct Ghhud_V1_DispatchRequest: Sendable {
@@ -3144,7 +3188,7 @@ nonisolated extension Ghhud_V1_MenuChoicesResponse: SwiftProtobuf.Message, Swift
 
 nonisolated extension Ghhud_V1_MenuChoice: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MenuChoice"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}task\0\u{1}cmd\0\u{1}target\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}task\0\u{1}cmd\0\u{1}target\0\u{1}suggested\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3155,6 +3199,7 @@ nonisolated extension Ghhud_V1_MenuChoice: SwiftProtobuf.Message, SwiftProtobuf.
       case 1: try { try decoder.decodeSingularStringField(value: &self.task) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.cmd) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.target) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.suggested) }()
       default: break
       }
     }
@@ -3170,6 +3215,9 @@ nonisolated extension Ghhud_V1_MenuChoice: SwiftProtobuf.Message, SwiftProtobuf.
     if !self.target.isEmpty {
       try visitor.visitSingularStringField(value: self.target, fieldNumber: 3)
     }
+    if self.suggested != false {
+      try visitor.visitSingularBoolField(value: self.suggested, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3177,6 +3225,76 @@ nonisolated extension Ghhud_V1_MenuChoice: SwiftProtobuf.Message, SwiftProtobuf.
     if lhs.task != rhs.task {return false}
     if lhs.cmd != rhs.cmd {return false}
     if lhs.target != rhs.target {return false}
+    if lhs.suggested != rhs.suggested {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_ItemChoicesRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ItemChoicesRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.ref) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.ref.isEmpty {
+      try visitor.visitSingularStringField(value: self.ref, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_ItemChoicesRequest, rhs: Ghhud_V1_ItemChoicesRequest) -> Bool {
+    if lhs.ref != rhs.ref {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_ItemChoicesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ItemChoicesResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}item\0\u{1}choices\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._item) }()
+      case 2: try { try decoder.decodeRepeatedMessageField(value: &self.choices) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._item {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if !self.choices.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.choices, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_ItemChoicesResponse, rhs: Ghhud_V1_ItemChoicesResponse) -> Bool {
+    if lhs._item != rhs._item {return false}
+    if lhs.choices != rhs.choices {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

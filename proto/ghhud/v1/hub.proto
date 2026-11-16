@@ -36,6 +36,12 @@ service HubService {
   // and the hub refuses changes while another gh-hud owns dispatch.
   rpc MenuChoices(MenuChoicesRequest) returns (MenuChoicesResponse);
   rpc Dispatch(DispatchRequest) returns (DispatchResponse);
+  // ItemChoices looks up an issue or PR you name, in the latest refresh
+  // or else on GitHub, and lists every task that fits it (MenuChoices
+  // lists only those its state calls for, and only for refreshed items).
+  // Dispatch then takes the item's URL. INVALID_ARGUMENT when ref isn't
+  // an issue or PR.
+  rpc ItemChoices(ItemChoicesRequest) returns (ItemChoicesResponse);
   rpc Reinspect(ReinspectRequest) returns (ReinspectResponse);
   // PruneBranches finds the dispatch checkouts' branches whose PR is
   // merged or closed, and your forks' (gh-hud branches); with apply it
@@ -130,6 +136,23 @@ message MenuChoice {
   string cmd = 2;
   // "workspace" locally, "machine:workspace" remotely.
   string target = 3;
+  // The item's state calls for this task (always, from MenuChoices).
+  bool suggested = 4;
+}
+
+message ItemChoicesRequest {
+  // A GitHub issue or pull request URL (anything after the number is
+  // ignored), or "owner/repo#123".
+  string ref = 1;
+}
+
+message ItemChoicesResponse {
+  // The item named, as the dashboard would show it; send its url to
+  // Dispatch.
+  Item item = 1;
+  // Suggested tasks first. Empty when none can start (no free checkout,
+  // or the item has the human-gate label).
+  repeated MenuChoice choices = 2;
 }
 
 message DispatchRequest {

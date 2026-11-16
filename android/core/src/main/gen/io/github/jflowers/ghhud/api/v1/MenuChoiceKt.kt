@@ -91,6 +91,31 @@ public object MenuChoiceKt {
     public fun clearTarget() {
       _builder.clearTarget()
     }
+
+    /**
+     * ```
+     * The item's state calls for this task (always, from MenuChoices).
+     * ```
+     *
+     * `bool suggested = 4 [json_name = "suggested"];`
+     */
+    public var suggested: kotlin.Boolean
+      @kotlin.jvm.JvmName("getSuggested")
+        get() = _builder.suggested
+      @kotlin.jvm.JvmName("setSuggested")
+        set(value) {
+        _builder.suggested = value
+      }
+    /**
+     * ```
+     * The item's state calls for this task (always, from MenuChoices).
+     * ```
+     *
+     * `bool suggested = 4 [json_name = "suggested"];`
+     */
+    public fun clearSuggested() {
+      _builder.clearSuggested()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.MenuChoice.copy(block: `io.github.jflowers.ghhud.api.v1`.MenuChoiceKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.MenuChoice =

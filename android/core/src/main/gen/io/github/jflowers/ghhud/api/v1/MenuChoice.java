@@ -184,6 +184,44 @@ public  final class MenuChoice extends
 
   }
 
+  public static final int SUGGESTED_FIELD_NUMBER = 4;
+  private boolean suggested_;
+  /**
+   * <pre>
+   * The item's state calls for this task (always, from MenuChoices).
+   * </pre>
+   *
+   * <code>bool suggested = 4 [json_name = "suggested"];</code>
+   * @return The suggested.
+   */
+  @java.lang.Override
+  public boolean getSuggested() {
+    return suggested_;
+  }
+  /**
+   * <pre>
+   * The item's state calls for this task (always, from MenuChoices).
+   * </pre>
+   *
+   * <code>bool suggested = 4 [json_name = "suggested"];</code>
+   * @param value The suggested to set.
+   */
+  private void setSuggested(boolean value) {
+    
+    suggested_ = value;
+  }
+  /**
+   * <pre>
+   * The item's state calls for this task (always, from MenuChoices).
+   * </pre>
+   *
+   * <code>bool suggested = 4 [json_name = "suggested"];</code>
+   */
+  private void clearSuggested() {
+
+    suggested_ = false;
+  }
+
   public static io.github.jflowers.ghhud.api.v1.MenuChoice parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -452,6 +490,46 @@ public  final class MenuChoice extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The item's state calls for this task (always, from MenuChoices).
+     * </pre>
+     *
+     * <code>bool suggested = 4 [json_name = "suggested"];</code>
+     * @return The suggested.
+     */
+    @java.lang.Override
+    public boolean getSuggested() {
+      return instance.getSuggested();
+    }
+    /**
+     * <pre>
+     * The item's state calls for this task (always, from MenuChoices).
+     * </pre>
+     *
+     * <code>bool suggested = 4 [json_name = "suggested"];</code>
+     * @param value The suggested to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSuggested(boolean value) {
+      copyOnWrite();
+      instance.setSuggested(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The item's state calls for this task (always, from MenuChoices).
+     * </pre>
+     *
+     * <code>bool suggested = 4 [json_name = "suggested"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSuggested() {
+      copyOnWrite();
+      instance.clearSuggested();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.MenuChoice)
   }
   @java.lang.Override
@@ -471,10 +549,11 @@ public  final class MenuChoice extends
             "task_",
             "cmd_",
             "target_",
+            "suggested_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0208";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0208\u0004\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
