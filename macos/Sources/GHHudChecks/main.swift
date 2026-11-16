@@ -659,6 +659,9 @@ do {
 do {
     check(HubSource.normalize("macbook.local:7377") == "http://macbook.local:7377", "bare host:port gets http")
     check(HubSource.normalize(" http://10.0.0.5:7377/ ") == "http://10.0.0.5:7377", "trimmed, no trailing slash")
+    check(HubSource.normalize("macbook.example.com") == "http://macbook.example.com:7377", "bare host gets the hub's port")
+    check(HubSource.normalize("[fd7a::1]") == "http://[fd7a::1]:7377", "bare IPv6 gets the hub's port")
+    check(HubSource.normalize("http://hub.example") == "http://hub.example", "a typed scheme keeps its own port")
     check(HubSource.normalize("https://hub.example:443") == "https://hub.example:443", "https kept")
     check(HubSource.normalize("") == nil && HubSource.normalize("ftp://x:1") == nil, "empty and ftp refused")
     check(HubSource.normalize("http://x:1/path") == nil && HubSource.normalize("http://") == nil, "path or no host refused")
