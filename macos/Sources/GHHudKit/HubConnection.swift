@@ -117,16 +117,31 @@ public final class HubConnection {
             req.ref = ref
             req.piece = piece
             return Self.why(await client.clearEpicGate(request: req, headers: hub.authHeaders))
+        case .release(_, let tool, let version):
+            var req = Ghhud_V1_ToolkitRolloutRequest()
+            req.tool = tool
+            req.version = version
+            return Self.why(await client.toolkitRollout(request: req, headers: hub.authHeaders))
         }
     }
 
-    /// Rejects a supervisor proposal. Returns why it failed, if it did.
+    /// Rejects a supervisor proposal, or declines a tool release. Returns
+    /// why it failed, if it did.
     public func reject(_ a: Approval) async -> String? {
-        guard case .proposal(let id) = a else { return "only a proposal can be rejected" }
         guard let hub, let client = commands else { return "not connected" }
-        var req = Ghhud_V1_RejectProposalRequest()
-        req.id = id
-        return Self.why(await client.rejectProposal(request: req, headers: hub.authHeaders))
+        switch a {
+        case .proposal(let id):
+            var req = Ghhud_V1_RejectProposalRequest()
+            req.id = id
+            return Self.why(await client.rejectProposal(request: req, headers: hub.authHeaders))
+        case .release(let id, _, _):
+            var req = Ghhud_V1_ToolkitControlRequest()
+            req.action = .dismiss
+            req.id = id
+            return Self.why(await client.toolkitControl(request: req, headers: hub.authHeaders))
+        default:
+            return "only a proposal or a release can be turned down"
+        }
     }
 
     /// Where an agent can start on an item now.

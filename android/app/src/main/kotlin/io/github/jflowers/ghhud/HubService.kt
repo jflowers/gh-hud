@@ -15,6 +15,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.net.toUri
 import io.github.jflowers.ghhud.api.v1.Alert
+import io.github.jflowers.ghhud.api.v1.AlertType
 import io.github.jflowers.ghhud.core.ApprovalWatch
 import io.github.jflowers.ghhud.core.AttentionRow
 import io.github.jflowers.ghhud.core.HubState
@@ -24,6 +25,7 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 
 /**
@@ -66,7 +68,9 @@ class HubService : Service() {
     /** Follows the connection (a new one when the address changes). */
     private suspend fun watch(): Unit = hub.connection.collectLatest { c ->
         coroutineScope {
-            launch { c.alerts.collect { post(it) } }
+            // A tool release also waits as an approval, whose notification
+            // goes when it's answered: skip the alert's copy.
+            launch { c.alerts.filter { it.type != AlertType.ALERT_TYPE_TOOL_RELEASE }.collect { post(it) } }
             val approvals = ApprovalWatch()
             c.state.collect { st ->
                 show(st)

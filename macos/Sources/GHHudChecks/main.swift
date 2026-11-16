@@ -178,6 +178,9 @@ do {
     check(Approval.gate(ref: "a/b#1", piece: "a/b#2").verb == "Clear" && Approval.epic(ref: "a/b#1", planID: "p").verb == "Approve",
           "gates clear, the rest approve")
     check(!Approval.gate(ref: "a/b#1", piece: "a/b#2").rejectable, "a gate isn't rejected")
+    let rel = Approval.release(id: "uf@0.22.0", tool: "uf", version: "0.22.0")
+    check(rel.rejectable && rel.verb == "Approve" && rel.rejectVerb == "Decline"
+          && Approval.proposal(id: "x").rejectVerb == "Reject", "a release is approved or declined")
 }
 
 // MARK: item list

@@ -170,6 +170,7 @@ enum Views {
                 case let .proposal(id): out["\(p).approval"] = "proposal \(id)"
                 case let .epic(ref, plan): out["\(p).approval"] = "epic \(ref) \(plan)"
                 case let .gate(ref, piece): out["\(p).approval"] = "gate \(ref) \(piece)"
+                case let .release(id, tool, version): out["\(p).approval"] = "release \(id) \(tool) \(version)"
                 case nil: out["\(p).approval"] = String?.none
                 }
             }

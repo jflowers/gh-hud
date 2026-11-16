@@ -209,7 +209,7 @@ private fun Decision(row: AttentionRow, a: Approval, pending: Boolean, act: Atte
         if (a.rejectable) {
             Spacer(Modifier.width(8.dp))
             OutlinedButton(onClick = { act.reject(row) }, modifier = Modifier.testTag("reject:" + row.id)) {
-                Text("Reject")
+                Text(a.rejectVerb)
             }
         }
     }
