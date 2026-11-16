@@ -483,3 +483,41 @@ func TestItemChoicesNamesAnyItem(t *testing.T) {
 		t.Error("Dispatch(issue on a PR) succeeded")
 	}
 }
+
+// An epic piece needn't be assigned to you or mention you, so it may not
+// be in the refresh: its row's menu, queue choices and enqueue look it up
+// on GitHub (#114).
+func TestRowCommandsFindItemsOutsideTheRefresh(t *testing.T) {
+	d := &fakeDisp{owner: true}
+	h := withItems(t, d)
+	ctx := t.Context()
+	const piece = "https://github.com/acme/r/issues/1029"
+	var looked []string
+	h.opts.Lookup = func(_ context.Context, ref string) (model.Item, error) {
+		looked = append(looked, ref)
+		if ref == "acme/r#1029" {
+			return model.Item{Kind: model.KindIssue, Repo: "acme/r", Num: 1029, Title: "piece", URL: piece}, nil
+		}
+		return model.Item{}, errors.New("not found")
+	}
+	if cs, err := h.MenuChoices(ctx, piece); err != nil || len(cs) != 1 || cs[0].Target != "ws:acme/r#1029" {
+		t.Errorf("MenuChoices(piece) = %v, %v", cs, err)
+	}
+	if ts, err := h.QueueChoices(ctx, piece); err != nil || len(ts) != 1 {
+		t.Errorf("QueueChoices(piece) = %v, %v", ts, err)
+	}
+	if n, err := h.Enqueue(ctx, dispatch.TaskIssue, piece); err != nil || n != 1 || d.queue[0].Ref != "acme/r#1029" {
+		t.Errorf("Enqueue(piece) = %d, %v; queue %+v", n, err, d.queue)
+	}
+	if want := []string{"acme/r#1029", "acme/r#1029", "acme/r#1029"}; !slices.Equal(looked, want) {
+		t.Errorf("looked up %v, want %v", looked, want)
+	}
+	// A refreshed item is never looked up.
+	if _, err := h.MenuChoices(ctx, "u1"); err != nil || len(looked) != 3 {
+		t.Errorf("MenuChoices(u1) = %v; looked %v", err, looked)
+	}
+	// Neither in the refresh nor on GitHub: the lookup's error.
+	if _, err := h.MenuChoices(ctx, "https://github.com/acme/r/issues/404"); err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Errorf("MenuChoices(missing) = %v", err)
+	}
+}
