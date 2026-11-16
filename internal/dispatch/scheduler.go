@@ -7,9 +7,12 @@ package dispatch
 // and then config order.
 
 import (
+	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/jflowers/gh-hud/internal/ghws"
+	"github.com/jflowers/gh-hud/internal/model"
 )
 
 // machineView is the scheduler's snapshot of dispatch state across
@@ -20,6 +23,7 @@ type machineView struct {
 	reach           map[string]bool            // remote name → herdr-reachable
 	live            map[string]int             // record machine key → live count
 	liveRefMachines map[string]map[string]bool // ref → machine keys running it
+	liveRef         map[string]Record          // ref → a live record on it
 	liveDirs        map[string]map[string]bool // machine key → dirs with a live record
 	draining        map[string]bool            // machine key → drained for fleet rollout
 	index           map[string]*ghws.Index     // machine key → checkout index
@@ -41,30 +45,72 @@ func pickMachines(v machineView, task Task, ref string) []Machine {
 	qualified = append(qualified, v.remotes...)
 	out := make([]Machine, 0, len(qualified))
 	for _, m := range qualified {
-		if !m.Enabled {
-			continue
+		if machineBlock(v, task, ref, m) == "" {
+			out = append(out, m)
 		}
-		if !m.Local && !v.reach[m.Name] {
-			continue
-		}
-		if !m.AllowsTask(task) {
-			continue
-		}
-		if v.draining[m.key()] {
-			continue
-		}
-		if v.live[m.key()] >= m.Max {
-			continue
-		}
-		if machines := v.liveRefMachines[ref]; len(machines) > 0 && !machines[m.key()] {
-			continue
-		}
-		out = append(out, m)
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		return freeFrac(out[i], v) > freeFrac(out[j], v)
 	})
 	return out
+}
+
+// machineBlock says why m can't take task for ref now ("" when it can).
+func machineBlock(v machineView, task Task, ref string, m Machine) string {
+	switch {
+	case !m.Enabled:
+		return "off"
+	case !m.Local && !v.reach[m.Name]:
+		return "unreachable"
+	case !m.AllowsTask(task):
+		return "doesn't take " + string(task)
+	case v.draining[m.key()]:
+		return "draining for a fleet rollout"
+	case v.live[m.key()] >= m.Max:
+		return fmt.Sprintf("full (%d of %d running)", v.live[m.key()], m.Max)
+	}
+	if machines := v.liveRefMachines[ref]; len(machines) > 0 && !machines[m.key()] {
+		return "the item runs elsewhere"
+	}
+	return ""
+}
+
+// noPlacement says why candidates found nothing for task on it: every
+// machine blocked (and why, per machine), or no free checkout of the repo
+// on the machines that could take it.
+func noPlacement(v machineView, task Task, it model.Item, instancesOnly bool) string {
+	ms := pickMachines(v, task, it.Ref())
+	if len(ms) == 0 {
+		var parts []string
+		for _, m := range append([]Machine{v.local}, v.remotes...) {
+			if b := machineBlock(v, task, it.Ref(), m); b != "off" {
+				parts = append(parts, machineLabel(m)+" "+b)
+			}
+		}
+		return "no machine can take it now: " + strings.Join(parts, ", ")
+	}
+	kind := "checkout"
+	if instancesOnly {
+		kind = "@ instance checkout"
+	}
+	total := 0
+	for _, m := range ms {
+		if ix := v.index[m.key()]; ix != nil {
+			for _, co := range ix.Resolve(it.Repo, it.HeadBranch) {
+				if !instancesOnly || co.Instance {
+					total++
+				}
+			}
+		}
+	}
+	names := make([]string, len(ms))
+	for i, m := range ms {
+		names[i] = machineLabel(m)
+	}
+	if total == 0 {
+		return fmt.Sprintf("no %s of %s on %s", kind, it.Repo, strings.Join(names, ", "))
+	}
+	return fmt.Sprintf("every %s of %s is busy (%d on %s)", kind, it.Repo, total, strings.Join(names, ", "))
 }
 
 // freeFrac is the machine's free slot fraction, in [0, 1].
