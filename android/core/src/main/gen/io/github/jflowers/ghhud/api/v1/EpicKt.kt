@@ -386,6 +386,192 @@ public object EpicKt {
     public fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.EpicReport, ReportsProxy>.clear() {
       _builder.clearReports()
     }
+
+    /**
+     * ```
+     * the plan you approved (unset before one is)
+     * ```
+     *
+     * `.ghhud.v1.EpicPlan approved_snapshot = 13 [json_name = "approvedSnapshot"];`
+     */
+    public var approvedSnapshot: io.github.jflowers.ghhud.api.v1.EpicPlan
+      @kotlin.jvm.JvmName("getApprovedSnapshot")
+        get() = _builder.approvedSnapshot
+      @kotlin.jvm.JvmName("setApprovedSnapshot")
+        set(value) {
+        _builder.approvedSnapshot = value
+      }
+    /**
+     * ```
+     * the plan you approved (unset before one is)
+     * ```
+     *
+     * `.ghhud.v1.EpicPlan approved_snapshot = 13 [json_name = "approvedSnapshot"];`
+     */
+    public fun clearApprovedSnapshot() {
+      _builder.clearApprovedSnapshot()
+    }
+    /**
+     * ```
+     * the plan you approved (unset before one is)
+     * ```
+     *
+     * `.ghhud.v1.EpicPlan approved_snapshot = 13 [json_name = "approvedSnapshot"];`
+     * @return Whether the approvedSnapshot field is set.
+     */
+    public fun hasApprovedSnapshot(): kotlin.Boolean {
+      return _builder.hasApprovedSnapshot()
+    }
+
+    public val EpicKt.Dsl.approvedSnapshotOrNull: io.github.jflowers.ghhud.api.v1.EpicPlan?
+      get() = _builder.approvedSnapshotOrNull
+
+    /**
+     * An uninstantiable, behaviorless type to represent the field in
+     * generics.
+     */
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+    public class ChangesProxy private constructor() : com.google.protobuf.kotlin.DslProxy()
+    /**
+     * ```
+     * What the plan changed from the approved one, one line each, while it
+     * waits for approval again: show them next to Approve Plan.
+     * ```
+     *
+     * `repeated string changes = 14 [json_name = "changes"];`
+     * @return A list containing the changes.
+     */
+    public val changes: com.google.protobuf.kotlin.DslList<kotlin.String, ChangesProxy>
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+      get() = com.google.protobuf.kotlin.DslList(
+        _builder.changesList
+      )
+    /**
+     * ```
+     * What the plan changed from the approved one, one line each, while it
+     * waits for approval again: show them next to Approve Plan.
+     * ```
+     *
+     * `repeated string changes = 14 [json_name = "changes"];`
+     * @param value The changes to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addChanges")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, ChangesProxy>.add(value: kotlin.String) {
+      _builder.addChanges(value)
+    }
+    /**
+     * ```
+     * What the plan changed from the approved one, one line each, while it
+     * waits for approval again: show them next to Approve Plan.
+     * ```
+     *
+     * `repeated string changes = 14 [json_name = "changes"];`
+     * @param value The changes to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignChanges")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, ChangesProxy>.plusAssign(value: kotlin.String) {
+      add(value)
+    }
+    /**
+     * ```
+     * What the plan changed from the approved one, one line each, while it
+     * waits for approval again: show them next to Approve Plan.
+     * ```
+     *
+     * `repeated string changes = 14 [json_name = "changes"];`
+     * @param values The changes to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addAllChanges")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, ChangesProxy>.addAll(values: kotlin.collections.Iterable<kotlin.String>) {
+      _builder.addAllChanges(values)
+    }
+    /**
+     * ```
+     * What the plan changed from the approved one, one line each, while it
+     * waits for approval again: show them next to Approve Plan.
+     * ```
+     *
+     * `repeated string changes = 14 [json_name = "changes"];`
+     * @param values The changes to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignAllChanges")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, ChangesProxy>.plusAssign(values: kotlin.collections.Iterable<kotlin.String>) {
+      addAll(values)
+    }
+    /**
+     * ```
+     * What the plan changed from the approved one, one line each, while it
+     * waits for approval again: show them next to Approve Plan.
+     * ```
+     *
+     * `repeated string changes = 14 [json_name = "changes"];`
+     * @param index The index to set the value at.
+     * @param value The changes to set.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setChanges")
+    public operator fun com.google.protobuf.kotlin.DslList<kotlin.String, ChangesProxy>.set(index: kotlin.Int, value: kotlin.String) {
+      _builder.setChanges(index, value)
+    }/**
+     * ```
+     * What the plan changed from the approved one, one line each, while it
+     * waits for approval again: show them next to Approve Plan.
+     * ```
+     *
+     * `repeated string changes = 14 [json_name = "changes"];`
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setChanges")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, ChangesProxy>.clear() {
+      _builder.clearChanges()
+    }
+    /**
+     * ```
+     * node ID of gh-hud's progress comment on the epic
+     * ```
+     *
+     * `string status_comment = 15 [json_name = "statusComment"];`
+     */
+    public var statusComment: kotlin.String
+      @kotlin.jvm.JvmName("getStatusComment")
+        get() = _builder.statusComment
+      @kotlin.jvm.JvmName("setStatusComment")
+        set(value) {
+        _builder.statusComment = value
+      }
+    /**
+     * ```
+     * node ID of gh-hud's progress comment on the epic
+     * ```
+     *
+     * `string status_comment = 15 [json_name = "statusComment"];`
+     */
+    public fun clearStatusComment() {
+      _builder.clearStatusComment()
+    }
+
+    /**
+     * `string status_hash = 16 [json_name = "statusHash"];`
+     */
+    public var statusHash: kotlin.String
+      @kotlin.jvm.JvmName("getStatusHash")
+        get() = _builder.statusHash
+      @kotlin.jvm.JvmName("setStatusHash")
+        set(value) {
+        _builder.statusHash = value
+      }
+    /**
+     * `string status_hash = 16 [json_name = "statusHash"];`
+     */
+    public fun clearStatusHash() {
+      _builder.clearStatusHash()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.Epic.copy(block: `io.github.jflowers.ghhud.api.v1`.EpicKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.Epic =
@@ -402,4 +588,7 @@ public val io.github.jflowers.ghhud.api.v1.EpicOrBuilder.approvedOrNull: com.goo
 
 public val io.github.jflowers.ghhud.api.v1.EpicOrBuilder.checkedAtOrNull: com.google.protobuf.Timestamp?
   get() = if (hasCheckedAt()) getCheckedAt() else null
+
+public val io.github.jflowers.ghhud.api.v1.EpicOrBuilder.approvedSnapshotOrNull: io.github.jflowers.ghhud.api.v1.EpicPlan?
+  get() = if (hasApprovedSnapshot()) getApprovedSnapshot() else null
 

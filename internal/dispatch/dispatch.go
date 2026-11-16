@@ -323,6 +323,8 @@ type Dispatcher struct {
 	// ghQuery runs a GraphQL query and decodes its data (a hook for tests;
 	// nil uses gh).
 	ghQuery func(ctx context.Context, query string, out any) error
+	// ghMutate runs a GraphQL mutation with variables (a hook for tests).
+	ghMutate func(ctx context.Context, query string, vars map[string]any, out any) error
 	// ghREST runs a REST GET and decodes its body (a hook for tests; nil
 	// uses gh).
 	ghREST func(ctx context.Context, path string, out any) error

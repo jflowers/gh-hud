@@ -207,7 +207,13 @@ type EpicsConfig struct {
 	// MaxRuns is how many runs one piece gets after the plan is approved
 	// before it's left to you (default 2).
 	MaxRuns int `toml:"max_runs"`
+	// StatusComment keeps an approved epic's progress in one comment on
+	// the epic, edited in place (gh-hud#118; default on).
+	StatusComment *bool `toml:"status_comment"`
 }
+
+// StatusCommentOn reports whether gh-hud keeps epics' progress comments.
+func (c EpicsConfig) StatusCommentOn() bool { return c.StatusComment == nil || *c.StatusComment }
 
 // BranchesConfig is the hub's branch pruning (`gh-hud branches` runs it
 // by hand either way).

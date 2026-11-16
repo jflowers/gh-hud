@@ -127,6 +127,8 @@ func TestPiecePlan(t *testing.T) {
 	want := "<!-- gh-hud: piece of epic acme/app#100, plan p1; repo acme/lib -->\n" +
 		"1. #7 Change: git-is-the-source-of-record — feat: Git is the source of record!. Part of epic acme/app#100 (The epic), Phase 5. " +
 		"Do only this issue; the epic's other pieces are separate runs. " +
+		"Don't edit epic acme/app#100's body to record progress: gh-hud keeps a progress comment on it. " +
+		"A progress note that must be in the body goes between the HTML comments gh-hud:status and /gh-hud:status. " +
 		"The epic's rules, which this change must respect: Never weaken a guard; Keep promotion human.\n"
 	if got != want {
 		t.Errorf("got\n%s\nwant\n%s", got, want)

@@ -535,13 +535,27 @@ func proposalFromPB(p *pb.Proposal) dispatch.Proposal {
 		Created: fromTS(p.GetCreated()), NoAnswer: p.GetNoAnswer(), Note: p.GetNote(), Log: p.GetLog()}
 }
 
+func epicPlanToPB(p *epic.Plan) *pb.EpicPlan {
+	if p == nil {
+		return nil
+	}
+	return &pb.EpicPlan{Id: p.ID, Sources: p.Sources, Nodes: mapSlice(p.Nodes, epicNodeToPB), Rules: p.Rules,
+		Skipped: p.Skipped, Created: ts(p.Created), BodyHash: p.BodyHash, Stale: p.Stale}
+}
+
+func epicPlanFromPB(pp *pb.EpicPlan) *epic.Plan {
+	if pp == nil {
+		return nil
+	}
+	return &epic.Plan{ID: pp.GetId(), Sources: pp.GetSources(), Nodes: mapSlice(pp.GetNodes(), epicNodeFromPB),
+		Rules: pp.GetRules(), Skipped: pp.GetSkipped(), Created: fromTS(pp.GetCreated()), BodyHash: pp.GetBodyHash(), Stale: pp.GetStale()}
+}
+
 func epicToPB(e epic.Epic) *pb.Epic {
 	out := &pb.Epic{Ref: e.Ref, Url: e.URL, Title: e.Title, Enrolled: ts(e.Enrolled), State: string(e.State),
-		Error: e.Error, Approved: tsPtr(e.Approved), ApprovedPlan: e.ApprovedPlan, CheckedAt: ts(e.CheckedAt), Log: e.Log}
-	if p := e.Plan; p != nil {
-		out.Plan = &pb.EpicPlan{Id: p.ID, Sources: p.Sources, Nodes: mapSlice(p.Nodes, epicNodeToPB), Rules: p.Rules,
-			Skipped: p.Skipped, Created: ts(p.Created), BodyHash: p.BodyHash, Stale: p.Stale}
-	}
+		Error: e.Error, Approved: tsPtr(e.Approved), ApprovedPlan: e.ApprovedPlan, CheckedAt: ts(e.CheckedAt), Log: e.Log,
+		Plan: epicPlanToPB(e.Plan), ApprovedSnapshot: epicPlanToPB(e.ApprovedSnapshot), Changes: e.Changes,
+		StatusComment: e.StatusComment, StatusHash: e.StatusHash}
 	out.Reports = mapSlice(e.Reports, func(r epic.Report) *pb.EpicReport {
 		return &pb.EpicReport{Piece: r.Piece, RunId: r.RunID, On: r.On, Status: r.Status, Finished: ts(r.Finished),
 			Summary: r.Summary, Reason: r.Reason, Verdict: r.Verdict, Why: r.Why, Hint: r.Hint, Log: r.Log}
@@ -552,11 +566,9 @@ func epicToPB(e epic.Epic) *pb.Epic {
 func epicFromPB(p *pb.Epic) epic.Epic {
 	e := epic.Epic{Ref: p.GetRef(), URL: p.GetUrl(), Title: p.GetTitle(), Enrolled: fromTS(p.GetEnrolled()),
 		State: epic.State(p.GetState()), Error: p.GetError(), Approved: fromTSPtr(p.GetApproved()),
-		ApprovedPlan: p.GetApprovedPlan(), CheckedAt: fromTS(p.GetCheckedAt()), Log: p.GetLog()}
-	if pp := p.GetPlan(); pp != nil {
-		e.Plan = &epic.Plan{ID: pp.GetId(), Sources: pp.GetSources(), Nodes: mapSlice(pp.GetNodes(), epicNodeFromPB),
-			Rules: pp.GetRules(), Skipped: pp.GetSkipped(), Created: fromTS(pp.GetCreated()), BodyHash: pp.GetBodyHash(), Stale: pp.GetStale()}
-	}
+		ApprovedPlan: p.GetApprovedPlan(), CheckedAt: fromTS(p.GetCheckedAt()), Log: p.GetLog(),
+		Plan: epicPlanFromPB(p.GetPlan()), ApprovedSnapshot: epicPlanFromPB(p.GetApprovedSnapshot()), Changes: p.GetChanges(),
+		StatusComment: p.GetStatusComment(), StatusHash: p.GetStatusHash()}
 	e.Reports = mapSlice(p.GetReports(), func(r *pb.EpicReport) epic.Report {
 		return epic.Report{Piece: r.GetPiece(), RunID: r.GetRunId(), On: r.GetOn(), Status: r.GetStatus(), Finished: fromTS(r.GetFinished()),
 			Summary: r.GetSummary(), Reason: r.GetReason(), Verdict: r.GetVerdict(), Why: r.GetWhy(), Hint: r.GetHint(), Log: r.GetLog()}

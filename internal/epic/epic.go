@@ -101,7 +101,17 @@ type Epic struct {
 	// consent to start its ready pieces, within the epic's caps.
 	Approved     *time.Time `json:"approved,omitempty"`
 	ApprovedPlan string     `json:"approved_plan,omitempty"`
-	CheckedAt    time.Time  `json:"checked_at"` // last status refresh
+	// ApprovedSnapshot is the plan you approved, kept to show what a later
+	// read changed and to carry the approval over rewording (gh-hud#118).
+	ApprovedSnapshot *Plan `json:"approved_snapshot,omitempty"`
+	// Changes is what the current plan changed from the approved one, one
+	// line each, while it waits for your approval again.
+	Changes []string `json:"changes,omitempty"`
+	// StatusComment is the node ID of gh-hud's progress comment on the
+	// epic; StatusHash the text it last wrote there.
+	StatusComment string    `json:"status_comment,omitempty"`
+	StatusHash    string    `json:"status_hash,omitempty"`
+	CheckedAt     time.Time `json:"checked_at"` // last status refresh
 	// Log is the planner run's output on the hub's machine.
 	Log string `json:"log,omitempty"`
 	// Reports are the latest run report of each piece whose run ended
