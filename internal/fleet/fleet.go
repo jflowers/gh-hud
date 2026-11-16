@@ -59,6 +59,10 @@ type Options struct {
 	Runner    Runner             // fleet-apply runner (default: ssh/local exec)
 	Notifier  Notifier           // alerts (default: herdr notification)
 	Clock     Clock              // default: wall clock
+	// BinaryChanged says how the gh-hud binary differs from the running
+	// one after a local apply ("" for unchanged); the restart banner shows
+	// only then. Default: compare PATH's gh-hud with the start-time binary.
+	BinaryChanged func() string
 }
 
 // Coordinator runs the GitOps rollout. All state mutation happens on the
@@ -139,6 +143,9 @@ func New(opts Options) (*Coordinator, error) {
 	}
 	if opts.Clock == nil {
 		opts.Clock = wallClock{}
+	}
+	if opts.BinaryChanged == nil {
+		opts.BinaryChanged = newBinaryWatch().changed
 	}
 	c := &Coordinator{
 		opts:      opts,
@@ -471,7 +478,11 @@ func (c *Coordinator) doVerify(ctx context.Context, name, target string) bool {
 	ms.LastErr = ""
 	c.skipWait = false
 	if c.isLocal[name] {
-		c.banner = "fleet applied locally; restart gh-hud to pick up new binaries"
+		// Only when the apply changed gh-hud itself: tools the agents run
+		// come fresh from mise each session and need no hub restart.
+		if what := c.opts.BinaryChanged(); what != "" {
+			c.banner = "fleet applied locally: " + what + "; restart gh-hud to run it"
+		}
 	}
 	c.syncDrainLocked()
 	c.persistLocked()

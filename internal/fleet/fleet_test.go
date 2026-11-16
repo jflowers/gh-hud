@@ -151,6 +151,7 @@ type harness struct {
 	notes *fakeNotifier
 	clock *fakeClock
 	coord *Coordinator
+	bin   string // what BinaryChanged reports ("" = gh-hud unchanged)
 }
 
 func machines() []dispatch.Machine {
@@ -178,14 +179,15 @@ func newHarness(t *testing.T, stateDir string, applied map[string]string) *harne
 		Poll: "5m", RequireCI: true, MaxWait: "1h", Notify: true,
 	}
 	c, err := New(Options{
-		Config:    cfg,
-		Machines:  machines(),
-		StateDir:  stateDir,
-		Scheduler: h.sched,
-		GH:        h.gh,
-		Runner:    h.run,
-		Notifier:  h.notes,
-		Clock:     h.clock,
+		Config:        cfg,
+		Machines:      machines(),
+		StateDir:      stateDir,
+		Scheduler:     h.sched,
+		GH:            h.gh,
+		Runner:        h.run,
+		Notifier:      h.notes,
+		Clock:         h.clock,
+		BinaryChanged: func() string { return h.bin },
 	})
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -295,6 +297,7 @@ func TestRolloutHappyPath(t *testing.T) {
 	h := newHarness(t, t.TempDir(), map[string]string{
 		"lap1": oldSHA, "lap2": oldSHA, "local": oldSHA,
 	})
+	h.bin = "gh-hud at /x/gh-hud was replaced"
 	h.coord.poll(context.Background())
 
 	snap := h.coord.Snapshot()
@@ -316,7 +319,7 @@ func TestRolloutHappyPath(t *testing.T) {
 			t.Errorf("applyCalls[%d] = %q, want %q", i, h.run.applyCalls[i], want[i])
 		}
 	}
-	if snap.Banner == "" || !strings.Contains(snap.Banner, "restart gh-hud") {
+	if !strings.Contains(snap.Banner, "restart gh-hud") || !strings.Contains(snap.Banner, h.bin) {
 		t.Errorf("banner = %q, want local restart advice", snap.Banner)
 	}
 	if len(h.sched.drain) != 0 {
@@ -338,6 +341,22 @@ func TestRolloutHappyPath(t *testing.T) {
 	}
 	if snap.Banner == "" {
 		t.Error("banner should be set again after the second local apply")
+	}
+}
+
+// A rollout that leaves gh-hud alone (a tool bump the agents get from mise)
+// asks for no restart.
+func TestRolloutNoBannerWhenGhHudUnchanged(t *testing.T) {
+	h := newHarness(t, t.TempDir(), map[string]string{
+		"lap1": oldSHA, "lap2": oldSHA, "local": oldSHA,
+	})
+	h.coord.poll(context.Background())
+	snap := h.coord.Snapshot()
+	if got := stateOf(t, snap, "local").State; got != StateCurrent {
+		t.Fatalf("local state = %s, want current", got)
+	}
+	if snap.Banner != "" {
+		t.Errorf("banner = %q, want none: gh-hud did not change", snap.Banner)
 	}
 }
 
