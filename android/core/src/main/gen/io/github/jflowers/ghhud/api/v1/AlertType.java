@@ -43,6 +43,14 @@ public enum AlertType
    * <code>ALERT_TYPE_TOOL_RELEASE = 4;</code>
    */
   ALERT_TYPE_TOOL_RELEASE(4),
+  /**
+   * <pre>
+   * a repo in a tool rollout waits for you: held, refused, failed or CI failing (ref is its PR's owner/repo#N, else tool&#64;version)
+   * </pre>
+   *
+   * <code>ALERT_TYPE_TOOLKIT_TARGET = 5;</code>
+   */
+  ALERT_TYPE_TOOLKIT_TARGET(5),
   UNRECOGNIZED(-1),
   ;
 
@@ -78,6 +86,14 @@ public enum AlertType
    * <code>ALERT_TYPE_TOOL_RELEASE = 4;</code>
    */
   public static final int ALERT_TYPE_TOOL_RELEASE_VALUE = 4;
+  /**
+   * <pre>
+   * a repo in a tool rollout waits for you: held, refused, failed or CI failing (ref is its PR's owner/repo#N, else tool&#64;version)
+   * </pre>
+   *
+   * <code>ALERT_TYPE_TOOLKIT_TARGET = 5;</code>
+   */
+  public static final int ALERT_TYPE_TOOLKIT_TARGET_VALUE = 5;
 
 
   @java.lang.Override
@@ -105,6 +121,7 @@ public enum AlertType
       case 2: return ALERT_TYPE_BLOCKED;
       case 3: return ALERT_TYPE_RUN_FINISHED;
       case 4: return ALERT_TYPE_TOOL_RELEASE;
+      case 5: return ALERT_TYPE_TOOLKIT_TARGET;
       default: return null;
     }
   }

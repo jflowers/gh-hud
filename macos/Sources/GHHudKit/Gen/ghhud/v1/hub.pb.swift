@@ -337,6 +337,9 @@ public nonisolated enum Ghhud_V1_AlertType: SwiftProtobuf.Enum, Swift.CaseIterab
 
   /// a tool released; its rollout waits for you (ref is tool@version)
   case toolRelease // = 4
+
+  /// a repo in a tool rollout waits for you: held, refused, failed or CI failing (ref is its PR's owner/repo#N, else tool@version)
+  case toolkitTarget // = 5
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -350,6 +353,7 @@ public nonisolated enum Ghhud_V1_AlertType: SwiftProtobuf.Enum, Swift.CaseIterab
     case 2: self = .blocked
     case 3: self = .runFinished
     case 4: self = .toolRelease
+    case 5: self = .toolkitTarget
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -361,6 +365,7 @@ public nonisolated enum Ghhud_V1_AlertType: SwiftProtobuf.Enum, Swift.CaseIterab
     case .blocked: return 2
     case .runFinished: return 3
     case .toolRelease: return 4
+    case .toolkitTarget: return 5
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -372,6 +377,7 @@ public nonisolated enum Ghhud_V1_AlertType: SwiftProtobuf.Enum, Swift.CaseIterab
     .blocked,
     .runFinished,
     .toolRelease,
+    .toolkitTarget,
   ]
 
 }
@@ -2924,7 +2930,7 @@ nonisolated extension Ghhud_V1_EventKind: SwiftProtobuf._ProtoNameProviding {
 }
 
 nonisolated extension Ghhud_V1_AlertType: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ALERT_TYPE_UNSPECIFIED\0\u{1}ALERT_TYPE_READY\0\u{1}ALERT_TYPE_BLOCKED\0\u{1}ALERT_TYPE_RUN_FINISHED\0\u{1}ALERT_TYPE_TOOL_RELEASE\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ALERT_TYPE_UNSPECIFIED\0\u{1}ALERT_TYPE_READY\0\u{1}ALERT_TYPE_BLOCKED\0\u{1}ALERT_TYPE_RUN_FINISHED\0\u{1}ALERT_TYPE_TOOL_RELEASE\0\u{1}ALERT_TYPE_TOOLKIT_TARGET\0")
 }
 
 nonisolated extension Ghhud_V1_GetSnapshotRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {

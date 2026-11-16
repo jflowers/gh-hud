@@ -366,11 +366,12 @@ func (EventKind) EnumDescriptor() ([]byte, []int) {
 type AlertType int32
 
 const (
-	AlertType_ALERT_TYPE_UNSPECIFIED  AlertType = 0
-	AlertType_ALERT_TYPE_READY        AlertType = 1 // your PR is ready for a maintainer
-	AlertType_ALERT_TYPE_BLOCKED      AlertType = 2 // an agent has waited on you too long
-	AlertType_ALERT_TYPE_RUN_FINISHED AlertType = 3
-	AlertType_ALERT_TYPE_TOOL_RELEASE AlertType = 4 // a tool released; its rollout waits for you (ref is tool@version)
+	AlertType_ALERT_TYPE_UNSPECIFIED    AlertType = 0
+	AlertType_ALERT_TYPE_READY          AlertType = 1 // your PR is ready for a maintainer
+	AlertType_ALERT_TYPE_BLOCKED        AlertType = 2 // an agent has waited on you too long
+	AlertType_ALERT_TYPE_RUN_FINISHED   AlertType = 3
+	AlertType_ALERT_TYPE_TOOL_RELEASE   AlertType = 4 // a tool released; its rollout waits for you (ref is tool@version)
+	AlertType_ALERT_TYPE_TOOLKIT_TARGET AlertType = 5 // a repo in a tool rollout waits for you: held, refused, failed or CI failing (ref is its PR's owner/repo#N, else tool@version)
 )
 
 // Enum value maps for AlertType.
@@ -381,13 +382,15 @@ var (
 		2: "ALERT_TYPE_BLOCKED",
 		3: "ALERT_TYPE_RUN_FINISHED",
 		4: "ALERT_TYPE_TOOL_RELEASE",
+		5: "ALERT_TYPE_TOOLKIT_TARGET",
 	}
 	AlertType_value = map[string]int32{
-		"ALERT_TYPE_UNSPECIFIED":  0,
-		"ALERT_TYPE_READY":        1,
-		"ALERT_TYPE_BLOCKED":      2,
-		"ALERT_TYPE_RUN_FINISHED": 3,
-		"ALERT_TYPE_TOOL_RELEASE": 4,
+		"ALERT_TYPE_UNSPECIFIED":    0,
+		"ALERT_TYPE_READY":          1,
+		"ALERT_TYPE_BLOCKED":        2,
+		"ALERT_TYPE_RUN_FINISHED":   3,
+		"ALERT_TYPE_TOOL_RELEASE":   4,
+		"ALERT_TYPE_TOOLKIT_TARGET": 5,
 	}
 )
 
@@ -7183,13 +7186,14 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\tEventKind\x12\x1a\n" +
 	"\x16EVENT_KIND_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11EVENT_KIND_NOTICE\x10\x01\x12\x14\n" +
-	"\x10EVENT_KIND_ALERT\x10\x02*\x8f\x01\n" +
+	"\x10EVENT_KIND_ALERT\x10\x02*\xae\x01\n" +
 	"\tAlertType\x12\x1a\n" +
 	"\x16ALERT_TYPE_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10ALERT_TYPE_READY\x10\x01\x12\x16\n" +
 	"\x12ALERT_TYPE_BLOCKED\x10\x02\x12\x1b\n" +
 	"\x17ALERT_TYPE_RUN_FINISHED\x10\x03\x12\x1b\n" +
-	"\x17ALERT_TYPE_TOOL_RELEASE\x10\x042\xe2\x0f\n" +
+	"\x17ALERT_TYPE_TOOL_RELEASE\x10\x04\x12\x1d\n" +
+	"\x19ALERT_TYPE_TOOLKIT_TARGET\x10\x052\xe2\x0f\n" +
 	"\n" +
 	"HubService\x12J\n" +
 	"\vGetSnapshot\x12\x1c.ghhud.v1.GetSnapshotRequest\x1a\x1d.ghhud.v1.GetSnapshotResponse\x12F\n" +

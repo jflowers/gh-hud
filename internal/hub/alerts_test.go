@@ -69,6 +69,43 @@ func TestToolkitSeedsThenAlerts(t *testing.T) {
 	}
 }
 
+func TestToolkitTargetsAlertOnceEach(t *testing.T) {
+	a := NewAlerter(on())
+	snap := func(rs ...toolkit.Rollout) toolkit.Snapshot { return toolkit.Snapshot{Rollouts: rs} }
+	held := toolkit.TargetRun{Target: "acme/agents", Status: toolkit.StatusHeld, Held: true, Branch: "origin/chore/toolkit-gaze-2.4.0"}
+	refused := toolkit.TargetRun{Target: "acme/app", Status: toolkit.StatusRefused, Detail: "would downgrade: gaze"}
+	fine := toolkit.TargetRun{Target: "acme/lib", Status: toolkit.StatusOpened, URL: "https://github.com/acme/lib/pull/2", PRState: toolkit.PROpen}
+	r := toolkit.Rollout{ID: "gaze@2.4.0", Tool: "gaze", Version: "2.4.0", Stage: toolkit.StageTrack, Targets: []toolkit.TargetRun{held, fine}}
+	if got := a.Toolkit(snap(r)); got != nil {
+		t.Fatalf("first look must only seed, got %q", texts(got))
+	}
+	r.Targets = append(r.Targets, refused)
+	got := a.Toolkit(snap(r))
+	if want := []string{"gaze 2.4.0 on acme/app refused: would downgrade: gaze"}; !reflect.DeepEqual(texts(got), want) {
+		t.Fatalf("alerts = %q, want %q", texts(got), want)
+	}
+	if got[0].Type != AlertToolkitTarget || got[0].Ref != "gaze@2.4.0" {
+		t.Errorf("alert = %+v", got[0])
+	}
+	// The held branch gets a PR: news again, pointing at the PR.
+	r.Targets[0].URL, r.Targets[0].PRState = "https://github.com/acme/agents/pull/3", toolkit.PROpen
+	got = a.Toolkit(snap(r))
+	if want := []string{"gaze 2.4.0 on acme/agents is held for a look: merge its PR once it looks right"}; !reflect.DeepEqual(texts(got), want) {
+		t.Fatalf("alerts = %q, want %q", texts(got), want)
+	}
+	if got[0].Ref != "acme/agents#3" {
+		t.Errorf("ref = %q", got[0].Ref)
+	}
+	if got := a.Toolkit(snap(r)); got != nil {
+		t.Errorf("alerted twice: %q", texts(got))
+	}
+	r.Stage = toolkit.StageCancelled
+	r.Targets = append(r.Targets, toolkit.TargetRun{Target: "acme/x", Status: toolkit.StatusFailed})
+	if got := a.Toolkit(snap(r)); got != nil {
+		t.Errorf("alerted on a cancelled rollout: %q", texts(got))
+	}
+}
+
 func TestRunsTextVariants(t *testing.T) {
 	long := strings.Repeat("x", 100)
 	cases := []struct {

@@ -41,6 +41,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         case .blocked: return "An agent is waiting on you"
         case .runFinished: return "Agent run finished"
         case .toolRelease: return "A tool released"
+        case .toolkitTarget: return "A tool rollout needs you"
         default: return "gh-hud"
         }
     }

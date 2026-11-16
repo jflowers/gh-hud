@@ -407,6 +407,41 @@ func TestScaffoldOverlay(t *testing.T) {
 	if res.Status != StatusHeld || len(f.ran("git push -q gitlab chore/toolkit-uf-0.22.0")) != 1 {
 		t.Fatalf("held: %+v %v", res, f.calls)
 	}
+	if len(f.ran("gh pr create")) != 0 {
+		t.Errorf("opened a PR on a remote that isn't GitHub: %v", f.calls)
+	}
+
+	// On GitHub, the held branch gets a held PR to look at and merge.
+	a["git remote get-url gitlab"] = "https://github.com/acme/agents.git\n"
+	a["gh pr list --repo acme/agents"] = "\n"
+	a["gh pr create --repo acme/agents"] = "https://github.com/acme/agents/pull/3\n"
+	f = &fakeRunner{t: t, answers: a}
+	s.Run = f
+	res = s.Scaffold(context.Background(), ov, For(ov, runs), Options{})
+	if res.Status != StatusOpened || res.Detail != "https://github.com/acme/agents/pull/3" || !res.Held ||
+		res.Branch != "gitlab/chore/toolkit-uf-0.22.0" || res.Base != "gitlab/main" {
+		t.Fatalf("held PR: %+v", res)
+	}
+	c := f.ran("gh pr create --repo acme/agents")
+	if len(c) != 1 || !strings.Contains(c[0].line, "--base main --head chore/toolkit-uf-0.22.0") || !strings.Contains(c[0].line, "--label hold") {
+		t.Errorf("pr create %v", c)
+	}
+}
+
+func TestGithubRepo(t *testing.T) {
+	for url, want := range map[string]string{
+		"git@github.com:acme/agents.git\n":        "acme/agents",
+		"https://github.com/acme/agents":          "acme/agents",
+		"https://x-token@github.com/acme/a.b.git": "acme/a.b",
+		"ssh://git@github.com/acme/agents.git":    "acme/agents",
+		"https://gitlab.com/acme/agents.git":      "",
+		"git@github.com.evil.example:acme/a.git":  "",
+		"":                                        "",
+	} {
+		if got := githubRepo(url); got != want {
+			t.Errorf("githubRepo(%q) = %q, want %q", url, got, want)
+		}
+	}
 }
 
 func TestExecRunnerNeedsDir(t *testing.T) {

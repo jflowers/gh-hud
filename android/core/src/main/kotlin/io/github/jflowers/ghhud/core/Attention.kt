@@ -82,8 +82,8 @@ public data class Attention(
         /**
          * What needs you in a snapshot: agents waiting on you, supervisor
          * proposals and epic plans to approve, epic gates to clear, tool
-         * releases to roll out,
-         * reviews requested of you, and your PRs ready for a maintainer.
+         * releases to roll out, repos in tool rollouts held, refused or
+         * failing, reviews requested of you, and your PRs ready for a maintainer.
          */
         public fun of(s: Snapshot): Attention {
             val items = s.result.itemsList
@@ -116,6 +116,7 @@ public data class Attention(
                 AttentionSection("epics", "Epic plans awaiting approval", epics(s)),
                 AttentionSection("gates", "Epic gates only you can clear", gates(s)),
                 AttentionSection("releases", "Tool releases awaiting approval", releases(s)),
+                AttentionSection("rollouts", "Tool rollouts waiting on you", rollouts(s)),
                 AttentionSection("review", "Review requested", rows(Category.REVIEW_REQUESTED)),
                 AttentionSection("ready", "Ready for a maintainer", rows(Category.READY_FOR_MAINTAINER)),
             )
@@ -178,6 +179,27 @@ public data class Attention(
                         updated = if (r.hasStarted()) r.started.instant else null,
                         approval = Approval.Release(r.id, r.tool, r.version),
                     )
+                }
+
+        /**
+         * Repos in tool rollouts that wait on you (held for a look,
+         * refused, failed, or failing CI), as the hub says, newest rollout
+         * first. A cancelled rollout's don't: you stopped it. The row opens
+         * the PR when there is one.
+         */
+        internal fun rollouts(s: Snapshot): List<AttentionRow> =
+            s.toolkit.rolloutsList.filter { it.stage != "cancelled" && it.stage != "proposed" }
+                .flatMap { r ->
+                    r.targetsList.filter { it.needsYou.isNotEmpty() }.map { t ->
+                        val place = if (t.url.isEmpty()) t.branch.ifEmpty { t.detail } else ""
+                        AttentionRow(
+                            id = "rollout:${r.id} ${t.target}",
+                            title = "${r.tool} ${r.version} on ${t.target}",
+                            detail = listOf(t.needsYou, place).filter { it.isNotEmpty() }.joinToString(" · "),
+                            url = t.url.ifEmpty { null },
+                            updated = if (r.hasUpdated()) r.updated.instant else null,
+                        )
+                    }
                 }
 
         /**

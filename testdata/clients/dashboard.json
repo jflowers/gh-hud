@@ -263,7 +263,20 @@
       },
       {
         "id": "gaze@2.4.0", "tool": "gaze", "version": "2.4.0", "from": "2.3.0", "stage": "track",
-        "started": "2026-11-15T09:00:00Z", "updated": "2026-11-15T09:30:00Z", "summary": "fleet …"
+        "started": "2026-11-15T09:00:00Z", "updated": "2026-11-15T09:30:00Z",
+        "summary": "fleet … · repos 1/3 landed, 1 open, 1 held, 1 refused",
+        "targets": [
+          {"target": "acme/app", "status": "PR opened", "url": "https://github.com/acme/app/pull/40", "prState": "MERGED", "files": 3},
+          {"target": "acme/agents", "status": "PR opened", "url": "https://github.com/acme/agents/pull/3", "branch": "origin/chore/toolkit-gaze-2.4.0", "base": "origin/main", "held": true, "prState": "OPEN", "ci": "pass", "files": 2, "needsYou": "held"},
+          {"target": "acme/lib", "status": "refused", "detail": "would downgrade: gaze 2.5.0 → 2.4.0", "needsYou": "refused"}
+        ]
+      },
+      {
+        "id": "dewey@3.6.0", "tool": "dewey", "version": "3.6.0", "from": "3.5.0", "stage": "cancelled",
+        "started": "2026-11-14T09:00:00Z", "updated": "2026-11-14T09:30:00Z", "summary": "repos 0/1 landed, 1 failed",
+        "targets": [
+          {"target": "acme/app", "status": "failed", "detail": "dewey init: exit 1", "needsYou": "failed"}
+        ]
       }
     ],
     "checkedAt": "2026-11-15T10:00:00Z"
