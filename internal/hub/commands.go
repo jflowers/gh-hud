@@ -83,16 +83,17 @@ func (h *Hub) find(ctx context.Context, url string) (model.Item, error) {
 
 // ItemChoices lists every task that fits an issue or PR you name, and
 // where each would run.
-func (h *Hub) ItemChoices(ctx context.Context, ref string) (model.Item, []dispatch.MenuChoice, error) {
+func (h *Hub) ItemChoices(ctx context.Context, ref string) (model.Item, []dispatch.MenuChoice, string, error) {
 	d, err := h.disp()
 	if err != nil {
-		return model.Item{}, nil, err
+		return model.Item{}, nil, "", err
 	}
 	it, err := h.named(ctx, ref)
 	if err != nil {
-		return model.Item{}, nil, err
+		return model.Item{}, nil, "", err
 	}
-	return it, d.ItemChoices(it), nil
+	cs, why := d.ItemChoicesWhy(it)
+	return it, cs, why, nil
 }
 
 func (h *Hub) run(id string) (dispatch.Run, error) {
@@ -104,17 +105,19 @@ func (h *Hub) run(id string) (dispatch.Run, error) {
 	return dispatch.Run{}, fmt.Errorf("no run %s", id)
 }
 
-// MenuChoices lists the item's dispatchable tasks and where each would run.
-func (h *Hub) MenuChoices(ctx context.Context, url string) ([]dispatch.MenuChoice, error) {
+// MenuChoices lists the item's dispatchable tasks and where each would
+// run, or why none can start.
+func (h *Hub) MenuChoices(ctx context.Context, url string) ([]dispatch.MenuChoice, string, error) {
 	d, err := h.disp()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	it, err := h.find(ctx, url)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return d.MenuChoices(it), nil
+	cs, why := d.MenuChoicesWhy(it)
+	return cs, why, nil
 }
 
 // Dispatch starts an agent task on an item now, then refreshes agents.

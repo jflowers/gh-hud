@@ -33,8 +33,7 @@ public interface ItemChoicesResponseOrBuilder extends
 
   /**
    * <pre>
-   * Suggested tasks first. Empty when none can start (no free checkout,
-   * or the item has the human-gate label).
+   * Suggested tasks first. Empty when none can start; why says why.
    * </pre>
    *
    * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -43,8 +42,7 @@ public interface ItemChoicesResponseOrBuilder extends
       getChoicesList();
   /**
    * <pre>
-   * Suggested tasks first. Empty when none can start (no free checkout,
-   * or the item has the human-gate label).
+   * Suggested tasks first. Empty when none can start; why says why.
    * </pre>
    *
    * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -52,11 +50,32 @@ public interface ItemChoicesResponseOrBuilder extends
   io.github.jflowers.ghhud.api.v1.MenuChoice getChoices(int index);
   /**
    * <pre>
-   * Suggested tasks first. Empty when none can start (no free checkout,
-   * or the item has the human-gate label).
+   * Suggested tasks first. Empty when none can start; why says why.
    * </pre>
    *
    * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
    */
   int getChoicesCount();
+
+  /**
+   * <pre>
+   * Why nothing can start, in one line, when choices is empty (see
+   * MenuChoicesResponse.why).
+   * </pre>
+   *
+   * <code>string why = 3 [json_name = "why"];</code>
+   * @return The why.
+   */
+  java.lang.String getWhy();
+  /**
+   * <pre>
+   * Why nothing can start, in one line, when choices is empty (see
+   * MenuChoicesResponse.why).
+   * </pre>
+   *
+   * <code>string why = 3 [json_name = "why"];</code>
+   * @return The bytes for why.
+   */
+  com.google.protobuf.ByteString
+      getWhyBytes();
 }

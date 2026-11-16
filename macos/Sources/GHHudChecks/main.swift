@@ -677,6 +677,12 @@ do {
     check(tr == HubConnection.remoteTerminalWhy, "remote transcript is refused")
 }
 
+// The hub's reason when nothing can start, else the likely causes (#114).
+check(HubConnection.nothingCanStart(on: "acme/r#7", why: "an agent is already running on it (fix, lap2:r@hoopoe)", guess: "no checkout")
+      == "Nothing can start on acme/r#7 now: an agent is already running on it (fix, lap2:r@hoopoe).", "nothing can start: the hub's reason")
+check(HubConnection.nothingCanStart(on: "acme/r#7", why: "", guess: "no checkout of acme/r is free")
+      == "Nothing can start on acme/r#7 now: no checkout of acme/r is free.", "nothing can start: an old hub")
+
 // MARK: shared fixtures (testdata/clients)
 
 checkFixtures()
@@ -729,7 +735,7 @@ if let i = CommandLine.arguments.firstIndex(of: "--live"), i + 1 < CommandLine.a
     if connected, CommandLine.arguments.contains("--commands") {
         let url = "https://github.com/acme/widgets/pull/398"
         let menu = await conn.menuChoices(url: url)
-        check((try? menu.get())?.map(\.target) == ["chai:ws-3", "ws-1"], "live: menu choices \(menu)")
+        check((try? menu.get())?.choices.map(\.target) == ["chai:ws-3", "ws-1"], "live: menu choices \(menu)")
         let rec = await conn.dispatch(task: "fix", url: url)
         check((try? rec.get())?.workspace == "ws-3" && (try? rec.get())?.machine == "chai", "live: dispatch \(rec)")
         let opts = await conn.queueChoices(url: url)

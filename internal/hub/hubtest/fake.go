@@ -23,6 +23,7 @@ type Fake struct {
 
 	Menu      []dispatch.MenuChoice
 	Item      model.Item // what ItemChoices found (with Menu)
+	Why       string     // why nothing can start (with Menu)
 	QueueOpts []dispatch.Task
 	Record    dispatch.Record
 	Run       dispatch.Run
@@ -87,18 +88,18 @@ func (f *Fake) Refresh(context.Context) error           { return f.call("Refresh
 func (f *Fake) RefreshAgents(context.Context) error     { return f.call("RefreshAgents") }
 func (f *Fake) RefreshWorkspaces(context.Context) error { return f.call("RefreshWorkspaces") }
 
-func (f *Fake) MenuChoices(_ context.Context, url string) ([]dispatch.MenuChoice, error) {
+func (f *Fake) MenuChoices(_ context.Context, url string) ([]dispatch.MenuChoice, string, error) {
 	if err := f.call("MenuChoices %s", url); err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return f.Menu, nil
+	return f.Menu, f.Why, nil
 }
 
-func (f *Fake) ItemChoices(_ context.Context, ref string) (model.Item, []dispatch.MenuChoice, error) {
+func (f *Fake) ItemChoices(_ context.Context, ref string) (model.Item, []dispatch.MenuChoice, string, error) {
 	if err := f.call("ItemChoices %s", ref); err != nil {
-		return model.Item{}, nil, err
+		return model.Item{}, nil, "", err
 	}
-	return f.Item, f.Menu, nil
+	return f.Item, f.Menu, f.Why, nil
 }
 
 func (f *Fake) Dispatch(_ context.Context, task dispatch.Task, url string) (dispatch.Record, error) {

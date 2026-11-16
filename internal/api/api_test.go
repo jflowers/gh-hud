@@ -95,10 +95,10 @@ func TestCommandsOverSocket(t *testing.T) {
 	must(c.Refresh(ctx))
 	must(c.RefreshAgents(ctx))
 	must(c.RefreshWorkspaces(ctx))
-	menu, err := c.MenuChoices(ctx, "u1")
+	menu, why, err := c.MenuChoices(ctx, "u1")
 	must(err)
-	if !slices.Equal(menu, fake.Menu) {
-		t.Errorf("menu = %v", menu)
+	if !slices.Equal(menu, fake.Menu) || why != fake.Why {
+		t.Errorf("menu = %v, %q", menu, why)
 	}
 	rec, err := c.Dispatch(ctx, dispatch.TaskCI, "u1")
 	must(err)
@@ -153,6 +153,20 @@ func TestCommandsOverSocket(t *testing.T) {
 	}
 	if !slices.Equal(fake.Calls, want) {
 		t.Errorf("calls =\n%q\nwant\n%q", fake.Calls, want)
+	}
+}
+
+// An empty menu carries the hub's reason, for both lookups (#114).
+func TestChoicesCarryWhyNothingCanStart(t *testing.T) {
+	const why = "an agent is already running on it (issue, lap2:acme@hoopoe)"
+	fake := &hubtest.Fake{Why: why, Item: model.Item{Kind: model.KindIssue, Repo: "acme/r", Num: 215, URL: "u215"}}
+	c, _ := serve(t, sockPath(t), fake)
+	ctx := t.Context()
+	if cs, got, err := c.MenuChoices(ctx, "u215"); err != nil || len(cs) != 0 || got != why {
+		t.Errorf("MenuChoices = %v, %q, %v", cs, got, err)
+	}
+	if it, cs, got, err := c.ItemChoices(ctx, "acme/r#215"); err != nil || it.Num != 215 || len(cs) != 0 || got != why {
+		t.Errorf("ItemChoices = %+v, %v, %q, %v", it, cs, got, err)
 	}
 }
 

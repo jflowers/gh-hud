@@ -76,9 +76,14 @@ class ItemCommandsTest {
         val req = DispatchRequest.parseFrom(server.takeRequest().body!!.toByteArray())
         assertEquals("fix" to "https://github.com/acme/r/pull/7", req.task to req.url)
 
-        ok(menuChoicesResponse {})
+        ok(menuChoicesResponse { why = "an agent is already running on it (fix, lap2:r@hoopoe)" })
         assertEquals(
-            Answer.No("Nothing can start on this item now: no agent task fits it, or no checkout of acme/r is free."),
+            Answer.No("Nothing can start on acme/r#7 now: an agent is already running on it (fix, lap2:r@hoopoe)."),
+            ItemCommands.choices(hub, row, queue = false),
+        )
+        ok(menuChoicesResponse {}) // a hub too old to say why
+        assertEquals(
+            Answer.No("Nothing can start on acme/r#7 now: no agent task fits it, or no checkout of acme/r is free."),
             ItemCommands.choices(hub, row, queue = false),
         )
         refused("dispatch is off")
@@ -139,6 +144,16 @@ class ItemCommandsTest {
         val d = DispatchRequest.parseFrom(server.takeRequest().body!!.toByteArray())
         assertEquals("rebase" to "https://github.com/acme/r/pull/9", d.task to d.url)
 
+        ok(
+            itemChoicesResponse {
+                item = item { repo = "acme/r"; num = 3; kind = ItemKind.ITEM_KIND_ISSUE }
+                why = "a person handles it (the human-gate label)"
+            },
+        )
+        assertEquals(
+            Answer.No("Nothing can start on acme/r#3 now: a person handles it (the human-gate label)."),
+            ItemCommands.lookUp(hub, "acme/r#3"),
+        )
         ok(itemChoicesResponse { item = item { repo = "acme/r"; num = 3; kind = ItemKind.ITEM_KIND_ISSUE } })
         assertEquals(
             Answer.No("Nothing can start on acme/r#3 now: no checkout of acme/r is free, or a person handles it (human-gate)."),

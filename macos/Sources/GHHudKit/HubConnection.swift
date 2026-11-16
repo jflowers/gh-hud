@@ -144,12 +144,18 @@ public final class HubConnection {
         }
     }
 
-    /// Where an agent can start on an item now.
-    public func menuChoices(url: String) async -> Result<[Ghhud_V1_MenuChoice], CommandError> {
+    /// Where an agent can start on an item now, or why none can.
+    public func menuChoices(url: String) async -> Result<Ghhud_V1_MenuChoicesResponse, CommandError> {
         guard let hub, let client = commands else { return .failure(.notConnected) }
         var req = Ghhud_V1_MenuChoicesRequest()
         req.url = url
-        return Self.result(await client.menuChoices(request: req, headers: hub.authHeaders)).map(\.choices)
+        return Self.result(await client.menuChoices(request: req, headers: hub.authHeaders))
+    }
+
+    /// Says why nothing can start on ref: the hub's reason, or, from a hub
+    /// too old to give one, the likely causes.
+    public static func nothingCanStart(on ref: String, why: String, guess: String) -> String {
+        "Nothing can start on \(ref) now: \(why.isEmpty ? guess : why)."
     }
 
     /// Looks up an issue or PR you name (a GitHub URL or owner/repo#N), on

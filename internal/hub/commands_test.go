@@ -74,13 +74,25 @@ func (d *fakeDisp) Queue() []dispatch.QueueEntry {
 	return slices.Clone(d.queue)
 }
 
-func (d *fakeDisp) MenuChoices(it model.Item) []dispatch.MenuChoice {
-	return []dispatch.MenuChoice{{Task: dispatch.TaskCI, Target: "ws:" + it.Ref()}}
+func (d *fakeDisp) MenuChoicesWhy(it model.Item) ([]dispatch.MenuChoice, string) {
+	if it.Num == busyNum {
+		return nil, busyWhy
+	}
+	return []dispatch.MenuChoice{{Task: dispatch.TaskCI, Target: "ws:" + it.Ref()}}, ""
 }
 
-func (d *fakeDisp) ItemChoices(it model.Item) []dispatch.MenuChoice {
-	return []dispatch.MenuChoice{{Task: dispatch.KindTasks(it.Kind)[0], Target: "ws:" + it.Ref()}}
+func (d *fakeDisp) ItemChoicesWhy(it model.Item) ([]dispatch.MenuChoice, string) {
+	if it.Num == busyNum {
+		return nil, busyWhy
+	}
+	return []dispatch.MenuChoice{{Task: dispatch.KindTasks(it.Kind)[0], Target: "ws:" + it.Ref()}}, ""
 }
+
+// busyNum is an item fakeDisp says an agent already runs on.
+const (
+	busyNum = 215
+	busyWhy = "an agent is already running on it (issue, lap2:acme@hoopoe)"
+)
 
 func (d *fakeDisp) Dispatch(_ context.Context, task dispatch.Task, it model.Item, auto bool) (dispatch.Record, error) {
 	d.record("Dispatch %s %s auto=%v", task, it.Ref(), auto)
@@ -174,7 +186,7 @@ func TestCommandsResolveKeys(t *testing.T) {
 	h := withItems(t, d)
 	ctx := t.Context()
 
-	if c, err := h.MenuChoices(ctx, "u1"); err != nil || len(c) != 1 || c[0].Target != "ws:acme/r#1" {
+	if c, _, err := h.MenuChoices(ctx, "u1"); err != nil || len(c) != 1 || c[0].Target != "ws:acme/r#1" {
 		t.Errorf("MenuChoices = %v, %v", c, err)
 	}
 	if rec, err := h.Dispatch(ctx, dispatch.TaskCI, "u1"); err != nil || rec.Ref != "acme/r#1" {
@@ -459,16 +471,16 @@ func TestItemChoicesNamesAnyItem(t *testing.T) {
 		return model.Item{}, errors.New("not found")
 	}
 	// In the refresh: found by ref, whatever the URL's form, no lookup.
-	it, cs, err := h.ItemChoices(ctx, "https://github.com/acme/r/pull/1/files")
+	it, cs, _, err := h.ItemChoices(ctx, "https://github.com/acme/r/pull/1/files")
 	if err != nil || it.URL != "u1" || len(cs) != 1 || cs[0].Task != dispatch.TaskRebase || len(looked) != 0 {
 		t.Errorf("ItemChoices(refreshed) = %+v, %v, %v; looked %v", it, cs, err, looked)
 	}
 	// Outside it: looked up.
-	it, cs, err = h.ItemChoices(ctx, "acme/r#9")
+	it, cs, _, err = h.ItemChoices(ctx, "acme/r#9")
 	if err != nil || it.Num != 9 || len(cs) != 1 || cs[0].Task != dispatch.TaskIssue {
 		t.Errorf("ItemChoices(looked up) = %+v, %v, %v", it, cs, err)
 	}
-	if _, _, err := h.ItemChoices(ctx, "not a url"); err == nil {
+	if _, _, _, err := h.ItemChoices(ctx, "not a url"); err == nil {
 		t.Error("ItemChoices of garbage succeeded")
 	}
 	// Dispatch takes the looked-up item's URL, and refuses a task that
@@ -500,7 +512,7 @@ func TestRowCommandsFindItemsOutsideTheRefresh(t *testing.T) {
 		}
 		return model.Item{}, errors.New("not found")
 	}
-	if cs, err := h.MenuChoices(ctx, piece); err != nil || len(cs) != 1 || cs[0].Target != "ws:acme/r#1029" {
+	if cs, _, err := h.MenuChoices(ctx, piece); err != nil || len(cs) != 1 || cs[0].Target != "ws:acme/r#1029" {
 		t.Errorf("MenuChoices(piece) = %v, %v", cs, err)
 	}
 	if ts, err := h.QueueChoices(ctx, piece); err != nil || len(ts) != 1 {
@@ -513,11 +525,30 @@ func TestRowCommandsFindItemsOutsideTheRefresh(t *testing.T) {
 		t.Errorf("looked up %v, want %v", looked, want)
 	}
 	// A refreshed item is never looked up.
-	if _, err := h.MenuChoices(ctx, "u1"); err != nil || len(looked) != 3 {
+	if _, _, err := h.MenuChoices(ctx, "u1"); err != nil || len(looked) != 3 {
 		t.Errorf("MenuChoices(u1) = %v; looked %v", err, looked)
 	}
 	// Neither in the refresh nor on GitHub: the lookup's error.
-	if _, err := h.MenuChoices(ctx, "https://github.com/acme/r/issues/404"); err == nil || !strings.Contains(err.Error(), "not found") {
+	if _, _, err := h.MenuChoices(ctx, "https://github.com/acme/r/issues/404"); err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Errorf("MenuChoices(missing) = %v", err)
+	}
+}
+
+// When nothing can start, the hub passes on dispatch's reason (#114).
+func TestChoicesSayWhyNothingCanStart(t *testing.T) {
+	d := &fakeDisp{owner: true}
+	h := withItems(t, d)
+	ctx := t.Context()
+	h.opts.Lookup = func(_ context.Context, ref string) (model.Item, error) {
+		return model.Item{Kind: model.KindIssue, Repo: "acme/r", Num: busyNum, URL: "https://github.com/acme/r/issues/215"}, nil
+	}
+	if cs, why, err := h.MenuChoices(ctx, "https://github.com/acme/r/issues/215"); err != nil || len(cs) != 0 || why != busyWhy {
+		t.Errorf("MenuChoices(busy) = %v, %q, %v", cs, why, err)
+	}
+	if _, cs, why, err := h.ItemChoices(ctx, "acme/r#215"); err != nil || len(cs) != 0 || why != busyWhy {
+		t.Errorf("ItemChoices(busy) = %v, %q, %v", cs, why, err)
+	}
+	if _, why, _ := h.MenuChoices(ctx, "u1"); why != "" {
+		t.Errorf("MenuChoices(u1) why = %q, want none", why)
 	}
 }

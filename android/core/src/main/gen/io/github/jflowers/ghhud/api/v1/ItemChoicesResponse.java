@@ -16,6 +16,7 @@ public  final class ItemChoicesResponse extends
     ItemChoicesResponseOrBuilder {
   private ItemChoicesResponse() {
     choices_ = emptyProtobufList();
+    why_ = "";
   }
   private int bitField0_;
   public static final int ITEM_FIELD_NUMBER = 1;
@@ -94,8 +95,7 @@ public  final class ItemChoicesResponse extends
   private com.google.protobuf.Internal.ProtobufList<io.github.jflowers.ghhud.api.v1.MenuChoice> choices_;
   /**
    * <pre>
-   * Suggested tasks first. Empty when none can start (no free checkout,
-   * or the item has the human-gate label).
+   * Suggested tasks first. Empty when none can start; why says why.
    * </pre>
    *
    * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -106,8 +106,7 @@ public  final class ItemChoicesResponse extends
   }
   /**
    * <pre>
-   * Suggested tasks first. Empty when none can start (no free checkout,
-   * or the item has the human-gate label).
+   * Suggested tasks first. Empty when none can start; why says why.
    * </pre>
    *
    * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -118,8 +117,7 @@ public  final class ItemChoicesResponse extends
   }
   /**
    * <pre>
-   * Suggested tasks first. Empty when none can start (no free checkout,
-   * or the item has the human-gate label).
+   * Suggested tasks first. Empty when none can start; why says why.
    * </pre>
    *
    * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -130,8 +128,7 @@ public  final class ItemChoicesResponse extends
   }
   /**
    * <pre>
-   * Suggested tasks first. Empty when none can start (no free checkout,
-   * or the item has the human-gate label).
+   * Suggested tasks first. Empty when none can start; why says why.
    * </pre>
    *
    * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -142,8 +139,7 @@ public  final class ItemChoicesResponse extends
   }
   /**
    * <pre>
-   * Suggested tasks first. Empty when none can start (no free checkout,
-   * or the item has the human-gate label).
+   * Suggested tasks first. Empty when none can start; why says why.
    * </pre>
    *
    * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -162,8 +158,7 @@ public  final class ItemChoicesResponse extends
 
   /**
    * <pre>
-   * Suggested tasks first. Empty when none can start (no free checkout,
-   * or the item has the human-gate label).
+   * Suggested tasks first. Empty when none can start; why says why.
    * </pre>
    *
    * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -176,8 +171,7 @@ public  final class ItemChoicesResponse extends
   }
   /**
    * <pre>
-   * Suggested tasks first. Empty when none can start (no free checkout,
-   * or the item has the human-gate label).
+   * Suggested tasks first. Empty when none can start; why says why.
    * </pre>
    *
    * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -189,8 +183,7 @@ public  final class ItemChoicesResponse extends
   }
   /**
    * <pre>
-   * Suggested tasks first. Empty when none can start (no free checkout,
-   * or the item has the human-gate label).
+   * Suggested tasks first. Empty when none can start; why says why.
    * </pre>
    *
    * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -203,8 +196,7 @@ public  final class ItemChoicesResponse extends
   }
   /**
    * <pre>
-   * Suggested tasks first. Empty when none can start (no free checkout,
-   * or the item has the human-gate label).
+   * Suggested tasks first. Empty when none can start; why says why.
    * </pre>
    *
    * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -217,8 +209,7 @@ public  final class ItemChoicesResponse extends
   }
   /**
    * <pre>
-   * Suggested tasks first. Empty when none can start (no free checkout,
-   * or the item has the human-gate label).
+   * Suggested tasks first. Empty when none can start; why says why.
    * </pre>
    *
    * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -228,8 +219,7 @@ public  final class ItemChoicesResponse extends
   }
   /**
    * <pre>
-   * Suggested tasks first. Empty when none can start (no free checkout,
-   * or the item has the human-gate label).
+   * Suggested tasks first. Empty when none can start; why says why.
    * </pre>
    *
    * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -237,6 +227,78 @@ public  final class ItemChoicesResponse extends
   private void removeChoices(int index) {
     ensureChoicesIsMutable();
     choices_.remove(index);
+  }
+
+  public static final int WHY_FIELD_NUMBER = 3;
+  private java.lang.String why_;
+  /**
+   * <pre>
+   * Why nothing can start, in one line, when choices is empty (see
+   * MenuChoicesResponse.why).
+   * </pre>
+   *
+   * <code>string why = 3 [json_name = "why"];</code>
+   * @return The why.
+   */
+  @java.lang.Override
+  public java.lang.String getWhy() {
+    return why_;
+  }
+  /**
+   * <pre>
+   * Why nothing can start, in one line, when choices is empty (see
+   * MenuChoicesResponse.why).
+   * </pre>
+   *
+   * <code>string why = 3 [json_name = "why"];</code>
+   * @return The bytes for why.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getWhyBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(why_);
+  }
+  /**
+   * <pre>
+   * Why nothing can start, in one line, when choices is empty (see
+   * MenuChoicesResponse.why).
+   * </pre>
+   *
+   * <code>string why = 3 [json_name = "why"];</code>
+   * @param value The why to set.
+   */
+  private void setWhy(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    why_ = value;
+  }
+  /**
+   * <pre>
+   * Why nothing can start, in one line, when choices is empty (see
+   * MenuChoicesResponse.why).
+   * </pre>
+   *
+   * <code>string why = 3 [json_name = "why"];</code>
+   */
+  private void clearWhy() {
+
+    why_ = getDefaultInstance().getWhy();
+  }
+  /**
+   * <pre>
+   * Why nothing can start, in one line, when choices is empty (see
+   * MenuChoicesResponse.why).
+   * </pre>
+   *
+   * <code>string why = 3 [json_name = "why"];</code>
+   * @param value The bytes for why to set.
+   */
+  private void setWhyBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    why_ = value.toStringUtf8();
+
   }
 
   public static io.github.jflowers.ghhud.api.v1.ItemChoicesResponse parseFrom(
@@ -415,8 +477,7 @@ public  final class ItemChoicesResponse extends
 
     /**
      * <pre>
-     * Suggested tasks first. Empty when none can start (no free checkout,
-     * or the item has the human-gate label).
+     * Suggested tasks first. Empty when none can start; why says why.
      * </pre>
      *
      * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -428,8 +489,7 @@ public  final class ItemChoicesResponse extends
     }
     /**
      * <pre>
-     * Suggested tasks first. Empty when none can start (no free checkout,
-     * or the item has the human-gate label).
+     * Suggested tasks first. Empty when none can start; why says why.
      * </pre>
      *
      * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -439,8 +499,7 @@ public  final class ItemChoicesResponse extends
       return instance.getChoicesCount();
     }/**
      * <pre>
-     * Suggested tasks first. Empty when none can start (no free checkout,
-     * or the item has the human-gate label).
+     * Suggested tasks first. Empty when none can start; why says why.
      * </pre>
      *
      * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -451,8 +510,7 @@ public  final class ItemChoicesResponse extends
     }
     /**
      * <pre>
-     * Suggested tasks first. Empty when none can start (no free checkout,
-     * or the item has the human-gate label).
+     * Suggested tasks first. Empty when none can start; why says why.
      * </pre>
      *
      * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -465,8 +523,7 @@ public  final class ItemChoicesResponse extends
     }
     /**
      * <pre>
-     * Suggested tasks first. Empty when none can start (no free checkout,
-     * or the item has the human-gate label).
+     * Suggested tasks first. Empty when none can start; why says why.
      * </pre>
      *
      * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -480,8 +537,7 @@ public  final class ItemChoicesResponse extends
     }
     /**
      * <pre>
-     * Suggested tasks first. Empty when none can start (no free checkout,
-     * or the item has the human-gate label).
+     * Suggested tasks first. Empty when none can start; why says why.
      * </pre>
      *
      * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -493,8 +549,7 @@ public  final class ItemChoicesResponse extends
     }
     /**
      * <pre>
-     * Suggested tasks first. Empty when none can start (no free checkout,
-     * or the item has the human-gate label).
+     * Suggested tasks first. Empty when none can start; why says why.
      * </pre>
      *
      * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -507,8 +562,7 @@ public  final class ItemChoicesResponse extends
     }
     /**
      * <pre>
-     * Suggested tasks first. Empty when none can start (no free checkout,
-     * or the item has the human-gate label).
+     * Suggested tasks first. Empty when none can start; why says why.
      * </pre>
      *
      * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -521,8 +575,7 @@ public  final class ItemChoicesResponse extends
     }
     /**
      * <pre>
-     * Suggested tasks first. Empty when none can start (no free checkout,
-     * or the item has the human-gate label).
+     * Suggested tasks first. Empty when none can start; why says why.
      * </pre>
      *
      * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -536,8 +589,7 @@ public  final class ItemChoicesResponse extends
     }
     /**
      * <pre>
-     * Suggested tasks first. Empty when none can start (no free checkout,
-     * or the item has the human-gate label).
+     * Suggested tasks first. Empty when none can start; why says why.
      * </pre>
      *
      * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -550,8 +602,7 @@ public  final class ItemChoicesResponse extends
     }
     /**
      * <pre>
-     * Suggested tasks first. Empty when none can start (no free checkout,
-     * or the item has the human-gate label).
+     * Suggested tasks first. Empty when none can start; why says why.
      * </pre>
      *
      * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -563,8 +614,7 @@ public  final class ItemChoicesResponse extends
     }
     /**
      * <pre>
-     * Suggested tasks first. Empty when none can start (no free checkout,
-     * or the item has the human-gate label).
+     * Suggested tasks first. Empty when none can start; why says why.
      * </pre>
      *
      * <code>repeated .ghhud.v1.MenuChoice choices = 2 [json_name = "choices"];</code>
@@ -572,6 +622,80 @@ public  final class ItemChoicesResponse extends
     public Builder removeChoices(int index) {
       copyOnWrite();
       instance.removeChoices(index);
+      return this;
+    }
+
+    /**
+     * <pre>
+     * Why nothing can start, in one line, when choices is empty (see
+     * MenuChoicesResponse.why).
+     * </pre>
+     *
+     * <code>string why = 3 [json_name = "why"];</code>
+     * @return The why.
+     */
+    @java.lang.Override
+    public java.lang.String getWhy() {
+      return instance.getWhy();
+    }
+    /**
+     * <pre>
+     * Why nothing can start, in one line, when choices is empty (see
+     * MenuChoicesResponse.why).
+     * </pre>
+     *
+     * <code>string why = 3 [json_name = "why"];</code>
+     * @return The bytes for why.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getWhyBytes() {
+      return instance.getWhyBytes();
+    }
+    /**
+     * <pre>
+     * Why nothing can start, in one line, when choices is empty (see
+     * MenuChoicesResponse.why).
+     * </pre>
+     *
+     * <code>string why = 3 [json_name = "why"];</code>
+     * @param value The why to set.
+     * @return This builder for chaining.
+     */
+    public Builder setWhy(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setWhy(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Why nothing can start, in one line, when choices is empty (see
+     * MenuChoicesResponse.why).
+     * </pre>
+     *
+     * <code>string why = 3 [json_name = "why"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearWhy() {
+      copyOnWrite();
+      instance.clearWhy();
+      return this;
+    }
+    /**
+     * <pre>
+     * Why nothing can start, in one line, when choices is empty (see
+     * MenuChoicesResponse.why).
+     * </pre>
+     *
+     * <code>string why = 3 [json_name = "why"];</code>
+     * @param value The bytes for why to set.
+     * @return This builder for chaining.
+     */
+    public Builder setWhyBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setWhyBytes(value);
       return this;
     }
 
@@ -595,10 +719,11 @@ public  final class ItemChoicesResponse extends
             "item_",
             "choices_",
             io.github.jflowers.ghhud.api.v1.MenuChoice.class,
+            "why_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0001\u0001\u0002\u0002\u0000\u0001\u0000\u0001\u1009\u0000\u0002" +
-              "\u001b";
+              "\u0000\u0003\u0000\u0001\u0001\u0003\u0003\u0000\u0001\u0000\u0001\u1009\u0000\u0002" +
+              "\u001b\u0003\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

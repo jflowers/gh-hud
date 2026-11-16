@@ -23,4 +23,28 @@ public interface MenuChoicesResponseOrBuilder extends
    * <code>repeated .ghhud.v1.MenuChoice choices = 1 [json_name = "choices"];</code>
    */
   int getChoicesCount();
+
+  /**
+   * <pre>
+   * Why nothing can start, in one line, when choices is empty: the
+   * human-gate label, an agent already running on it (and where), no
+   * command set, no machine free, no checkout, or every checkout busy.
+   * </pre>
+   *
+   * <code>string why = 2 [json_name = "why"];</code>
+   * @return The why.
+   */
+  java.lang.String getWhy();
+  /**
+   * <pre>
+   * Why nothing can start, in one line, when choices is empty: the
+   * human-gate label, an agent already running on it (and where), no
+   * command set, no machine free, no checkout, or every checkout busy.
+   * </pre>
+   *
+   * <code>string why = 2 [json_name = "why"];</code>
+   * @return The bytes for why.
+   */
+  com.google.protobuf.ByteString
+      getWhyBytes();
 }
