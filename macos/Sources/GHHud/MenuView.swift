@@ -196,7 +196,11 @@ struct RowButton: View {
 
     var body: some View {
         Button {
-            if let url = row.url { NSWorkspace.shared.open(url) }
+            if let url = row.url {
+                NSWorkspace.shared.open(url)
+            } else if Self.toolkit(row) {
+                DashboardOpener.shared.open(.toolkit)
+            }
         } label: {
             RowLabel(row: row, highlighted: hovering)
         }
@@ -208,9 +212,12 @@ struct RowButton: View {
                 ui.hovered = nil
             }
         }
-        .disabled(row.url == nil)
-        .help(row.url?.absoluteString ?? "")
+        .disabled(row.url == nil && !Self.toolkit(row))
+        .help(row.url?.absoluteString ?? (Self.toolkit(row) ? "Open the Toolkit pane" : ""))
     }
+
+    /// A toolkit row without a PR opens the Toolkit pane instead.
+    static func toolkit(_ row: AttentionRow) -> Bool { row.id.hasPrefix("rollout:") }
 }
 
 /// A row's title and detail.

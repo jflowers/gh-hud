@@ -245,6 +245,30 @@ public class HubConnection(
         else -> "only a proposal or a release can be turned down"
     }
 
+    /** Starts rolling a tool out at version ("" for its latest release). */
+    public suspend fun rollOut(tool: String, version: String = ""): Answer<Unit> =
+        answer(
+            hub.toolkitRollout(
+                toolkitRolloutRequest {
+                    this.tool = tool
+                    this.version = version
+                },
+                headers,
+            ),
+        ) { }
+
+    /** Cancels, retries or dismisses a rollout, or checks the tools now (id ""). */
+    public suspend fun toolkit(action: ToolkitAction, id: String = ""): Answer<Unit> =
+        answer(
+            hub.toolkitControl(
+                toolkitControlRequest {
+                    this.action = action
+                    this.id = id
+                },
+                headers,
+            ),
+        ) { }
+
     /** Where an agent task could start on an item now. */
     public suspend fun menuChoices(url: String): Answer<List<MenuChoice>> =
         answer(hub.menuChoices(menuChoicesRequest { this.url = url }, headers)) { it.choicesList }

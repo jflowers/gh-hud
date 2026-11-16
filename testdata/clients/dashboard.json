@@ -252,7 +252,11 @@
   ],
   "toolkit": {
     "tools": [
-      {"name": "uf", "release": "acme/uf", "pin": "0.21.0", "applied": "0.21.0", "latest": "0.22.0", "scaffolds": true}
+      {"name": "uf", "release": "acme/uf", "pin": "0.21.0", "applied": "0.21.0", "latest": "0.22.0", "scaffolds": true,
+       "repos": [{"target": "acme/app", "version": "0.21.0"}, {"target": "acme/lib", "version": "0.20.1"}]},
+      {"name": "gaze", "release": "acme/gaze", "pin": "2.4.0", "applied": "2.3.0", "latest": "2.4.0", "scaffolds": true},
+      {"name": "dewey", "release": "acme/dewey", "pin": "3.5.0", "applied": "3.5.0", "latest": "3.6.0"},
+      {"name": "aq", "pin": "0.4.1", "error": "latest release: npm view: exit 1"}
     ],
     "rollouts": [
       {
@@ -264,6 +268,7 @@
       {
         "id": "gaze@2.4.0", "tool": "gaze", "version": "2.4.0", "from": "2.3.0", "stage": "track",
         "started": "2026-11-15T09:00:00Z", "updated": "2026-11-15T09:30:00Z",
+        "pinPr": "https://github.com/jflowers/dotfiles/pull/30", "pinState": "MERGED",
         "summary": "fleet … · repos 1/3 landed, 1 open, 1 held, 1 refused",
         "targets": [
           {"target": "acme/app", "status": "PR opened", "url": "https://github.com/acme/app/pull/40", "prState": "MERGED", "files": 3},

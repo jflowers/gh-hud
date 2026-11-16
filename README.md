@@ -1275,7 +1275,8 @@ For each target, it:
    bot review, auto-merge and the `ci` task.
 4. An **overlay** target (a private uf stealth mirror, such as fullsend-ai's)
    gets the commit pushed straight to its default branch, or to the chore
-   branch when held, for you to merge.
+   branch when held, for you to merge. When that remote is on GitHub, a
+   held branch also gets a PR (labelled `hold`) to look at and merge.
 
 It refuses to go backwards. Commits carry `Toolkit-Scaffold: <tool>
 <version>` trailers, and PR titles name the versions. A version older than
@@ -1369,6 +1370,16 @@ checks releases and versions now (otherwise every 30 minutes). Rollouts
 survive restarts (`~/.local/state/gh-hud/toolkit.json`), and notifications
 mark the pin PR, the merge, the finish and failures. The same is on the
 command line:
+
+**In the apps.** The Mac app's **Toolkit → Tools** pane and the phone's
+**Tools** place show the same: each tool's pin and latest release (◆ when
+one waits for you; open it for the release notes, **Approve** and
+**Decline**), and the rollouts, each with its repos (landed, open, held,
+refused, failed) and a link to its PR. **Roll Out** starts a tool's latest
+release; **Cancel**, **Retry** and **Dismiss** act on a rollout; **Check
+Now** is `x`. A repo that waits on you (held, refused, failed, or failing
+CI) is also in the list of what needs you, under "Tool rollouts waiting on
+you", and notifies; it opens its PR, or the Tools view when there is none.
 
 ```sh
 gh-hud toolkit status

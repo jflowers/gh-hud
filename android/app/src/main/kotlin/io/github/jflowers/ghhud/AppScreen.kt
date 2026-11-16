@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -39,6 +40,7 @@ import io.github.jflowers.ghhud.core.WorkspaceList
 import io.github.jflowers.ghhud.core.ItemFilter
 import io.github.jflowers.ghhud.core.ItemList
 import io.github.jflowers.ghhud.core.PlanList
+import io.github.jflowers.ghhud.core.ToolkitList
 import kotlinx.coroutines.launch
 
 /** The places in the bottom bar. More come with Plan, Agents and Fleet. */
@@ -50,10 +52,13 @@ enum class Place(val label: String, val icon: ImageVector) {
 
     /** Only while the hub runs a fleet, as on the Mac. */
     FLEET("Fleet", Icons.Filled.Build),
+
+    /** Only while the hub runs the toolkit, as on the Mac. */
+    TOOLS("Tools", Icons.Filled.Settings),
 }
 
 /** Everything the app's screens can ask for. */
-interface AppActions : AttentionActions, ItemsControl, ItemActions, PlanActions, AgentsControl, AgentActions, FleetActions, ViewerActions
+interface AppActions : AttentionActions, ItemsControl, ItemActions, PlanActions, AgentsControl, AgentActions, FleetActions, ViewerActions, ToolkitActions
 
 /**
  * The app: a bottom bar between the places, each a list; an item's row
@@ -83,6 +88,8 @@ fun AppScreen(
     // "watch:<run:id|session:id>" or "transcript:<run id>"; the viewers'
     // titles ride along in viewTitle.
     var detail by rememberSaveable { mutableStateOf<String?>(null) }
+    // The rollout the Tools screen opens on, when the inbox sent you there.
+    var openRollout by rememberSaveable { mutableStateOf<String?>(null) }
     var viewTitle by rememberSaveable { mutableStateOf("") }
     // Back from a viewer returns to the screen that opened it.
     var under by rememberSaveable { mutableStateOf<String?>(null) }
@@ -119,7 +126,8 @@ fun AppScreen(
         bottomBar = {
             NavigationBar {
                 val fleetOn = ui.hub.snapshot.hasFleet()
-                for (p in Place.entries.filter { it != Place.FLEET || fleetOn }) {
+                val toolsOn = ui.hub.snapshot.hasToolkit()
+                for (p in Place.entries.filter { (it != Place.FLEET || fleetOn) && (it != Place.TOOLS || toolsOn) }) {
                     NavigationBarItem(
                         selected = p == place,
                         onClick = {
@@ -133,6 +141,7 @@ fun AppScreen(
                                 Place.PLAN -> PlanList.starting(snap).takeIf { it > 0 }?.toString()
                                 Place.AGENTS -> AgentList.running(snap).takeIf { it > 0 }?.toString()
                                 Place.FLEET -> FleetList.progress(snap) // "2/6": machines on the target
+                                Place.TOOLS -> ToolkitList.waiting(snap).takeIf { it > 0 }?.toString()
                                 Place.ITEMS -> null
                             }
                             BadgedBox(badge = { badge?.let { Badge { Text(it) } } }) { Icon(p.icon, contentDescription = null) }
@@ -170,7 +179,10 @@ fun AppScreen(
                     val row = remember(s, id) { WorkspaceList.rows(s).firstOrNull { it.id == id } }
                     WorkspaceScreen(row, act, onBack = back)
                 }
-                place == Place.INBOX -> AttentionScreen(ui, act)
+                place == Place.INBOX -> AttentionScreen(ui, act, onToolkit = { rollout ->
+                    openRollout = rollout
+                    place = Place.TOOLS
+                })
                 place == Place.ITEMS -> ItemsScreen(ui, items, act, onOpenItem = { detail = "item:" + it.id }, onNamed = { named = "" })
                 place == Place.PLAN -> PlanScreen(ui, act, act, say, refresh = act::refresh)
                 place == Place.AGENTS -> AgentsScreen(
@@ -182,6 +194,8 @@ fun AppScreen(
                 )
                 place == Place.FLEET && s.hasFleet() -> FleetScreen(ui, fleet, act, say, refresh = act::refresh)
                 place == Place.FLEET -> AttentionScreen(ui, act) // the fleet went off: back to the inbox
+                place == Place.TOOLS && s.hasToolkit() -> ToolkitScreen(ui, act, say, refresh = act::refresh, open = openRollout)
+                place == Place.TOOLS -> AttentionScreen(ui, act) // the toolkit went off: back to the inbox
             }
         }
     }
