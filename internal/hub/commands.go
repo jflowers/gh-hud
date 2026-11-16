@@ -71,6 +71,16 @@ func (h *Hub) named(ctx context.Context, ref string) (model.Item, error) {
 	return h.opts.Lookup(ctx, want)
 }
 
+// find finds an item by URL in the latest refresh, else names it on
+// GitHub: an epic piece or a queued item needn't be assigned to you or
+// mention you to be in the plan.
+func (h *Hub) find(ctx context.Context, url string) (model.Item, error) {
+	if it, err := h.item(url); err == nil {
+		return it, nil
+	}
+	return h.named(ctx, url)
+}
+
 // ItemChoices lists every task that fits an issue or PR you name, and
 // where each would run.
 func (h *Hub) ItemChoices(ctx context.Context, ref string) (model.Item, []dispatch.MenuChoice, error) {
@@ -95,12 +105,12 @@ func (h *Hub) run(id string) (dispatch.Run, error) {
 }
 
 // MenuChoices lists the item's dispatchable tasks and where each would run.
-func (h *Hub) MenuChoices(_ context.Context, url string) ([]dispatch.MenuChoice, error) {
+func (h *Hub) MenuChoices(ctx context.Context, url string) ([]dispatch.MenuChoice, error) {
 	d, err := h.disp()
 	if err != nil {
 		return nil, err
 	}
-	it, err := h.item(url)
+	it, err := h.find(ctx, url)
 	if err != nil {
 		return nil, err
 	}
@@ -114,11 +124,9 @@ func (h *Hub) Dispatch(ctx context.Context, task dispatch.Task, url string) (dis
 		return dispatch.Record{}, err
 	}
 	// An item you named with ItemChoices may not be in the refresh.
-	it, err := h.item(url)
+	it, err := h.find(ctx, url)
 	if err != nil {
-		if it, err = h.named(ctx, url); err != nil {
-			return dispatch.Record{}, err
-		}
+		return dispatch.Record{}, err
 	}
 	if !slices.Contains(dispatch.KindTasks(it.Kind), task) {
 		what := "an issue"
@@ -160,12 +168,12 @@ func (h *Hub) Reinspect(ctx context.Context, runID string) (dispatch.Run, error)
 }
 
 // QueueChoices lists the tasks that can be queued on an item.
-func (h *Hub) QueueChoices(_ context.Context, url string) ([]dispatch.Task, error) {
+func (h *Hub) QueueChoices(ctx context.Context, url string) ([]dispatch.Task, error) {
 	d, err := h.disp()
 	if err != nil {
 		return nil, err
 	}
-	it, err := h.item(url)
+	it, err := h.find(ctx, url)
 	if err != nil {
 		return nil, err
 	}
@@ -174,12 +182,12 @@ func (h *Hub) QueueChoices(_ context.Context, url string) ([]dispatch.Task, erro
 
 // Enqueue adds a task on an item to the end of your queue and returns its
 // position.
-func (h *Hub) Enqueue(_ context.Context, task dispatch.Task, url string) (int, error) {
+func (h *Hub) Enqueue(ctx context.Context, task dispatch.Task, url string) (int, error) {
 	d, err := h.disp()
 	if err != nil {
 		return 0, err
 	}
-	it, err := h.item(url)
+	it, err := h.find(ctx, url)
 	if err != nil {
 		return 0, err
 	}
