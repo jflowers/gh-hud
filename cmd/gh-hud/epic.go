@@ -4,46 +4,43 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
-	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/jflowers/gh-hud/internal/api"
 	"github.com/jflowers/gh-hud/internal/epic"
 )
 
 const epicUsage = `usage: gh-hud epic <url | owner/repo#N>   enroll an epic and read its plan
-       gh-hud epic list                     the enrolled epics, their plans and status
+       gh-hud epic list [-json]             the enrolled epics, their plans and status
        gh-hud epic approve <ref>            approve an epic's current plan
        gh-hud epic reread <ref>             read an epic again (a changed plan needs approving)
        gh-hud epic clear <ref> <piece>      clear a piece's gate (piece: #N or owner/repo#N)
        gh-hud epic drop <ref>               stop tracking an epic
+
+-hub/-token-file reach a hub on another machine (see gh-hud status -h).
 `
 
 func runEpic(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("epic", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	stateDir := fs.String("state-dir", "", "the hub's state directory (default ~/.local/state/gh-hud)")
+	hf := addHubFlags(fs)
+	asJSON := fs.Bool("json", false, "list: print JSON")
 	fs.Usage = func() { fmt.Fprint(stderr, epicUsage) }
-	if err := fs.Parse(args); err != nil {
+	args, err := parseInterleaved(fs, args)
+	if err != nil {
 		return 2
 	}
-	args = fs.Args()
 	if len(args) == 0 {
 		fs.Usage()
 		return 2
 	}
-	dir, err := resolveStateDir(*stateDir)
+	c, err := dialHub(hf)
 	if err != nil {
-		fmt.Fprintln(stderr, "state dir:", err)
-		return 1
-	}
-	c := attach(filepath.Join(dir, api.SocketName))
-	if c == nil {
-		fmt.Fprintln(stderr, "gh-hud epic: no hub is running (start one with gh-hud serve)")
+		fmt.Fprintf(stderr, "gh-hud epic: %v\n", err)
 		return 1
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -85,6 +82,15 @@ func runEpic(args []string, stdout, stderr io.Writer) int {
 		if err != nil {
 			fmt.Fprintln(stderr, "gh-hud epic:", err)
 			return 1
+		}
+		if *asJSON {
+			enc := json.NewEncoder(stdout)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(snap.Epics); err != nil {
+				fmt.Fprintln(stderr, "gh-hud epic:", err)
+				return 1
+			}
+			return 0
 		}
 		printEpics(stdout, snap.Epics)
 		return 0

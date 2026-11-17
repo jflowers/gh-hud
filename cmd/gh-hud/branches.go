@@ -8,12 +8,10 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"path/filepath"
 	"strings"
 	"text/tabwriter"
 	"time"
 
-	"github.com/jflowers/gh-hud/internal/api"
 	"github.com/jflowers/gh-hud/internal/dispatch"
 )
 
@@ -37,7 +35,7 @@ func runBranches(args []string, stdout, stderr io.Writer) int {
 	fs.SetOutput(stderr)
 	apply := fs.Bool("apply", false, "delete them (default: only list)")
 	verbose := fs.Bool("v", false, "list each branch, not only the totals per checkout")
-	stateDir := fs.String("state-dir", "", "the hub's state directory (default ~/.local/state/gh-hud)")
+	hf := addHubFlags(fs)
 	fs.Usage = func() {
 		fmt.Fprint(stderr, branchesUsage)
 		fs.PrintDefaults()
@@ -49,14 +47,9 @@ func runBranches(args []string, stdout, stderr io.Writer) int {
 		fs.Usage()
 		return 2
 	}
-	dir, err := resolveStateDir(*stateDir)
+	c, err := dialHub(hf)
 	if err != nil {
-		fmt.Fprintln(stderr, "state dir:", err)
-		return 1
-	}
-	c := attach(filepath.Join(dir, api.SocketName))
-	if c == nil {
-		fmt.Fprintln(stderr, "gh-hud branches: no hub is running (start one with gh-hud serve)")
+		fmt.Fprintf(stderr, "gh-hud branches: %v\n", err)
 		return 1
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Minute)
