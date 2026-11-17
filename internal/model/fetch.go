@@ -159,6 +159,11 @@ func FetchAll(ctx context.Context, c *gh.Client, cfg *config.Config) *FetchResul
 	}
 	issueSection("assigned-issues", orgs+"assignee:@me")
 	issueSection("mentioned-issues", orgs+"mentions:@me")
+	// Issues a by_label rule names, assigned or not: a scheduled workflow
+	// opens them as GITHUB_TOKEN, which can't assign you.
+	for _, q := range labelSearches(cfg) {
+		issueSection("label-issues", q)
+	}
 
 	section("notifications", func(ctx context.Context) error {
 		ns, err := FetchNotifications(ctx, c)
@@ -272,4 +277,25 @@ func markReady(items []Item, me string, window time.Duration, bots *BotFilter) {
 			items[i].Cats |= CatQueue
 		}
 	}
+}
+
+// labelSearches are the searches for issues carrying a
+// [[dispatch.issue.by_label]] label, one per label, in your orgs. Without
+// orgs there are none: the search would cover all of GitHub, and anyone's
+// repo could label an issue into your agents.
+func labelSearches(cfg *config.Config) []string {
+	if len(cfg.Orgs) == 0 {
+		return nil
+	}
+	var out []string
+	seen := map[string]bool{}
+	for _, r := range cfg.Dispatch["issue"].ByLabel {
+		l := strings.TrimSpace(r.Label)
+		if l == "" || seen[strings.ToLower(l)] {
+			continue
+		}
+		seen[strings.ToLower(l)] = true
+		out = append(out, orgQualifier(cfg.Orgs)+`label:"`+strings.ReplaceAll(l, `"`, ``)+`"`)
+	}
+	return out
 }

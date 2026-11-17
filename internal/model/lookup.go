@@ -58,7 +58,6 @@ query($owner: String!, $name: String!, $num: Int!) {
       }
       ... on Issue {
         state
-        labels(first: 20) { nodes { name } }
 ` + issueFields + `
       }
     }
@@ -108,26 +107,17 @@ type rawLookup struct {
 	State    string
 	PR       prNode
 	Issue    issueNode
-	Labels   []string
 }
 
 func (r *rawLookup) UnmarshalJSON(b []byte) error {
 	var head struct {
 		Typename string `json:"__typename"`
 		State    string `json:"state"`
-		Labels   struct {
-			Nodes []struct {
-				Name string `json:"name"`
-			} `json:"nodes"`
-		} `json:"labels"`
 	}
 	if err := json.Unmarshal(b, &head); err != nil {
 		return err
 	}
 	r.Typename, r.State = head.Typename, head.State
-	for _, l := range head.Labels.Nodes {
-		r.Labels = append(r.Labels, l.Name)
-	}
 	if r.Typename == "PullRequest" {
 		return json.Unmarshal(b, &r.PR)
 	}
@@ -145,7 +135,5 @@ func (r *rawLookup) item(me string, bots *BotFilter, ref string) (Item, error) {
 		}
 		return it, nil
 	}
-	it := BuildIssueItem(r.Issue, me, bots)
-	it.Labels = r.Labels
-	return it, nil
+	return BuildIssueItem(r.Issue, me, bots), nil
 }
