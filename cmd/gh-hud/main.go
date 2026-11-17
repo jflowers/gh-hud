@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"syscall"
@@ -30,7 +31,25 @@ import (
 	"github.com/jflowers/gh-hud/internal/ui"
 )
 
+// version is stamped by release builds (-ldflags -X main.version=…). A
+// `go install …@v0.3.3`, the way mise installs the hub, stamps nothing, so
+// init takes it from the module version the binary was built from.
 var version = "dev"
+
+func init() { version = moduleVersion(version) }
+
+// moduleVersion is v without the "v" when it isn't "dev", else the main
+// module's version from the build info ("0.3.3"), else v.
+func moduleVersion(v string) string {
+	if v != "dev" {
+		return v
+	}
+	bi, ok := debug.ReadBuildInfo()
+	if !ok || bi.Main.Version == "" || bi.Main.Version == "(devel)" {
+		return v
+	}
+	return strings.TrimPrefix(bi.Main.Version, "v")
+}
 
 func main() {
 	os.Exit(run())
