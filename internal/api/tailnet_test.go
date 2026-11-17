@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -65,6 +66,21 @@ func TestOnlyTheOwnersDevicesGetThrough(t *testing.T) {
 		if got := connect.CodeOf(err); err != nil && got != want || err == nil && want != 0 {
 			t.Errorf("%s: %v, want code %v", addr, err, want)
 		}
+	}
+}
+
+// needTailnet skips a test that runs a tailnet under -short, and on a Mac
+// unless $GHHUD_TAILNET_TESTS=1 or $CI is set. The control server and
+// relay listen on loopback, but the Tailscale nodes bind their UDP socket
+// on every interface (tsnet has no option to bind loopback), so each new
+// test binary makes macOS ask whether it may accept incoming connections.
+func needTailnet(t *testing.T) {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("runs a tailnet")
+	}
+	if runtime.GOOS == "darwin" && os.Getenv("GHHUD_TAILNET_TESTS") != "1" && os.Getenv("CI") == "" {
+		t.Skip("runs a tailnet, which binds a UDP socket on every interface and makes macOS ask about incoming connections; set GHHUD_TAILNET_TESTS=1 to run it")
 	}
 }
 
@@ -170,9 +186,7 @@ func serveTailnet(ctx context.Context, t *testing.T, controlURL, dir string, b h
 }
 
 func TestTheOwnersPhoneReachesTheHub(t *testing.T) {
-	if testing.Short() {
-		t.Skip("runs a tailnet")
-	}
+	needTailnet(t)
 	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 	defer cancel()
 	controlURL := tailnet(t, true)
@@ -194,9 +208,7 @@ func TestTheOwnersPhoneReachesTheHub(t *testing.T) {
 }
 
 func TestSomeoneElsesPhoneIsRefused(t *testing.T) {
-	if testing.Short() {
-		t.Skip("runs a tailnet")
-	}
+	needTailnet(t)
 	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 	defer cancel()
 	controlURL := tailnet(t, false) // every node its own user
