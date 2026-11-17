@@ -132,6 +132,29 @@ can open it).
 - `gh-hud --no-attach` runs a hub in-process even when one is serving
   (it follows the serving hub's dispatch, read-only); for debugging.
 
+### Commands from a shell or another machine
+
+These read and drive the running hub, like the dashboard does. Each takes
+`-json` for output a script or an agent reads:
+
+```
+gh-hud status                     # machines, live agents, the plan, your queue, epics
+gh-hud runs [-n N] [-ref R]       # recent runs, newest first
+gh-hud choices acme/app#8         # tasks that can run on an item, and where
+gh-hud dispatch acme/app#8 [-task issue]   # start one now (default: the suggested task)
+gh-hud queue [add|rm] …           # your queue
+gh-hud transcript <run|ref>       # a run's conversation (a ref: its newest run)
+gh-hud pane <run|ref>             # the screen of a run's live pane
+```
+
+They, `gh-hud epic` and `gh-hud branches` use the hub on this machine's
+socket. To reach a hub on another machine, name its `[hub] lan` address with
+`-hub` (or `$GHHUD_HUB`) and keep its token in a file: `-token-file`,
+`$GHHUD_TOKEN_FILE`, or `~/.config/gh-hud/hub-token`. `-hub mac` uses the
+hub the Mac app on this Mac is set to, with the token the app keeps in the
+Keychain (macOS asks before handing it over). A command reaches the hub you
+named or fails; nothing falls back to another one.
+
 ### Running the hub under launchd
 
 Save as `~/Library/LaunchAgents/gh-hud.hub.plist`, with your username in
