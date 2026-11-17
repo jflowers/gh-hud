@@ -450,6 +450,8 @@ func TestLoadWarnsUnknownKeys(t *testing.T) {
 			"config: unknown keys supervisor.agent, supervisor.max_concurrent (a [table] header above top-level settings?)",
 		},
 		{"nested typo", "[auto_merge]\nmethd = \"squash\"\n", "config: unknown key auto_merge.methd"},
+		{"agent token with lan", "[hub]\nlan = \"0.0.0.0:7377\"\nagent_token = true\n", ""},
+		{"agent token alone", "[hub]\nagent_token = true\n", "config: [hub] agent_token does nothing without [hub] lan"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

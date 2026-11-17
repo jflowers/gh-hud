@@ -56,7 +56,7 @@ func WithToken(token string) ServeOption {
 }
 
 // withCheck makes Serve ask check about every call: addr is the caller's
-// address, h its headers.
+// address, h its headers, and procedure(ctx) what it calls.
 func withCheck(check func(ctx context.Context, addr string, h http.Header) error) ServeOption {
 	return func(o *serveOptions) { o.check = check }
 }
@@ -67,9 +67,19 @@ func withCheck(check func(ctx context.Context, addr string, h http.Header) error
 // refusal of a stream.
 type checkInterceptor func(ctx context.Context, addr string, h http.Header) error
 
+// procedureKey carries the called procedure in the context a check gets.
+type procedureKey struct{}
+
+// procedure is the procedure a check is asked about
+// ("/ghhud.v1.HubService/Dispatch"), or "".
+func procedure(ctx context.Context) string {
+	p, _ := ctx.Value(procedureKey{}).(string)
+	return p
+}
+
 func (c checkInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-		if err := c(ctx, req.Peer().Addr, req.Header()); err != nil {
+		if err := c(context.WithValue(ctx, procedureKey{}, req.Spec().Procedure), req.Peer().Addr, req.Header()); err != nil {
 			return nil, err
 		}
 		return next(ctx, req)
@@ -82,7 +92,7 @@ func (c checkInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) 
 
 func (c checkInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
-		if err := c(ctx, conn.Peer().Addr, conn.RequestHeader()); err != nil {
+		if err := c(context.WithValue(ctx, procedureKey{}, conn.Spec().Procedure), conn.Peer().Addr, conn.RequestHeader()); err != nil {
 			return err
 		}
 		return next(ctx, conn)

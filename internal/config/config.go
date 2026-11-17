@@ -118,6 +118,12 @@ type HubConfig struct {
 	// on your local network, e.g. "0.0.0.0:7377"; "" (the default) is off.
 	// Plain HTTP with the LAN token: use it only on a network you trust.
 	LAN string `toml:"lan"`
+	// AgentToken has the LAN listener also take the agent token
+	// (agent-token in the state directory): it reads the hub, dispatches,
+	// queues and enrolls epics, but can't approve plans or proposals, clear
+	// gates, or start fleet or toolkit rollouts. Each call it makes that
+	// changes something is logged. Needs lan.
+	AgentToken bool `toml:"agent_token"`
 	// SelfRestart has gh-hud serve restart itself, in place, when its
 	// binary is replaced (go install, a fleet apply): once the new binary
 	// has settled and runs, and no rollout step is in progress. Default on;
@@ -462,6 +468,9 @@ func Load(path string) (*Config, error) {
 	}
 	if w := unknownKeys(md.Undecoded()); w != "" {
 		cfg.Warnings = append(cfg.Warnings, w)
+	}
+	if cfg.Hub.AgentToken && cfg.Hub.LAN == "" {
+		cfg.Warnings = append(cfg.Warnings, "config: [hub] agent_token does nothing without [hub] lan")
 	}
 	if cfg.RefreshSecs < 10 {
 		cfg.RefreshSecs = 10

@@ -126,6 +126,15 @@ can open it).
   open internet. It's plain HTTP: anyone on the same network can read
   the traffic, token included, so turn it on only on a network you
   trust. Delete `lan-token` and restart the hub to make a new one.
+- `[hub] agent_token = true` has the LAN listener also take a second,
+  limited token for agents and scripts (`agent-token` in the state
+  directory, made once, readable only by you). With it a caller can read
+  the hub, dispatch, queue, and enroll, reread or drop epics, but can't
+  approve epic plans or supervisor proposals, clear gates, start fleet or
+  toolkit rollouts, prune branches, or open windows on the hub: those stay
+  with you. The hub logs each agent call that changes something, and each
+  one it refuses. Copy the file to `~/.config/gh-hud/hub-token` on the
+  agent's machine and use `gh-hud … -hub <address>`.
 - A client that shows alerts as native notifications says so when it
   subscribes, and the hub stops posting its own osascript notifications
   while it's connected, so you aren't notified twice.
@@ -1580,6 +1589,7 @@ update_method = "merge"    # merge train's branch update: merge or rebase
 listen = "127.0.0.1:0"     # loopback only; "" turns TCP off
 tailnet = ""               # join your tailnet as this device name, for the phone
 lan = ""                   # e.g. "0.0.0.0:7377": the Mac app on other Macs on your network
+agent_token = false        # with lan: also take a limited agent-token (no approvals, gates or rollouts)
 
 # GitOps fleet rollout (see "Fleet rollout (GitOps)" above). Machines need
 # a fleet-apply script on PATH (chezmoi dotfiles checkout).

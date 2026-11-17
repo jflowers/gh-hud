@@ -192,8 +192,15 @@ func serveHub(ctx context.Context, cfg *config.Config, h *hub.Hub, dir string, l
 		others.Go(func() {
 			ready := func(i api.LANInfo) {
 				log.Printf("other Macs reach the hub at %s with the token in %s (private networks only)", strings.Join(i.URLs, " or "), i.TokenFile)
+				if i.AgentTokenFile != "" {
+					log.Printf("agents reach it there with the agent token in %s (no approvals, gates or rollouts)", i.AgentTokenFile)
+				}
 			}
-			if err := api.ServeLAN(ctx, cfg.Hub.LAN, dir, h, ready); err != nil {
+			var opts []api.LANOption
+			if cfg.Hub.AgentToken {
+				opts = append(opts, api.WithAgentToken(log.Printf))
+			}
+			if err := api.ServeLAN(ctx, cfg.Hub.LAN, dir, h, ready, opts...); err != nil {
 				fmt.Fprintln(os.Stderr, "hub lan:", err)
 			}
 		})
