@@ -1128,8 +1128,12 @@ The first matching rule wins, in config order. `orgs`, `mine` and
 `max_rounds` still come from `[dispatch.issue]`. The Plan tab names the rule
 on the row (`next free slot · dewey-distill`), and the agent menu shows the
 command that will run. Rules on other tasks, or without a label or command,
-stop the config from loading, naming the entry. The issue still has to be in
-your list: assigned to you, mentioning you, or found by one of your searches.
+stop the config from loading, naming the entry. gh-hud also searches your
+`orgs` for open issues carrying each rule's label, assigned or not, since a
+scheduled workflow opens its issue as `GITHUB_TOKEN`, which can't assign
+you. With no `orgs` it doesn't: that search would cover all of GitHub, and
+anyone could label an issue into your agents. Leave `mine` off
+`[dispatch.issue]` for an unassigned labelled issue to start itself.
 
 **A hub that stays light, with workers doing the work.** The hub keeps
 one slot for what you start by hand; the workers take most of the load:

@@ -32,6 +32,7 @@ const issueFields = `
           nodes { author { login } createdAt }
         }
         assignees(first: 10) { nodes { login } }
+        labels(first: 20) { nodes { name } }
 `
 
 type issueSearchResult struct {
@@ -59,6 +60,11 @@ type issueNode struct {
 	Assignees struct {
 		Nodes []author `json:"nodes"`
 	} `json:"assignees"`
+	Labels struct {
+		Nodes []struct {
+			Name string `json:"name"`
+		} `json:"nodes"`
+	} `json:"labels"`
 }
 
 // fetchIssueSearch runs a GitHub search restricted to open issues.
@@ -106,6 +112,11 @@ func BuildIssueItem(n issueNode, me string, bots *BotFilter) Item {
 		if a.Login == me {
 			it.Tagged = true
 		}
+	}
+	// Labels pick an issue's by_label command and hold human-gate issues
+	// back; without them a searched issue matched neither.
+	for _, l := range n.Labels.Nodes {
+		it.Labels = append(it.Labels, l.Name)
 	}
 	return it
 }
