@@ -55,7 +55,7 @@ func TestPrivatePeer(t *testing.T) {
 }
 
 func TestLANCheck(t *testing.T) {
-	check := lanCheck("tok")
+	check := lanCheck("tok", "", nil)
 	ok := http.Header{"Authorization": {"Bearer tok"}}
 	if err := check(t.Context(), "192.168.1.5:1", ok); err != nil {
 		t.Errorf("private peer with the token: %v", err)
