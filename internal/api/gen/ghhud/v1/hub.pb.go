@@ -5585,17 +5585,21 @@ func (x *EpicPlan) GetStale() bool {
 
 // EpicNode is one piece of an epic.
 type EpicNode struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Ref           string                 `protobuf:"bytes,1,opt,name=ref,proto3" json:"ref,omitempty"`
-	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Phase         string                 `protobuf:"bytes,3,opt,name=phase,proto3" json:"phase,omitempty"`
-	After         []string               `protobuf:"bytes,4,rep,name=after,proto3" json:"after,omitempty"`
-	Gate          string                 `protobuf:"bytes,5,opt,name=gate,proto3" json:"gate,omitempty"`
-	Source        string                 `protobuf:"bytes,6,opt,name=source,proto3" json:"source,omitempty"`
-	State         string                 `protobuf:"bytes,7,opt,name=state,proto3" json:"state,omitempty"` // open set: done, dropped, in_progress, running, ready, waiting, gated, blocked, unknown
-	Note          string                 `protobuf:"bytes,8,opt,name=note,proto3" json:"note,omitempty"`
-	Pr            int64                  `protobuf:"varint,9,opt,name=pr,proto3" json:"pr,omitempty"`
-	Cleared       bool                   `protobuf:"varint,10,opt,name=cleared,proto3" json:"cleared,omitempty"` // you cleared its gate
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Ref     string                 `protobuf:"bytes,1,opt,name=ref,proto3" json:"ref,omitempty"`
+	Title   string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Phase   string                 `protobuf:"bytes,3,opt,name=phase,proto3" json:"phase,omitempty"`
+	After   []string               `protobuf:"bytes,4,rep,name=after,proto3" json:"after,omitempty"`
+	Gate    string                 `protobuf:"bytes,5,opt,name=gate,proto3" json:"gate,omitempty"`
+	Source  string                 `protobuf:"bytes,6,opt,name=source,proto3" json:"source,omitempty"`
+	State   string                 `protobuf:"bytes,7,opt,name=state,proto3" json:"state,omitempty"` // open set: done, dropped, in_progress, running, ready, waiting, gated, blocked, unknown
+	Note    string                 `protobuf:"bytes,8,opt,name=note,proto3" json:"note,omitempty"`
+	Pr      int64                  `protobuf:"varint,9,opt,name=pr,proto3" json:"pr,omitempty"`
+	Cleared bool                   `protobuf:"varint,10,opt,name=cleared,proto3" json:"cleared,omitempty"` // you cleared its gate
+	// labels: the piece's GitHub labels as of the epic's last status check;
+	// labels_known says that check read them (placement by label).
+	Labels        []string `protobuf:"bytes,11,rep,name=labels,proto3" json:"labels,omitempty"`
+	LabelsKnown   bool     `protobuf:"varint,12,opt,name=labels_known,json=labelsKnown,proto3" json:"labels_known,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5696,6 +5700,20 @@ func (x *EpicNode) GetPr() int64 {
 func (x *EpicNode) GetCleared() bool {
 	if x != nil {
 		return x.Cleared
+	}
+	return false
+}
+
+func (x *EpicNode) GetLabels() []string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *EpicNode) GetLabelsKnown() bool {
+	if x != nil {
+		return x.LabelsKnown
 	}
 	return false
 }
@@ -7325,7 +7343,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\askipped\x18\x05 \x03(\tR\askipped\x124\n" +
 	"\acreated\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\acreated\x12\x1b\n" +
 	"\tbody_hash\x18\a \x01(\tR\bbodyHash\x12\x14\n" +
-	"\x05stale\x18\b \x01(\bR\x05stale\"\xde\x01\n" +
+	"\x05stale\x18\b \x01(\bR\x05stale\"\x99\x02\n" +
 	"\bEpicNode\x12\x10\n" +
 	"\x03ref\x18\x01 \x01(\tR\x03ref\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x14\n" +
@@ -7337,7 +7355,9 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x04note\x18\b \x01(\tR\x04note\x12\x0e\n" +
 	"\x02pr\x18\t \x01(\x03R\x02pr\x12\x18\n" +
 	"\acleared\x18\n" +
-	" \x01(\bR\acleared\"\xf5\x05\n" +
+	" \x01(\bR\acleared\x12\x16\n" +
+	"\x06labels\x18\v \x03(\tR\x06labels\x12!\n" +
+	"\flabels_known\x18\f \x01(\bR\vlabelsKnown\"\xf5\x05\n" +
 	"\x0eCheckoutHealth\x12\x18\n" +
 	"\amachine\x18\x01 \x01(\tR\amachine\x12\x1c\n" +
 	"\tworkspace\x18\x02 \x01(\tR\tworkspace\x12\x12\n" +

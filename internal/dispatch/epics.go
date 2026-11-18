@@ -595,6 +595,7 @@ func (d *Dispatcher) checkEpics() {
 
 const factFields = `__typename
 ... on Issue { title url state stateReason
+  labels(first: 20) { nodes { name } }
   closedByPullRequestsReferences(first: 10, includeClosedPrs: true) { nodes { number state merged } }
   blockedBy(first: 20) { nodes { number repository { nameWithOwner } } } }
 ... on PullRequest { title url state merged }`
@@ -613,6 +614,11 @@ type factNode struct {
 			Merged bool   `json:"merged"`
 		} `json:"nodes"`
 	} `json:"closedByPullRequestsReferences"`
+	Labels struct {
+		Nodes []struct {
+			Name string `json:"name"`
+		} `json:"nodes"`
+	} `json:"labels"`
 	BlockedBy struct {
 		Nodes []struct {
 			Number     int `json:"number"`
@@ -632,6 +638,9 @@ func (n factNode) fact() epic.Fact {
 		case p.State == "OPEN":
 			f.OpenPRs = append(f.OpenPRs, p.Number)
 		}
+	}
+	for _, l := range n.Labels.Nodes {
+		f.Labels = append(f.Labels, l.Name)
 	}
 	for _, b := range n.BlockedBy.Nodes {
 		f.BlockedBy = append(f.BlockedBy, epic.Ref(b.Repository.NameWithOwner, b.Number))

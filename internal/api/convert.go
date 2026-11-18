@@ -582,12 +582,14 @@ func epicFromPB(p *pb.Epic) epic.Epic {
 
 func epicNodeToPB(n epic.Node) *pb.EpicNode {
 	return &pb.EpicNode{Ref: n.Ref, Title: n.Title, Phase: n.Phase, After: n.After, Gate: n.Gate, Source: n.Source,
-		State: string(n.State), Note: n.Note, Pr: int64(n.PR), Cleared: n.Cleared}
+		State: string(n.State), Note: n.Note, Pr: int64(n.PR), Cleared: n.Cleared,
+		Labels: strs(n.Labels), LabelsKnown: n.LabelsKnown}
 }
 
 func epicNodeFromPB(p *pb.EpicNode) epic.Node {
 	return epic.Node{Ref: p.GetRef(), Title: p.GetTitle(), Phase: p.GetPhase(), After: p.GetAfter(), Gate: p.GetGate(),
-		Source: p.GetSource(), State: epic.NodeState(p.GetState()), Note: p.GetNote(), PR: int(p.GetPr()), Cleared: p.GetCleared()}
+		Source: p.GetSource(), State: epic.NodeState(p.GetState()), Note: p.GetNote(), PR: int(p.GetPr()), Cleared: p.GetCleared(),
+		Labels: strs(p.GetLabels()), LabelsKnown: p.GetLabelsKnown()}
 }
 
 func queueEntryToPB(e dispatch.QueueEntry) *pb.QueueEntry {

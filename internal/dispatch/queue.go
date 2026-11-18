@@ -215,6 +215,10 @@ type PlanRow struct {
 	// Rule is the by_label rule (its label) that picks the row's command,
 	// e.g. "dewey-distill"; "" for the task's own command.
 	Rule string
+	// labelsUnknown: an epic piece's row whose labels neither the refresh
+	// nor the epic's status check has read (startEpicPiece won't place it
+	// on a fleet that places by label).
+	labelsUnknown bool
 }
 
 // Starts reports whether the next pass tries to start this row.
@@ -287,7 +291,7 @@ func (d *Dispatcher) Plan(items []model.Item, runs []Run) []PlanRow {
 		seen[ref] = true
 		auto = append(auto, PlanRow{Item: it, Task: st.Task, Stage: st})
 	}
-	auto = append(auto, d.epicRows(runs, queued, seen)...)
+	auto = append(auto, d.epicRows(runs, queued, seen, byRef)...)
 	auto = append(auto, d.liveRows(runs, queued, auto)...)
 	slices.SortStableFunc(auto, func(a, b PlanRow) int { return order[a.Stage.Kind] - order[b.Stage.Kind] })
 	rows = append(rows, auto...)

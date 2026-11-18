@@ -1102,7 +1102,10 @@ fraction, hub first on ties, then config order. A PR or issue never runs on
 two machines at once.
 
 Label rules match the item's GitHub labels, ignoring case (both PRs and
-issues carry theirs, up to 20). `exclude_labels` wins over `labels`; a
+issues carry theirs, up to 20; an epic piece outside the refresh uses
+the labels its epic's status check last read, and while none has read
+them it waits with `epic: labels unknown …` if any machine has label
+rules). `exclude_labels` wins over `labels`; a
 label in both lists is a config error. An item no machine's rules take
 doesn't start: the Plan (`p`) shows its auto step as waiting, and a queued
 one with the reason, e.g. `no machine takes label opencode-v2-migration:

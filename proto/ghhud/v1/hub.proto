@@ -734,6 +734,10 @@ message EpicNode {
   string note = 8;
   int64 pr = 9;
   bool cleared = 10; // you cleared its gate
+  // labels: the piece's GitHub labels as of the epic's last status check;
+  // labels_known says that check read them (placement by label).
+  repeated string labels = 11;
+  bool labels_known = 12;
 }
 
 // CheckoutHealth is whether a ghws checkout can take a dispatch.

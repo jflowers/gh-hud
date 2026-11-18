@@ -2571,6 +2571,12 @@ public nonisolated struct Ghhud_V1_EpicNode: Sendable {
   /// you cleared its gate
   public var cleared: Bool = false
 
+  /// labels: the piece's GitHub labels as of the epic's last status check;
+  /// labels_known says that check read them (placement by label).
+  public var labels: [String] = []
+
+  public var labelsKnown: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -7048,7 +7054,7 @@ nonisolated extension Ghhud_V1_EpicPlan: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EpicNode"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}title\0\u{1}phase\0\u{1}after\0\u{1}gate\0\u{1}source\0\u{1}state\0\u{1}note\0\u{1}pr\0\u{1}cleared\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}title\0\u{1}phase\0\u{1}after\0\u{1}gate\0\u{1}source\0\u{1}state\0\u{1}note\0\u{1}pr\0\u{1}cleared\0\u{1}labels\0\u{3}labels_known\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -7066,6 +7072,8 @@ nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._M
       case 8: try { try decoder.decodeSingularStringField(value: &self.note) }()
       case 9: try { try decoder.decodeSingularInt64Field(value: &self.pr) }()
       case 10: try { try decoder.decodeSingularBoolField(value: &self.cleared) }()
+      case 11: try { try decoder.decodeRepeatedStringField(value: &self.labels) }()
+      case 12: try { try decoder.decodeSingularBoolField(value: &self.labelsKnown) }()
       default: break
       }
     }
@@ -7102,6 +7110,12 @@ nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._M
     if self.cleared != false {
       try visitor.visitSingularBoolField(value: self.cleared, fieldNumber: 10)
     }
+    if !self.labels.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.labels, fieldNumber: 11)
+    }
+    if self.labelsKnown != false {
+      try visitor.visitSingularBoolField(value: self.labelsKnown, fieldNumber: 12)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -7116,6 +7130,8 @@ nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._M
     if lhs.note != rhs.note {return false}
     if lhs.pr != rhs.pr {return false}
     if lhs.cleared != rhs.cleared {return false}
+    if lhs.labels != rhs.labels {return false}
+    if lhs.labelsKnown != rhs.labelsKnown {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
