@@ -24,6 +24,35 @@ type Machine struct {
 	Enabled  bool     // participates in placement and polling
 	Local    bool     // true for the hub machine
 	Mode     string   // dispatch mode override: "run" | "tui" | "" (top-level default)
+	// Labels: only items with at least one of these labels (empty = any).
+	// ExcludeLabels: never an item with any of them. Case is ignored.
+	Labels        []string
+	ExcludeLabels []string
+}
+
+// labelBlock says why the machine's label rules refuse an item with
+// labels ("" when they accept it): "excludes <label>" for the first label
+// it excludes, else "takes only <labels>" when it has an allowlist the
+// item matches none of. Matching ignores case.
+func (m Machine) labelBlock(labels []string) string {
+	for _, x := range m.ExcludeLabels {
+		for _, l := range labels {
+			if strings.EqualFold(l, x) {
+				return "excludes " + x
+			}
+		}
+	}
+	if len(m.Labels) == 0 {
+		return ""
+	}
+	for _, want := range m.Labels {
+		for _, l := range labels {
+			if strings.EqualFold(l, want) {
+				return ""
+			}
+		}
+	}
+	return "takes only " + strings.Join(m.Labels, ", ")
 }
 
 // AllowsTask reports whether task may run on the machine.
@@ -164,7 +193,33 @@ func shellQuoteTilde(p string) string {
 // base64-encoded .ghws.toml, and its repo subdirectories (depth 2, with a
 // .git). Checkout paths in the index are absolute remote paths.
 func scanRemoteMachine(ctx context.Context, m Machine) (*ghws.Index, error) {
-	script := `cd -- ` + shellQuoteTilde(m.GhwsRoot) + ` || exit 0
+	ix, _, _, err := scanRemote(ctx, m, false)
+	return ix, err
+}
+
+// scanRemote is scanRemoteMachine that, with version set, also asks the
+// machine's opencode version in the same round trip (ocProbeScript): v is
+// its answer and gotV whether the probe ran.
+func scanRemote(ctx context.Context, m Machine, version bool) (ix *ghws.Index, v string, gotV bool, err error) {
+	script := remoteScanScript(m, version)
+	out, err := m.runScript(ctx, script)
+	if err != nil {
+		return nil, "", false, err
+	}
+	v, gotV = parseScanVersion(out)
+	ix, err = parseRemoteScan(out)
+	return ix, v, gotV, err
+}
+
+// remoteScanScript is the scan's shell script; with version it starts with
+// the opencode version probe, which runs even when the ghws root is
+// missing.
+func remoteScanScript(m Machine, version bool) string {
+	probe := ""
+	if version {
+		probe = ocProbeScript
+	}
+	return probe + `cd -- ` + shellQuoteTilde(m.GhwsRoot) + ` || exit 0
 echo "ROOT $PWD"
 for ws in */; do
   ws=${ws%/}
@@ -178,11 +233,6 @@ for ws in */; do
     printf 'REPO %s\n' "$(basename "$repo")"
   done
 done`
-	out, err := m.runScript(ctx, script)
-	if err != nil {
-		return nil, err
-	}
-	return parseRemoteScan(out)
 }
 
 // parseRemoteScan parses scanRemoteMachine output into a ghws index.

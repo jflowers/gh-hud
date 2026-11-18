@@ -2016,6 +2016,13 @@ public nonisolated struct Ghhud_V1_Run: @unchecked Sendable {
     set {_uniqueStorage()._indexHealth = newValue}
   }
 
+  /// opencode: the machine's `opencode --version` when the run started;
+  /// empty when unknown.
+  public var opencode: String {
+    get {_storage._opencode}
+    set {_uniqueStorage()._opencode = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2036,6 +2043,10 @@ public nonisolated struct Ghhud_V1_MachineUsage: Sendable {
 
   /// reachable and enabled
   public var ok: Bool = false
+
+  /// opencode: the machine's opencode version as last polled (at most every
+  /// few minutes), e.g. "1.14.2"; empty when not known.
+  public var opencode: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2559,6 +2570,12 @@ public nonisolated struct Ghhud_V1_EpicNode: Sendable {
 
   /// you cleared its gate
   public var cleared: Bool = false
+
+  /// labels: the piece's GitHub labels as of the epic's last status check;
+  /// labels_known says that check read them (placement by label).
+  public var labels: [String] = []
+
+  public var labelsKnown: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -5911,7 +5928,7 @@ nonisolated extension Ghhud_V1_Session: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Run"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}task\0\u{1}ref\0\u{1}repo\0\u{1}num\0\u{1}machine\0\u{1}workspace\0\u{1}dir\0\u{1}status\0\u{1}auto\0\u{3}started_at\0\u{3}finished_at\0\u{3}session_id\0\u{3}pane_id\0\u{3}ws_id\0\u{1}log\0\u{1}reason\0\u{1}summary\0\u{1}left\0\u{1}pushed\0\u{1}branch\0\u{1}cleaned\0\u{1}fingerprint\0\u{3}human_needed\0\u{3}index_health\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}task\0\u{1}ref\0\u{1}repo\0\u{1}num\0\u{1}machine\0\u{1}workspace\0\u{1}dir\0\u{1}status\0\u{1}auto\0\u{3}started_at\0\u{3}finished_at\0\u{3}session_id\0\u{3}pane_id\0\u{3}ws_id\0\u{1}log\0\u{1}reason\0\u{1}summary\0\u{1}left\0\u{1}pushed\0\u{1}branch\0\u{1}cleaned\0\u{1}fingerprint\0\u{3}human_needed\0\u{3}index_health\0\u{1}opencode\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -5939,6 +5956,7 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
     var _fingerprint: String = String()
     var _humanNeeded: Bool = false
     var _indexHealth: String = String()
+    var _opencode: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5974,6 +5992,7 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
       _fingerprint = source._fingerprint
       _humanNeeded = source._humanNeeded
       _indexHealth = source._indexHealth
+      _opencode = source._opencode
     }
   }
 
@@ -6017,6 +6036,7 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
         case 23: try { try decoder.decodeSingularStringField(value: &_storage._fingerprint) }()
         case 24: try { try decoder.decodeSingularBoolField(value: &_storage._humanNeeded) }()
         case 25: try { try decoder.decodeSingularStringField(value: &_storage._indexHealth) }()
+        case 26: try { try decoder.decodeSingularStringField(value: &_storage._opencode) }()
         default: break
         }
       }
@@ -6104,6 +6124,9 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
       if !_storage._indexHealth.isEmpty {
         try visitor.visitSingularStringField(value: _storage._indexHealth, fieldNumber: 25)
       }
+      if !_storage._opencode.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._opencode, fieldNumber: 26)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -6138,6 +6161,7 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
         if _storage._fingerprint != rhs_storage._fingerprint {return false}
         if _storage._humanNeeded != rhs_storage._humanNeeded {return false}
         if _storage._indexHealth != rhs_storage._indexHealth {return false}
+        if _storage._opencode != rhs_storage._opencode {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -6149,7 +6173,7 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension Ghhud_V1_MachineUsage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineUsage"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}used\0\u{1}max\0\u{1}ok\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}used\0\u{1}max\0\u{1}ok\0\u{1}opencode\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -6161,6 +6185,7 @@ nonisolated extension Ghhud_V1_MachineUsage: SwiftProtobuf.Message, SwiftProtobu
       case 2: try { try decoder.decodeSingularInt64Field(value: &self.used) }()
       case 3: try { try decoder.decodeSingularInt64Field(value: &self.max) }()
       case 4: try { try decoder.decodeSingularBoolField(value: &self.ok) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.opencode) }()
       default: break
       }
     }
@@ -6179,6 +6204,9 @@ nonisolated extension Ghhud_V1_MachineUsage: SwiftProtobuf.Message, SwiftProtobu
     if self.ok != false {
       try visitor.visitSingularBoolField(value: self.ok, fieldNumber: 4)
     }
+    if !self.opencode.isEmpty {
+      try visitor.visitSingularStringField(value: self.opencode, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -6187,6 +6215,7 @@ nonisolated extension Ghhud_V1_MachineUsage: SwiftProtobuf.Message, SwiftProtobu
     if lhs.used != rhs.used {return false}
     if lhs.max != rhs.max {return false}
     if lhs.ok != rhs.ok {return false}
+    if lhs.opencode != rhs.opencode {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -7025,7 +7054,7 @@ nonisolated extension Ghhud_V1_EpicPlan: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EpicNode"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}title\0\u{1}phase\0\u{1}after\0\u{1}gate\0\u{1}source\0\u{1}state\0\u{1}note\0\u{1}pr\0\u{1}cleared\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}title\0\u{1}phase\0\u{1}after\0\u{1}gate\0\u{1}source\0\u{1}state\0\u{1}note\0\u{1}pr\0\u{1}cleared\0\u{1}labels\0\u{3}labels_known\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -7043,6 +7072,8 @@ nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._M
       case 8: try { try decoder.decodeSingularStringField(value: &self.note) }()
       case 9: try { try decoder.decodeSingularInt64Field(value: &self.pr) }()
       case 10: try { try decoder.decodeSingularBoolField(value: &self.cleared) }()
+      case 11: try { try decoder.decodeRepeatedStringField(value: &self.labels) }()
+      case 12: try { try decoder.decodeSingularBoolField(value: &self.labelsKnown) }()
       default: break
       }
     }
@@ -7079,6 +7110,12 @@ nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._M
     if self.cleared != false {
       try visitor.visitSingularBoolField(value: self.cleared, fieldNumber: 10)
     }
+    if !self.labels.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.labels, fieldNumber: 11)
+    }
+    if self.labelsKnown != false {
+      try visitor.visitSingularBoolField(value: self.labelsKnown, fieldNumber: 12)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -7093,6 +7130,8 @@ nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._M
     if lhs.note != rhs.note {return false}
     if lhs.pr != rhs.pr {return false}
     if lhs.cleared != rhs.cleared {return false}
+    if lhs.labels != rhs.labels {return false}
+    if lhs.labelsKnown != rhs.labelsKnown {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

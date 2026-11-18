@@ -342,4 +342,26 @@ public interface RunOrBuilder extends
    */
   com.google.protobuf.ByteString
       getIndexHealthBytes();
+
+  /**
+   * <pre>
+   * opencode: the machine's `opencode --version` when the run started;
+   * empty when unknown.
+   * </pre>
+   *
+   * <code>string opencode = 26 [json_name = "opencode"];</code>
+   * @return The opencode.
+   */
+  java.lang.String getOpencode();
+  /**
+   * <pre>
+   * opencode: the machine's `opencode --version` when the run started;
+   * empty when unknown.
+   * </pre>
+   *
+   * <code>string opencode = 26 [json_name = "opencode"];</code>
+   * @return The bytes for opencode.
+   */
+  com.google.protobuf.ByteString
+      getOpencodeBytes();
 }

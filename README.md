@@ -581,7 +581,8 @@ human-owned clones); set `dispatch_instances_only = false` to also allow
 base workspaces. With `[[machines]]` configured, placement spreads across
 the hub and the workers: a machine qualifies when it is enabled and
 reachable (`herdr machine status`), allows the task (per-machine `tasks`
-allowlist), has a free slot (`max_concurrent`), and has a matching idle
+allowlist), takes the item's labels (`labels` / `exclude_labels`), has a
+free slot (`max_concurrent`), and has a matching idle
 checkout under its `ghws_root`. Machines are ranked by free-slot fraction
 (ties: local first, then config order) and busy or unreachable candidates
 are skipped in favor of the next one. A PR/issue is never live on two
@@ -615,8 +616,15 @@ dashboard. opencode keys sessions by repo, so the hub lists each repo
 once (not once per checkout) and reuses a listing for two minutes. A row
 in the dashboard shows its own run in the attention slot: `●` teal =
 running, `◆` orange = blocked on a question or approval. The header shows
-per-machine slot usage (`local 1/2 · lap1 0/2 · lap2 —`, `—` =
-unreachable or disabled).
+per-machine slot usage and each machine's opencode version
+(`local 1/2 oc 1.14.2 · lap1 0/2 oc 2.0.0 · lap2 —`, `—` = unreachable
+or disabled), and the Agents tab lists the versions on its own line
+(`local opencode 1.14.2 · lap1 opencode 2.0.0 · lap2 opencode ?`, `?` =
+not known yet or opencode didn't answer). A worker's version is asked in
+the same ssh round trip as its checkout scan, the hub's with a local
+`opencode --version`, at most every 5 minutes each. Each run records the
+version its machine had when it started; the run view shows it, and
+`gh-hud status` / `gh-hud runs --json` and the hub API carry both.
 
 `9` opens the Workspaces tab (its count is the number of ready
 checkouts): every checkout a dispatch could use (`@` instances only with
@@ -1022,7 +1030,7 @@ Dispatch is configured in three layers, all in `config.toml`:
 | Layer | Where | Decides |
 |---|---|---|
 | Tasks | `[dispatch.<task>]` | what each task runs (`command`), whether it starts itself (`auto`), and for which orgs (`orgs`) and items (`mine`); `[[dispatch.issue.by_label]]` gives labelled issues their own command |
-| Machines | top level (the hub) and `[[machines]]` (workers) | where agents may run, how many at once, which tasks each machine accepts, and how agents run there |
+| Machines | top level (the hub) and `[[machines]]` (workers) | where agents may run, how many at once, which tasks and which labelled items each machine accepts, and how agents run there |
 | Checkouts | ghws `@` instances on each machine | which repos a machine can take work for at all |
 
 Task settings are global: one `command`, `auto`, `orgs` and `mine` per task, used
@@ -1071,8 +1079,9 @@ can still dispatch any task by hand on any PR or issue.
 ### Machines
 
 The hub is configured at the top level: `max_concurrent` (default 2) is its
-slot count, and it accepts every task. Each `[[machines]]` entry adds a
-worker reached over ssh:
+slot count, it accepts every task, and top-level `labels` and
+`exclude_labels` are its label rules (below). Each `[[machines]]` entry
+adds a worker reached over ssh:
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -1081,13 +1090,31 @@ worker reached over ssh:
 | `max_concurrent` | 2 | agents gh-hud runs there at once |
 | `ghws_root` | `~/Projects/github` | ghws root on that machine |
 | `tasks` | all | allowlist of tasks the machine accepts, e.g. `["review", "ci"]` |
+| `labels` | any | the machine only takes PRs and issues with at least one of these labels |
+| `exclude_labels` | none | the machine never takes a PR or issue with any of these labels |
 | `enabled` | true | `false` takes the machine out of placement and polling; fleet rollouts still reach it (a drain asks its herdr directly) |
 | `dispatch_mode` | top-level | `run` (headless) or `tui` for agents on this machine |
 
 Placement ranks the machines that qualify for a dispatch (enabled,
-reachable, task allowed, a free slot, not draining for a fleet rollout, an
-idle checkout of the repo) by free-slot fraction, hub first on ties, then
-config order. A PR or issue never runs on two machines at once.
+reachable, task allowed, label rules accepting the item, a free slot, not
+draining for a fleet rollout, an idle checkout of the repo) by free-slot
+fraction, hub first on ties, then config order. A PR or issue never runs on
+two machines at once.
+
+Label rules match the item's GitHub labels, ignoring case (both PRs and
+issues carry theirs, up to 20; an epic piece outside the refresh uses
+the labels its epic's status check last read, and while none has read
+them it waits with `epic: labels unknown …` if any machine has label
+rules). `exclude_labels` wins over `labels`; a
+label in both lists is a config error. An item no machine's rules take
+doesn't start: the Plan (`p`) shows its auto step as waiting, and a queued
+one with the reason, e.g. `no machine takes label opencode-v2-migration:
+local excludes opencode-v2-migration, lap1 excludes
+opencode-v2-migration`; the `a` menu, `gh-hud choices` and
+`gh-hud dispatch` say the same. When a machine takes it by label but is
+busy, the reason lists each machine (`lap1 excludes …, lap2 full (4 of 4
+running)`). A dispatch at one named machine whose rules refuse the item is
+refused with the rule. The rules reload live with the config.
 
 ### Examples
 
@@ -1222,6 +1249,24 @@ tasks = ["review", "ci", "rebase", "feedback"]
 [[machines]]
 name = "lap3"
 ```
+
+**Machines by label (a mixed opencode fleet).** While the fleet runs two
+opencode majors, send v2-migration issues only to the machine that runs
+v2 verification, and keep them off the others (the hub included):
+
+```toml
+exclude_labels = ["opencode-v2-migration"]   # hub (top level)
+
+[[machines]]
+name = "lap2"
+labels = ["opencode-v2-migration"]           # only takes items with one of these
+
+[[machines]]
+name = "lap1"
+exclude_labels = ["opencode-v2-migration"]   # never takes items with these
+```
+
+The header and the Agents tab show which opencode each machine runs.
 
 **A worker for one org.** Give it ghws instances of only that org; tasks
 for other orgs' repos never go there because it has no checkout of them.
@@ -1560,6 +1605,8 @@ runner = "herdr"           # dispatch runner: herdr (default) | local
 dispatch_mode = "run"      # herdr runner: run (headless, default) | tui (agents can ask questions)
 blocked_notify_secs = 180  # notify when a dispatched agent stays blocked this long (0 = off)
 max_concurrent = 2         # max simultaneously dispatched agents (hub)
+# labels = ["big"]                          # hub: only items with one of these labels (empty = any)
+# exclude_labels = ["opencode-v2-migration"] # hub: never items with any of these
 busy_window_secs = 900     # foreign session newer than this blocks dispatch
 dirty = "refuse"           # dirty checkout policy: refuse | stash | stash-tracked
 dispatch_instances_only = true  # only @ instance workspaces are targets
@@ -1581,6 +1628,8 @@ max_concurrent = 2
 # tasks = ["review", "ci"]          # task allowlist (empty = all tasks)
 # enabled = true
 # dispatch_mode = "tui"             # override the top-level dispatch_mode
+# labels = ["opencode-v2-migration"]          # only items with one of these labels (empty = any)
+# exclude_labels = ["opencode-v2-migration"]  # never items with any of these; case-insensitive
 
 [dispatch]
 dewey_reindex = "report"   # after a clean run, a Dewey index that needs a reindex: report | auto (reindex when idle) | off

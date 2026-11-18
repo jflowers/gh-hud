@@ -4297,7 +4297,10 @@ type Run struct {
 	// index_health: the checkout's Dewey index after a clean run: "ok",
 	// "reindex needed: <reasons>", "check failed: <err>", a machine
 	// problem, or a skip. Empty when the checkout isn't a Dewey vault.
-	IndexHealth   string `protobuf:"bytes,25,opt,name=index_health,json=indexHealth,proto3" json:"index_health,omitempty"`
+	IndexHealth string `protobuf:"bytes,25,opt,name=index_health,json=indexHealth,proto3" json:"index_health,omitempty"`
+	// opencode: the machine's `opencode --version` when the run started;
+	// empty when unknown.
+	Opencode      string `protobuf:"bytes,26,opt,name=opencode,proto3" json:"opencode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4507,12 +4510,22 @@ func (x *Run) GetIndexHealth() string {
 	return ""
 }
 
+func (x *Run) GetOpencode() string {
+	if x != nil {
+		return x.Opencode
+	}
+	return ""
+}
+
 type MachineUsage struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Used          int64                  `protobuf:"varint,2,opt,name=used,proto3" json:"used,omitempty"`
-	Max           int64                  `protobuf:"varint,3,opt,name=max,proto3" json:"max,omitempty"`
-	Ok            bool                   `protobuf:"varint,4,opt,name=ok,proto3" json:"ok,omitempty"` // reachable and enabled
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Used  int64                  `protobuf:"varint,2,opt,name=used,proto3" json:"used,omitempty"`
+	Max   int64                  `protobuf:"varint,3,opt,name=max,proto3" json:"max,omitempty"`
+	Ok    bool                   `protobuf:"varint,4,opt,name=ok,proto3" json:"ok,omitempty"` // reachable and enabled
+	// opencode: the machine's opencode version as last polled (at most every
+	// few minutes), e.g. "1.14.2"; empty when not known.
+	Opencode      string `protobuf:"bytes,5,opt,name=opencode,proto3" json:"opencode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4573,6 +4586,13 @@ func (x *MachineUsage) GetOk() bool {
 		return x.Ok
 	}
 	return false
+}
+
+func (x *MachineUsage) GetOpencode() string {
+	if x != nil {
+		return x.Opencode
+	}
+	return ""
 }
 
 // Stage is a PR's position in the auto pipeline.
@@ -5565,17 +5585,21 @@ func (x *EpicPlan) GetStale() bool {
 
 // EpicNode is one piece of an epic.
 type EpicNode struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Ref           string                 `protobuf:"bytes,1,opt,name=ref,proto3" json:"ref,omitempty"`
-	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Phase         string                 `protobuf:"bytes,3,opt,name=phase,proto3" json:"phase,omitempty"`
-	After         []string               `protobuf:"bytes,4,rep,name=after,proto3" json:"after,omitempty"`
-	Gate          string                 `protobuf:"bytes,5,opt,name=gate,proto3" json:"gate,omitempty"`
-	Source        string                 `protobuf:"bytes,6,opt,name=source,proto3" json:"source,omitempty"`
-	State         string                 `protobuf:"bytes,7,opt,name=state,proto3" json:"state,omitempty"` // open set: done, dropped, in_progress, running, ready, waiting, gated, blocked, unknown
-	Note          string                 `protobuf:"bytes,8,opt,name=note,proto3" json:"note,omitempty"`
-	Pr            int64                  `protobuf:"varint,9,opt,name=pr,proto3" json:"pr,omitempty"`
-	Cleared       bool                   `protobuf:"varint,10,opt,name=cleared,proto3" json:"cleared,omitempty"` // you cleared its gate
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Ref     string                 `protobuf:"bytes,1,opt,name=ref,proto3" json:"ref,omitempty"`
+	Title   string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Phase   string                 `protobuf:"bytes,3,opt,name=phase,proto3" json:"phase,omitempty"`
+	After   []string               `protobuf:"bytes,4,rep,name=after,proto3" json:"after,omitempty"`
+	Gate    string                 `protobuf:"bytes,5,opt,name=gate,proto3" json:"gate,omitempty"`
+	Source  string                 `protobuf:"bytes,6,opt,name=source,proto3" json:"source,omitempty"`
+	State   string                 `protobuf:"bytes,7,opt,name=state,proto3" json:"state,omitempty"` // open set: done, dropped, in_progress, running, ready, waiting, gated, blocked, unknown
+	Note    string                 `protobuf:"bytes,8,opt,name=note,proto3" json:"note,omitempty"`
+	Pr      int64                  `protobuf:"varint,9,opt,name=pr,proto3" json:"pr,omitempty"`
+	Cleared bool                   `protobuf:"varint,10,opt,name=cleared,proto3" json:"cleared,omitempty"` // you cleared its gate
+	// labels: the piece's GitHub labels as of the epic's last status check;
+	// labels_known says that check read them (placement by label).
+	Labels        []string `protobuf:"bytes,11,rep,name=labels,proto3" json:"labels,omitempty"`
+	LabelsKnown   bool     `protobuf:"varint,12,opt,name=labels_known,json=labelsKnown,proto3" json:"labels_known,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5676,6 +5700,20 @@ func (x *EpicNode) GetPr() int64 {
 func (x *EpicNode) GetCleared() bool {
 	if x != nil {
 		return x.Cleared
+	}
+	return false
+}
+
+func (x *EpicNode) GetLabels() []string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *EpicNode) GetLabelsKnown() bool {
+	if x != nil {
+		return x.LabelsKnown
 	}
 	return false
 }
@@ -7174,7 +7212,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x05ws_id\x18\x10 \x01(\tR\x04wsId\x12\x18\n" +
 	"\ablocked\x18\x11 \x01(\bR\ablocked\x12?\n" +
 	"\rblocked_since\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\fblockedSince\x12\x15\n" +
-	"\x06run_id\x18\x13 \x01(\tR\x05runId\"\xa6\x05\n" +
+	"\x06run_id\x18\x13 \x01(\tR\x05runId\"\xc2\x05\n" +
 	"\x03Run\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04task\x18\x02 \x01(\tR\x04task\x12\x10\n" +
@@ -7204,12 +7242,14 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\acleaned\x18\x16 \x01(\bR\acleaned\x12 \n" +
 	"\vfingerprint\x18\x17 \x01(\tR\vfingerprint\x12!\n" +
 	"\fhuman_needed\x18\x18 \x01(\bR\vhumanNeeded\x12!\n" +
-	"\findex_health\x18\x19 \x01(\tR\vindexHealth\"X\n" +
+	"\findex_health\x18\x19 \x01(\tR\vindexHealth\x12\x1a\n" +
+	"\bopencode\x18\x1a \x01(\tR\bopencode\"t\n" +
 	"\fMachineUsage\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04used\x18\x02 \x01(\x03R\x04used\x12\x10\n" +
 	"\x03max\x18\x03 \x01(\x03R\x03max\x12\x0e\n" +
-	"\x02ok\x18\x04 \x01(\bR\x02ok\"G\n" +
+	"\x02ok\x18\x04 \x01(\bR\x02ok\x12\x1a\n" +
+	"\bopencode\x18\x05 \x01(\tR\bopencode\"G\n" +
 	"\x05Stage\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x12\n" +
 	"\x04task\x18\x02 \x01(\tR\x04task\x12\x16\n" +
@@ -7303,7 +7343,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\askipped\x18\x05 \x03(\tR\askipped\x124\n" +
 	"\acreated\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\acreated\x12\x1b\n" +
 	"\tbody_hash\x18\a \x01(\tR\bbodyHash\x12\x14\n" +
-	"\x05stale\x18\b \x01(\bR\x05stale\"\xde\x01\n" +
+	"\x05stale\x18\b \x01(\bR\x05stale\"\x99\x02\n" +
 	"\bEpicNode\x12\x10\n" +
 	"\x03ref\x18\x01 \x01(\tR\x03ref\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x14\n" +
@@ -7315,7 +7355,9 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x04note\x18\b \x01(\tR\x04note\x12\x0e\n" +
 	"\x02pr\x18\t \x01(\x03R\x02pr\x12\x18\n" +
 	"\acleared\x18\n" +
-	" \x01(\bR\acleared\"\xf5\x05\n" +
+	" \x01(\bR\acleared\x12\x16\n" +
+	"\x06labels\x18\v \x03(\tR\x06labels\x12!\n" +
+	"\flabels_known\x18\f \x01(\bR\vlabelsKnown\"\xf5\x05\n" +
 	"\x0eCheckoutHealth\x12\x18\n" +
 	"\amachine\x18\x01 \x01(\tR\amachine\x12\x1c\n" +
 	"\tworkspace\x18\x02 \x01(\tR\tworkspace\x12\x12\n" +

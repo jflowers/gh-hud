@@ -329,7 +329,39 @@ func (d *Dispatcher) Stage(it model.Item, runs []Run) Stage {
 	if humanGated(it, d.o().HumanGate) && st.Kind != StageRunning && (it.Kind == model.KindPR || it.Kind == model.KindIssue) {
 		return Stage{Kind: StageNeedsYou, Reason: "human gate"}
 	}
+	if st.Kind == StageNext {
+		if why := d.labelWhy(it); why != "" {
+			return Stage{Kind: StageWait, Task: st.Task, Reason: why}
+		}
+	}
 	return st
+}
+
+// labelWhy says why no machine's label rules take the item (see
+// labelRefusal), or "" when one does.
+func (d *Dispatcher) labelWhy(it model.Item) string {
+	return labelRefusal(d.placementMachines(), it.Labels)
+}
+
+// placementMachines are the machines placement may use: the hub, and the
+// enabled remotes under the herdr runner.
+func (d *Dispatcher) placementMachines() []Machine {
+	ms := []Machine{d.localMachine()}
+	if d.o().Runner == "herdr" {
+		ms = append(ms, d.remoteMachines()...)
+	}
+	return ms
+}
+
+// placesByLabel reports whether any machine placement may use has label
+// rules, so an item's labels matter.
+func (d *Dispatcher) placesByLabel() bool {
+	for _, m := range d.placementMachines() {
+		if len(m.Labels) > 0 || len(m.ExcludeLabels) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // humanGated reports whether the item carries the human-gate label

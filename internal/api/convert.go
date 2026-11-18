@@ -399,6 +399,7 @@ func RunToPB(r dispatch.Run) *pb.Run {
 		Fingerprint: r.Fingerprint,
 		HumanNeeded: r.HumanNeeded,
 		IndexHealth: r.IndexHealth,
+		Opencode:    r.Opencode,
 	}
 }
 
@@ -430,15 +431,16 @@ func RunFromPB(p *pb.Run) dispatch.Run {
 		Fingerprint: p.GetFingerprint(),
 		HumanNeeded: p.GetHumanNeeded(),
 		IndexHealth: p.GetIndexHealth(),
+		Opencode:    p.GetOpencode(),
 	}
 }
 
 func usageToPB(u dispatch.MachineUsage) *pb.MachineUsage {
-	return &pb.MachineUsage{Name: u.Name, Used: int64(u.Used), Max: int64(u.Max), Ok: u.OK}
+	return &pb.MachineUsage{Name: u.Name, Used: int64(u.Used), Max: int64(u.Max), Ok: u.OK, Opencode: u.Opencode}
 }
 
 func usageFromPB(p *pb.MachineUsage) dispatch.MachineUsage {
-	return dispatch.MachineUsage{Name: p.GetName(), Used: int(p.GetUsed()), Max: int(p.GetMax()), OK: p.GetOk()}
+	return dispatch.MachineUsage{Name: p.GetName(), Used: int(p.GetUsed()), Max: int(p.GetMax()), OK: p.GetOk(), Opencode: p.GetOpencode()}
 }
 
 // ---------------------------------------------------------------------------
@@ -580,12 +582,14 @@ func epicFromPB(p *pb.Epic) epic.Epic {
 
 func epicNodeToPB(n epic.Node) *pb.EpicNode {
 	return &pb.EpicNode{Ref: n.Ref, Title: n.Title, Phase: n.Phase, After: n.After, Gate: n.Gate, Source: n.Source,
-		State: string(n.State), Note: n.Note, Pr: int64(n.PR), Cleared: n.Cleared}
+		State: string(n.State), Note: n.Note, Pr: int64(n.PR), Cleared: n.Cleared,
+		Labels: strs(n.Labels), LabelsKnown: n.LabelsKnown}
 }
 
 func epicNodeFromPB(p *pb.EpicNode) epic.Node {
 	return epic.Node{Ref: p.GetRef(), Title: p.GetTitle(), Phase: p.GetPhase(), After: p.GetAfter(), Gate: p.GetGate(),
-		Source: p.GetSource(), State: epic.NodeState(p.GetState()), Note: p.GetNote(), PR: int(p.GetPr()), Cleared: p.GetCleared()}
+		Source: p.GetSource(), State: epic.NodeState(p.GetState()), Note: p.GetNote(), PR: int(p.GetPr()), Cleared: p.GetCleared(),
+		Labels: strs(p.GetLabels()), LabelsKnown: p.GetLabelsKnown()}
 }
 
 func queueEntryToPB(e dispatch.QueueEntry) *pb.QueueEntry {

@@ -135,11 +135,7 @@ func (d *Dispatcher) remoteIndex(ctx context.Context, m Machine) *ghws.Index {
 			go func() { //nolint:gosec // G118: see above
 				bctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
-				ix, err := scanRemoteMachine(bctx, m)
-				if err != nil {
-					ix = nil
-				}
-				d.storeIndex(m.Name, ix)
+				d.storeIndex(m.Name, d.scanWithVersion(bctx, m))
 			}()
 		}
 		d.cacheMu.Unlock()
@@ -152,11 +148,32 @@ func (d *Dispatcher) remoteIndex(ctx context.Context, m Machine) *ghws.Index {
 	d.indexLoading[m.Name] = true
 	d.cacheMu.Unlock()
 
-	ix, err := scanRemoteMachine(ctx, m)
-	if err != nil {
-		ix = nil
+	return d.storeIndex(m.Name, d.scanWithVersion(ctx, m))
+}
+
+// scanWithVersion scans m's workspaces (nil on failure) and, when its
+// opencode version is due (ocVersionTTL), asks that in the same ssh round
+// trip and caches the answer.
+func (d *Dispatcher) scanWithVersion(ctx context.Context, m Machine) *ghws.Index {
+	want := d.versionStale(m.key())
+	ix, v, gotV, err := d.scan(ctx, m, want)
+	if want && gotV {
+		d.cacheMu.Lock()
+		d.storeVersionLocked(m.key(), v)
+		d.cacheMu.Unlock()
 	}
-	return d.storeIndex(m.Name, ix)
+	if err != nil {
+		return nil
+	}
+	return ix
+}
+
+// scan runs scanRemote, or the test hook in its place.
+func (d *Dispatcher) scan(ctx context.Context, m Machine, version bool) (*ghws.Index, string, bool, error) {
+	if d.scanHook != nil {
+		return d.scanHook(ctx, m, version)
+	}
+	return scanRemote(ctx, m, version)
 }
 
 // storeIndex records a scan result and clears the in-flight marker.

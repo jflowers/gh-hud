@@ -42,12 +42,29 @@ const (
 	pipelinePlanCmd = "uf.run-pipeline-plan"
 )
 
-// epicItem is a piece's issue as an item the dispatcher can run.
+// epicItem is a piece's issue as an item the dispatcher can run, with the
+// labels the last status check read (see pieceItem).
 func epicItem(n epic.Node) model.Item {
 	repo, num, _ := epic.ParseRef(n.Ref)
 	return model.Item{Kind: model.KindIssue, Repo: repo, Num: num, Title: n.Title,
-		URL: fmt.Sprintf("https://github.com/%s/issues/%d", repo, num)}
+		URL: fmt.Sprintf("https://github.com/%s/issues/%d", repo, num), Labels: n.Labels}
 }
+
+// pieceItem is epicItem with the labels placement goes by: the latest
+// refresh's when the issue is in it, else the epic's last status check's.
+// known is false when neither has read them.
+func pieceItem(n epic.Node, byRef map[string]model.Item) (it model.Item, known bool) {
+	it = epicItem(n)
+	if r, ok := byRef[n.Ref]; ok {
+		it.Labels = r.Labels
+		return it, true
+	}
+	return it, n.LabelsKnown
+}
+
+// labelsUnknownWhy is why a piece whose labels aren't known yet waits when
+// some machine places by label.
+const labelsUnknownWhy = "epic: labels unknown until the epic's next status check"
 
 // approvedEpics are the epics whose current plan you approved and that
 // haven't changed since.
@@ -85,7 +102,7 @@ func pieceRuns(ref string, since time.Time, runs []Run, now time.Time) (mine []R
 // epicRows are the plan rows of approved epics' pieces: ready ones next
 // (within the epic's limit) or waiting, running ones, and the ones that
 // need you. skip holds refs the plan already shows.
-func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool) []PlanRow {
+func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool, byRef map[string]model.Item) []PlanRow {
 	now := time.Now()
 	ep := d.o().Epics
 	maxActive, maxRuns := ep.MaxActive, ep.MaxRuns
@@ -117,7 +134,8 @@ func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool) []PlanRo
 			if queued[n.Ref] || skip[n.Ref] {
 				continue
 			}
-			row := PlanRow{Item: epicItem(n), Task: TaskIssue, Epic: e.Ref}
+			it, known := pieceItem(n, byRef)
+			row := PlanRow{Item: it, Task: TaskIssue, Epic: e.Ref, labelsUnknown: !known}
 			var last *Run
 			if len(p.runs) > 0 {
 				last = &p.runs[0]
@@ -146,6 +164,10 @@ func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool) []PlanRo
 				row.Stage = Stage{Kind: StageRunning, Task: TaskIssue}
 			case active >= maxActive:
 				row.Stage = Stage{Kind: StageWait, Task: TaskIssue, Reason: fmt.Sprintf("epic: %d active (max %d)", active, maxActive)}
+			case !known && d.placesByLabel():
+				row.Stage = Stage{Kind: StageWait, Task: TaskIssue, Reason: labelsUnknownWhy}
+			case d.labelWhy(it) != "":
+				row.Stage = Stage{Kind: StageWait, Task: TaskIssue, Reason: d.labelWhy(it)}
 			default:
 				row.Stage = Stage{Kind: StageNext, Task: TaskIssue}
 				active++ // the next ready pieces wait for this one's slot
@@ -177,6 +199,10 @@ func (d *Dispatcher) startEpicPiece(ctx context.Context, row PlanRow) (Record, e
 	}
 	if e == nil {
 		return Record{}, fmt.Errorf("%s isn't a piece of an approved epic", row.Item.Ref())
+	}
+	// Placement goes by the item's labels: unread ones aren't "none".
+	if row.labelsUnknown && d.placesByLabel() {
+		return Record{}, fmt.Errorf("%s: %s", row.Item.Ref(), labelsUnknownWhy)
 	}
 	name, _, _, err := d.taskCommand(TaskIssue, row.Item)
 	if err != nil {

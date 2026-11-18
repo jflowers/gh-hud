@@ -27,6 +27,7 @@ public  final class EpicNode extends
     source_ = "";
     state_ = "";
     note_ = "";
+    labels_ = emptyProtobufList();
   }
   public static final int REF_FIELD_NUMBER = 1;
   private java.lang.String ref_;
@@ -532,6 +533,170 @@ public  final class EpicNode extends
   private void clearCleared() {
 
     cleared_ = false;
+  }
+
+  public static final int LABELS_FIELD_NUMBER = 11;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> labels_;
+  /**
+   * <pre>
+   * labels: the piece's GitHub labels as of the epic's last status check;
+   * labels_known says that check read them (placement by label).
+   * </pre>
+   *
+   * <code>repeated string labels = 11 [json_name = "labels"];</code>
+   * @return A list containing the labels.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getLabelsList() {
+    return labels_;
+  }
+  /**
+   * <pre>
+   * labels: the piece's GitHub labels as of the epic's last status check;
+   * labels_known says that check read them (placement by label).
+   * </pre>
+   *
+   * <code>repeated string labels = 11 [json_name = "labels"];</code>
+   * @return The count of labels.
+   */
+  @java.lang.Override
+  public int getLabelsCount() {
+    return labels_.size();
+  }
+  /**
+   * <pre>
+   * labels: the piece's GitHub labels as of the epic's last status check;
+   * labels_known says that check read them (placement by label).
+   * </pre>
+   *
+   * <code>repeated string labels = 11 [json_name = "labels"];</code>
+   * @param index The index of the element to return.
+   * @return The labels at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getLabels(int index) {
+    return labels_.get(index);
+  }
+  /**
+   * <pre>
+   * labels: the piece's GitHub labels as of the epic's last status check;
+   * labels_known says that check read them (placement by label).
+   * </pre>
+   *
+   * <code>repeated string labels = 11 [json_name = "labels"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the labels at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getLabelsBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        labels_.get(index));
+  }
+  private void ensureLabelsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        labels_;  if (!tmp.isModifiable()) {
+      labels_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <pre>
+   * labels: the piece's GitHub labels as of the epic's last status check;
+   * labels_known says that check read them (placement by label).
+   * </pre>
+   *
+   * <code>repeated string labels = 11 [json_name = "labels"];</code>
+   * @param index The index to set the value at.
+   * @param value The labels to set.
+   */
+  private void setLabels(
+      int index, java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureLabelsIsMutable();
+    labels_.set(index, value);
+  }
+  /**
+   * <pre>
+   * labels: the piece's GitHub labels as of the epic's last status check;
+   * labels_known says that check read them (placement by label).
+   * </pre>
+   *
+   * <code>repeated string labels = 11 [json_name = "labels"];</code>
+   * @param value The labels to add.
+   */
+  private void addLabels(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureLabelsIsMutable();
+    labels_.add(value);
+  }
+  /**
+   * <pre>
+   * labels: the piece's GitHub labels as of the epic's last status check;
+   * labels_known says that check read them (placement by label).
+   * </pre>
+   *
+   * <code>repeated string labels = 11 [json_name = "labels"];</code>
+   * @param values The labels to add.
+   */
+  private void addAllLabels(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureLabelsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, labels_);
+  }
+  /**
+   * <pre>
+   * labels: the piece's GitHub labels as of the epic's last status check;
+   * labels_known says that check read them (placement by label).
+   * </pre>
+   *
+   * <code>repeated string labels = 11 [json_name = "labels"];</code>
+   */
+  private void clearLabels() {
+    labels_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * labels: the piece's GitHub labels as of the epic's last status check;
+   * labels_known says that check read them (placement by label).
+   * </pre>
+   *
+   * <code>repeated string labels = 11 [json_name = "labels"];</code>
+   * @param value The bytes of the labels to add.
+   */
+  private void addLabelsBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureLabelsIsMutable();
+    labels_.add(value.toStringUtf8());
+  }
+
+  public static final int LABELS_KNOWN_FIELD_NUMBER = 12;
+  private boolean labelsKnown_;
+  /**
+   * <code>bool labels_known = 12 [json_name = "labelsKnown"];</code>
+   * @return The labelsKnown.
+   */
+  @java.lang.Override
+  public boolean getLabelsKnown() {
+    return labelsKnown_;
+  }
+  /**
+   * <code>bool labels_known = 12 [json_name = "labelsKnown"];</code>
+   * @param value The labelsKnown to set.
+   */
+  private void setLabelsKnown(boolean value) {
+    
+    labelsKnown_ = value;
+  }
+  /**
+   * <code>bool labels_known = 12 [json_name = "labelsKnown"];</code>
+   */
+  private void clearLabelsKnown() {
+
+    labelsKnown_ = false;
   }
 
   public static io.github.jflowers.ghhud.api.v1.EpicNode parseFrom(
@@ -1158,6 +1323,171 @@ public  final class EpicNode extends
       return this;
     }
 
+    /**
+     * <pre>
+     * labels: the piece's GitHub labels as of the epic's last status check;
+     * labels_known says that check read them (placement by label).
+     * </pre>
+     *
+     * <code>repeated string labels = 11 [json_name = "labels"];</code>
+     * @return A list containing the labels.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getLabelsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getLabelsList());
+    }
+    /**
+     * <pre>
+     * labels: the piece's GitHub labels as of the epic's last status check;
+     * labels_known says that check read them (placement by label).
+     * </pre>
+     *
+     * <code>repeated string labels = 11 [json_name = "labels"];</code>
+     * @return The count of labels.
+     */
+    @java.lang.Override
+    public int getLabelsCount() {
+      return instance.getLabelsCount();
+    }
+    /**
+     * <pre>
+     * labels: the piece's GitHub labels as of the epic's last status check;
+     * labels_known says that check read them (placement by label).
+     * </pre>
+     *
+     * <code>repeated string labels = 11 [json_name = "labels"];</code>
+     * @param index The index of the element to return.
+     * @return The labels at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getLabels(int index) {
+      return instance.getLabels(index);
+    }
+    /**
+     * <pre>
+     * labels: the piece's GitHub labels as of the epic's last status check;
+     * labels_known says that check read them (placement by label).
+     * </pre>
+     *
+     * <code>repeated string labels = 11 [json_name = "labels"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the labels at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getLabelsBytes(int index) {
+      return instance.getLabelsBytes(index);
+    }
+    /**
+     * <pre>
+     * labels: the piece's GitHub labels as of the epic's last status check;
+     * labels_known says that check read them (placement by label).
+     * </pre>
+     *
+     * <code>repeated string labels = 11 [json_name = "labels"];</code>
+     * @param index The index to set the value at.
+     * @param value The labels to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLabels(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setLabels(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * labels: the piece's GitHub labels as of the epic's last status check;
+     * labels_known says that check read them (placement by label).
+     * </pre>
+     *
+     * <code>repeated string labels = 11 [json_name = "labels"];</code>
+     * @param value The labels to add.
+     * @return This builder for chaining.
+     */
+    public Builder addLabels(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addLabels(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * labels: the piece's GitHub labels as of the epic's last status check;
+     * labels_known says that check read them (placement by label).
+     * </pre>
+     *
+     * <code>repeated string labels = 11 [json_name = "labels"];</code>
+     * @param values The labels to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllLabels(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllLabels(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * labels: the piece's GitHub labels as of the epic's last status check;
+     * labels_known says that check read them (placement by label).
+     * </pre>
+     *
+     * <code>repeated string labels = 11 [json_name = "labels"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLabels() {
+      copyOnWrite();
+      instance.clearLabels();
+      return this;
+    }
+    /**
+     * <pre>
+     * labels: the piece's GitHub labels as of the epic's last status check;
+     * labels_known says that check read them (placement by label).
+     * </pre>
+     *
+     * <code>repeated string labels = 11 [json_name = "labels"];</code>
+     * @param value The bytes of the labels to add.
+     * @return This builder for chaining.
+     */
+    public Builder addLabelsBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addLabelsBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>bool labels_known = 12 [json_name = "labelsKnown"];</code>
+     * @return The labelsKnown.
+     */
+    @java.lang.Override
+    public boolean getLabelsKnown() {
+      return instance.getLabelsKnown();
+    }
+    /**
+     * <code>bool labels_known = 12 [json_name = "labelsKnown"];</code>
+     * @param value The labelsKnown to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLabelsKnown(boolean value) {
+      copyOnWrite();
+      instance.setLabelsKnown(value);
+      return this;
+    }
+    /**
+     * <code>bool labels_known = 12 [json_name = "labelsKnown"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLabelsKnown() {
+      copyOnWrite();
+      instance.clearLabelsKnown();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.EpicNode)
   }
   @java.lang.Override
@@ -1184,10 +1514,13 @@ public  final class EpicNode extends
             "note_",
             "pr_",
             "cleared_",
+            "labels_",
+            "labelsKnown_",
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0000\u0001\n\n\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
-              "\u0004\u021a\u0005\u0208\u0006\u0208\u0007\u0208\b\u0208\t\u0002\n\u0007";
+              "\u0000\f\u0000\u0000\u0001\f\f\u0000\u0002\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
+              "\u0004\u021a\u0005\u0208\u0006\u0208\u0007\u0208\b\u0208\t\u0002\n\u0007\u000b\u021a" +
+              "\f\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

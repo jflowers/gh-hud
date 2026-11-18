@@ -271,6 +271,128 @@ public object EpicNodeKt {
     public fun clearCleared() {
       _builder.clearCleared()
     }
+
+    /**
+     * An uninstantiable, behaviorless type to represent the field in
+     * generics.
+     */
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+    public class LabelsProxy private constructor() : com.google.protobuf.kotlin.DslProxy()
+    /**
+     * ```
+     * labels: the piece's GitHub labels as of the epic's last status check;
+     * labels_known says that check read them (placement by label).
+     * ```
+     *
+     * `repeated string labels = 11 [json_name = "labels"];`
+     * @return A list containing the labels.
+     */
+    public val labels: com.google.protobuf.kotlin.DslList<kotlin.String, LabelsProxy>
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+      get() = com.google.protobuf.kotlin.DslList(
+        _builder.labelsList
+      )
+    /**
+     * ```
+     * labels: the piece's GitHub labels as of the epic's last status check;
+     * labels_known says that check read them (placement by label).
+     * ```
+     *
+     * `repeated string labels = 11 [json_name = "labels"];`
+     * @param value The labels to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addLabels")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, LabelsProxy>.add(value: kotlin.String) {
+      _builder.addLabels(value)
+    }
+    /**
+     * ```
+     * labels: the piece's GitHub labels as of the epic's last status check;
+     * labels_known says that check read them (placement by label).
+     * ```
+     *
+     * `repeated string labels = 11 [json_name = "labels"];`
+     * @param value The labels to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignLabels")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, LabelsProxy>.plusAssign(value: kotlin.String) {
+      add(value)
+    }
+    /**
+     * ```
+     * labels: the piece's GitHub labels as of the epic's last status check;
+     * labels_known says that check read them (placement by label).
+     * ```
+     *
+     * `repeated string labels = 11 [json_name = "labels"];`
+     * @param values The labels to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addAllLabels")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, LabelsProxy>.addAll(values: kotlin.collections.Iterable<kotlin.String>) {
+      _builder.addAllLabels(values)
+    }
+    /**
+     * ```
+     * labels: the piece's GitHub labels as of the epic's last status check;
+     * labels_known says that check read them (placement by label).
+     * ```
+     *
+     * `repeated string labels = 11 [json_name = "labels"];`
+     * @param values The labels to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignAllLabels")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, LabelsProxy>.plusAssign(values: kotlin.collections.Iterable<kotlin.String>) {
+      addAll(values)
+    }
+    /**
+     * ```
+     * labels: the piece's GitHub labels as of the epic's last status check;
+     * labels_known says that check read them (placement by label).
+     * ```
+     *
+     * `repeated string labels = 11 [json_name = "labels"];`
+     * @param index The index to set the value at.
+     * @param value The labels to set.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setLabels")
+    public operator fun com.google.protobuf.kotlin.DslList<kotlin.String, LabelsProxy>.set(index: kotlin.Int, value: kotlin.String) {
+      _builder.setLabels(index, value)
+    }/**
+     * ```
+     * labels: the piece's GitHub labels as of the epic's last status check;
+     * labels_known says that check read them (placement by label).
+     * ```
+     *
+     * `repeated string labels = 11 [json_name = "labels"];`
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setLabels")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, LabelsProxy>.clear() {
+      _builder.clearLabels()
+    }
+    /**
+     * `bool labels_known = 12 [json_name = "labelsKnown"];`
+     */
+    public var labelsKnown: kotlin.Boolean
+      @kotlin.jvm.JvmName("getLabelsKnown")
+        get() = _builder.labelsKnown
+      @kotlin.jvm.JvmName("setLabelsKnown")
+        set(value) {
+        _builder.labelsKnown = value
+      }
+    /**
+     * `bool labels_known = 12 [json_name = "labelsKnown"];`
+     */
+    public fun clearLabelsKnown() {
+      _builder.clearLabelsKnown()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.EpicNode.copy(block: `io.github.jflowers.ghhud.api.v1`.EpicNodeKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.EpicNode =

@@ -72,6 +72,11 @@ type Node struct {
 	State NodeState `json:"state,omitempty"`
 	Note  string    `json:"note,omitempty"` // e.g. "waits on dewey#145", "PR #159"
 	PR    int       `json:"pr,omitempty"`   // the open PR working on it
+	// Labels are the piece's GitHub labels as of the last status check;
+	// LabelsKnown says a check read them (a plan stored before labels
+	// were read has none, which isn't the same as unlabelled).
+	Labels      []string `json:"labels,omitempty"`
+	LabelsKnown bool     `json:"labels_known,omitempty"`
 }
 
 // Plan is an epic read as a graph.
@@ -252,6 +257,7 @@ type Fact struct {
 	OpenPRs   []int
 	ClosedBy  []int
 	BlockedBy []string // refs of issues blocking it
+	Labels    []string // label names (placement by label, #140)
 }
 
 // Limits on a plan.
@@ -464,6 +470,7 @@ func Refresh(p *Plan, epicRepo string, facts map[string]Fact) {
 		if f.Title != "" {
 			n.Title = f.Title
 		}
+		n.Labels, n.LabelsKnown = f.Labels, true
 		switch {
 		case done(f):
 			n.State = NodeDone

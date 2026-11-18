@@ -1,10 +1,10 @@
 package dispatch
 
 // Placement: which machine runs a task. Candidates are machines that are
-// enabled, reachable, allow the task, have a free slot, are not draining
-// (fleet rollout), and don't conflict with a live record for the same ref on
-// another machine — ranked by free slot fraction, ties keeping local first
-// and then config order.
+// enabled, reachable, allow the task, accept the item's labels, have a free
+// slot, are not draining (fleet rollout), and don't conflict with a live
+// record for the same ref on another machine — ranked by free slot
+// fraction, ties keeping local first and then config order.
 
 import (
 	"fmt"
@@ -35,17 +35,17 @@ type placement struct {
 	checkout ghws.Checkout
 }
 
-// pickMachines returns the machines that may take task for ref, best
-// first: enabled and reachable, task allowed, a free slot, not draining,
-// and no other machine already running the ref (cross-machine ref dedupe).
-// Ranking is by free slot fraction; ties keep local first, then config
-// order.
-func pickMachines(v machineView, task Task, ref string) []Machine {
+// pickMachines returns the machines that may take task for the item, best
+// first: enabled and reachable, task allowed, its label rules accepting the
+// item, a free slot, not draining, and no other machine already running the
+// ref (cross-machine ref dedupe). Ranking is by free slot fraction; ties
+// keep local first, then config order.
+func pickMachines(v machineView, task Task, it model.Item) []Machine {
 	qualified := []Machine{v.local}
 	qualified = append(qualified, v.remotes...)
 	out := make([]Machine, 0, len(qualified))
 	for _, m := range qualified {
-		if machineBlock(v, task, ref, m) == "" {
+		if machineBlock(v, task, it, m) == "" {
 			out = append(out, m)
 		}
 	}
@@ -55,8 +55,11 @@ func pickMachines(v machineView, task Task, ref string) []Machine {
 	return out
 }
 
-// machineBlock says why m can't take task for ref now ("" when it can).
-func machineBlock(v machineView, task Task, ref string, m Machine) string {
+// machineBlock says why m can't take task for the item now ("" when it
+// can). The lasting reasons (off, the task, the item's labels) come before
+// the passing ones (unreachable, draining, full, the item running
+// elsewhere), except that an unreachable machine says so first.
+func machineBlock(v machineView, task Task, it model.Item, m Machine) string {
 	switch {
 	case !m.Enabled:
 		return "off"
@@ -64,26 +67,66 @@ func machineBlock(v machineView, task Task, ref string, m Machine) string {
 		return "unreachable"
 	case !m.AllowsTask(task):
 		return "doesn't take " + string(task)
+	}
+	if b := m.labelBlock(it.Labels); b != "" {
+		return b
+	}
+	switch {
 	case v.draining[m.key()]:
 		return "draining for a fleet rollout"
 	case v.live[m.key()] >= m.Max:
 		return fmt.Sprintf("full (%d of %d running)", v.live[m.key()], m.Max)
 	}
-	if machines := v.liveRefMachines[ref]; len(machines) > 0 && !machines[m.key()] {
+	if machines := v.liveRefMachines[it.Ref()]; len(machines) > 0 && !machines[m.key()] {
 		return "the item runs elsewhere"
 	}
 	return ""
 }
 
-// noPlacement says why candidates found nothing for task on it: every
-// machine blocked (and why, per machine), or no free checkout of the repo
-// on the machines that could take it.
+// labelRefusal says why no enabled machine's label rules take an item with
+// labels ("" when at least one does), ignoring every other reason a
+// machine may be busy: "no machine takes label opencode-v2-migration:
+// local takes only big, lap1 excludes opencode-v2-migration". It needs no
+// machine state, so the plan can say it before anything is tried.
+func labelRefusal(machines []Machine, labels []string) string {
+	var parts []string
+	for _, m := range machines {
+		if !m.Enabled {
+			continue
+		}
+		b := m.labelBlock(labels)
+		if b == "" {
+			return ""
+		}
+		parts = append(parts, machineLabel(m)+" "+b)
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	what := "an unlabelled item"
+	switch len(labels) {
+	case 0:
+	case 1:
+		what = "label " + labels[0]
+	default:
+		what = "labels " + strings.Join(labels, ", ")
+	}
+	return "no machine takes " + what + ": " + strings.Join(parts, ", ")
+}
+
+// noPlacement says why candidates found nothing for task on it: no
+// machine's label rules take it, every machine blocked (and why, per
+// machine), or no free checkout of the repo on the machines that could
+// take it.
 func noPlacement(v machineView, task Task, it model.Item, instancesOnly bool) string {
-	ms := pickMachines(v, task, it.Ref())
+	ms := pickMachines(v, task, it)
 	if len(ms) == 0 {
+		if why := labelRefusal(append([]Machine{v.local}, v.remotes...), it.Labels); why != "" {
+			return why
+		}
 		var parts []string
 		for _, m := range append([]Machine{v.local}, v.remotes...) {
-			if b := machineBlock(v, task, it.Ref(), m); b != "off" {
+			if b := machineBlock(v, task, it, m); b != "off" {
 				parts = append(parts, machineLabel(m)+" "+b)
 			}
 		}
@@ -122,18 +165,18 @@ func freeFrac(m Machine, v machineView) float64 {
 	return float64(slots-v.live[m.key()]) / float64(slots)
 }
 
-// candidates returns ranked placements for repo: capacity-ranked machines
-// × their matching checkouts (branch match first, per ghws.Resolve).
-// instancesOnly restricts targets to @ instance workspaces; checkouts with
-// a live record on the machine are skipped.
-func candidates(v machineView, task Task, ref, repo, headBranch string, instancesOnly bool) []placement {
+// candidates returns ranked placements for the item: capacity-ranked
+// machines × their matching checkouts of its repo (branch match first, per
+// ghws.Resolve). instancesOnly restricts targets to @ instance workspaces;
+// checkouts with a live record on the machine are skipped.
+func candidates(v machineView, task Task, it model.Item, instancesOnly bool) []placement {
 	var out []placement
-	for _, m := range pickMachines(v, task, ref) {
+	for _, m := range pickMachines(v, task, it) {
 		ix := v.index[m.key()]
 		if ix == nil {
 			continue
 		}
-		for _, co := range ix.Resolve(repo, headBranch) {
+		for _, co := range ix.Resolve(it.Repo, it.HeadBranch) {
 			if instancesOnly && !co.Instance {
 				continue
 			}

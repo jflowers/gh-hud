@@ -625,6 +625,33 @@ public object RunKt {
     public fun clearIndexHealth() {
       _builder.clearIndexHealth()
     }
+
+    /**
+     * ```
+     * opencode: the machine's `opencode --version` when the run started;
+     * empty when unknown.
+     * ```
+     *
+     * `string opencode = 26 [json_name = "opencode"];`
+     */
+    public var opencode: kotlin.String
+      @kotlin.jvm.JvmName("getOpencode")
+        get() = _builder.opencode
+      @kotlin.jvm.JvmName("setOpencode")
+        set(value) {
+        _builder.opencode = value
+      }
+    /**
+     * ```
+     * opencode: the machine's `opencode --version` when the run started;
+     * empty when unknown.
+     * ```
+     *
+     * `string opencode = 26 [json_name = "opencode"];`
+     */
+    public fun clearOpencode() {
+      _builder.clearOpencode()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.Run.copy(block: `io.github.jflowers.ghhud.api.v1`.RunKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.Run =

@@ -1,0 +1,23 @@
+package main
+
+import (
+	"slices"
+	"testing"
+
+	"github.com/jflowers/gh-hud/internal/config"
+)
+
+// #140: the label rules reach the dispatcher, the hub's from the top level.
+func TestDispatchOptionsCarryLabelRules(t *testing.T) {
+	cfg := config.Default()
+	cfg.Labels = []string{"big"}
+	cfg.ExcludeLabels = []string{"opencode-v2-migration"}
+	cfg.Machines = []config.Machine{{Name: "lap2", Labels: []string{"opencode-v2-migration"}, ExcludeLabels: []string{"v1-only"}}}
+	o := dispatchOptions(cfg, t.TempDir(), nil, nil)
+	if !slices.Equal(o.LocalLabels, cfg.Labels) || !slices.Equal(o.LocalExcludeLabels, cfg.ExcludeLabels) {
+		t.Errorf("hub rules: %v %v", o.LocalLabels, o.LocalExcludeLabels)
+	}
+	if m := o.Machines[0]; !slices.Equal(m.Labels, []string{"opencode-v2-migration"}) || !slices.Equal(m.ExcludeLabels, []string{"v1-only"}) {
+		t.Errorf("lap2 rules: %+v", m)
+	}
+}

@@ -69,6 +69,9 @@ type Run struct {
 	// IndexHealth is the checkout's Dewey index health after the run (see
 	// Record.IndexHealth).
 	IndexHealth string
+	// Opencode is the machine's opencode version when the run started
+	// (Record.Opencode); "" when unknown.
+	Opencode string
 }
 
 // runID identifies a record across snapshots.
@@ -129,7 +132,7 @@ func (d *Dispatcher) Runs(ctx context.Context) []Run {
 			SessionID: r.SessionID, PaneID: r.PaneID, WSID: r.WSID, Log: r.Log,
 			Reason: reason, Summary: r.Summary, Left: r.Left, Pushed: r.Pushed,
 			Branch: r.Branch, Cleaned: r.Cleaned, Fingerprint: r.Fingerprint,
-			HumanNeeded: r.HumanNeeded, IndexHealth: r.IndexHealth,
+			HumanNeeded: r.HumanNeeded, IndexHealth: r.IndexHealth, Opencode: r.Opencode,
 		})
 	}
 	return out
