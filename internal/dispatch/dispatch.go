@@ -1747,6 +1747,7 @@ func (d *Dispatcher) preflight(ctx context.Context, m Machine, dir string, task 
 	if _, err := git("fetch", "upstream", short); err != nil {
 		return "", err
 	}
+	before := headOf(ctx, m, dir)
 	cur := strings.TrimSpace(orEmpty(git("rev-parse", "--abbrev-ref", "HEAD")))
 	if cur != short {
 		if _, err := git("checkout", short); err != nil {
@@ -1757,6 +1758,13 @@ func (d *Dispatcher) preflight(ctx context.Context, m Machine, dir string, task 
 	}
 	if _, err := git("merge", "--ff-only", "upstream/"+short); err != nil {
 		return "", fmt.Errorf("%s: %w", d.leftNote(m, dir, fmt.Sprintf("sync %s with upstream/%s failed (local branch diverged?)", short, short)), err)
+	}
+	// The checkout and fast-forward move gitlinks, never submodule work
+	// trees (#13): bring the submodules they left behind along.
+	if after := headOf(ctx, m, dir); after != before {
+		if _, err := d.syncSubmodules(ctx, m, dir, before); err != nil {
+			return "", err
+		}
 	}
 	return stash, nil
 }
@@ -1824,7 +1832,13 @@ func (d *Dispatcher) checkoutPR(ctx context.Context, m Machine, dir string, it m
 			}
 		}
 	}
+	before := headOf(ctx, m, dir)
 	if _, err := m.Run(ctx, dir, "gh", "pr", "checkout", strconv.Itoa(it.Num), "--repo", it.Repo, "--force"); err != nil {
+		return fmt.Errorf("check out %s in %s: %w", it.Ref(), filepath.Base(dir), err)
+	}
+	// A PR that moves a submodule's gitlink leaves its work tree at the
+	// old commit (#13): bring it to the PR's.
+	if _, err := d.syncSubmodules(ctx, m, dir, before); err != nil {
 		return fmt.Errorf("check out %s in %s: %w", it.Ref(), filepath.Base(dir), err)
 	}
 	return nil

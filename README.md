@@ -427,6 +427,17 @@ tasks (rebase, ci, feedback) then check the PR head out with
 on GitHub; a local PR branch holding commits no remote has is refused
 rather than reset.
 
+git moves a submodule's recorded commit on a checkout or fast-forward but
+leaves the submodule itself where it was, which reads as ` M <submodule>`.
+So after each of its own moves (the preflight fast-forward, the PR
+checkout, the return to the default branch after a run) gh-hud runs
+`git submodule update --init --recursive` for the submodules it left
+behind: uninitialized ones, and clean ones still at the commit recorded
+before its move. The after-run inspection does the same for a submodule
+the run's own commits moved (a rebase onto upstream) while it sat at the
+run's starting commit. A submodule with changes in it, or checked out
+somewhere else, is never touched and counts as left work.
+
 When a run ends, gh-hud reads its outcome and the agent's final message
 from the opencode transcript and inspects the checkout and its overlays.
 A run that left nothing behind is returned to the default branch. One

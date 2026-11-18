@@ -618,6 +618,14 @@ func (d *Dispatcher) inspect(ctx context.Context, m Machine, r Record) inspectio
 		}
 		return in
 	}
+	// A gitlink the run's own commits moved (a rebase onto upstream, say)
+	// leaves the submodule at the commit it started from (#13). That isn't
+	// work the run left; anything the agent did in a submodule still is.
+	if r.StartHead != "" {
+		if _, err := d.syncSubmodules(ctx, m, r.Dir, r.StartHead); err != nil {
+			return inspection{err: err.Error()}
+		}
+	}
 	out, err := m.shell(ctx, inspectScript(r.Dir, r.StartHead))
 	if err != nil {
 		return inspection{err: err.Error()}
@@ -643,9 +651,16 @@ func (d *Dispatcher) inspect(ctx context.Context, m Machine, r Record) inspectio
 		return in
 	}
 	if in.branch != def {
+		before := headOf(ctx, m, r.Dir)
 		if _, err := git("checkout", "-q", def); err != nil {
 			in.err = "return to " + def + ": " + err.Error()
 			return in
+		}
+		// The switch moves gitlinks, not submodules (#13).
+		if s, err := d.syncSubmodules(ctx, m, r.Dir, before); err != nil {
+			in.err = "return to " + def + ": " + err.Error()
+		} else if len(s.kept) > 0 {
+			in.err = "return to " + def + ": submodules left as they were: " + strings.Join(s.kept, "; ")
 		}
 	}
 	in.branch, in.cleaned = def, true
