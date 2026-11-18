@@ -19,6 +19,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/jflowers/gh-hud/internal/config"
 )
 
 // RunStatus is a dispatch's state as the dashboard shows it.
@@ -607,7 +609,11 @@ func overlayName(path string) string {
 // (learnings.go).
 func (d *Dispatcher) inspect(ctx context.Context, m Machine, r Record) inspection {
 	if d.busyElsewhere(ctx, r) {
-		return inspection{err: busySkip, indexHealth: d.busyIndexHealth(ctx, m, r)}
+		in := inspection{err: busySkip}
+		if d.o().DeweyReindex != config.DeweyReindexOff {
+			in.indexHealth = d.busyIndexHealth(ctx, m, r)
+		}
+		return in
 	}
 	out, err := m.shell(ctx, inspectScript(r.Dir, r.StartHead))
 	if err != nil {
@@ -652,7 +658,9 @@ func (d *Dispatcher) inspect(ctx context.Context, m Machine, r Record) inspectio
 	}
 	// Last, with the run's opencode (and its dewey serve) gone: the index
 	// as the next dispatch will find it. Read-only; never marks the run.
-	in.indexHealth = d.checkIndexHealth(ctx, m, r)
+	// With dewey_reindex = "auto" a flagged index is reindexed in the
+	// background (deweyreindex.go).
+	in.indexHealth = d.indexCheck(ctx, m, r)
 	return in
 }
 

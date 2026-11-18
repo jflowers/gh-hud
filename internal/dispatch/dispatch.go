@@ -241,6 +241,11 @@ type Options struct {
 	HumanGate string
 	// Branches turns on the hub's own branch pruning (branches.go).
 	Branches config.BranchesConfig
+	// DeweyReindex is what the after-run Dewey index check does with a
+	// checkout that needs a reindex: "report" (default) records it,
+	// "auto" also reindexes and warms it (deweyreindex.go), "off" skips
+	// the check.
+	DeweyReindex string
 }
 
 // Dispatcher launches and tracks agent sessions.
@@ -347,6 +352,15 @@ type Dispatcher struct {
 	// idxStatus is the last dewey status read per checkout, for the
 	// Workspaces tab (workspaces_index.go).
 	idxStatus indexStatusCache
+	// reindexing is the checkout each machine is reindexing (machine key
+	// → dir; deweyreindex.go), guarded by mu: one per machine. reindexes
+	// are the last reindex per checkout, guarded by baseMu like the
+	// baselines; reindexesMod is dewey-reindexes.json's mtime.
+	reindexing   map[string]string
+	reindexes    map[string]ReindexResult
+	reindexesMod time.Time
+	// reindexWork tracks reindex goroutines, so a test can wait for them.
+	reindexWork sync.WaitGroup
 }
 
 // agentSnapshot is one machine's live herdr agent list.
@@ -376,6 +390,11 @@ func normalizeOptions(opts *Options) error {
 	case "stash", "stash-tracked":
 	default:
 		opts.Dirty = "refuse"
+	}
+	switch opts.DeweyReindex {
+	case config.DeweyReindexOff, config.DeweyReindexAuto:
+	default:
+		opts.DeweyReindex = config.DeweyReindexReport
 	}
 	if opts.StateDir == "" {
 		home, err := os.UserHomeDir()
@@ -1187,6 +1206,13 @@ func (d *Dispatcher) cachedViewBase(snaps map[string]agentSnapshot, reach map[st
 			v.liveDirs[r.Machine] = map[string]bool{}
 		}
 		v.liveDirs[r.Machine][r.Dir] = true
+	}
+	// A checkout being reindexed takes no dispatch (deweyreindex.go).
+	for mk, dir := range d.reindexingDirs() {
+		if v.liveDirs[mk] == nil {
+			v.liveDirs[mk] = map[string]bool{}
+		}
+		v.liveDirs[mk][dir] = true
 	}
 	return v
 }

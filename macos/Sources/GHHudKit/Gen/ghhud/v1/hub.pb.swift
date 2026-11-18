@@ -340,6 +340,9 @@ public nonisolated enum Ghhud_V1_AlertType: SwiftProtobuf.Enum, Swift.CaseIterab
 
   /// a repo in a tool rollout waits for you: held, refused, failed or CI failing (ref is its PR's owner/repo#N, else tool@version)
   case toolkitTarget // = 5
+
+  /// an automatic Dewey reindex of a checkout failed (ref is [machine:]workspace)
+  case reindexFailed // = 6
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -354,6 +357,7 @@ public nonisolated enum Ghhud_V1_AlertType: SwiftProtobuf.Enum, Swift.CaseIterab
     case 3: self = .runFinished
     case 4: self = .toolRelease
     case 5: self = .toolkitTarget
+    case 6: self = .reindexFailed
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -366,6 +370,7 @@ public nonisolated enum Ghhud_V1_AlertType: SwiftProtobuf.Enum, Swift.CaseIterab
     case .runFinished: return 3
     case .toolRelease: return 4
     case .toolkitTarget: return 5
+    case .reindexFailed: return 6
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -378,6 +383,7 @@ public nonisolated enum Ghhud_V1_AlertType: SwiftProtobuf.Enum, Swift.CaseIterab
     .runFinished,
     .toolRelease,
     .toolkitTarget,
+    .reindexFailed,
   ]
 
 }
@@ -2685,11 +2691,71 @@ public nonisolated struct Ghhud_V1_CheckoutHealth: @unchecked Sendable {
   /// Clears the value of `indexStatusAt`. Subsequent reads from it will return its default value.
   public mutating func clearIndexStatusAt() {_uniqueStorage()._indexStatusAt = nil}
 
+  /// gh-hud is reindexing the checkout's Dewey index: it takes no dispatch.
+  public var reindexing: Bool {
+    get {_storage._reindexing}
+    set {_uniqueStorage()._reindexing = newValue}
+  }
+
+  /// unset: none recorded
+  public var lastReindex: Ghhud_V1_ReindexResult {
+    get {_storage._lastReindex ?? Ghhud_V1_ReindexResult()}
+    set {_uniqueStorage()._lastReindex = newValue}
+  }
+  /// Returns true if `lastReindex` has been explicitly set.
+  public var hasLastReindex: Bool {_storage._lastReindex != nil}
+  /// Clears the value of `lastReindex`. Subsequent reads from it will return its default value.
+  public mutating func clearLastReindex() {_uniqueStorage()._lastReindex = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+/// ReindexResult is the outcome of an automatic Dewey reindex of a checkout.
+public nonisolated struct Ghhud_V1_ReindexResult: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// when it ended
+  public var at: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_at ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_at = newValue}
+  }
+  /// Returns true if `at` has been explicitly set.
+  public var hasAt: Bool {self._at != nil}
+  /// Clears the value of `at`. Subsequent reads from it will return its default value.
+  public mutating func clearAt() {self._at = nil}
+
+  public var duration: SwiftProtobuf.Google_Protobuf_Duration {
+    get {_duration ?? SwiftProtobuf.Google_Protobuf_Duration()}
+    set {_duration = newValue}
+  }
+  /// Returns true if `duration` has been explicitly set.
+  public var hasDuration: Bool {self._duration != nil}
+  /// Clears the value of `duration`. Subsequent reads from it will return its default value.
+  public mutating func clearDuration() {self._duration = nil}
+
+  public var binary: String = String()
+
+  /// why it ran
+  public var reasons: [String] = []
+
+  /// why it didn't run ("dewey.lock held")
+  public var skipped: String = String()
+
+  /// why it failed
+  public var error: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _at: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+  fileprivate var _duration: SwiftProtobuf.Google_Protobuf_Duration? = nil
 }
 
 public nonisolated struct Ghhud_V1_FleetSnapshot: Sendable {
@@ -3064,7 +3130,7 @@ nonisolated extension Ghhud_V1_EventKind: SwiftProtobuf._ProtoNameProviding {
 }
 
 nonisolated extension Ghhud_V1_AlertType: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ALERT_TYPE_UNSPECIFIED\0\u{1}ALERT_TYPE_READY\0\u{1}ALERT_TYPE_BLOCKED\0\u{1}ALERT_TYPE_RUN_FINISHED\0\u{1}ALERT_TYPE_TOOL_RELEASE\0\u{1}ALERT_TYPE_TOOLKIT_TARGET\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ALERT_TYPE_UNSPECIFIED\0\u{1}ALERT_TYPE_READY\0\u{1}ALERT_TYPE_BLOCKED\0\u{1}ALERT_TYPE_RUN_FINISHED\0\u{1}ALERT_TYPE_TOOL_RELEASE\0\u{1}ALERT_TYPE_TOOLKIT_TARGET\0\u{1}ALERT_TYPE_REINDEX_FAILED\0")
 }
 
 nonisolated extension Ghhud_V1_GetSnapshotRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -7022,7 +7088,7 @@ nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CheckoutHealth"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machine\0\u{1}workspace\0\u{1}repo\0\u{1}dir\0\u{1}branch\0\u{3}default_branch\0\u{1}ahead\0\u{1}behind\0\u{1}dirty\0\u{1}learnings\0\u{3}local_only\0\u{1}stashes\0\u{1}busy\0\u{3}no_upstream\0\u{1}error\0\u{1}index\0\u{3}index_built\0\u{3}index_pages\0\u{3}index_blocks\0\u{3}index_embeddings\0\u{3}index_status_at\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machine\0\u{1}workspace\0\u{1}repo\0\u{1}dir\0\u{1}branch\0\u{3}default_branch\0\u{1}ahead\0\u{1}behind\0\u{1}dirty\0\u{1}learnings\0\u{3}local_only\0\u{1}stashes\0\u{1}busy\0\u{3}no_upstream\0\u{1}error\0\u{1}index\0\u{3}index_built\0\u{3}index_pages\0\u{3}index_blocks\0\u{3}index_embeddings\0\u{3}index_status_at\0\u{1}reindexing\0\u{3}last_reindex\0")
 
   fileprivate class _StorageClass {
     var _machine: String = String()
@@ -7046,6 +7112,8 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
     var _indexBlocks: Int64 = 0
     var _indexEmbeddings: Int64 = 0
     var _indexStatusAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+    var _reindexing: Bool = false
+    var _lastReindex: Ghhud_V1_ReindexResult? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -7077,6 +7145,8 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
       _indexBlocks = source._indexBlocks
       _indexEmbeddings = source._indexEmbeddings
       _indexStatusAt = source._indexStatusAt
+      _reindexing = source._reindexing
+      _lastReindex = source._lastReindex
     }
   }
 
@@ -7116,6 +7186,8 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
         case 19: try { try decoder.decodeSingularInt64Field(value: &_storage._indexBlocks) }()
         case 20: try { try decoder.decodeSingularInt64Field(value: &_storage._indexEmbeddings) }()
         case 21: try { try decoder.decodeSingularMessageField(value: &_storage._indexStatusAt) }()
+        case 22: try { try decoder.decodeSingularBoolField(value: &_storage._reindexing) }()
+        case 23: try { try decoder.decodeSingularMessageField(value: &_storage._lastReindex) }()
         default: break
         }
       }
@@ -7191,6 +7263,12 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
       try { if let v = _storage._indexStatusAt {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 21)
       } }()
+      if _storage._reindexing != false {
+        try visitor.visitSingularBoolField(value: _storage._reindexing, fieldNumber: 22)
+      }
+      try { if let v = _storage._lastReindex {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 23)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -7221,10 +7299,71 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
         if _storage._indexBlocks != rhs_storage._indexBlocks {return false}
         if _storage._indexEmbeddings != rhs_storage._indexEmbeddings {return false}
         if _storage._indexStatusAt != rhs_storage._indexStatusAt {return false}
+        if _storage._reindexing != rhs_storage._reindexing {return false}
+        if _storage._lastReindex != rhs_storage._lastReindex {return false}
         return true
       }
       if !storagesAreEqual {return false}
     }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_ReindexResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ReindexResult"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}at\0\u{1}duration\0\u{1}binary\0\u{1}reasons\0\u{1}skipped\0\u{1}error\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._at) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._duration) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.binary) }()
+      case 4: try { try decoder.decodeRepeatedStringField(value: &self.reasons) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.skipped) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.error) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._at {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._duration {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    if !self.binary.isEmpty {
+      try visitor.visitSingularStringField(value: self.binary, fieldNumber: 3)
+    }
+    if !self.reasons.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.reasons, fieldNumber: 4)
+    }
+    if !self.skipped.isEmpty {
+      try visitor.visitSingularStringField(value: self.skipped, fieldNumber: 5)
+    }
+    if !self.error.isEmpty {
+      try visitor.visitSingularStringField(value: self.error, fieldNumber: 6)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_ReindexResult, rhs: Ghhud_V1_ReindexResult) -> Bool {
+    if lhs._at != rhs._at {return false}
+    if lhs._duration != rhs._duration {return false}
+    if lhs.binary != rhs.binary {return false}
+    if lhs.reasons != rhs.reasons {return false}
+    if lhs.skipped != rhs.skipped {return false}
+    if lhs.error != rhs.error {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

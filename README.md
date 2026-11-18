@@ -451,6 +451,23 @@ switched: the commit is built aside, and the files leave the overlay only
 once the push has succeeded. Other instances pick the merged learnings up
 on their next preflight fast-forward.
 
+Last, a clean run checks the checkout's Dewey index and records on the
+run whether it needs a `dewey reindex` and why. `[dispatch]
+dewey_reindex` says what happens next: `"report"` (the default) only
+records it, `"off"` skips the check, and `"auto"` reindexes the checkout
+in the background once nothing else is using it. While that runs the
+checkout is busy `reindexing` in the Workspaces tab and takes no
+dispatch. The run is `dewey reindex`, then a short `dewey serve` until its
+log says `background indexing complete`, since only serve's startup
+loads learnings and knowledge stores. Each machine runs one reindex at a
+time, and none starts in a checkout with a live agent, leftovers, or a
+held `.uf/dewey/dewey.lock`. A flagged checkout that can't start now is
+skipped, and the next clean run there flags it again. The Workspaces
+tab's detail shows the last reindex: its outcome, how long it took, when,
+and why it ran. A failure is also a notification and isn't retried. A
+machine problem, such as no embedder or no `dewey` binary, is never
+reindexed, because a reindex wouldn't fix it.
+
 By default (`runner = "herdr"`) dispatch goes through a local herdr
 server: one herdr workspace per ghws workspace (created lazily, reused,
 never closed), one tab per dispatch labeled `<task> <repo>#<num>`, agent
@@ -1538,6 +1555,9 @@ max_concurrent = 2
 # tasks = ["review", "ci"]          # task allowlist (empty = all tasks)
 # enabled = true
 # dispatch_mode = "tui"             # override the top-level dispatch_mode
+
+[dispatch]
+dewey_reindex = "report"   # after a clean run, a Dewey index that needs a reindex: report | auto (reindex when idle) | off
 
 # dispatchable tasks, one table each (see "Configuring dispatch" above).
 # All five are built in with these commands; a table only needs the keys

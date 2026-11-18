@@ -478,6 +478,7 @@ func dispatchOptions(cfg *config.Config, stateDir string, wsDirs []string, idx *
 		StateDir:      stateDir,
 		LearningsPR:   cfg.LearningsPR,
 		HumanGate:     cfg.HumanGateLabel,
+		DeweyReindex:  cfg.DeweyReindex,
 	}
 }
 

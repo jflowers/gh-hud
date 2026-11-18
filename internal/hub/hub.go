@@ -291,6 +291,7 @@ type Hub struct {
 
 	alertMu sync.Mutex // guards alerter (fetch and agents loops both use it)
 	alerter *Alerter
+	started time.Time // when the hub started (reindex alerts)
 
 	publishMu sync.Mutex // one publish at a time, so Seq order is data order
 
@@ -343,6 +344,7 @@ func New(opts Options) *Hub {
 	}
 	h := &Hub{
 		opts:      opts,
+		started:   opts.Now(),
 		alerter:   NewAlerter(opts.Config),
 		subs:      map[*subscriber]struct{}{},
 		fetchReq:  make(chan struct{}, 1),
@@ -584,6 +586,13 @@ func (h *Hub) refreshWorkspaces(ctx context.Context) {
 		s.Workspaces, s.WorkspacesLoading = ws, false
 		s.WorkspacesAt = h.opts.Now()
 	})
+	if own, _ := h.opts.Dispatcher.Owner(); !own || ctx.Err() != nil {
+		return // the owner runs the reindexes and alerts on them
+	}
+	h.alertMu.Lock()
+	alerts := h.alerter.Workspaces(ws, h.started)
+	h.alertMu.Unlock()
+	h.post(alerts)
 }
 
 // MuteNotifier stops the hub posting alerts to its Notifier until the
