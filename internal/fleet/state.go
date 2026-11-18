@@ -12,10 +12,12 @@ import (
 // listed start pending; the first poll marks machines already at target
 // current.
 
-// persistedMachine is one held machine.
+// persistedMachine is one held machine, or one whose Dewey binary from
+// before its apply must outlive a restart (dewey.go).
 type persistedMachine struct {
-	State State  `json:"state"`
-	Error string `json:"error,omitempty"`
+	State       State  `json:"state,omitempty"`
+	Error       string `json:"error,omitempty"`
+	DeweyBefore string `json:"dewey_before,omitempty"`
 }
 
 // persistedState is the fleet.json shape.
@@ -48,8 +50,9 @@ func (c *Coordinator) loadPersisted() {
 		if !ok {
 			continue
 		}
+		ms.DeweyBefore = pm.DeweyBefore
 		switch pm.State {
-		case StateDraining, StateApplying, StateVerifying:
+		case StateDraining, StateApplying, StateReindexing, StateVerifying:
 			ms.State = StateDraining
 			ms.DrainStart = c.opts.Clock.Now()
 			ms.LastErr = pm.Error
@@ -65,10 +68,14 @@ func (c *Coordinator) persistLocked() {
 	p := persistedState{Target: c.target, Paused: c.paused, Machines: map[string]persistedMachine{}}
 	for _, ms := range c.machines {
 		switch ms.State {
-		case StateDraining, StateApplying, StateVerifying:
-			p.Machines[ms.Name] = persistedMachine{State: StateDraining, Error: ms.LastErr}
+		case StateDraining, StateApplying, StateReindexing, StateVerifying:
+			p.Machines[ms.Name] = persistedMachine{State: StateDraining, Error: ms.LastErr, DeweyBefore: ms.DeweyBefore}
 		case StateFailed:
-			p.Machines[ms.Name] = persistedMachine{State: ms.State, Error: ms.LastErr}
+			p.Machines[ms.Name] = persistedMachine{State: ms.State, Error: ms.LastErr, DeweyBefore: ms.DeweyBefore}
+		default:
+			if ms.DeweyBefore != "" {
+				p.Machines[ms.Name] = persistedMachine{DeweyBefore: ms.DeweyBefore}
+			}
 		}
 	}
 	data, err := json.Marshal(p)

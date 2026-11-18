@@ -94,4 +94,60 @@ public interface FleetMachineOrBuilder extends
    */
   com.google.protobuf.ByteString
       getLastErrorBytes();
+
+  /**
+   * <pre>
+   * The machine's Dewey reindex after this rollout changed its Dewey
+   * binary: vaults handled so far and in all (state "reindexing" shows
+   * them as "reindexing 7/15"), the vaults that failed or were skipped
+   * ("&lt;dir&gt;: &lt;why&gt;"), and a summary ("" when the pin didn't change).
+   * </pre>
+   *
+   * <code>int32 reindex_done = 8 [json_name = "reindexDone"];</code>
+   * @return The reindexDone.
+   */
+  int getReindexDone();
+
+  /**
+   * <code>int32 reindex_total = 9 [json_name = "reindexTotal"];</code>
+   * @return The reindexTotal.
+   */
+  int getReindexTotal();
+
+  /**
+   * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+   * @return A list containing the reindexFailures.
+   */
+  java.util.List<java.lang.String>
+      getReindexFailuresList();
+  /**
+   * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+   * @return The count of reindexFailures.
+   */
+  int getReindexFailuresCount();
+  /**
+   * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+   * @param index The index of the element to return.
+   * @return The reindexFailures at the given index.
+   */
+  java.lang.String getReindexFailures(int index);
+  /**
+   * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+   * @param index The index of the element to return.
+   * @return The reindexFailures at the given index.
+   */
+  com.google.protobuf.ByteString
+      getReindexFailuresBytes(int index);
+
+  /**
+   * <code>string reindex_note = 11 [json_name = "reindexNote"];</code>
+   * @return The reindexNote.
+   */
+  java.lang.String getReindexNote();
+  /**
+   * <code>string reindex_note = 11 [json_name = "reindexNote"];</code>
+   * @return The bytes for reindexNote.
+   */
+  com.google.protobuf.ByteString
+      getReindexNoteBytes();
 }

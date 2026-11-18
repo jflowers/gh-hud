@@ -1322,6 +1322,23 @@ next poll. After the local apply succeeds, a banner says gh-hud restarts
 into the new binary once idle (see "The hub"). With `self_restart = false`
 it reminds you to restart it.
 
+When an apply changes the machine's Dewey binary (`mise which dewey`,
+else `command -v dewey`, compared before and after; mise's install path
+carries the version), the machine goes `applying` → `reindexing 7/15` →
+`verifying`: still drained, it reindexes and warms every Dewey vault in
+its ghws `@` instances, plus the base checkouts that have a `graph.db`,
+one at a time, under the same rules as the automatic reindex (busy
+`reindexing`, none with a live agent, leftovers or a held `dewey.lock`).
+Each success records the new binary as the checkout's baseline, so no
+teardown check reports `dewey upgraded` afterwards. A vault that fails or
+is skipped is listed under the machine in the fleet view and notified
+once, and the rollout goes on. This follows `[dispatch] dewey_reindex`:
+only `"auto"` reindexes; `"report"` (the default) lists how many vaults
+need a reindex and touches nothing; `"off"` doesn't look. When the binary
+can't be read before or after the apply, the view says the change is
+unknown and nothing is reindexed. The hub is still last, so its own
+checkouts are reindexed after its own apply.
+
 `F` opens the fleet view: per-machine table (name, reachable, slots,
 applied vs target sha, state, drain wait, last error) with target/CI/pause
 status in the header. Keys: `p` pause/resume · `a` apply now (force a
