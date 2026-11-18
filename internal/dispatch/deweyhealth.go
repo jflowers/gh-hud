@@ -281,28 +281,36 @@ func judgeIndexHealth(f deweyFacts, base string, haveBase bool) (h IndexHealth, 
 // a Dewey vault. A checkout without a recorded baseline gets the current
 // binary as one.
 func (d *Dispatcher) checkIndexHealth(ctx context.Context, m Machine, r Record) string {
+	rec, _, _ := d.checkIndexHealthFull(ctx, m, r)
+	return rec
+}
+
+// checkIndexHealthFull is checkIndexHealth with the verdict too; ok is
+// false when there is none (not a vault, the checkout busy, or the check
+// couldn't run).
+func (d *Dispatcher) checkIndexHealthFull(ctx context.Context, m Machine, r Record) (rec string, h IndexHealth, ok bool) {
 	ctx, cancel := context.WithTimeout(ctx, indexHealthTimeout)
 	defer cancel()
 	if d.busyElsewhere(ctx, r) {
-		return d.busyIndexHealth(ctx, m, r)
+		return d.busyIndexHealth(ctx, m, r), h, false
 	}
 	out, err := m.shell(ctx, "cd -- "+shellQuoteTilde(r.Dir)+" || exit 1\n"+deweyHealthFragment(true))
 	if err != nil {
-		return IndexHealth{Err: err.Error()}.String()
+		return IndexHealth{Err: err.Error()}.String(), h, false
 	}
-	f, ok := parseDeweyFacts(out)
-	if !ok {
-		return IndexHealth{Err: "no output"}.String()
+	f, parsed := parseDeweyFacts(out)
+	if !parsed {
+		return IndexHealth{Err: "no output"}.String(), h, false
 	}
 	if f.Vault == "" && f.Err == "" {
-		return ""
+		return "", h, false
 	}
 	base, have := d.deweyBaseline(r.Machine, r.Dir)
 	h, newBase := judgeIndexHealth(f, base.Binary, have)
 	if newBase != "" {
 		d.setDeweyBaseline(r.Machine, r.Dir, newBase)
 	}
-	return h.String()
+	return h.String(), h, true
 }
 
 // busyIndexHealth is the skipped check's record for a checkout another

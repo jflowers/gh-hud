@@ -127,6 +127,47 @@ auto = true
 	}
 }
 
+func TestLoadDeweyReindex(t *testing.T) {
+	load := func(body string) (*Config, error) {
+		path := filepath.Join(t.TempDir(), "config.toml")
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return Load(path)
+	}
+	if d := Default(); d.DeweyReindex != DeweyReindexReport {
+		t.Errorf("default dewey_reindex = %q, want report", d.DeweyReindex)
+	}
+	for _, v := range []string{"off", "report", "auto"} {
+		c, err := load("[dispatch]\ndewey_reindex = \"" + v + "\"\n\n[dispatch.review]\nauto = true\n")
+		if err != nil {
+			t.Fatalf("%s: %v", v, err)
+		}
+		if c.DeweyReindex != v {
+			t.Errorf("dewey_reindex = %q, want %q", c.DeweyReindex, v)
+		}
+		if len(c.Warnings) > 0 {
+			t.Errorf("%s: warnings %v", v, c.Warnings)
+		}
+		if got := c.Dispatch["review"]; got.Command != "/uf.review-pr {num}" || !got.Auto || len(c.Dispatch) != 5 {
+			t.Errorf("%s: tasks beside it = %+v", v, c.Dispatch)
+		}
+	}
+	c, err := load("[dispatch]\ndewey_reindex = \"auto\"\n")
+	if err != nil || c.DeweyReindex != "auto" || len(c.Dispatch) != 5 {
+		t.Errorf("only dewey_reindex: %+v %v", c, err)
+	}
+	if c, err := load("max_concurrent = 3\n"); err != nil || c.DeweyReindex != "report" {
+		t.Errorf("unset: %v %v", c, err)
+	}
+	if _, err := load("[dispatch]\ndewey_reindex = \"always\"\n"); err == nil || !strings.Contains(err.Error(), "want off, report or auto") {
+		t.Errorf("invalid value: %v", err)
+	}
+	if _, err := load("[dispatch]\ndewey_reindex = true\n"); err == nil {
+		t.Error("a bool dewey_reindex loaded")
+	}
+}
+
 func TestLoadDispatchAutoOnlyKeepsCommand(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.toml")
@@ -450,6 +491,7 @@ func TestLoadWarnsUnknownKeys(t *testing.T) {
 			"config: unknown keys supervisor.agent, supervisor.max_concurrent (a [table] header above top-level settings?)",
 		},
 		{"nested typo", "[auto_merge]\nmethd = \"squash\"\n", "config: unknown key auto_merge.methd"},
+		{"dispatch task typo", "[dispatch]\ndewey_reindex = \"auto\"\n[dispatch.review]\nato = true\n", "config: unknown key dispatch.review.ato"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

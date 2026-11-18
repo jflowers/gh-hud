@@ -269,4 +269,33 @@ public interface CheckoutHealthOrBuilder extends
    * @return The indexStatusAt.
    */
   com.google.protobuf.Timestamp getIndexStatusAt();
+
+  /**
+   * <pre>
+   * gh-hud is reindexing the checkout's Dewey index: it takes no dispatch.
+   * </pre>
+   *
+   * <code>bool reindexing = 22 [json_name = "reindexing"];</code>
+   * @return The reindexing.
+   */
+  boolean getReindexing();
+
+  /**
+   * <pre>
+   * unset: none recorded
+   * </pre>
+   *
+   * <code>.ghhud.v1.ReindexResult last_reindex = 23 [json_name = "lastReindex"];</code>
+   * @return Whether the lastReindex field is set.
+   */
+  boolean hasLastReindex();
+  /**
+   * <pre>
+   * unset: none recorded
+   * </pre>
+   *
+   * <code>.ghhud.v1.ReindexResult last_reindex = 23 [json_name = "lastReindex"];</code>
+   * @return The lastReindex.
+   */
+  io.github.jflowers.ghhud.api.v1.ReindexResult getLastReindex();
 }

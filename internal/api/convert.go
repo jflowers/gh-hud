@@ -626,27 +626,50 @@ func checkoutToPB(h dispatch.CheckoutHealth) *pb.CheckoutHealth {
 		IndexBlocks:     int64(h.IndexBlocks),
 		IndexEmbeddings: int64(h.IndexEmbeddings),
 		IndexStatusAt:   ts(h.IndexStatusAt),
+		Reindexing:      h.Reindexing,
+		LastReindex:     reindexToPB(h.LastReindex),
+	}
+}
+
+func reindexToPB(r *dispatch.ReindexResult) *pb.ReindexResult {
+	if r == nil {
+		return nil
+	}
+	return &pb.ReindexResult{
+		At: ts(r.At), Duration: dur(r.Duration), Binary: r.Binary,
+		Reasons: strs(r.Reasons), Skipped: r.Skipped, Error: r.Err,
+	}
+}
+
+func reindexFromPB(p *pb.ReindexResult) *dispatch.ReindexResult {
+	if p == nil {
+		return nil
+	}
+	return &dispatch.ReindexResult{
+		At: fromTS(p.GetAt()), Duration: fromDur(p.GetDuration()), Binary: p.GetBinary(),
+		Reasons: strs(p.GetReasons()), Skipped: p.GetSkipped(), Err: p.GetError(),
 	}
 }
 
 func checkoutFromPB(p *pb.CheckoutHealth) dispatch.CheckoutHealth {
 	return dispatch.CheckoutHealth{
-		Machine:    p.GetMachine(),
-		Workspace:  p.GetWorkspace(),
-		Repo:       p.GetRepo(),
-		Dir:        p.GetDir(),
-		Branch:     p.GetBranch(),
-		Default:    p.GetDefaultBranch(),
-		Ahead:      int(p.GetAhead()),
-		Behind:     int(p.GetBehind()),
-		Dirty:      strs(p.GetDirty()),
-		Learnings:  int(p.GetLearnings()),
-		LocalOnly:  strs(p.GetLocalOnly()),
-		Stashes:    int(p.GetStashes()),
-		Busy:       p.GetBusy(),
-		NoUpstream: p.GetNoUpstream(),
-		Err:        p.GetError(),
-
+		Machine:         p.GetMachine(),
+		Workspace:       p.GetWorkspace(),
+		Repo:            p.GetRepo(),
+		Dir:             p.GetDir(),
+		Branch:          p.GetBranch(),
+		Default:         p.GetDefaultBranch(),
+		Ahead:           int(p.GetAhead()),
+		Behind:          int(p.GetBehind()),
+		Dirty:           strs(p.GetDirty()),
+		Learnings:       int(p.GetLearnings()),
+		LocalOnly:       strs(p.GetLocalOnly()),
+		Stashes:         int(p.GetStashes()),
+		Busy:            p.GetBusy(),
+		NoUpstream:      p.GetNoUpstream(),
+		Err:             p.GetError(),
+		Reindexing:      p.GetReindexing(),
+		LastReindex:     reindexFromPB(p.GetLastReindex()),
 		Index:           p.GetIndex(),
 		IndexBuilt:      fromTS(p.GetIndexBuilt()),
 		IndexPages:      int(p.GetIndexPages()),

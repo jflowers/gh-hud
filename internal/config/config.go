@@ -84,8 +84,16 @@ type Config struct {
 	// agent stays blocked this long; 0 disables it. Requires notify. The
 	// default sits past auto-question's 120s handler timeout so a slow
 	// decision is not reported as needing a human.
-	BlockedNotifySecs int                   `toml:"blocked_notify_secs"`
-	Dispatch          map[string]TaskConfig `toml:"dispatch"`
+	BlockedNotifySecs int `toml:"blocked_notify_secs"`
+	// Dispatch is the [dispatch] table's tasks, one [dispatch.<task>]
+	// table each. Load decodes it by hand (decodeDispatch), because the
+	// same table also holds the scalar settings below.
+	Dispatch map[string]TaskConfig `toml:"-"`
+	// DeweyReindex is [dispatch] dewey_reindex: what the after-run Dewey
+	// index check does when a checkout's index needs a reindex. "report"
+	// (default) only records it on the run; "auto" reindexes and warms
+	// the index once the checkout is idle (#133); "off" skips the check.
+	DeweyReindex string `toml:"-"`
 	// AutoMerge turns on GitHub auto-merge for your PRs ([auto_merge]).
 	AutoMerge AutoMergeConfig `toml:"auto_merge"`
 	// Supervisor starts a read-only agent on cases the rules can't settle
@@ -163,6 +171,7 @@ func Default() *Config {
 		HerdrWatchCmd:  defaultHerdrWatchCmd,
 		DispatchMode:   "run",
 		Dispatch:       DefaultDispatch(),
+		DeweyReindex:   DeweyReindexReport,
 		Fleet:          DefaultFleet(),
 		Hub:            HubConfig{Listen: "127.0.0.1:0"},
 
@@ -419,6 +428,55 @@ func DefaultFleet() FleetConfig {
 	}
 }
 
+// [dispatch] dewey_reindex values.
+const (
+	DeweyReindexOff    = "off"
+	DeweyReindexReport = "report"
+	DeweyReindexAuto   = "auto"
+)
+
+// dispatchScalars are the [dispatch] keys that are settings, not tasks.
+var dispatchScalars = map[string]bool{"dewey_reindex": true}
+
+// decodeDispatch reads the [dispatch] table: its task tables into
+// cfg.Dispatch and its scalar settings (dewey_reindex) into their fields.
+// The main decode skips the table, since one Go type can't hold both a
+// task table and a string. It returns the table's keys nothing read.
+func decodeDispatch(data string, cfg *Config) ([]toml.Key, error) {
+	var raw struct {
+		Dispatch map[string]toml.Primitive `toml:"dispatch"`
+	}
+	md, err := toml.Decode(data, &raw)
+	if err != nil {
+		return nil, err
+	}
+	if raw.Dispatch == nil {
+		return nil, nil
+	}
+	tasks := map[string]TaskConfig{}
+	for name, prim := range raw.Dispatch {
+		if dispatchScalars[name] {
+			if err := md.PrimitiveDecode(prim, &cfg.DeweyReindex); err != nil {
+				return nil, fmt.Errorf("dispatch %s: %w", name, err)
+			}
+			continue
+		}
+		var tc TaskConfig
+		if err := md.PrimitiveDecode(prim, &tc); err != nil {
+			return nil, fmt.Errorf("dispatch.%s: %w", name, err)
+		}
+		tasks[name] = tc
+	}
+	cfg.Dispatch = tasks
+	var undecoded []toml.Key
+	for _, k := range md.Undecoded() {
+		if k[0] == "dispatch" {
+			undecoded = append(undecoded, k)
+		}
+	}
+	return undecoded, nil
+}
+
 // DefaultDispatch returns the built-in task → command map.
 func DefaultDispatch() map[string]TaskConfig {
 	return map[string]TaskConfig{
@@ -461,8 +519,25 @@ func Load(path string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse %s: %w", path, err)
 	}
-	if w := unknownKeys(md.Undecoded()); w != "" {
+	dispUndecoded, err := decodeDispatch(string(data), cfg)
+	if err != nil {
+		return nil, fmt.Errorf("parse %s: %w", path, err)
+	}
+	var undecoded []toml.Key
+	for _, k := range md.Undecoded() {
+		if k[0] != "dispatch" {
+			undecoded = append(undecoded, k)
+		}
+	}
+	if w := unknownKeys(append(undecoded, dispUndecoded...)); w != "" {
 		cfg.Warnings = append(cfg.Warnings, w)
+	}
+	switch cfg.DeweyReindex {
+	case "":
+		cfg.DeweyReindex = DeweyReindexReport
+	case DeweyReindexOff, DeweyReindexReport, DeweyReindexAuto:
+	default:
+		return nil, fmt.Errorf("%s: dispatch dewey_reindex %q: want off, report or auto", path, cfg.DeweyReindex)
 	}
 	if cfg.RefreshSecs < 10 {
 		cfg.RefreshSecs = 10
@@ -720,5 +795,6 @@ func topLevelKeys() map[string]bool {
 			out[name] = true
 		}
 	}
+	out["dispatch"] = true // decoded by hand (decodeDispatch)
 	return out
 }

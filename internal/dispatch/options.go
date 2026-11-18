@@ -23,8 +23,8 @@ func (d *Dispatcher) o() Options {
 //
 // Live: agent, max_concurrent, dispatch_mode, the dispatch tasks,
 // auto_merge, supervisor, epics, machines (enabled included),
-// busy_window, dirty, learnings_pr, dispatch_instances_only and the watch
-// commands. Restart: ghws_root, state_dir, runner and the checkout dirs.
+// busy_window, dirty, learnings_pr, dewey_reindex, dispatch_instances_only
+// and the watch commands. Restart: ghws_root, state_dir, runner and the checkout dirs.
 // The local ghws index is kept as it is (it refreshes itself). A machine a reload removes stays reachable for runs
 // already on it; it just gets no new work.
 func (d *Dispatcher) SetOptions(o Options) (restart []string) {

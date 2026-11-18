@@ -563,6 +563,70 @@ public object CheckoutHealthKt {
 
     public val CheckoutHealthKt.Dsl.indexStatusAtOrNull: com.google.protobuf.Timestamp?
       get() = _builder.indexStatusAtOrNull
+
+    /**
+     * ```
+     * gh-hud is reindexing the checkout's Dewey index: it takes no dispatch.
+     * ```
+     *
+     * `bool reindexing = 22 [json_name = "reindexing"];`
+     */
+    public var reindexing: kotlin.Boolean
+      @kotlin.jvm.JvmName("getReindexing")
+        get() = _builder.reindexing
+      @kotlin.jvm.JvmName("setReindexing")
+        set(value) {
+        _builder.reindexing = value
+      }
+    /**
+     * ```
+     * gh-hud is reindexing the checkout's Dewey index: it takes no dispatch.
+     * ```
+     *
+     * `bool reindexing = 22 [json_name = "reindexing"];`
+     */
+    public fun clearReindexing() {
+      _builder.clearReindexing()
+    }
+
+    /**
+     * ```
+     * unset: none recorded
+     * ```
+     *
+     * `.ghhud.v1.ReindexResult last_reindex = 23 [json_name = "lastReindex"];`
+     */
+    public var lastReindex: io.github.jflowers.ghhud.api.v1.ReindexResult
+      @kotlin.jvm.JvmName("getLastReindex")
+        get() = _builder.lastReindex
+      @kotlin.jvm.JvmName("setLastReindex")
+        set(value) {
+        _builder.lastReindex = value
+      }
+    /**
+     * ```
+     * unset: none recorded
+     * ```
+     *
+     * `.ghhud.v1.ReindexResult last_reindex = 23 [json_name = "lastReindex"];`
+     */
+    public fun clearLastReindex() {
+      _builder.clearLastReindex()
+    }
+    /**
+     * ```
+     * unset: none recorded
+     * ```
+     *
+     * `.ghhud.v1.ReindexResult last_reindex = 23 [json_name = "lastReindex"];`
+     * @return Whether the lastReindex field is set.
+     */
+    public fun hasLastReindex(): kotlin.Boolean {
+      return _builder.hasLastReindex()
+    }
+
+    public val CheckoutHealthKt.Dsl.lastReindexOrNull: io.github.jflowers.ghhud.api.v1.ReindexResult?
+      get() = _builder.lastReindexOrNull
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.CheckoutHealth.copy(block: `io.github.jflowers.ghhud.api.v1`.CheckoutHealthKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.CheckoutHealth =
@@ -573,4 +637,7 @@ public val io.github.jflowers.ghhud.api.v1.CheckoutHealthOrBuilder.indexBuiltOrN
 
 public val io.github.jflowers.ghhud.api.v1.CheckoutHealthOrBuilder.indexStatusAtOrNull: com.google.protobuf.Timestamp?
   get() = if (hasIndexStatusAt()) getIndexStatusAt() else null
+
+public val io.github.jflowers.ghhud.api.v1.CheckoutHealthOrBuilder.lastReindexOrNull: io.github.jflowers.ghhud.api.v1.ReindexResult?
+  get() = if (hasLastReindex()) getLastReindex() else null
 

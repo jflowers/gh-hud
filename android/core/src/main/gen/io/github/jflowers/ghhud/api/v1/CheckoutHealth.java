@@ -1029,6 +1029,111 @@ public  final class CheckoutHealth extends
     bitField0_ = (bitField0_ & ~0x00000002);
   }
 
+  public static final int REINDEXING_FIELD_NUMBER = 22;
+  private boolean reindexing_;
+  /**
+   * <pre>
+   * gh-hud is reindexing the checkout's Dewey index: it takes no dispatch.
+   * </pre>
+   *
+   * <code>bool reindexing = 22 [json_name = "reindexing"];</code>
+   * @return The reindexing.
+   */
+  @java.lang.Override
+  public boolean getReindexing() {
+    return reindexing_;
+  }
+  /**
+   * <pre>
+   * gh-hud is reindexing the checkout's Dewey index: it takes no dispatch.
+   * </pre>
+   *
+   * <code>bool reindexing = 22 [json_name = "reindexing"];</code>
+   * @param value The reindexing to set.
+   */
+  private void setReindexing(boolean value) {
+    
+    reindexing_ = value;
+  }
+  /**
+   * <pre>
+   * gh-hud is reindexing the checkout's Dewey index: it takes no dispatch.
+   * </pre>
+   *
+   * <code>bool reindexing = 22 [json_name = "reindexing"];</code>
+   */
+  private void clearReindexing() {
+
+    reindexing_ = false;
+  }
+
+  public static final int LAST_REINDEX_FIELD_NUMBER = 23;
+  private io.github.jflowers.ghhud.api.v1.ReindexResult lastReindex_;
+  /**
+   * <pre>
+   * unset: none recorded
+   * </pre>
+   *
+   * <code>.ghhud.v1.ReindexResult last_reindex = 23 [json_name = "lastReindex"];</code>
+   */
+  @java.lang.Override
+  public boolean hasLastReindex() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <pre>
+   * unset: none recorded
+   * </pre>
+   *
+   * <code>.ghhud.v1.ReindexResult last_reindex = 23 [json_name = "lastReindex"];</code>
+   */
+  @java.lang.Override
+  public io.github.jflowers.ghhud.api.v1.ReindexResult getLastReindex() {
+    return lastReindex_ == null ? io.github.jflowers.ghhud.api.v1.ReindexResult.getDefaultInstance() : lastReindex_;
+  }
+  /**
+   * <pre>
+   * unset: none recorded
+   * </pre>
+   *
+   * <code>.ghhud.v1.ReindexResult last_reindex = 23 [json_name = "lastReindex"];</code>
+   */
+  private void setLastReindex(io.github.jflowers.ghhud.api.v1.ReindexResult value) {
+    java.util.Objects.requireNonNull(value);
+    lastReindex_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <pre>
+   * unset: none recorded
+   * </pre>
+   *
+   * <code>.ghhud.v1.ReindexResult last_reindex = 23 [json_name = "lastReindex"];</code>
+   */
+  @java.lang.SuppressWarnings("ReferenceEquality")
+  private void mergeLastReindex(io.github.jflowers.ghhud.api.v1.ReindexResult value) {
+    java.util.Objects.requireNonNull(value);
+    if (lastReindex_ != null &&
+        lastReindex_ != io.github.jflowers.ghhud.api.v1.ReindexResult.getDefaultInstance()) {
+      lastReindex_ =
+        io.github.jflowers.ghhud.api.v1.ReindexResult.newBuilder(lastReindex_).mergeFrom(value).buildPartial();
+    } else {
+      lastReindex_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <pre>
+   * unset: none recorded
+   * </pre>
+   *
+   * <code>.ghhud.v1.ReindexResult last_reindex = 23 [json_name = "lastReindex"];</code>
+   */
+  private void clearLastReindex() {
+    lastReindex_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
   public static io.github.jflowers.ghhud.api.v1.CheckoutHealth parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2163,6 +2268,117 @@ public  final class CheckoutHealth extends
       return this;
     }
 
+    /**
+     * <pre>
+     * gh-hud is reindexing the checkout's Dewey index: it takes no dispatch.
+     * </pre>
+     *
+     * <code>bool reindexing = 22 [json_name = "reindexing"];</code>
+     * @return The reindexing.
+     */
+    @java.lang.Override
+    public boolean getReindexing() {
+      return instance.getReindexing();
+    }
+    /**
+     * <pre>
+     * gh-hud is reindexing the checkout's Dewey index: it takes no dispatch.
+     * </pre>
+     *
+     * <code>bool reindexing = 22 [json_name = "reindexing"];</code>
+     * @param value The reindexing to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReindexing(boolean value) {
+      copyOnWrite();
+      instance.setReindexing(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * gh-hud is reindexing the checkout's Dewey index: it takes no dispatch.
+     * </pre>
+     *
+     * <code>bool reindexing = 22 [json_name = "reindexing"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearReindexing() {
+      copyOnWrite();
+      instance.clearReindexing();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * unset: none recorded
+     * </pre>
+     *
+     * <code>.ghhud.v1.ReindexResult last_reindex = 23 [json_name = "lastReindex"];</code>
+     */
+    @java.lang.Override
+    public boolean hasLastReindex() {
+      return instance.hasLastReindex();
+    }
+    /**
+     * <pre>
+     * unset: none recorded
+     * </pre>
+     *
+     * <code>.ghhud.v1.ReindexResult last_reindex = 23 [json_name = "lastReindex"];</code>
+     */
+    @java.lang.Override
+    public io.github.jflowers.ghhud.api.v1.ReindexResult getLastReindex() {
+      return instance.getLastReindex();
+    }
+    /**
+     * <pre>
+     * unset: none recorded
+     * </pre>
+     *
+     * <code>.ghhud.v1.ReindexResult last_reindex = 23 [json_name = "lastReindex"];</code>
+     */
+    public Builder setLastReindex(io.github.jflowers.ghhud.api.v1.ReindexResult value) {
+      copyOnWrite();
+      instance.setLastReindex(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * unset: none recorded
+     * </pre>
+     *
+     * <code>.ghhud.v1.ReindexResult last_reindex = 23 [json_name = "lastReindex"];</code>
+     */
+    public Builder setLastReindex(
+        io.github.jflowers.ghhud.api.v1.ReindexResult.Builder builderForValue) {
+      copyOnWrite();
+      instance.setLastReindex(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * unset: none recorded
+     * </pre>
+     *
+     * <code>.ghhud.v1.ReindexResult last_reindex = 23 [json_name = "lastReindex"];</code>
+     */
+    public Builder mergeLastReindex(io.github.jflowers.ghhud.api.v1.ReindexResult value) {
+      copyOnWrite();
+      instance.mergeLastReindex(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * unset: none recorded
+     * </pre>
+     *
+     * <code>.ghhud.v1.ReindexResult last_reindex = 23 [json_name = "lastReindex"];</code>
+     */
+    public Builder clearLastReindex() {  copyOnWrite();
+      instance.clearLastReindex();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.CheckoutHealth)
   }
   @java.lang.Override
@@ -2201,12 +2417,15 @@ public  final class CheckoutHealth extends
             "indexBlocks_",
             "indexEmbeddings_",
             "indexStatusAt_",
+            "reindexing_",
+            "lastReindex_",
           };
           java.lang.String info =
-              "\u0000\u0015\u0000\u0001\u0001\u0015\u0015\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0017\u0000\u0001\u0001\u0017\u0017\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u0208\u0007\u0002\b\u0002\t\u021a\n\u0002" +
               "\u000b\u021a\f\u0002\r\u0208\u000e\u0007\u000f\u0208\u0010\u0208\u0011\u1009\u0000" +
-              "\u0012\u0002\u0013\u0002\u0014\u0002\u0015\u1009\u0001";
+              "\u0012\u0002\u0013\u0002\u0014\u0002\u0015\u1009\u0001\u0016\u0007\u0017\u1009\u0002" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

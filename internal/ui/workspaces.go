@@ -54,6 +54,8 @@ func wsCells(h dispatch.CheckoutHealth) (glyph string, color lipgloss.Color, sta
 			ref = ref[i:]
 		}
 		return "●", cTeal, "running " + ref
+	case h.Reindexing:
+		return "●", cTeal, h.Problem()
 	case h.NoUpstream:
 		return "◆", cYellow, h.Problem()
 	case !h.Ready():
@@ -92,6 +94,9 @@ func wsNotes(h dispatch.CheckoutHealth) string {
 	}
 	if h.Learnings > 0 {
 		parts = append(parts, fmt.Sprintf("%d learnings", h.Learnings))
+	}
+	if r := h.LastReindex; r != nil && r.Failed() && !h.Reindexing {
+		parts = append(parts, "reindex failed")
 	}
 	return strings.Join(parts, " · ")
 }
@@ -188,7 +193,7 @@ func (m *Model) workspacesView() string {
 	}
 	busy := 0
 	for _, h := range list {
-		if h.Busy != "" {
+		if h.Busy != "" || h.Reindexing {
 			busy++
 		}
 	}
@@ -294,7 +299,23 @@ func wsDetail(h dispatch.CheckoutHealth, w int) []string {
 	if h.Learnings > 0 {
 		lines = append(lines, field("learnings", fmt.Sprintf("%d untracked; the next clean run opens the daily chore PR", h.Learnings)))
 	}
+	if h.Reindexing {
+		lines = append(lines, field("dewey", "reindexing and warming the index; no dispatch here until it ends"))
+	}
+	if r := h.LastReindex; r != nil {
+		lines = append(lines, field("last reindex", reindexLine(*r, time.Now())))
+	}
 	return lines
+}
+
+// reindexLine renders a last reindex for the detail pane: "ok in 3m12s,
+// Nov 18 09:30 (2h ago), for learnings changed".
+func reindexLine(r dispatch.ReindexResult, now time.Time) string {
+	s := r.String() + ", " + r.At.Local().Format("Jan 2 15:04") + " (" + model.RelativeTime(r.At, now) + " ago)"
+	if len(r.Reasons) > 0 {
+		s += ", for " + strings.Join(r.Reasons, ", ")
+	}
+	return s
 }
 
 func (m *Model) workspacesFooter() string {

@@ -51,6 +51,14 @@ public enum AlertType
    * <code>ALERT_TYPE_TOOLKIT_TARGET = 5;</code>
    */
   ALERT_TYPE_TOOLKIT_TARGET(5),
+  /**
+   * <pre>
+   * an automatic Dewey reindex of a checkout failed (ref is [machine:]workspace)
+   * </pre>
+   *
+   * <code>ALERT_TYPE_REINDEX_FAILED = 6;</code>
+   */
+  ALERT_TYPE_REINDEX_FAILED(6),
   UNRECOGNIZED(-1),
   ;
 
@@ -94,6 +102,14 @@ public enum AlertType
    * <code>ALERT_TYPE_TOOLKIT_TARGET = 5;</code>
    */
   public static final int ALERT_TYPE_TOOLKIT_TARGET_VALUE = 5;
+  /**
+   * <pre>
+   * an automatic Dewey reindex of a checkout failed (ref is [machine:]workspace)
+   * </pre>
+   *
+   * <code>ALERT_TYPE_REINDEX_FAILED = 6;</code>
+   */
+  public static final int ALERT_TYPE_REINDEX_FAILED_VALUE = 6;
 
 
   @java.lang.Override
@@ -122,6 +138,7 @@ public enum AlertType
       case 3: return ALERT_TYPE_RUN_FINISHED;
       case 4: return ALERT_TYPE_TOOL_RELEASE;
       case 5: return ALERT_TYPE_TOOLKIT_TARGET;
+      case 6: return ALERT_TYPE_REINDEX_FAILED;
       default: return null;
     }
   }

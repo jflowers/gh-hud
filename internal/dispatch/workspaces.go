@@ -45,6 +45,12 @@ type CheckoutHealth struct {
 	IndexStatusAt   time.Time
 
 	facts *deweyFacts // this read's DW lines, for applyIndexHealth
+	// Reindexing: gh-hud is reindexing the checkout's Dewey index
+	// (deweyreindex.go), so it takes no dispatch.
+	Reindexing bool
+	// LastReindex is the checkout's last automatic Dewey reindex (nil:
+	// none recorded).
+	LastReindex *ReindexResult
 }
 
 // Problem is why a dispatch would not use or would refuse the checkout
@@ -55,6 +61,8 @@ func (h CheckoutHealth) Problem() string {
 		return h.Err
 	case h.Busy != "":
 		return "running " + h.Busy
+	case h.Reindexing:
+		return busyReindexing
 	case h.NoUpstream:
 		return "no upstream remote"
 	case len(h.Dirty) > 0:
@@ -111,9 +119,21 @@ func (d *Dispatcher) Workspaces(ctx context.Context) []CheckoutHealth {
 	}
 	wg.Wait()
 
+	reindexing, reindexes := d.reindexingDirs(), d.lastReindexes()
 	var out []CheckoutHealth
 	for _, rows := range results {
-		out = append(out, rows...)
+		for _, h := range rows {
+			if ref, ok := busy[h.Machine+"\x00"+h.Dir]; ok {
+				h.Busy = ref
+			}
+			if dir, ok := reindexing[h.Machine]; ok && samePath(dir, h.Dir) {
+				h.Reindexing = true
+			}
+			if r, ok := reindexes[deweyBaseKey(h.Machine, h.Dir)]; ok {
+				h.LastReindex = &r
+			}
+			out = append(out, h)
+		}
 	}
 	return out
 }

@@ -34,6 +34,8 @@ const (
 	// AlertToolkitTarget: a repo in a tool rollout waits for you: its
 	// scaffold was held for a look, refused, failed, or fails CI.
 	AlertToolkitTarget
+	// AlertReindexFailed: an automatic Dewey reindex of a checkout failed.
+	AlertReindexFailed
 )
 
 // Alert is one thing worth interrupting the operator for. It stays
@@ -65,6 +67,8 @@ type Alerter struct {
 	// targets: toolkit targets waiting on you, by ToolkitTargetKey (nil
 	// until seeded).
 	targets map[string]bool
+	// reindexFails: failed reindexes already alerted, by checkout and time.
+	reindexFails map[string]bool
 }
 
 // NewAlerter builds an Alerter from the notify settings in cfg.
@@ -216,6 +220,38 @@ func (a *Alerter) Toolkit(snap toolkit.Snapshot) []Alert {
 			}
 			out = append(out, Alert{Type: AlertToolkitTarget, Ref: ref, Text: toolkitTargetText(r, t)})
 		}
+	}
+	return out
+}
+
+// Workspaces alerts once per failed automatic Dewey reindex that ended
+// after since (the hub's start: a reindex runs in the hub, so one that
+// ended before it was announced by the hub that ran it). It doesn't
+// retry: a reindex that fails again later is a new alert.
+func (a *Alerter) Workspaces(ws []dispatch.CheckoutHealth, since time.Time) []Alert {
+	if a.reindexFails == nil {
+		a.reindexFails = map[string]bool{}
+	}
+	var out []Alert
+	for _, h := range ws {
+		r := h.LastReindex
+		if r == nil || !r.Failed() || r.At.Before(since) {
+			continue
+		}
+		key := h.Machine + "|" + h.Dir + "|" + r.At.String()
+		if a.reindexFails[key] {
+			continue
+		}
+		a.reindexFails[key] = true
+		if !a.notify {
+			continue
+		}
+		where := h.Workspace
+		if h.Machine != "" {
+			where = h.Machine + ":" + where
+		}
+		out = append(out, Alert{Type: AlertReindexFailed, Ref: where,
+			Text: "Dewey reindex failed in " + where + ": " + truncate(r.Err, 120)})
 	}
 	return out
 }

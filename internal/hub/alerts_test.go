@@ -209,3 +209,37 @@ func TestPost(t *testing.T) {
 		t.Errorf("posted = %q, want %q", got, want)
 	}
 }
+
+// A failed automatic Dewey reindex alerts once; one that ended before the
+// hub started, a success, or a skip doesn't.
+func TestWorkspacesAlertsReindexFailureOnce(t *testing.T) {
+	start := time.Date(2026, 11, 18, 9, 0, 0, 0, time.UTC)
+	row := func(machine string, r *dispatch.ReindexResult) dispatch.CheckoutHealth {
+		return dispatch.CheckoutHealth{Machine: machine, Workspace: "acme@oak", Dir: "/w/" + machine, LastReindex: r}
+	}
+	failed := &dispatch.ReindexResult{At: start.Add(time.Minute), Err: "dewey reindex: no embedder"}
+	ws := []dispatch.CheckoutHealth{
+		row("lap1", failed),
+		row("", &dispatch.ReindexResult{At: start.Add(-time.Hour), Err: "old"}),
+		row("lap2", &dispatch.ReindexResult{At: start.Add(time.Minute)}),
+		row("lap3", &dispatch.ReindexResult{At: start.Add(time.Minute), Skipped: "dewey.lock held"}),
+		row("lap4", nil),
+	}
+	a := NewAlerter(on())
+	got := a.Workspaces(ws, start)
+	if len(got) != 1 || got[0].Type != AlertReindexFailed || got[0].Ref != "lap1:acme@oak" ||
+		got[0].Text != "Dewey reindex failed in lap1:acme@oak: dewey reindex: no embedder" {
+		t.Fatalf("alerts = %+v", got)
+	}
+	if got := a.Workspaces(ws, start); len(got) != 0 {
+		t.Errorf("repeated: %+v", got)
+	}
+	again := *failed
+	again.At = start.Add(time.Hour) // the next teardown's reindex failed too
+	if got := a.Workspaces([]dispatch.CheckoutHealth{row("lap1", &again)}, start); len(got) != 1 {
+		t.Errorf("a later failure: %+v", got)
+	}
+	if got := NewAlerter(&config.Config{}).Workspaces(ws, start); len(got) != 0 {
+		t.Errorf("notify off: %+v", got)
+	}
+}

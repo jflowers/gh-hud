@@ -757,6 +757,19 @@ message CheckoutHealth {
   int64 index_blocks = 19;
   int64 index_embeddings = 20;
   google.protobuf.Timestamp index_status_at = 21;
+  // gh-hud is reindexing the checkout's Dewey index: it takes no dispatch.
+  bool reindexing = 22;
+  ReindexResult last_reindex = 23; // unset: none recorded
+}
+
+// ReindexResult is the outcome of an automatic Dewey reindex of a checkout.
+message ReindexResult {
+  google.protobuf.Timestamp at = 1; // when it ended
+  google.protobuf.Duration duration = 2;
+  string binary = 3;
+  repeated string reasons = 4; // why it ran
+  string skipped = 5; // why it didn't run ("dewey.lock held")
+  string error = 6; // why it failed
 }
 
 message FleetSnapshot {
@@ -802,6 +815,7 @@ enum AlertType {
   ALERT_TYPE_RUN_FINISHED = 3;
   ALERT_TYPE_TOOL_RELEASE = 4; // a tool released; its rollout waits for you (ref is tool@version)
   ALERT_TYPE_TOOLKIT_TARGET = 5; // a repo in a tool rollout waits for you: held, refused, failed or CI failing (ref is its PR's owner/repo#N, else tool@version)
+  ALERT_TYPE_REINDEX_FAILED = 6; // an automatic Dewey reindex of a checkout failed (ref is [machine:]workspace)
 }
 
 message Alert {
