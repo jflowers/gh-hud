@@ -304,6 +304,45 @@ public object FleetMachineKt {
     public fun clearReindexNote() {
       _builder.clearReindexNote()
     }
+
+    /**
+     * ```
+     * unset: no pass asked for since the hub started
+     * ```
+     *
+     * `.ghhud.v1.DeweyPass dewey_pass = 12 [json_name = "deweyPass"];`
+     */
+    public var deweyPass: io.github.jflowers.ghhud.api.v1.DeweyPass
+      @kotlin.jvm.JvmName("getDeweyPass")
+        get() = _builder.deweyPass
+      @kotlin.jvm.JvmName("setDeweyPass")
+        set(value) {
+        _builder.deweyPass = value
+      }
+    /**
+     * ```
+     * unset: no pass asked for since the hub started
+     * ```
+     *
+     * `.ghhud.v1.DeweyPass dewey_pass = 12 [json_name = "deweyPass"];`
+     */
+    public fun clearDeweyPass() {
+      _builder.clearDeweyPass()
+    }
+    /**
+     * ```
+     * unset: no pass asked for since the hub started
+     * ```
+     *
+     * `.ghhud.v1.DeweyPass dewey_pass = 12 [json_name = "deweyPass"];`
+     * @return Whether the deweyPass field is set.
+     */
+    public fun hasDeweyPass(): kotlin.Boolean {
+      return _builder.hasDeweyPass()
+    }
+
+    public val FleetMachineKt.Dsl.deweyPassOrNull: io.github.jflowers.ghhud.api.v1.DeweyPass?
+      get() = _builder.deweyPassOrNull
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.FleetMachine.copy(block: `io.github.jflowers.ghhud.api.v1`.FleetMachineKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.FleetMachine =
@@ -311,4 +350,7 @@ public inline fun io.github.jflowers.ghhud.api.v1.FleetMachine.copy(block: `io.g
 
 public val io.github.jflowers.ghhud.api.v1.FleetMachineOrBuilder.waitedOrNull: com.google.protobuf.Duration?
   get() = if (hasWaited()) getWaited() else null
+
+public val io.github.jflowers.ghhud.api.v1.FleetMachineOrBuilder.deweyPassOrNull: io.github.jflowers.ghhud.api.v1.DeweyPass?
+  get() = if (hasDeweyPass()) getDeweyPass() else null
 

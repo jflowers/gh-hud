@@ -1216,6 +1216,41 @@ public nonisolated struct Ghhud_V1_FleetControlResponse: Sendable {
   public init() {}
 }
 
+public nonisolated struct Ghhud_V1_DeweyReindexRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// a fleet machine ("local" is the hub); "" with all
+  public var machine: String = String()
+
+  /// every fleet machine
+  public var all: Bool = false
+
+  /// cancel the running pass instead of starting one
+  public var cancel: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Ghhud_V1_DeweyReindexResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// where a pass started (or was cancelled)
+  public var machines: [String] = []
+
+  /// with all: "<machine>: <why>" for the rest
+  public var refused: [String] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public nonisolated struct Ghhud_V1_ToolkitRolloutRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -2808,50 +2843,141 @@ public nonisolated struct Ghhud_V1_FleetSnapshot: Sendable {
   public init() {}
 }
 
-public nonisolated struct Ghhud_V1_FleetMachine: Sendable {
+public nonisolated struct Ghhud_V1_FleetMachine: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var name: String = String()
+  public var name: String {
+    get {_storage._name}
+    set {_uniqueStorage()._name = newValue}
+  }
 
-  public var state: String = String()
+  public var state: String {
+    get {_storage._state}
+    set {_uniqueStorage()._state = newValue}
+  }
 
-  public var reachable: Bool = false
+  public var reachable: Bool {
+    get {_storage._reachable}
+    set {_uniqueStorage()._reachable = newValue}
+  }
 
-  public var applied: String = String()
+  public var applied: String {
+    get {_storage._applied}
+    set {_uniqueStorage()._applied = newValue}
+  }
 
-  public var appliedShort: String = String()
+  public var appliedShort: String {
+    get {_storage._appliedShort}
+    set {_uniqueStorage()._appliedShort = newValue}
+  }
 
   /// time spent draining
   public var waited: SwiftProtobuf.Google_Protobuf_Duration {
-    get {_waited ?? SwiftProtobuf.Google_Protobuf_Duration()}
-    set {_waited = newValue}
+    get {_storage._waited ?? SwiftProtobuf.Google_Protobuf_Duration()}
+    set {_uniqueStorage()._waited = newValue}
   }
   /// Returns true if `waited` has been explicitly set.
-  public var hasWaited: Bool {self._waited != nil}
+  public var hasWaited: Bool {_storage._waited != nil}
   /// Clears the value of `waited`. Subsequent reads from it will return its default value.
-  public mutating func clearWaited() {self._waited = nil}
+  public mutating func clearWaited() {_uniqueStorage()._waited = nil}
 
-  public var lastError: String = String()
+  public var lastError: String {
+    get {_storage._lastError}
+    set {_uniqueStorage()._lastError = newValue}
+  }
 
   /// The machine's Dewey reindex after this rollout changed its Dewey
   /// binary: vaults handled so far and in all (state "reindexing" shows
   /// them as "reindexing 7/15"), the vaults that failed or were skipped
   /// ("<dir>: <why>"), and a summary ("" when the pin didn't change).
-  public var reindexDone: Int32 = 0
+  public var reindexDone: Int32 {
+    get {_storage._reindexDone}
+    set {_uniqueStorage()._reindexDone = newValue}
+  }
 
-  public var reindexTotal: Int32 = 0
+  public var reindexTotal: Int32 {
+    get {_storage._reindexTotal}
+    set {_uniqueStorage()._reindexTotal = newValue}
+  }
 
-  public var reindexFailures: [String] = []
+  public var reindexFailures: [String] {
+    get {_storage._reindexFailures}
+    set {_uniqueStorage()._reindexFailures = newValue}
+  }
 
-  public var reindexNote: String = String()
+  public var reindexNote: String {
+    get {_storage._reindexNote}
+    set {_uniqueStorage()._reindexNote = newValue}
+  }
+
+  /// unset: no pass asked for since the hub started
+  public var deweyPass: Ghhud_V1_DeweyPass {
+    get {_storage._deweyPass ?? Ghhud_V1_DeweyPass()}
+    set {_uniqueStorage()._deweyPass = newValue}
+  }
+  /// Returns true if `deweyPass` has been explicitly set.
+  public var hasDeweyPass: Bool {_storage._deweyPass != nil}
+  /// Clears the value of `deweyPass`. Subsequent reads from it will return its default value.
+  public mutating func clearDeweyPass() {_uniqueStorage()._deweyPass = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _waited: SwiftProtobuf.Google_Protobuf_Duration? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+/// DeweyPass is a machine's latest "reindex every vault now" pass (#139).
+public nonisolated struct Ghhud_V1_DeweyPass: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var running: Bool = false
+
+  /// vaults handled so far (reindexed, skipped or failed)
+  public var done: Int32 = 0
+
+  public var total: Int32 = 0
+
+  public var reindexed: Int32 = 0
+
+  /// "<dir>: <why>": busy, so it didn't start
+  public var skipped: [String] = []
+
+  /// "<dir>: <why>": it ran and failed
+  public var failed: [String] = []
+
+  /// the summary ("reindexed 10/12, 1 skipped, 1 failed")
+  public var note: String = String()
+
+  public var started: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_started ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_started = newValue}
+  }
+  /// Returns true if `started` has been explicitly set.
+  public var hasStarted: Bool {self._started != nil}
+  /// Clears the value of `started`. Subsequent reads from it will return its default value.
+  public mutating func clearStarted() {self._started = nil}
+
+  /// unset while it runs
+  public var ended: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_ended ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_ended = newValue}
+  }
+  /// Returns true if `ended` has been explicitly set.
+  public var hasEnded: Bool {self._ended != nil}
+  /// Clears the value of `ended`. Subsequent reads from it will return its default value.
+  public mutating func clearEnded() {self._ended = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _started: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+  fileprivate var _ended: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
 }
 
 public nonisolated struct Ghhud_V1_Event: Sendable {
@@ -4922,6 +5048,81 @@ nonisolated extension Ghhud_V1_FleetControlResponse: SwiftProtobuf.Message, Swif
   }
 
   public static func ==(lhs: Ghhud_V1_FleetControlResponse, rhs: Ghhud_V1_FleetControlResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_DeweyReindexRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeweyReindexRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machine\0\u{1}all\0\u{1}cancel\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.machine) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.all) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.cancel) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.machine.isEmpty {
+      try visitor.visitSingularStringField(value: self.machine, fieldNumber: 1)
+    }
+    if self.all != false {
+      try visitor.visitSingularBoolField(value: self.all, fieldNumber: 2)
+    }
+    if self.cancel != false {
+      try visitor.visitSingularBoolField(value: self.cancel, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_DeweyReindexRequest, rhs: Ghhud_V1_DeweyReindexRequest) -> Bool {
+    if lhs.machine != rhs.machine {return false}
+    if lhs.all != rhs.all {return false}
+    if lhs.cancel != rhs.cancel {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_DeweyReindexResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeweyReindexResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machines\0\u{1}refused\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedStringField(value: &self.machines) }()
+      case 2: try { try decoder.decodeRepeatedStringField(value: &self.refused) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.machines.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.machines, fieldNumber: 1)
+    }
+    if !self.refused.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.refused, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_DeweyReindexResponse, rhs: Ghhud_V1_DeweyReindexResponse) -> Bool {
+    if lhs.machines != rhs.machines {return false}
+    if lhs.refused != rhs.refused {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -7502,7 +7703,154 @@ nonisolated extension Ghhud_V1_FleetSnapshot: SwiftProtobuf.Message, SwiftProtob
 
 nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".FleetMachine"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}state\0\u{1}reachable\0\u{1}applied\0\u{3}applied_short\0\u{1}waited\0\u{3}last_error\0\u{3}reindex_done\0\u{3}reindex_total\0\u{3}reindex_failures\0\u{3}reindex_note\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}state\0\u{1}reachable\0\u{1}applied\0\u{3}applied_short\0\u{1}waited\0\u{3}last_error\0\u{3}reindex_done\0\u{3}reindex_total\0\u{3}reindex_failures\0\u{3}reindex_note\0\u{3}dewey_pass\0")
+
+  fileprivate class _StorageClass {
+    var _name: String = String()
+    var _state: String = String()
+    var _reachable: Bool = false
+    var _applied: String = String()
+    var _appliedShort: String = String()
+    var _waited: SwiftProtobuf.Google_Protobuf_Duration? = nil
+    var _lastError: String = String()
+    var _reindexDone: Int32 = 0
+    var _reindexTotal: Int32 = 0
+    var _reindexFailures: [String] = []
+    var _reindexNote: String = String()
+    var _deweyPass: Ghhud_V1_DeweyPass? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _name = source._name
+      _state = source._state
+      _reachable = source._reachable
+      _applied = source._applied
+      _appliedShort = source._appliedShort
+      _waited = source._waited
+      _lastError = source._lastError
+      _reindexDone = source._reindexDone
+      _reindexTotal = source._reindexTotal
+      _reindexFailures = source._reindexFailures
+      _reindexNote = source._reindexNote
+      _deweyPass = source._deweyPass
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._name) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._state) }()
+        case 3: try { try decoder.decodeSingularBoolField(value: &_storage._reachable) }()
+        case 4: try { try decoder.decodeSingularStringField(value: &_storage._applied) }()
+        case 5: try { try decoder.decodeSingularStringField(value: &_storage._appliedShort) }()
+        case 6: try { try decoder.decodeSingularMessageField(value: &_storage._waited) }()
+        case 7: try { try decoder.decodeSingularStringField(value: &_storage._lastError) }()
+        case 8: try { try decoder.decodeSingularInt32Field(value: &_storage._reindexDone) }()
+        case 9: try { try decoder.decodeSingularInt32Field(value: &_storage._reindexTotal) }()
+        case 10: try { try decoder.decodeRepeatedStringField(value: &_storage._reindexFailures) }()
+        case 11: try { try decoder.decodeSingularStringField(value: &_storage._reindexNote) }()
+        case 12: try { try decoder.decodeSingularMessageField(value: &_storage._deweyPass) }()
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._name.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._name, fieldNumber: 1)
+      }
+      if !_storage._state.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._state, fieldNumber: 2)
+      }
+      if _storage._reachable != false {
+        try visitor.visitSingularBoolField(value: _storage._reachable, fieldNumber: 3)
+      }
+      if !_storage._applied.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._applied, fieldNumber: 4)
+      }
+      if !_storage._appliedShort.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._appliedShort, fieldNumber: 5)
+      }
+      try { if let v = _storage._waited {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+      } }()
+      if !_storage._lastError.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._lastError, fieldNumber: 7)
+      }
+      if _storage._reindexDone != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._reindexDone, fieldNumber: 8)
+      }
+      if _storage._reindexTotal != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._reindexTotal, fieldNumber: 9)
+      }
+      if !_storage._reindexFailures.isEmpty {
+        try visitor.visitRepeatedStringField(value: _storage._reindexFailures, fieldNumber: 10)
+      }
+      if !_storage._reindexNote.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._reindexNote, fieldNumber: 11)
+      }
+      try { if let v = _storage._deweyPass {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
+      } }()
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_FleetMachine, rhs: Ghhud_V1_FleetMachine) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._name != rhs_storage._name {return false}
+        if _storage._state != rhs_storage._state {return false}
+        if _storage._reachable != rhs_storage._reachable {return false}
+        if _storage._applied != rhs_storage._applied {return false}
+        if _storage._appliedShort != rhs_storage._appliedShort {return false}
+        if _storage._waited != rhs_storage._waited {return false}
+        if _storage._lastError != rhs_storage._lastError {return false}
+        if _storage._reindexDone != rhs_storage._reindexDone {return false}
+        if _storage._reindexTotal != rhs_storage._reindexTotal {return false}
+        if _storage._reindexFailures != rhs_storage._reindexFailures {return false}
+        if _storage._reindexNote != rhs_storage._reindexNote {return false}
+        if _storage._deweyPass != rhs_storage._deweyPass {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_DeweyPass: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeweyPass"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}running\0\u{1}done\0\u{1}total\0\u{1}reindexed\0\u{1}skipped\0\u{1}failed\0\u{1}note\0\u{1}started\0\u{1}ended\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -7510,17 +7858,15 @@ nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobu
       // allocates stack space for every case branch when no optimizations are
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.name) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.state) }()
-      case 3: try { try decoder.decodeSingularBoolField(value: &self.reachable) }()
-      case 4: try { try decoder.decodeSingularStringField(value: &self.applied) }()
-      case 5: try { try decoder.decodeSingularStringField(value: &self.appliedShort) }()
-      case 6: try { try decoder.decodeSingularMessageField(value: &self._waited) }()
-      case 7: try { try decoder.decodeSingularStringField(value: &self.lastError) }()
-      case 8: try { try decoder.decodeSingularInt32Field(value: &self.reindexDone) }()
-      case 9: try { try decoder.decodeSingularInt32Field(value: &self.reindexTotal) }()
-      case 10: try { try decoder.decodeRepeatedStringField(value: &self.reindexFailures) }()
-      case 11: try { try decoder.decodeSingularStringField(value: &self.reindexNote) }()
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.running) }()
+      case 2: try { try decoder.decodeSingularInt32Field(value: &self.done) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self.total) }()
+      case 4: try { try decoder.decodeSingularInt32Field(value: &self.reindexed) }()
+      case 5: try { try decoder.decodeRepeatedStringField(value: &self.skipped) }()
+      case 6: try { try decoder.decodeRepeatedStringField(value: &self.failed) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.note) }()
+      case 8: try { try decoder.decodeSingularMessageField(value: &self._started) }()
+      case 9: try { try decoder.decodeSingularMessageField(value: &self._ended) }()
       default: break
       }
     }
@@ -7531,54 +7877,46 @@ nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobu
     // allocates stack space for every if/case branch local when no optimizations
     // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
     // https://github.com/apple/swift-protobuf/issues/1182
-    if !self.name.isEmpty {
-      try visitor.visitSingularStringField(value: self.name, fieldNumber: 1)
+    if self.running != false {
+      try visitor.visitSingularBoolField(value: self.running, fieldNumber: 1)
     }
-    if !self.state.isEmpty {
-      try visitor.visitSingularStringField(value: self.state, fieldNumber: 2)
+    if self.done != 0 {
+      try visitor.visitSingularInt32Field(value: self.done, fieldNumber: 2)
     }
-    if self.reachable != false {
-      try visitor.visitSingularBoolField(value: self.reachable, fieldNumber: 3)
+    if self.total != 0 {
+      try visitor.visitSingularInt32Field(value: self.total, fieldNumber: 3)
     }
-    if !self.applied.isEmpty {
-      try visitor.visitSingularStringField(value: self.applied, fieldNumber: 4)
+    if self.reindexed != 0 {
+      try visitor.visitSingularInt32Field(value: self.reindexed, fieldNumber: 4)
     }
-    if !self.appliedShort.isEmpty {
-      try visitor.visitSingularStringField(value: self.appliedShort, fieldNumber: 5)
+    if !self.skipped.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.skipped, fieldNumber: 5)
     }
-    try { if let v = self._waited {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+    if !self.failed.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.failed, fieldNumber: 6)
+    }
+    if !self.note.isEmpty {
+      try visitor.visitSingularStringField(value: self.note, fieldNumber: 7)
+    }
+    try { if let v = self._started {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
     } }()
-    if !self.lastError.isEmpty {
-      try visitor.visitSingularStringField(value: self.lastError, fieldNumber: 7)
-    }
-    if self.reindexDone != 0 {
-      try visitor.visitSingularInt32Field(value: self.reindexDone, fieldNumber: 8)
-    }
-    if self.reindexTotal != 0 {
-      try visitor.visitSingularInt32Field(value: self.reindexTotal, fieldNumber: 9)
-    }
-    if !self.reindexFailures.isEmpty {
-      try visitor.visitRepeatedStringField(value: self.reindexFailures, fieldNumber: 10)
-    }
-    if !self.reindexNote.isEmpty {
-      try visitor.visitSingularStringField(value: self.reindexNote, fieldNumber: 11)
-    }
+    try { if let v = self._ended {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  public static func ==(lhs: Ghhud_V1_FleetMachine, rhs: Ghhud_V1_FleetMachine) -> Bool {
-    if lhs.name != rhs.name {return false}
-    if lhs.state != rhs.state {return false}
-    if lhs.reachable != rhs.reachable {return false}
-    if lhs.applied != rhs.applied {return false}
-    if lhs.appliedShort != rhs.appliedShort {return false}
-    if lhs._waited != rhs._waited {return false}
-    if lhs.lastError != rhs.lastError {return false}
-    if lhs.reindexDone != rhs.reindexDone {return false}
-    if lhs.reindexTotal != rhs.reindexTotal {return false}
-    if lhs.reindexFailures != rhs.reindexFailures {return false}
-    if lhs.reindexNote != rhs.reindexNote {return false}
+  public static func ==(lhs: Ghhud_V1_DeweyPass, rhs: Ghhud_V1_DeweyPass) -> Bool {
+    if lhs.running != rhs.running {return false}
+    if lhs.done != rhs.done {return false}
+    if lhs.total != rhs.total {return false}
+    if lhs.reindexed != rhs.reindexed {return false}
+    if lhs.skipped != rhs.skipped {return false}
+    if lhs.failed != rhs.failed {return false}
+    if lhs.note != rhs.note {return false}
+    if lhs._started != rhs._started {return false}
+    if lhs._ended != rhs._ended {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

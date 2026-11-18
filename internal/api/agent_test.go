@@ -28,6 +28,7 @@ var agentDenied = map[string]bool{
 	ghhudv1connect.HubServiceApproveEpicProcedure:     true,
 	ghhudv1connect.HubServiceClearEpicGateProcedure:   true,
 	ghhudv1connect.HubServiceFleetControlProcedure:    true,
+	ghhudv1connect.HubServiceDeweyReindexProcedure:    true, // changing indexes stays with you (#139)
 	ghhudv1connect.HubServiceToolkitRolloutProcedure:  true,
 	ghhudv1connect.HubServiceToolkitControlProcedure:  true,
 	ghhudv1connect.HubServicePruneBranchesProcedure:   true,

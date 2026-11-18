@@ -112,6 +112,15 @@ public protocol Ghhud_V1_HubServiceClientInterface: Sendable {
     @available(iOS 13, *)
     func `fleetControl`(request: Ghhud_V1_FleetControlRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_FleetControlResponse>
 
+    /// DeweyReindex starts, or cancels, a pass that reindexes every Dewey
+    /// vault on a fleet machine, or on every one (#139). A pass goes vault
+    /// by vault, skipping busy ones; its progress is FleetMachine.dewey_pass.
+    /// FAILED_PRECONDITION when the fleet is off; refused when
+    /// [dispatch] dewey_reindex is "off", a pass already runs there, or this
+    /// hub doesn't own dispatch.
+    @available(iOS 13, *)
+    func `deweyReindex`(request: Ghhud_V1_DeweyReindexRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_DeweyReindexResponse>
+
     /// ToolkitRollout starts rolling a tool release out (issue #75);
     /// ToolkitControl drives rollouts. FAILED_PRECONDITION when the toolkit
     /// is off.
@@ -256,6 +265,11 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
     }
 
     @available(iOS 13, *)
+    public func `deweyReindex`(request: Ghhud_V1_DeweyReindexRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_DeweyReindexResponse> {
+        return await self.client.unary(path: "/ghhud.v1.HubService/DeweyReindex", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `toolkitRollout`(request: Ghhud_V1_ToolkitRolloutRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_ToolkitRolloutResponse> {
         return await self.client.unary(path: "/ghhud.v1.HubService/ToolkitRollout", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -292,6 +306,7 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
             public static let readPane = Connect.MethodSpec(name: "ReadPane", service: "ghhud.v1.HubService", type: .unary)
             public static let transcript = Connect.MethodSpec(name: "Transcript", service: "ghhud.v1.HubService", type: .unary)
             public static let fleetControl = Connect.MethodSpec(name: "FleetControl", service: "ghhud.v1.HubService", type: .unary)
+            public static let deweyReindex = Connect.MethodSpec(name: "DeweyReindex", service: "ghhud.v1.HubService", type: .unary)
             public static let toolkitRollout = Connect.MethodSpec(name: "ToolkitRollout", service: "ghhud.v1.HubService", type: .unary)
             public static let toolkitControl = Connect.MethodSpec(name: "ToolkitControl", service: "ghhud.v1.HubService", type: .unary)
         }

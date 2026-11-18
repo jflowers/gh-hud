@@ -208,7 +208,10 @@ func reindexVault(ctx context.Context, m Machine, dir string) (ReindexResult, er
 	switch {
 	case err != nil && res.Err == "":
 		res.Err = err.Error()
-		if ctx.Err() != nil {
+		switch {
+		case errors.Is(ctx.Err(), context.Canceled):
+			res.Err = "cancelled: " + res.Err
+		case ctx.Err() != nil:
 			res.Err = "timed out: " + res.Err
 		}
 	case res.Skipped != "":

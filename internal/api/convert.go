@@ -705,6 +705,7 @@ func fleetToPB(f fleet.Snapshot) *pb.FleetSnapshot {
 				Waited: dur(m.Waited), LastError: m.LastErr,
 				ReindexDone: int32(m.Reindex.Done), ReindexTotal: int32(m.Reindex.Total), //nolint:gosec // G115: vault counts
 				ReindexFailures: m.Reindex.Failed, ReindexNote: m.Reindex.Note,
+				DeweyPass: passToPB(m.Pass),
 			}
 		}),
 	}
@@ -731,8 +732,35 @@ func fleetFromPB(p *pb.FleetSnapshot) fleet.Snapshot {
 					Done: int(m.GetReindexDone()), Total: int(m.GetReindexTotal()),
 					Failed: m.GetReindexFailures(), Note: m.GetReindexNote(),
 				},
+				Pass: passFromPB(m.GetDeweyPass()),
 			}
 		}),
+	}
+}
+
+// passToPB is a machine's Dewey reindex pass; nil when none was asked for.
+func passToPB(p fleet.DeweyPass) *pb.DeweyPass {
+	if p.Started.IsZero() {
+		return nil
+	}
+	return &pb.DeweyPass{
+		Running: p.Running,
+		Done:    int32(p.Done), Total: int32(p.Total), Reindexed: int32(p.Reindexed), //nolint:gosec // G115: vault counts
+		Skipped: strs(p.Skipped), Failed: strs(p.Failed), Note: p.Note,
+		Started: ts(p.Started), Ended: ts(p.Ended),
+	}
+}
+
+func passFromPB(p *pb.DeweyPass) fleet.DeweyPass {
+	if p == nil {
+		return fleet.DeweyPass{}
+	}
+	return fleet.DeweyPass{
+		ReindexProgress: fleet.ReindexProgress{
+			Done: int(p.GetDone()), Total: int(p.GetTotal()), Failed: strs(p.GetFailed()), Note: p.GetNote(),
+		},
+		Reindexed: int(p.GetReindexed()), Skipped: strs(p.GetSkipped()), Running: p.GetRunning(),
+		Started: fromTS(p.GetStarted()), Ended: fromTS(p.GetEnded()),
 	}
 }
 

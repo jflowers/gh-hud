@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/jflowers/gh-hud/internal/dispatch"
+	"github.com/jflowers/gh-hud/internal/fleet"
 	"github.com/jflowers/gh-hud/internal/hub"
 	"github.com/jflowers/gh-hud/internal/model"
 )
@@ -31,6 +32,9 @@ type Fake struct {
 	Pos       int            // Enqueue's position and MoveQueued's index
 	Pane      string         // what ReadPane returns
 	Talk      hub.Transcript // what Transcript returns
+	// Pass is what DeweyReindex returns; DeweyReindexCancel returns its
+	// Started.
+	Pass fleet.PassStart
 
 	// Snaps and Events, when set, are what Subscribe returns, so a test
 	// can stream; otherwise Subscribe's channels never deliver.
@@ -208,6 +212,20 @@ func (f *Fake) FleetPause(_ context.Context, paused bool) error {
 func (f *Fake) FleetApplyNow(context.Context) error { return f.call("FleetApplyNow") }
 func (f *Fake) FleetSkipWait(context.Context) error { return f.call("FleetSkipWait") }
 func (f *Fake) FleetRetry(context.Context) error    { return f.call("FleetRetry") }
+
+func (f *Fake) DeweyReindex(_ context.Context, machine string) (fleet.PassStart, error) {
+	if err := f.call("DeweyReindex %s", machine); err != nil {
+		return fleet.PassStart{}, err
+	}
+	return f.Pass, nil
+}
+
+func (f *Fake) DeweyReindexCancel(_ context.Context, machine string) ([]string, error) {
+	if err := f.call("DeweyReindexCancel %s", machine); err != nil {
+		return nil, err
+	}
+	return f.Pass.Started, nil
+}
 
 func (f *Fake) ToolkitRollout(_ context.Context, tool, version string) (string, error) {
 	if err := f.call("ToolkitRollout %s %s", tool, version); err != nil {

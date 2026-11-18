@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jflowers/gh-hud/internal/dispatch"
+	"github.com/jflowers/gh-hud/internal/fleet"
 	"github.com/jflowers/gh-hud/internal/model"
 )
 
@@ -414,6 +415,37 @@ func (h *Hub) FleetSkipWait(context.Context) error {
 func (h *Hub) FleetRetry(context.Context) error {
 	return h.fleetDo(func(f Fleet) { f.Retry() })
 }
+
+// DeweyReindex starts a Dewey reindex pass on the fleet machine, or on
+// every one for "". Only the dispatch owner reindexes.
+func (h *Hub) DeweyReindex(_ context.Context, machine string) (fleet.PassStart, error) {
+	if h.opts.Fleet == nil {
+		return fleet.PassStart{}, ErrNoFleet
+	}
+	if !h.ownsDispatch() {
+		return fleet.PassStart{}, errNotOwner
+	}
+	st, err := h.opts.Fleet.StartDeweyReindex(machine)
+	h.publish()
+	return st, err
+}
+
+// DeweyReindexCancel cancels the Dewey reindex pass on the fleet machine,
+// or on every one for "".
+func (h *Hub) DeweyReindexCancel(_ context.Context, machine string) ([]string, error) {
+	if h.opts.Fleet == nil {
+		return nil, ErrNoFleet
+	}
+	if !h.ownsDispatch() {
+		return nil, errNotOwner
+	}
+	got, err := h.opts.Fleet.CancelDeweyReindex(machine)
+	h.publish()
+	return got, err
+}
+
+// errNotOwner refuses what only the gh-hud that owns dispatch does.
+var errNotOwner = errors.New("this gh-hud doesn't own dispatch: ask the hub that does")
 
 var _ Backend = (*Hub)(nil)
 

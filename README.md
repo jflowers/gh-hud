@@ -131,7 +131,8 @@ can open it).
   directory, made once, readable only by you). With it a caller can read
   the hub, dispatch, queue, and enroll, reread or drop epics, but can't
   approve epic plans or supervisor proposals, clear gates, start fleet or
-  toolkit rollouts, prune branches, or open windows on the hub: those stay
+  toolkit rollouts or Dewey reindex passes, prune branches, or open
+  windows on the hub: those stay
   with you. The hub logs each agent call that changes something, and each
   one it refuses. Copy the file to `~/.config/gh-hud/hub-token` on the
   agent's machine and use `gh-hud … -hub <address>`.
@@ -154,6 +155,7 @@ gh-hud dispatch acme/app#8 [-task issue]   # start one now (default: the suggest
 gh-hud queue [add|rm] …           # your queue
 gh-hud transcript <run|ref>       # a run's conversation (a ref: its newest run)
 gh-hud pane <run|ref>             # the screen of a run's live pane
+gh-hud dewey reindex <machine>|-all   # reindex every Dewey vault there now (see "Reindex every vault now")
 ```
 
 They, `gh-hud epic` and `gh-hud branches` use the hub on this machine's
@@ -476,6 +478,46 @@ tab's detail shows the last reindex: its outcome, how long it took, when,
 and why it ran. A failure is also a notification and isn't retried. A
 machine problem, such as no embedder or no `dewey` binary, is never
 reindexed, because a reindex wouldn't fix it.
+
+#### Reindex every vault now
+
+Some Dewey releases change what an index stores, and only a reindex
+updates an existing one. unbound-force/dewey#220 (Dewey 3.8.0) is the
+case that needs it: every vault in the fleet needs one reindex, but the
+3.8.0 pin rolled out before the rollout reindex (see "Fleet rollout")
+existed, and the teardown check takes the binary it first sees as a
+checkout's baseline, so nothing ever flags those vaults. Ask for a pass
+instead:
+
+```
+gh-hud dewey reindex lap1        # every vault on lap1 (local is the hub)
+gh-hud dewey reindex -all        # every fleet machine, side by side
+gh-hud dewey status [lap1]       # reindexing 3/12, or the last summary
+gh-hud dewey cancel lap1|-all
+```
+
+or, in the fleet view (`F`), `d` on the selected machine (`↑`/`↓`) or
+`D` for every machine, each pressed twice, and `x` to cancel. A pass
+lists the machine's vaults as the rollout does (every `@` instance's,
+plus base checkouts with a `graph.db`) and goes through them one at a
+time with the automatic reindex's routine: busy `reindexing`, the
+machine's one reindex at a time, the new binary recorded as the baseline
+on success. It doesn't drain the machine, so a vault with a live agent,
+leftovers or a held `dewey.lock` is skipped and listed with why, not
+waited for. The fleet view shows `dewey pass: reindexing 3/12` under the
+machine and then the summary with every vault skipped or failed; each
+vault's outcome is also its last reindex in the Workspaces tab. The end
+of a pass is notified, and a failed vault raises the same alert as a
+failed automatic reindex.
+
+The machines are `[fleet] order`'s (the fleet must be on), since the
+fleet's Dewey pin is why a pass is needed. A pass runs in the hub that
+owns dispatch, detached from the command that asked; a hub restart ends
+it. Running it again is safe: a vault already reindexed is just
+reindexed again, and a skipped one gets another try. `dewey_reindex =
+"off"` refuses a pass; `"report"` and `"auto"` allow it, since a person
+asking is the switch `"report"` leaves to a person. The agent token can't
+start or cancel one.
 
 By default (`runner = "herdr"`) dispatch goes through a local herdr
 server: one herdr workspace per ghws workspace (created lazily, reused,
@@ -1397,8 +1439,10 @@ checkouts are reindexed after its own apply.
 applied vs target sha, state, drain wait, last error) with target/CI/pause
 status in the header. Keys: `p` pause/resume · `a` apply now (force a
 poll) · `s` skip the drain wait (press twice — it applies with live agents
-still running) · `r` retry the failed machine and resume · `F`/`esc`
-close. The main header carries a compact fleet chip while a rollout is
+still running) · `r` retry the failed machine and resume · `↑`/`↓`
+select a machine · `d` reindex every Dewey vault on it, `D` on every
+machine (press twice; see "Reindex every vault now") · `x` cancel its
+pass · `F`/`esc` close. The main header carries a compact fleet chip while a rollout is
 active or failed.
 
 ## Toolkit scaffolds
@@ -1632,7 +1676,7 @@ max_concurrent = 2
 # exclude_labels = ["opencode-v2-migration"]  # never items with any of these; case-insensitive
 
 [dispatch]
-dewey_reindex = "report"   # after a clean run, a Dewey index that needs a reindex: report | auto (reindex when idle) | off
+dewey_reindex = "report"   # after a clean run, a Dewey index that needs a reindex: report | auto (reindex when idle) | off (also refuses `gh-hud dewey reindex`)
 
 # dispatchable tasks, one table each (see "Configuring dispatch" above).
 # All five are built in with these commands; a table only needs the keys

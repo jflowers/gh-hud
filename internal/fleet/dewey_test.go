@@ -22,17 +22,22 @@ const (
 // which fleet-apply replaces with next[machine], and its vaults. Every
 // call lands in the shared event log with the runner's.
 type fakeDewey struct {
-	mu      sync.Mutex
-	mode    string
-	bins    map[string]string
-	binErr  map[string]error // one-shot DeweyBinary failures
-	next    map[string]string
-	vaults  map[string][]string
-	fail    map[string]bool // dir → reindex fails
-	events  []string
-	active  int // reindexes running now
-	maxRun  int // most at once
-	onIndex func(machine, dir string)
+	mu     sync.Mutex
+	mode   string
+	bins   map[string]string
+	binErr map[string]error // one-shot DeweyBinary failures
+	next   map[string]string
+	vaults map[string][]string
+	fail   map[string]bool   // dir → reindex fails
+	skip   map[string]string // dir → why its reindex is skipped
+	block  chan struct{}     // when set, a reindex waits for it (or ctx)
+	events []string
+	active int // reindexes running now
+	maxRun int // most at once
+	// activeOn and maxOn are active and maxRun per machine.
+	activeOn map[string]int
+	maxOn    map[string]int
+	onIndex  func(machine, dir string)
 }
 
 func (f *fakeDewey) log(e string) {
@@ -60,20 +65,51 @@ func (f *fakeDewey) DeweyVaults(ctx context.Context, machine string) ([]string, 
 }
 
 func (f *fakeDewey) RolloutReindex(ctx context.Context, machine, dir string) (dispatch.ReindexResult, error) {
+	return f.reindex(ctx, "reindex", machine, dir)
+}
+
+func (f *fakeDewey) RequestedReindex(ctx context.Context, machine, dir string) (dispatch.ReindexResult, error) {
+	return f.reindex(ctx, "requested", machine, dir)
+}
+
+// reindex logs "<kind> <machine> <dir>" and fails, skips or blocks the
+// vault as the fake says.
+func (f *fakeDewey) reindex(ctx context.Context, kind, machine, dir string) (dispatch.ReindexResult, error) {
 	f.mu.Lock()
-	f.events = append(f.events, "reindex "+machine+" "+dir)
+	f.events = append(f.events, kind+" "+machine+" "+dir)
+	if why, ok := f.skip[dir]; ok {
+		f.mu.Unlock()
+		return dispatch.ReindexResult{}, dispatch.ReindexSkipError(why)
+	}
 	f.active++
 	f.maxRun = max(f.maxRun, f.active)
-	fail, hook := f.fail[dir], f.onIndex
+	if f.activeOn == nil {
+		f.activeOn, f.maxOn = map[string]int{}, map[string]int{}
+	}
+	f.activeOn[machine]++
+	f.maxOn[machine] = max(f.maxOn[machine], f.activeOn[machine])
+	fail, hook, block := f.fail[dir], f.onIndex, f.block
 	f.mu.Unlock()
 	if hook != nil {
 		hook(machine, dir)
 	}
 	time.Sleep(time.Millisecond)
+	var cancelled error
+	if block != nil {
+		select {
+		case <-block:
+		case <-ctx.Done():
+			cancelled = ctx.Err()
+		}
+	}
 	f.mu.Lock()
 	f.active--
+	f.activeOn[machine]--
 	f.mu.Unlock()
-	if fail {
+	switch {
+	case cancelled != nil:
+		return dispatch.ReindexResult{Err: "cancelled: signal: killed"}, errors.New("cancelled: signal: killed")
+	case fail:
 		return dispatch.ReindexResult{Duration: time.Second, Err: "dewey reindex: boom"}, errors.New("dewey reindex: boom")
 	}
 	return dispatch.ReindexResult{Binary: deweyV2}, nil

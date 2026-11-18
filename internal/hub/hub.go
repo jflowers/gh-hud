@@ -70,6 +70,9 @@ type Fleet interface {
 	ApplyNow()
 	SkipWait()
 	Retry()
+	// Dewey reindex passes by fleet machine, "" for every one (#139).
+	StartDeweyReindex(machine string) (fleet.PassStart, error)
+	CancelDeweyReindex(machine string) ([]string, error)
 }
 
 // Toolkit is the part of *toolkit.Coordinator the hub drives.
@@ -161,6 +164,12 @@ type Backend interface {
 	FleetApplyNow(ctx context.Context) error
 	FleetSkipWait(ctx context.Context) error
 	FleetRetry(ctx context.Context) error
+	// DeweyReindex starts a pass reindexing every Dewey vault on a fleet
+	// machine ("" for every one), and DeweyReindexCancel cancels it; they
+	// return the machines they acted on (#139). A pass's progress is the
+	// fleet snapshot's MachineStatus.Pass. They fail when the fleet is off.
+	DeweyReindex(ctx context.Context, machine string) (fleet.PassStart, error)
+	DeweyReindexCancel(ctx context.Context, machine string) ([]string, error)
 
 	// Toolkit rollouts (issue #75); they fail when the toolkit is off.
 	// ToolkitRollout starts one ("" version for the latest release) and

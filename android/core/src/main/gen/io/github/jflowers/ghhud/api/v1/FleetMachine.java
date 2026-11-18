@@ -565,6 +565,73 @@ public  final class FleetMachine extends
 
   }
 
+  public static final int DEWEY_PASS_FIELD_NUMBER = 12;
+  private io.github.jflowers.ghhud.api.v1.DeweyPass deweyPass_;
+  /**
+   * <pre>
+   * unset: no pass asked for since the hub started
+   * </pre>
+   *
+   * <code>.ghhud.v1.DeweyPass dewey_pass = 12 [json_name = "deweyPass"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDeweyPass() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <pre>
+   * unset: no pass asked for since the hub started
+   * </pre>
+   *
+   * <code>.ghhud.v1.DeweyPass dewey_pass = 12 [json_name = "deweyPass"];</code>
+   */
+  @java.lang.Override
+  public io.github.jflowers.ghhud.api.v1.DeweyPass getDeweyPass() {
+    return deweyPass_ == null ? io.github.jflowers.ghhud.api.v1.DeweyPass.getDefaultInstance() : deweyPass_;
+  }
+  /**
+   * <pre>
+   * unset: no pass asked for since the hub started
+   * </pre>
+   *
+   * <code>.ghhud.v1.DeweyPass dewey_pass = 12 [json_name = "deweyPass"];</code>
+   */
+  private void setDeweyPass(io.github.jflowers.ghhud.api.v1.DeweyPass value) {
+    java.util.Objects.requireNonNull(value);
+    deweyPass_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <pre>
+   * unset: no pass asked for since the hub started
+   * </pre>
+   *
+   * <code>.ghhud.v1.DeweyPass dewey_pass = 12 [json_name = "deweyPass"];</code>
+   */
+  @java.lang.SuppressWarnings("ReferenceEquality")
+  private void mergeDeweyPass(io.github.jflowers.ghhud.api.v1.DeweyPass value) {
+    java.util.Objects.requireNonNull(value);
+    if (deweyPass_ != null &&
+        deweyPass_ != io.github.jflowers.ghhud.api.v1.DeweyPass.getDefaultInstance()) {
+      deweyPass_ =
+        io.github.jflowers.ghhud.api.v1.DeweyPass.newBuilder(deweyPass_).mergeFrom(value).buildPartial();
+    } else {
+      deweyPass_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <pre>
+   * unset: no pass asked for since the hub started
+   * </pre>
+   *
+   * <code>.ghhud.v1.DeweyPass dewey_pass = 12 [json_name = "deweyPass"];</code>
+   */
+  private void clearDeweyPass() {
+    deweyPass_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
   public static io.github.jflowers.ghhud.api.v1.FleetMachine parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1224,6 +1291,77 @@ public  final class FleetMachine extends
       return this;
     }
 
+    /**
+     * <pre>
+     * unset: no pass asked for since the hub started
+     * </pre>
+     *
+     * <code>.ghhud.v1.DeweyPass dewey_pass = 12 [json_name = "deweyPass"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDeweyPass() {
+      return instance.hasDeweyPass();
+    }
+    /**
+     * <pre>
+     * unset: no pass asked for since the hub started
+     * </pre>
+     *
+     * <code>.ghhud.v1.DeweyPass dewey_pass = 12 [json_name = "deweyPass"];</code>
+     */
+    @java.lang.Override
+    public io.github.jflowers.ghhud.api.v1.DeweyPass getDeweyPass() {
+      return instance.getDeweyPass();
+    }
+    /**
+     * <pre>
+     * unset: no pass asked for since the hub started
+     * </pre>
+     *
+     * <code>.ghhud.v1.DeweyPass dewey_pass = 12 [json_name = "deweyPass"];</code>
+     */
+    public Builder setDeweyPass(io.github.jflowers.ghhud.api.v1.DeweyPass value) {
+      copyOnWrite();
+      instance.setDeweyPass(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * unset: no pass asked for since the hub started
+     * </pre>
+     *
+     * <code>.ghhud.v1.DeweyPass dewey_pass = 12 [json_name = "deweyPass"];</code>
+     */
+    public Builder setDeweyPass(
+        io.github.jflowers.ghhud.api.v1.DeweyPass.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDeweyPass(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * unset: no pass asked for since the hub started
+     * </pre>
+     *
+     * <code>.ghhud.v1.DeweyPass dewey_pass = 12 [json_name = "deweyPass"];</code>
+     */
+    public Builder mergeDeweyPass(io.github.jflowers.ghhud.api.v1.DeweyPass value) {
+      copyOnWrite();
+      instance.mergeDeweyPass(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * unset: no pass asked for since the hub started
+     * </pre>
+     *
+     * <code>.ghhud.v1.DeweyPass dewey_pass = 12 [json_name = "deweyPass"];</code>
+     */
+    public Builder clearDeweyPass() {  copyOnWrite();
+      instance.clearDeweyPass();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.FleetMachine)
   }
   @java.lang.Override
@@ -1252,11 +1390,12 @@ public  final class FleetMachine extends
             "reindexTotal_",
             "reindexFailures_",
             "reindexNote_",
+            "deweyPass_",
           };
           java.lang.String info =
-              "\u0000\u000b\u0000\u0001\u0001\u000b\u000b\u0000\u0001\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0007\u0004\u0208\u0005\u0208\u0006\u1009\u0000\u0007\u0208\b\u0004\t\u0004" +
-              "\n\u021a\u000b\u0208";
+              "\u0000\f\u0000\u0001\u0001\f\f\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
+              "\u0004\u0208\u0005\u0208\u0006\u1009\u0000\u0007\u0208\b\u0004\t\u0004\n\u021a\u000b" +
+              "\u0208\f\u1009\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

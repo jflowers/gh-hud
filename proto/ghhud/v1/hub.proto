@@ -81,6 +81,13 @@ service HubService {
   // FleetControl drives the GitOps rollout; FAILED_PRECONDITION when the
   // fleet is off.
   rpc FleetControl(FleetControlRequest) returns (FleetControlResponse);
+  // DeweyReindex starts, or cancels, a pass that reindexes every Dewey
+  // vault on a fleet machine, or on every one (#139). A pass goes vault
+  // by vault, skipping busy ones; its progress is FleetMachine.dewey_pass.
+  // FAILED_PRECONDITION when the fleet is off; refused when
+  // [dispatch] dewey_reindex is "off", a pass already runs there, or this
+  // hub doesn't own dispatch.
+  rpc DeweyReindex(DeweyReindexRequest) returns (DeweyReindexResponse);
 
   // ToolkitRollout starts rolling a tool release out (issue #75);
   // ToolkitControl drives rollouts. FAILED_PRECONDITION when the toolkit
@@ -368,6 +375,17 @@ enum FleetAction {
 }
 
 message FleetControlResponse {}
+
+message DeweyReindexRequest {
+  string machine = 1; // a fleet machine ("local" is the hub); "" with all
+  bool all = 2; // every fleet machine
+  bool cancel = 3; // cancel the running pass instead of starting one
+}
+
+message DeweyReindexResponse {
+  repeated string machines = 1; // where a pass started (or was cancelled)
+  repeated string refused = 2; // with all: "<machine>: <why>" for the rest
+}
 
 message ToolkitRolloutRequest {
   string tool = 1;
@@ -812,6 +830,20 @@ message FleetMachine {
   int32 reindex_total = 9;
   repeated string reindex_failures = 10;
   string reindex_note = 11;
+  DeweyPass dewey_pass = 12; // unset: no pass asked for since the hub started
+}
+
+// DeweyPass is a machine's latest "reindex every vault now" pass (#139).
+message DeweyPass {
+  bool running = 1;
+  int32 done = 2; // vaults handled so far (reindexed, skipped or failed)
+  int32 total = 3;
+  int32 reindexed = 4;
+  repeated string skipped = 5; // "<dir>: <why>": busy, so it didn't start
+  repeated string failed = 6; // "<dir>: <why>": it ran and failed
+  string note = 7; // the summary ("reindexed 10/12, 1 skipped, 1 failed")
+  google.protobuf.Timestamp started = 8;
+  google.protobuf.Timestamp ended = 9; // unset while it runs
 }
 
 enum EventKind {

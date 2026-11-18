@@ -95,6 +95,8 @@ type Coordinator struct {
 	machines        []*machineState
 
 	wake chan struct{}
+	// passWork counts the running Dewey reindex passes (deweypass.go).
+	passWork sync.WaitGroup
 }
 
 // machineState is one machine's rollout progress.
@@ -114,6 +116,10 @@ type machineState struct {
 	DeweyBefore    string
 	deweyBeforeErr string
 	Reindex        ReindexProgress // this rollout's Dewey reindex
+	// Pass is the latest Dewey reindex pass a person asked for
+	// (deweypass.go); passCancel stops it while it runs.
+	Pass       DeweyPass
+	passCancel context.CancelFunc
 }
 
 // New builds a Coordinator, defaulting unset options and loading
@@ -525,11 +531,14 @@ func (c *Coordinator) doVerify(ctx context.Context, name, target string) bool {
 	return false
 }
 
-// Busy reports whether a machine is applying or verifying a rollout, which
-// a hub restart would cut short.
+// Busy reports whether a machine is applying or verifying a rollout, or
+// running a Dewey reindex pass, which a hub restart would cut short.
 func (c *Coordinator) Busy() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if c.passRunningLocked() {
+		return true
+	}
 	for _, ms := range c.machines {
 		if ms.State == StateApplying || ms.State == StateReindexing || ms.State == StateVerifying {
 			return true
@@ -635,6 +644,7 @@ type MachineStatus struct {
 	Waited       time.Duration // draining duration
 	LastErr      string
 	Reindex      ReindexProgress // Dewey reindex after a pin change (dewey.go)
+	Pass         DeweyPass       // the latest Dewey reindex pass you asked for (deweypass.go)
 }
 
 // StateText is the state as the fleet view shows it: "reindexing 7/15"
@@ -684,6 +694,7 @@ func (c *Coordinator) Snapshot() Snapshot {
 			AppliedShort: shortSHA(ms.Applied),
 			LastErr:      ms.LastErr,
 			Reindex:      ms.Reindex.clone(),
+			Pass:         ms.Pass.clone(),
 		}
 		if ms.State == StateDraining && !ms.DrainStart.IsZero() {
 			st.Waited = c.opts.Clock.Now().Sub(ms.DrainStart)

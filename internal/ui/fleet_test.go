@@ -169,6 +169,60 @@ func TestFleetKeysAskTheHub(t *testing.T) {
 	}
 }
 
+// d on the selected machine and D for every machine each need a second
+// press to start a Dewey reindex pass; x cancels the selected machine's.
+func TestFleetDeweyPassKeys(t *testing.T) {
+	fake := &hubtest.Fake{Pass: fleet.PassStart{Started: []string{"lap2"}}}
+	snap := fleetTestSnapshot()
+	fake.SetSnap(hub.Snapshot{Seq: 1, Fleet: &snap})
+	m := New(config.Default(), fake)
+	m.width, m.height = 120, 30
+	pressKey(t, m, "F")
+	pressKey(t, m, "j")
+	pressKey(t, m, "d")
+	if len(fake.Calls) != 0 || m.deweyArmed != "lap2" {
+		t.Fatalf("first d: calls %q, armed %q", fake.Calls, m.deweyArmed)
+	}
+	if out := m.fleetView(); !strings.Contains(out, "d again! reindex every Dewey vault on lap2") {
+		t.Errorf("armed hint missing:\n%s", out)
+	}
+	pressKey(t, m, "d")
+	pressKey(t, m, "D")
+	pressKey(t, m, "d") // a different key re-arms for lap2 instead of confirming D
+	pressKey(t, m, "D")
+	pressKey(t, m, "D")
+	pressKey(t, m, "x")
+	want := []string{"DeweyReindex lap2", "DeweyReindex", "DeweyReindexCancel lap2"}
+	if !slices.Equal(fake.Calls, want) {
+		t.Errorf("calls = %q, want %q", fake.Calls, want)
+	}
+}
+
+// A machine's pass shows under its row: progress while it runs, then its
+// summary and the vaults that failed or were skipped.
+func TestFleetViewDeweyPass(t *testing.T) {
+	snap := fleetTestSnapshot()
+	now := time.Now()
+	snap.Machines[0].Pass = fleet.DeweyPass{Running: true, Started: now.Add(-4 * time.Minute),
+		ReindexProgress: fleet.ReindexProgress{Done: 3, Total: 12}}
+	snap.Machines[2].Pass = fleet.DeweyPass{Started: now.Add(-time.Hour), Ended: now.Add(-2 * time.Minute), Reindexed: 3,
+		ReindexProgress: fleet.ReindexProgress{Done: 5, Total: 5, Note: "reindexed 3/5, 1 skipped, 1 failed",
+			Failed: []string{"/h/acme@b/r: failed after 2s: dewey reindex: boom"}},
+		Skipped: []string{"/h/acme@a/r: dewey.lock held"}}
+	m := &Model{cfg: config.Default(), width: 140, height: 34, fleetMode: true, fleetSnap: snap}
+	out := m.fleetView()
+	for _, want := range []string{
+		"dewey pass: reindexing 3/12 · started 4m ago",
+		"dewey pass: reindexed 3/5, 1 skipped, 1 failed · 2m ago",
+		"✗ /h/acme@b/r: failed after 2s", "– /h/acme@a/r: dewey.lock held",
+		"d reindex its Dewey vaults",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("fleet view missing %q:\n%s", want, out)
+		}
+	}
+}
+
 func TestFleetKeyIgnoredWhenFleetOff(t *testing.T) {
 	m := New(config.Default(), &hubtest.Fake{})
 	pressKey(t, m, "F")

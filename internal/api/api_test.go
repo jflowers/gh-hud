@@ -13,6 +13,7 @@ import (
 
 	"github.com/jflowers/gh-hud/internal/config"
 	"github.com/jflowers/gh-hud/internal/dispatch"
+	"github.com/jflowers/gh-hud/internal/fleet"
 	"github.com/jflowers/gh-hud/internal/hub"
 	"github.com/jflowers/gh-hud/internal/hub/hubtest"
 	"github.com/jflowers/gh-hud/internal/model"
@@ -135,6 +136,15 @@ func TestCommandsOverSocket(t *testing.T) {
 	must(c.FleetApplyNow(ctx))
 	must(c.FleetSkipWait(ctx))
 	must(c.FleetRetry(ctx))
+	fake.Pass = fleet.PassStart{Started: []string{"lap2", "local"}, Refused: []string{"lap1: busy"}}
+	if st, err := c.DeweyReindex(ctx, ""); err != nil || !reflect.DeepEqual(st, fake.Pass) {
+		t.Errorf("DeweyReindex all = %+v, %v", st, err)
+	}
+	must2 := func(_ any, err error) { must(err) }
+	must2(c.DeweyReindex(ctx, "lap1"))
+	if got, err := c.DeweyReindexCancel(ctx, "lap1"); err != nil || !slices.Equal(got, []string{"lap2", "local"}) {
+		t.Errorf("DeweyReindexCancel = %v, %v", got, err)
+	}
 	if id, err := c.ToolkitRollout(ctx, "uf", "0.22.0"); err != nil || id != "uf@0.22.0" {
 		t.Errorf("ToolkitRollout = %q, %v", id, err)
 	}
@@ -148,6 +158,7 @@ func TestCommandsOverSocket(t *testing.T) {
 		"Enqueue review u1", "Unqueue review a/r#1", "MoveQueued review a/r#1 -1",
 		"Watch lap1/s1", "WatchRun run1", "OpenTranscript run1",
 		"FleetPause true", "FleetPause false", "FleetApplyNow", "FleetSkipWait", "FleetRetry",
+		"DeweyReindex", "DeweyReindex lap1", "DeweyReindexCancel lap1",
 		"ToolkitRollout uf 0.22.0", "ToolkitControl cancel uf@0.22.0", "ToolkitControl retry uf@0.22.0",
 		"ToolkitControl dismiss uf@0.22.0", "ToolkitControl check uf@0.22.0",
 	}

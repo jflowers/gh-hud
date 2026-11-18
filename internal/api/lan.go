@@ -79,7 +79,8 @@ func privatePeer(addr string) bool {
 // agentCalls are what the agent token may call: reading the hub, starting
 // and queueing work, and enrolling, rereading or dropping epics. Everything
 // else is yours: approving plans and proposals, clearing gates, fleet and
-// toolkit rollouts, pruning branches, and opening windows on the hub.
+// toolkit rollouts, Dewey reindex passes, pruning branches, and opening
+// windows on the hub.
 // A procedure added to the API is refused until it is listed here.
 var agentCalls = map[string]bool{
 	ghhudv1connect.HubServiceGetSnapshotProcedure:  false,
