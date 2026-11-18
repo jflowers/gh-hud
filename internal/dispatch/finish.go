@@ -603,7 +603,8 @@ func overlayName(path string) string {
 
 // inspect reads the checkout after a run and, when nothing was left
 // behind, returns it to the upstream default branch (local refs only) and
-// moves its untracked learnings into a chore PR (learnings.go).
+// moves its and its overlays' untracked learnings into chore PRs
+// (learnings.go).
 func (d *Dispatcher) inspect(ctx context.Context, m Machine, r Record) inspection {
 	if d.busyElsewhere(ctx, r) {
 		return inspection{err: busySkip, indexHealth: d.busyIndexHealth(ctx, m, r)}
@@ -643,6 +644,11 @@ func (d *Dispatcher) inspect(ctx context.Context, m Machine, r Record) inspectio
 		in.err = "learnings PR: " + err.Error()
 	} else if line != "" {
 		in.pushed = append(in.pushed, line)
+	}
+	lines, err := d.overlayLearningsPRs(ctx, m, r)
+	in.pushed = append(in.pushed, lines...)
+	if err != nil {
+		in.err = strings.TrimPrefix(in.err+"; overlay learnings PR: "+err.Error(), "; ")
 	}
 	// Last, with the run's opencode (and its dewey serve) gone: the index
 	// as the next dispatch will find it. Read-only; never marks the run.
@@ -740,7 +746,9 @@ func (d *Dispatcher) leftNote(m Machine, dir, msg string) string {
 // overlays before a run
 
 // overlaySyncScript fast-forwards every clean overlay the checkout links
-// to onto its upstream. It never pushes or discards: an overlay with
+// to onto its upstream. It never pushes or discards (overlays are pushed
+// only by the learnings PR after a clean run, overlayLearningsPRScript):
+// an overlay with
 // uncommitted changes or unpushed commits is reported for refusal.
 func overlaySyncScript(dir string) string {
 	return "cd -- " + shellQuoteTilde(dir) + " || exit 1\n" +

@@ -227,7 +227,8 @@ type Options struct {
 	// (base workspaces are human-only).
 	InstancesOnly bool
 	// LearningsPR opens a chore PR with a checkout's untracked dewey
-	// learnings after a clean run (learnings.go).
+	// learnings after a clean run, and one per stealth overlay with the
+	// overlay's (learnings.go).
 	LearningsPR bool
 	// AutoMerge says where to turn on auto-merge (automerge.go).
 	AutoMerge config.AutoMergeConfig

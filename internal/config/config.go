@@ -49,7 +49,8 @@ type Config struct {
 	DispatchInstancesOnly bool `toml:"dispatch_instances_only"`
 	// LearningsPR opens a chore PR to upstream with a checkout's untracked
 	// .uf/dewey/learnings files after a clean agent run, at most once a
-	// day per checkout. Untracked learnings never block a dispatch.
+	// day per checkout, and one to each stealth overlay's own repo with
+	// the overlay's. Untracked learnings never block a dispatch.
 	LearningsPR bool `toml:"learnings_pr"`
 	// HumanGateLabel marks issues and PRs a person handles: gh-hud
 	// dispatches no agent to them, by hand or automatically, and never
