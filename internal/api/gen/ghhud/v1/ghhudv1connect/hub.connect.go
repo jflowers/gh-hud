@@ -100,6 +100,8 @@ const (
 	HubServiceTranscriptProcedure = "/ghhud.v1.HubService/Transcript"
 	// HubServiceFleetControlProcedure is the fully-qualified name of the HubService's FleetControl RPC.
 	HubServiceFleetControlProcedure = "/ghhud.v1.HubService/FleetControl"
+	// HubServiceDeweyReindexProcedure is the fully-qualified name of the HubService's DeweyReindex RPC.
+	HubServiceDeweyReindexProcedure = "/ghhud.v1.HubService/DeweyReindex"
 	// HubServiceToolkitRolloutProcedure is the fully-qualified name of the HubService's ToolkitRollout
 	// RPC.
 	HubServiceToolkitRolloutProcedure = "/ghhud.v1.HubService/ToolkitRollout"
@@ -161,6 +163,13 @@ type HubServiceClient interface {
 	// FleetControl drives the GitOps rollout; FAILED_PRECONDITION when the
 	// fleet is off.
 	FleetControl(context.Context, *connect.Request[v1.FleetControlRequest]) (*connect.Response[v1.FleetControlResponse], error)
+	// DeweyReindex starts, or cancels, a pass that reindexes every Dewey
+	// vault on a fleet machine, or on every one (#139). A pass goes vault
+	// by vault, skipping busy ones; its progress is FleetMachine.dewey_pass.
+	// FAILED_PRECONDITION when the fleet is off; refused when
+	// [dispatch] dewey_reindex is "off", a pass already runs there, or this
+	// hub doesn't own dispatch.
+	DeweyReindex(context.Context, *connect.Request[v1.DeweyReindexRequest]) (*connect.Response[v1.DeweyReindexResponse], error)
 	// ToolkitRollout starts rolling a tool release out (issue #75);
 	// ToolkitControl drives rollouts. FAILED_PRECONDITION when the toolkit
 	// is off.
@@ -329,6 +338,12 @@ func NewHubServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(hubServiceMethods.ByName("FleetControl")),
 			connect.WithClientOptions(opts...),
 		),
+		deweyReindex: connect.NewClient[v1.DeweyReindexRequest, v1.DeweyReindexResponse](
+			httpClient,
+			baseURL+HubServiceDeweyReindexProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("DeweyReindex")),
+			connect.WithClientOptions(opts...),
+		),
 		toolkitRollout: connect.NewClient[v1.ToolkitRolloutRequest, v1.ToolkitRolloutResponse](
 			httpClient,
 			baseURL+HubServiceToolkitRolloutProcedure,
@@ -371,6 +386,7 @@ type hubServiceClient struct {
 	readPane        *connect.Client[v1.ReadPaneRequest, v1.ReadPaneResponse]
 	transcript      *connect.Client[v1.TranscriptRequest, v1.TranscriptResponse]
 	fleetControl    *connect.Client[v1.FleetControlRequest, v1.FleetControlResponse]
+	deweyReindex    *connect.Client[v1.DeweyReindexRequest, v1.DeweyReindexResponse]
 	toolkitRollout  *connect.Client[v1.ToolkitRolloutRequest, v1.ToolkitRolloutResponse]
 	toolkitControl  *connect.Client[v1.ToolkitControlRequest, v1.ToolkitControlResponse]
 }
@@ -500,6 +516,11 @@ func (c *hubServiceClient) FleetControl(ctx context.Context, req *connect.Reques
 	return c.fleetControl.CallUnary(ctx, req)
 }
 
+// DeweyReindex calls ghhud.v1.HubService.DeweyReindex.
+func (c *hubServiceClient) DeweyReindex(ctx context.Context, req *connect.Request[v1.DeweyReindexRequest]) (*connect.Response[v1.DeweyReindexResponse], error) {
+	return c.deweyReindex.CallUnary(ctx, req)
+}
+
 // ToolkitRollout calls ghhud.v1.HubService.ToolkitRollout.
 func (c *hubServiceClient) ToolkitRollout(ctx context.Context, req *connect.Request[v1.ToolkitRolloutRequest]) (*connect.Response[v1.ToolkitRolloutResponse], error) {
 	return c.toolkitRollout.CallUnary(ctx, req)
@@ -563,6 +584,13 @@ type HubServiceHandler interface {
 	// FleetControl drives the GitOps rollout; FAILED_PRECONDITION when the
 	// fleet is off.
 	FleetControl(context.Context, *connect.Request[v1.FleetControlRequest]) (*connect.Response[v1.FleetControlResponse], error)
+	// DeweyReindex starts, or cancels, a pass that reindexes every Dewey
+	// vault on a fleet machine, or on every one (#139). A pass goes vault
+	// by vault, skipping busy ones; its progress is FleetMachine.dewey_pass.
+	// FAILED_PRECONDITION when the fleet is off; refused when
+	// [dispatch] dewey_reindex is "off", a pass already runs there, or this
+	// hub doesn't own dispatch.
+	DeweyReindex(context.Context, *connect.Request[v1.DeweyReindexRequest]) (*connect.Response[v1.DeweyReindexResponse], error)
 	// ToolkitRollout starts rolling a tool release out (issue #75);
 	// ToolkitControl drives rollouts. FAILED_PRECONDITION when the toolkit
 	// is off.
@@ -727,6 +755,12 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(hubServiceMethods.ByName("FleetControl")),
 		connect.WithHandlerOptions(opts...),
 	)
+	hubServiceDeweyReindexHandler := connect.NewUnaryHandler(
+		HubServiceDeweyReindexProcedure,
+		svc.DeweyReindex,
+		connect.WithSchema(hubServiceMethods.ByName("DeweyReindex")),
+		connect.WithHandlerOptions(opts...),
+	)
 	hubServiceToolkitRolloutHandler := connect.NewUnaryHandler(
 		HubServiceToolkitRolloutProcedure,
 		svc.ToolkitRollout,
@@ -791,6 +825,8 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 			hubServiceTranscriptHandler.ServeHTTP(w, r)
 		case HubServiceFleetControlProcedure:
 			hubServiceFleetControlHandler.ServeHTTP(w, r)
+		case HubServiceDeweyReindexProcedure:
+			hubServiceDeweyReindexHandler.ServeHTTP(w, r)
 		case HubServiceToolkitRolloutProcedure:
 			hubServiceToolkitRolloutHandler.ServeHTTP(w, r)
 		case HubServiceToolkitControlProcedure:
@@ -902,6 +938,10 @@ func (UnimplementedHubServiceHandler) Transcript(context.Context, *connect.Reque
 
 func (UnimplementedHubServiceHandler) FleetControl(context.Context, *connect.Request[v1.FleetControlRequest]) (*connect.Response[v1.FleetControlResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.FleetControl is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) DeweyReindex(context.Context, *connect.Request[v1.DeweyReindexRequest]) (*connect.Response[v1.DeweyReindexResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.DeweyReindex is not implemented"))
 }
 
 func (UnimplementedHubServiceHandler) ToolkitRollout(context.Context, *connect.Request[v1.ToolkitRolloutRequest]) (*connect.Response[v1.ToolkitRolloutResponse], error) {

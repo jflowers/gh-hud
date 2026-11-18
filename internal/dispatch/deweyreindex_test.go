@@ -16,7 +16,8 @@ import (
 )
 
 // reindexFake is a fake dewey (and mise) on PATH for the reindex: status
-// reports a healthy index, reindex creates graph.db, and serve logs
+// reports a healthy index, reindex creates graph.db (or fails with
+// $FAKE_DEWEY_FAIL, or the vault's fail-reindex file), and serve logs
 // "background indexing complete" (once gate exists, when gate is set)
 // and runs until its stdin closes. Every invocation is appended to calls.
 type reindexFake struct {
@@ -34,6 +35,7 @@ case $1 in
 status) printf '{"pages": 1, "blocks": 10, "embeddings": 10}\n' ;;
 reindex)
   if [ -n "$FAKE_DEWEY_FAIL" ]; then echo "Error: $FAKE_DEWEY_FAIL" >&2; exit 1; fi
+  if [ -e .uf/dewey/fail-reindex ]; then echo "Error: $(cat .uf/dewey/fail-reindex)" >&2; exit 1; fi
   mkdir -p .uf/dewey && : > .uf/dewey/graph.db ;;
 serve)
   log=

@@ -144,3 +144,66 @@ func TestRolloutReindexSkipsLeftovers(t *testing.T) {
 		t.Error("a skip was recorded")
 	}
 }
+
+// A pass a person asks for (#139) goes vault by vault as the fleet runs
+// it: a vault reindexes and gets the new baseline and a "requested pass"
+// last reindex; a failing vault is recorded failed and keeps its old
+// baseline; a vault with leftovers is skipped and recorded nowhere; the
+// others aren't held up by either.
+func TestRequestedReindexPass(t *testing.T) {
+	f := fakeReindexDewey(t)
+	d := newTestDispatcher(t, "refuse")
+	upstream, _ := setupClone(t)
+	vault := func(ws string) string {
+		dir := ghwsCheckout(t, d.o().Root, ws, upstream, "r")
+		writeLearning(t, dir, "x.md")
+		writeFile(t, filepath.Join(dir, ".uf", "dewey", "graph.db"), "")
+		d.setDeweyBaseline("", dir, f.v1) // built by the old pin
+		return dir
+	}
+	ok1, failing, busy, ok2 := vault("acme@a"), vault("acme@b"), vault("acme@c"), vault("acme@d")
+	writeFile(t, filepath.Join(failing, ".uf", "dewey", "fail-reindex"), "boom")
+	writeFile(t, filepath.Join(failing, ".git", "info", "exclude"), ".uf/dewey/graph.db\n.uf/dewey/fail-reindex\n")
+	writeFile(t, filepath.Join(busy, "wip.txt"), "wip\n")
+	writeFile(t, f.which, f.v2+"\n") // the pin moved without a rollout reindex
+
+	ctx := context.Background()
+	vaults, err := d.DeweyVaults(ctx, "local")
+	if err != nil || len(vaults) != 4 {
+		t.Fatalf("vaults = %v, %v", vaults, err)
+	}
+	outcome := map[string]error{}
+	for _, dir := range vaults {
+		_, err := d.RequestedReindex(ctx, "local", dir)
+		outcome[dir] = err
+	}
+	for _, dir := range []string{ok1, ok2} {
+		if outcome[dir] != nil {
+			t.Errorf("%s: %v", dir, outcome[dir])
+		}
+		if b, _ := d.deweyBaseline("", dir); b.Binary != f.v2 {
+			t.Errorf("%s baseline = %q, want the new binary", dir, b.Binary)
+		}
+		if last, ok := d.lastReindex(dir); !ok || last.Failed() || !slices.Equal(last.Reasons, []string{reasonRequested}) {
+			t.Errorf("%s last reindex = %+v %v", dir, last, ok)
+		}
+	}
+	if err := outcome[failing]; err == nil || IsReindexSkip(err) || !strings.Contains(err.Error(), "boom") {
+		t.Errorf("failing vault: %v", err)
+	}
+	if last, ok := d.lastReindex(failing); !ok || !last.Failed() {
+		t.Errorf("failing vault's last reindex = %+v %v", last, ok)
+	}
+	if b, _ := d.deweyBaseline("", failing); b.Binary != f.v1 {
+		t.Errorf("failing vault's baseline moved to %q", b.Binary)
+	}
+	if err := outcome[busy]; !IsReindexSkip(err) || !strings.Contains(err.Error(), "leftovers") {
+		t.Errorf("busy vault: %v", err)
+	}
+	if _, ok := d.lastReindex(busy); ok {
+		t.Error("a skipped vault was recorded")
+	}
+	if n := f.count(t, "reindex"); n != 3 {
+		t.Errorf("dewey reindex ran %d times, want 3 (not the busy vault)", n)
+	}
+}

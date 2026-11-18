@@ -45,6 +45,9 @@ type Dewey interface {
 	DeweyBinary(ctx context.Context, machine string) (string, error)
 	DeweyVaults(ctx context.Context, machine string) ([]string, error)
 	RolloutReindex(ctx context.Context, machine, dir string) (dispatch.ReindexResult, error)
+	// RequestedReindex is RolloutReindex for a pass a person asked for
+	// (deweypass.go).
+	RequestedReindex(ctx context.Context, machine, dir string) (dispatch.ReindexResult, error)
 }
 
 // ReindexProgress is a machine's Dewey reindex for the current rollout.

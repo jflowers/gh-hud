@@ -9,7 +9,8 @@ package dispatch
 // the baseline update are the same as for the automatic reindex (#133).
 //
 // These are the fleet's entry points, by fleet machine name ("local" is
-// the hub). Gating on [dispatch] dewey_reindex is the coordinator's: it
+// the hub); the fleet's "reindex every vault now" pass (#139) uses them
+// too, through RequestedReindex. Gating on [dispatch] dewey_reindex is the coordinator's: it
 // reads DeweyReindexMode.
 
 import (
@@ -177,6 +178,26 @@ func parseDeweyVaults(out string) []deweyVaultLine {
 // for, within ctx; each attempt has reindexTimeout. Only the dispatch
 // owner reindexes.
 func (d *Dispatcher) RolloutReindex(ctx context.Context, machine, dir string) (ReindexResult, error) {
+	return d.gatedReindex(ctx, machine, dir, []string{reasonDeweyUpgraded})
+}
+
+// reasonRequested is why a person's "reindex every vault now" pass (#139)
+// ran, as the checkout's last reindex shows it.
+const reasonRequested = "requested pass"
+
+// RequestedReindex is RolloutReindex for a pass a person asked for
+// ("reindex every vault on this machine now", #139): the same gates, the
+// same wait for the machine's one reindex slot, the same record and
+// baseline; only the reason it records differs. The machine isn't
+// drained, so a checkout with a live agent, leftovers or a held
+// dewey.lock is skipped rather than waited for.
+func (d *Dispatcher) RequestedReindex(ctx context.Context, machine, dir string) (ReindexResult, error) {
+	return d.gatedReindex(ctx, machine, dir, []string{reasonRequested})
+}
+
+// gatedReindex is RolloutReindex and RequestedReindex: reindexCheckout on
+// the named machine, waiting out another reindex on it within ctx.
+func (d *Dispatcher) gatedReindex(ctx context.Context, machine, dir string, reasons []string) (ReindexResult, error) {
 	m, ok := d.rolloutMachine(machine)
 	if !ok {
 		return ReindexResult{}, fmt.Errorf("unknown machine %q", machine)
@@ -186,7 +207,7 @@ func (d *Dispatcher) RolloutReindex(ctx context.Context, machine, dir string) (R
 	}
 	for {
 		actx, cancel := context.WithTimeout(ctx, reindexTimeout)
-		res, err := d.reindexCheckout(actx, m, Record{Machine: m.key(), Dir: dir}, []string{reasonDeweyUpgraded})
+		res, err := d.reindexCheckout(actx, m, Record{Machine: m.key(), Dir: dir}, reasons)
 		cancel()
 		if !errors.Is(err, errMachineReindexing) {
 			return res, err
@@ -199,6 +220,11 @@ func (d *Dispatcher) RolloutReindex(ctx context.Context, machine, dir string) (R
 	}
 }
 
-// IsReindexSkip reports whether a RolloutReindex error means the reindex
+// IsReindexSkip reports whether a RolloutReindex (or RequestedReindex) error means the reindex
 // didn't start (rather than failed).
 func IsReindexSkip(err error) bool { return errors.Is(err, errReindexSkipped) }
+
+// ReindexSkipError is a skip as RolloutReindex and RequestedReindex
+// return one ("reindex skipped: <why>"), for fakes of the fleet's Dewey
+// surface.
+func ReindexSkipError(why string) error { return fmt.Errorf("%w: %s", errReindexSkipped, why) }

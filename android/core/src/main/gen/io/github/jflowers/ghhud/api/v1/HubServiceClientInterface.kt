@@ -112,6 +112,16 @@ public interface HubServiceClientInterface {
   public suspend fun fleetControl(request: FleetControlRequest, headers: Headers = emptyMap()): ResponseMessage<FleetControlResponse>
 
   /**
+   *  DeweyReindex starts, or cancels, a pass that reindexes every Dewey
+   *  vault on a fleet machine, or on every one (#139). A pass goes vault
+   *  by vault, skipping busy ones; its progress is FleetMachine.dewey_pass.
+   *  FAILED_PRECONDITION when the fleet is off; refused when
+   *  &#91;dispatch&#93; dewey_reindex is "off", a pass already runs there, or this
+   *  hub doesn't own dispatch.
+   */
+  public suspend fun deweyReindex(request: DeweyReindexRequest, headers: Headers = emptyMap()): ResponseMessage<DeweyReindexResponse>
+
+  /**
    *  ToolkitRollout starts rolling a tool release out (issue #75);
    *  ToolkitControl drives rollouts. FAILED_PRECONDITION when the toolkit
    *  is off.

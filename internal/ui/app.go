@@ -125,6 +125,11 @@ type Model struct {
 	rolloutAt              time.Time
 	skipWaitArmed          bool
 	skipWaitAt             time.Time
+	// fleetSel is the fleet view's selected machine row; deweyArmed the
+	// machine a first d armed a Dewey reindex pass for ("*" for D: all).
+	fleetSel     int
+	deweyArmed   string
+	deweyArmedAt time.Time
 
 	// machineUsage is the per-machine slot line for the status area.
 	machineUsage []dispatch.MachineUsage
@@ -879,6 +884,7 @@ func (m *Model) openFleet() {
 	if m.fleetOn {
 		m.fleetMode = true
 		m.skipWaitArmed = false
+		m.deweyArmed = ""
 		m.sync()
 	}
 }
@@ -897,8 +903,22 @@ func (m *Model) handleFleetKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc", "q", "F":
 		m.fleetMode = false
 		m.skipWaitArmed = false
+		m.deweyArmed = ""
 	case "ctrl+c":
 		return m, tea.Quit
+	case "up", "k":
+		m.fleetSel = max(0, min(m.fleetSel, len(m.fleetSnap.Machines)-1)-1)
+		m.deweyArmed = ""
+	case "down", "j":
+		m.fleetSel = max(0, min(m.fleetSel+1, len(m.fleetSnap.Machines)-1))
+		m.deweyArmed = ""
+	case "d", "D":
+		m.fleetDeweyKey(msg.String() == "D")
+	case "x":
+		if name := m.fleetSelected(); name != "" {
+			got, err := m.backend.DeweyReindexCancel(ctx(), name)
+			fleetDo(err, "Dewey reindex pass cancelled on "+strings.Join(got, ", "))
+		}
 	case "p":
 		if m.fleetSnap.Paused {
 			fleetDo(m.backend.FleetPause(ctx(), false), "fleet rollout resumed")
@@ -920,6 +940,52 @@ func (m *Model) handleFleetKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		fleetDo(m.backend.FleetRetry(ctx()), "fleet retrying failed machine")
 	}
 	return m, nil
+}
+
+// fleetSelected is the fleet view's selected machine ("" with none).
+func (m *Model) fleetSelected() string {
+	ms := m.fleetSnap.Machines
+	if len(ms) == 0 {
+		return ""
+	}
+	return ms[max(0, min(m.fleetSel, len(ms)-1))].Name
+}
+
+// fleetDeweyKey is d (the selected machine) and D (every machine): the
+// first press arms a Dewey reindex pass (#139), a second within
+// skipWaitWindow starts it.
+func (m *Model) fleetDeweyKey(all bool) {
+	target := m.fleetSelected()
+	where := target
+	if all {
+		target, where = "*", "every machine"
+	}
+	if target == "" {
+		return
+	}
+	key := map[bool]string{true: "D", false: "d"}[all]
+	if m.deweyArmed != target || time.Since(m.deweyArmedAt) >= skipWaitWindow {
+		m.deweyArmed, m.deweyArmedAt = target, time.Now()
+		m.skipWaitArmed = false
+		m.flash("press " + key + " again to reindex every Dewey vault on " + where)
+		return
+	}
+	m.deweyArmed = ""
+	machine := target
+	if all {
+		machine = ""
+	}
+	st, err := m.backend.DeweyReindex(ctx(), machine)
+	if err != nil {
+		m.flash("dewey: " + err.Error() + " (failed)")
+		return
+	}
+	msg := "Dewey reindex pass started on " + strings.Join(st.Started, ", ")
+	if len(st.Refused) > 0 {
+		msg += "; not on " + strings.Join(st.Refused, "; ")
+	}
+	m.flash(msg)
+	m.sync()
 }
 
 // openAction builds the dispatch menu for the selected row.

@@ -825,11 +825,12 @@ func (m *Model) fleetView() string {
 
 	// Table: machine, reachable, slots, applied vs target, state, waited, error.
 	nameW, okW, slotsW, shaW, stateW, waitW := 10, 3, 5, 17, 16, 6
-	head := "  " + padPlain("machine", nameW, false) + " " + padPlain("ok", okW, false) + " " +
+	head := "   " + padPlain("machine", nameW, false) + " " + padPlain("ok", okW, false) + " " +
 		padPlain("slots", slotsW, false) + " " + padPlain("applied", shaW, false) + " " +
 		padPlain("state", stateW, false) + " " + padPlain("waited", waitW, true) + " last error"
 	lines = append(lines, dim.Render(head))
-	for _, ms := range snap.Machines {
+	sel := max(0, min(m.fleetSel, len(snap.Machines)-1))
+	for i, ms := range snap.Machines {
 		g, c := fleetStateGlyph(ms.State)
 		slots := fleetSlotsText(ms.Name, m.machineUsage)
 		if slots == "" {
@@ -846,12 +847,17 @@ func (m *Model) fleetView() string {
 			padPlain(fleetAppliedText(ms, snap.TargetShort), shaW, false) + " " +
 			padPlain(ms.StateText(), stateW, false) + " " +
 			padPlain(waited, waitW, true)
-		line := lipgloss.NewStyle().Foreground(c).Render(g) + fg.Render(row)
+		mark := " "
+		if i == sel {
+			mark = lipgloss.NewStyle().Foreground(cMagenta).Render("›")
+		}
+		line := mark + lipgloss.NewStyle().Foreground(c).Render(g) + fg.Render(row)
 		if ms.LastErr != "" {
 			line += " " + bad.Render(truncatePlain(strings.ReplaceAll(ms.LastErr, "\n", " "), 40))
 		}
 		lines = append(lines, line)
 		lines = append(lines, fleetReindexLines(ms.Reindex, comment, bad)...)
+		lines = append(lines, fleetPassLines(ms.Pass, time.Now(), comment, bad)...)
 	}
 
 	lines = append(lines, "")
@@ -863,6 +869,15 @@ func (m *Model) fleetView() string {
 		hint = "s again! skipping drain wait"
 	}
 	lines = append(lines, comment.Render("p pause/resume · a apply now · "+hint+" · r retry · F/esc close"))
+	deweyHint := "↑↓ machine · d reindex its Dewey vaults · D every machine's · x cancel"
+	if m.deweyArmed != "" && time.Since(m.deweyArmedAt) < skipWaitWindow {
+		if m.deweyArmed == "*" {
+			deweyHint = "D again! reindex every Dewey vault on every machine"
+		} else {
+			deweyHint = "d again! reindex every Dewey vault on " + m.deweyArmed
+		}
+	}
+	lines = append(lines, comment.Render(deweyHint))
 
 	box := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
@@ -891,6 +906,37 @@ func fleetReindexLines(p fleet.ReindexProgress, note, bad lipgloss.Style) []stri
 			break
 		}
 		out = append(out, bad.Render("      ✗ "+truncatePlain(strings.ReplaceAll(f, "\n", " "), 74)))
+	}
+	return out
+}
+
+// fleetPassLines are the indented lines under a machine's row for the
+// latest Dewey reindex pass you asked for (#139): "reindexing 3/12" or
+// its summary, then each vault that failed (✗) or was skipped (–).
+func fleetPassLines(p fleet.DeweyPass, now time.Time, note, bad lipgloss.Style) []string {
+	if p.Started.IsZero() {
+		return nil
+	}
+	head := "    dewey pass: " + p.Text()
+	if p.Running {
+		head += " · started " + shortDur(now.Sub(p.Started)) + " ago"
+	} else if !p.Ended.IsZero() {
+		head += " · " + shortDur(now.Sub(p.Ended)) + " ago"
+	}
+	out := []string{note.Render(truncatePlain(head, 80))}
+	n := 0
+	for _, list := range []struct {
+		glyph string
+		items []string
+	}{{"✗", p.Failed}, {"–", p.Skipped}} {
+		for _, f := range list.items {
+			if n == fleetReindexMax {
+				out = append(out, bad.Render(fmt.Sprintf("      %d more", len(p.Failed)+len(p.Skipped)-n)))
+				return out
+			}
+			n++
+			out = append(out, bad.Render("      "+list.glyph+" "+truncatePlain(strings.ReplaceAll(f, "\n", " "), 74)))
+		}
 	}
 	return out
 }

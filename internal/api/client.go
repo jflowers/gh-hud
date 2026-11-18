@@ -12,6 +12,7 @@ import (
 	pb "github.com/jflowers/gh-hud/internal/api/gen/ghhud/v1"
 	"github.com/jflowers/gh-hud/internal/api/gen/ghhud/v1/ghhudv1connect"
 	"github.com/jflowers/gh-hud/internal/dispatch"
+	"github.com/jflowers/gh-hud/internal/fleet"
 	"github.com/jflowers/gh-hud/internal/hub"
 	"github.com/jflowers/gh-hud/internal/model"
 )
@@ -429,6 +430,26 @@ func (c *Client) FleetSkipWait(ctx context.Context) error {
 
 func (c *Client) FleetRetry(ctx context.Context) error {
 	return c.fleet(ctx, pb.FleetAction_FLEET_ACTION_RETRY)
+}
+
+func (c *Client) DeweyReindex(ctx context.Context, machine string) (fleet.PassStart, error) {
+	ctx, cancel := withDeadline(ctx, callTimeout)
+	defer cancel()
+	resp, err := c.rpc.DeweyReindex(ctx, connect.NewRequest(&pb.DeweyReindexRequest{Machine: machine, All: machine == ""}))
+	if err != nil {
+		return fleet.PassStart{}, fromConnect(err)
+	}
+	return fleet.PassStart{Started: resp.Msg.GetMachines(), Refused: resp.Msg.GetRefused()}, nil
+}
+
+func (c *Client) DeweyReindexCancel(ctx context.Context, machine string) ([]string, error) {
+	ctx, cancel := withDeadline(ctx, callTimeout)
+	defer cancel()
+	resp, err := c.rpc.DeweyReindex(ctx, connect.NewRequest(&pb.DeweyReindexRequest{Machine: machine, All: machine == "", Cancel: true}))
+	if err != nil {
+		return nil, fromConnect(err)
+	}
+	return resp.Msg.GetMachines(), nil
 }
 
 // toolkitTimeout covers a rollout start, which looks up the latest release.

@@ -279,6 +279,19 @@ func (s *Server) FleetControl(ctx context.Context, req *connect.Request[pb.Fleet
 	return reply(&pb.FleetControlResponse{}, err)
 }
 
+func (s *Server) DeweyReindex(ctx context.Context, req *connect.Request[pb.DeweyReindexRequest]) (*connect.Response[pb.DeweyReindexResponse], error) {
+	machine, all := req.Msg.GetMachine(), req.Msg.GetAll()
+	if all == (machine != "") {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name a machine, or all"))
+	}
+	if req.Msg.GetCancel() {
+		got, err := s.b.DeweyReindexCancel(ctx, machine)
+		return reply(&pb.DeweyReindexResponse{Machines: got}, err)
+	}
+	st, err := s.b.DeweyReindex(ctx, machine)
+	return reply(&pb.DeweyReindexResponse{Machines: st.Started, Refused: st.Refused}, err)
+}
+
 func (s *Server) ToolkitRollout(ctx context.Context, req *connect.Request[pb.ToolkitRolloutRequest]) (*connect.Response[pb.ToolkitRolloutResponse], error) {
 	id, err := s.b.ToolkitRollout(ctx, req.Msg.GetTool(), req.Msg.GetVersion())
 	return reply(&pb.ToolkitRolloutResponse{Id: id}, err)

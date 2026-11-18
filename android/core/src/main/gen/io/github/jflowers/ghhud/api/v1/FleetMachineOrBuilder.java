@@ -150,4 +150,23 @@ public interface FleetMachineOrBuilder extends
    */
   com.google.protobuf.ByteString
       getReindexNoteBytes();
+
+  /**
+   * <pre>
+   * unset: no pass asked for since the hub started
+   * </pre>
+   *
+   * <code>.ghhud.v1.DeweyPass dewey_pass = 12 [json_name = "deweyPass"];</code>
+   * @return Whether the deweyPass field is set.
+   */
+  boolean hasDeweyPass();
+  /**
+   * <pre>
+   * unset: no pass asked for since the hub started
+   * </pre>
+   *
+   * <code>.ghhud.v1.DeweyPass dewey_pass = 12 [json_name = "deweyPass"];</code>
+   * @return The deweyPass.
+   */
+  io.github.jflowers.ghhud.api.v1.DeweyPass getDeweyPass();
 }
