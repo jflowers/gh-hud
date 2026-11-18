@@ -725,7 +725,7 @@ func fleetStateGlyph(s fleet.State) (string, lipgloss.Color) {
 		return "·", cDim
 	case fleet.StateDraining:
 		return "◍", cYellow
-	case fleet.StateApplying, fleet.StateVerifying:
+	case fleet.StateApplying, fleet.StateReindexing, fleet.StateVerifying:
 		return "●", cCyan
 	case fleet.StateFailed:
 		return "✗", cRed
@@ -803,7 +803,7 @@ func (m *Model) fleetView() string {
 	lines = append(lines, "")
 
 	// Table: machine, reachable, slots, applied vs target, state, waited, error.
-	nameW, okW, slotsW, shaW, stateW, waitW := 10, 3, 5, 17, 11, 6
+	nameW, okW, slotsW, shaW, stateW, waitW := 10, 3, 5, 17, 16, 6
 	head := "  " + padPlain("machine", nameW, false) + " " + padPlain("ok", okW, false) + " " +
 		padPlain("slots", slotsW, false) + " " + padPlain("applied", shaW, false) + " " +
 		padPlain("state", stateW, false) + " " + padPlain("waited", waitW, true) + " last error"
@@ -823,13 +823,14 @@ func (m *Model) fleetView() string {
 			padPlain(fleetReachGlyph(ms), okW, false) + " " +
 			padPlain(slots, slotsW, false) + " " +
 			padPlain(fleetAppliedText(ms, snap.TargetShort), shaW, false) + " " +
-			padPlain(string(ms.State), stateW, false) + " " +
+			padPlain(ms.StateText(), stateW, false) + " " +
 			padPlain(waited, waitW, true)
 		line := lipgloss.NewStyle().Foreground(c).Render(g) + fg.Render(row)
 		if ms.LastErr != "" {
 			line += " " + bad.Render(truncatePlain(strings.ReplaceAll(ms.LastErr, "\n", " "), 40))
 		}
 		lines = append(lines, line)
+		lines = append(lines, fleetReindexLines(ms.Reindex, comment, bad)...)
 	}
 
 	lines = append(lines, "")
@@ -848,6 +849,29 @@ func (m *Model) fleetView() string {
 		Padding(1, 3).
 		Render(strings.Join(lines, "\n"))
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
+}
+
+// fleetReindexMax caps the failed vaults listed under a machine's row.
+const fleetReindexMax = 5
+
+// fleetReindexLines are the indented lines under a machine's row for its
+// Dewey reindex: the summary, then each vault that failed or was skipped.
+func fleetReindexLines(p fleet.ReindexProgress, note, bad lipgloss.Style) []string {
+	if p.Note == "" && len(p.Failed) == 0 {
+		return nil
+	}
+	var out []string
+	if p.Note != "" {
+		out = append(out, note.Render("    dewey: "+truncatePlain(p.Note, 76)))
+	}
+	for i, f := range p.Failed {
+		if i == fleetReindexMax {
+			out = append(out, bad.Render(fmt.Sprintf("      ✗ %d more", len(p.Failed)-i)))
+			break
+		}
+		out = append(out, bad.Render("      ✗ "+truncatePlain(strings.ReplaceAll(f, "\n", " "), 74)))
+	}
+	return out
 }
 
 // fleetReachGlyph renders the machine's reachability column.

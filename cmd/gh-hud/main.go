@@ -389,10 +389,11 @@ func buildHub(cfg *config.Config, cfgPath string, client *gh.Client, stateDir st
 			}
 		}
 		var sched fleet.Scheduler
+		var dewey fleet.Dewey
 		if disp != nil {
-			sched = disp
+			sched, dewey = disp, disp
 		}
-		c, err := fleet.New(fleet.Options{Config: cfg.Fleet, Machines: fleetMachines, Scheduler: sched, StateDir: stateDir, SelfRestart: selfRestart})
+		c, err := fleet.New(fleet.Options{Config: cfg.Fleet, Machines: fleetMachines, Scheduler: sched, Dewey: dewey, StateDir: stateDir, SelfRestart: selfRestart})
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "fleet:", err)
 		} else {

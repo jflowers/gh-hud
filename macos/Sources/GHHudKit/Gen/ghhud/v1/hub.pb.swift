@@ -2818,6 +2818,18 @@ public nonisolated struct Ghhud_V1_FleetMachine: Sendable {
 
   public var lastError: String = String()
 
+  /// The machine's Dewey reindex after this rollout changed its Dewey
+  /// binary: vaults handled so far and in all (state "reindexing" shows
+  /// them as "reindexing 7/15"), the vaults that failed or were skipped
+  /// ("<dir>: <why>"), and a summary ("" when the pin didn't change).
+  public var reindexDone: Int32 = 0
+
+  public var reindexTotal: Int32 = 0
+
+  public var reindexFailures: [String] = []
+
+  public var reindexNote: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -7451,7 +7463,7 @@ nonisolated extension Ghhud_V1_FleetSnapshot: SwiftProtobuf.Message, SwiftProtob
 
 nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".FleetMachine"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}state\0\u{1}reachable\0\u{1}applied\0\u{3}applied_short\0\u{1}waited\0\u{3}last_error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}state\0\u{1}reachable\0\u{1}applied\0\u{3}applied_short\0\u{1}waited\0\u{3}last_error\0\u{3}reindex_done\0\u{3}reindex_total\0\u{3}reindex_failures\0\u{3}reindex_note\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -7466,6 +7478,10 @@ nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobu
       case 5: try { try decoder.decodeSingularStringField(value: &self.appliedShort) }()
       case 6: try { try decoder.decodeSingularMessageField(value: &self._waited) }()
       case 7: try { try decoder.decodeSingularStringField(value: &self.lastError) }()
+      case 8: try { try decoder.decodeSingularInt32Field(value: &self.reindexDone) }()
+      case 9: try { try decoder.decodeSingularInt32Field(value: &self.reindexTotal) }()
+      case 10: try { try decoder.decodeRepeatedStringField(value: &self.reindexFailures) }()
+      case 11: try { try decoder.decodeSingularStringField(value: &self.reindexNote) }()
       default: break
       }
     }
@@ -7497,6 +7513,18 @@ nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobu
     if !self.lastError.isEmpty {
       try visitor.visitSingularStringField(value: self.lastError, fieldNumber: 7)
     }
+    if self.reindexDone != 0 {
+      try visitor.visitSingularInt32Field(value: self.reindexDone, fieldNumber: 8)
+    }
+    if self.reindexTotal != 0 {
+      try visitor.visitSingularInt32Field(value: self.reindexTotal, fieldNumber: 9)
+    }
+    if !self.reindexFailures.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.reindexFailures, fieldNumber: 10)
+    }
+    if !self.reindexNote.isEmpty {
+      try visitor.visitSingularStringField(value: self.reindexNote, fieldNumber: 11)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -7508,6 +7536,10 @@ nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobu
     if lhs.appliedShort != rhs.appliedShort {return false}
     if lhs._waited != rhs._waited {return false}
     if lhs.lastError != rhs.lastError {return false}
+    if lhs.reindexDone != rhs.reindexDone {return false}
+    if lhs.reindexTotal != rhs.reindexTotal {return false}
+    if lhs.reindexFailures != rhs.reindexFailures {return false}
+    if lhs.reindexNote != rhs.reindexNote {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

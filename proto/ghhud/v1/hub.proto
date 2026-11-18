@@ -794,6 +794,14 @@ message FleetMachine {
   string applied_short = 5;
   google.protobuf.Duration waited = 6; // time spent draining
   string last_error = 7;
+  // The machine's Dewey reindex after this rollout changed its Dewey
+  // binary: vaults handled so far and in all (state "reindexing" shows
+  // them as "reindexing 7/15"), the vaults that failed or were skipped
+  // ("<dir>: <why>"), and a summary ("" when the pin didn't change).
+  int32 reindex_done = 8;
+  int32 reindex_total = 9;
+  repeated string reindex_failures = 10;
+  string reindex_note = 11;
 }
 
 enum EventKind {

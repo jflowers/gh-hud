@@ -82,6 +82,27 @@ func TestFleetViewFailedMachine(t *testing.T) {
 	}
 }
 
+// A machine reindexing its Dewey vaults shows the count in its state and
+// the vaults that failed under its row.
+func TestFleetViewReindexing(t *testing.T) {
+	snap := fleetTestSnapshot()
+	snap.Machines[1] = fleet.MachineStatus{
+		Name: "lap2", State: fleet.StateReindexing, Reachable: true,
+		Applied: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", AppliedShort: "aaaaaaa",
+		Reindex: fleet.ReindexProgress{
+			Done: 7, Total: 15, Note: "dewey pin changed (1.0.0 → 1.1.0): reindexing",
+			Failed: []string{"/w/acme@a/r: failed after 3s: dewey reindex: boom"},
+		},
+	}
+	m := &Model{cfg: config.Default(), width: 140, height: 30, fleetMode: true, fleetSnap: snap}
+	out := m.fleetView()
+	for _, want := range []string{"reindexing 7/15", "dewey: dewey pin changed", "✗ /w/acme@a/r: failed after 3s"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("fleet view missing %q:\n%s", want, out)
+		}
+	}
+}
+
 func TestFleetIndicatorText(t *testing.T) {
 	p := paint{}
 	if got := fleetIndicatorText(p, fleet.Snapshot{}); got != "" {

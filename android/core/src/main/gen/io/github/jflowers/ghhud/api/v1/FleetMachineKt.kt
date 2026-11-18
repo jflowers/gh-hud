@@ -169,6 +169,141 @@ public object FleetMachineKt {
     public fun clearLastError() {
       _builder.clearLastError()
     }
+
+    /**
+     * ```
+     * The machine's Dewey reindex after this rollout changed its Dewey
+     * binary: vaults handled so far and in all (state "reindexing" shows
+     * them as "reindexing 7/15"), the vaults that failed or were skipped
+     * ("<dir>: <why>"), and a summary ("" when the pin didn't change).
+     * ```
+     *
+     * `int32 reindex_done = 8 [json_name = "reindexDone"];`
+     */
+    public var reindexDone: kotlin.Int
+      @kotlin.jvm.JvmName("getReindexDone")
+        get() = _builder.reindexDone
+      @kotlin.jvm.JvmName("setReindexDone")
+        set(value) {
+        _builder.reindexDone = value
+      }
+    /**
+     * ```
+     * The machine's Dewey reindex after this rollout changed its Dewey
+     * binary: vaults handled so far and in all (state "reindexing" shows
+     * them as "reindexing 7/15"), the vaults that failed or were skipped
+     * ("<dir>: <why>"), and a summary ("" when the pin didn't change).
+     * ```
+     *
+     * `int32 reindex_done = 8 [json_name = "reindexDone"];`
+     */
+    public fun clearReindexDone() {
+      _builder.clearReindexDone()
+    }
+
+    /**
+     * `int32 reindex_total = 9 [json_name = "reindexTotal"];`
+     */
+    public var reindexTotal: kotlin.Int
+      @kotlin.jvm.JvmName("getReindexTotal")
+        get() = _builder.reindexTotal
+      @kotlin.jvm.JvmName("setReindexTotal")
+        set(value) {
+        _builder.reindexTotal = value
+      }
+    /**
+     * `int32 reindex_total = 9 [json_name = "reindexTotal"];`
+     */
+    public fun clearReindexTotal() {
+      _builder.clearReindexTotal()
+    }
+
+    /**
+     * An uninstantiable, behaviorless type to represent the field in
+     * generics.
+     */
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+    public class ReindexFailuresProxy private constructor() : com.google.protobuf.kotlin.DslProxy()
+    /**
+     * `repeated string reindex_failures = 10 [json_name = "reindexFailures"];`
+     * @return A list containing the reindexFailures.
+     */
+    public val reindexFailures: com.google.protobuf.kotlin.DslList<kotlin.String, ReindexFailuresProxy>
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+      get() = com.google.protobuf.kotlin.DslList(
+        _builder.reindexFailuresList
+      )
+    /**
+     * `repeated string reindex_failures = 10 [json_name = "reindexFailures"];`
+     * @param value The reindexFailures to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addReindexFailures")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, ReindexFailuresProxy>.add(value: kotlin.String) {
+      _builder.addReindexFailures(value)
+    }
+    /**
+     * `repeated string reindex_failures = 10 [json_name = "reindexFailures"];`
+     * @param value The reindexFailures to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignReindexFailures")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, ReindexFailuresProxy>.plusAssign(value: kotlin.String) {
+      add(value)
+    }
+    /**
+     * `repeated string reindex_failures = 10 [json_name = "reindexFailures"];`
+     * @param values The reindexFailures to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addAllReindexFailures")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, ReindexFailuresProxy>.addAll(values: kotlin.collections.Iterable<kotlin.String>) {
+      _builder.addAllReindexFailures(values)
+    }
+    /**
+     * `repeated string reindex_failures = 10 [json_name = "reindexFailures"];`
+     * @param values The reindexFailures to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignAllReindexFailures")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, ReindexFailuresProxy>.plusAssign(values: kotlin.collections.Iterable<kotlin.String>) {
+      addAll(values)
+    }
+    /**
+     * `repeated string reindex_failures = 10 [json_name = "reindexFailures"];`
+     * @param index The index to set the value at.
+     * @param value The reindexFailures to set.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setReindexFailures")
+    public operator fun com.google.protobuf.kotlin.DslList<kotlin.String, ReindexFailuresProxy>.set(index: kotlin.Int, value: kotlin.String) {
+      _builder.setReindexFailures(index, value)
+    }/**
+     * `repeated string reindex_failures = 10 [json_name = "reindexFailures"];`
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setReindexFailures")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, ReindexFailuresProxy>.clear() {
+      _builder.clearReindexFailures()
+    }
+    /**
+     * `string reindex_note = 11 [json_name = "reindexNote"];`
+     */
+    public var reindexNote: kotlin.String
+      @kotlin.jvm.JvmName("getReindexNote")
+        get() = _builder.reindexNote
+      @kotlin.jvm.JvmName("setReindexNote")
+        set(value) {
+        _builder.reindexNote = value
+      }
+    /**
+     * `string reindex_note = 11 [json_name = "reindexNote"];`
+     */
+    public fun clearReindexNote() {
+      _builder.clearReindexNote()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.FleetMachine.copy(block: `io.github.jflowers.ghhud.api.v1`.FleetMachineKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.FleetMachine =

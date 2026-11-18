@@ -20,6 +20,8 @@ public  final class FleetMachine extends
     applied_ = "";
     appliedShort_ = "";
     lastError_ = "";
+    reindexFailures_ = emptyProtobufList();
+    reindexNote_ = "";
   }
   private int bitField0_;
   public static final int NAME_FIELD_NUMBER = 1;
@@ -347,6 +349,219 @@ public  final class FleetMachine extends
       com.google.protobuf.ByteString value) {
     checkByteStringIsUtf8(value);
     lastError_ = value.toStringUtf8();
+
+  }
+
+  public static final int REINDEX_DONE_FIELD_NUMBER = 8;
+  private int reindexDone_;
+  /**
+   * <pre>
+   * The machine's Dewey reindex after this rollout changed its Dewey
+   * binary: vaults handled so far and in all (state "reindexing" shows
+   * them as "reindexing 7/15"), the vaults that failed or were skipped
+   * ("&lt;dir&gt;: &lt;why&gt;"), and a summary ("" when the pin didn't change).
+   * </pre>
+   *
+   * <code>int32 reindex_done = 8 [json_name = "reindexDone"];</code>
+   * @return The reindexDone.
+   */
+  @java.lang.Override
+  public int getReindexDone() {
+    return reindexDone_;
+  }
+  /**
+   * <pre>
+   * The machine's Dewey reindex after this rollout changed its Dewey
+   * binary: vaults handled so far and in all (state "reindexing" shows
+   * them as "reindexing 7/15"), the vaults that failed or were skipped
+   * ("&lt;dir&gt;: &lt;why&gt;"), and a summary ("" when the pin didn't change).
+   * </pre>
+   *
+   * <code>int32 reindex_done = 8 [json_name = "reindexDone"];</code>
+   * @param value The reindexDone to set.
+   */
+  private void setReindexDone(int value) {
+    
+    reindexDone_ = value;
+  }
+  /**
+   * <pre>
+   * The machine's Dewey reindex after this rollout changed its Dewey
+   * binary: vaults handled so far and in all (state "reindexing" shows
+   * them as "reindexing 7/15"), the vaults that failed or were skipped
+   * ("&lt;dir&gt;: &lt;why&gt;"), and a summary ("" when the pin didn't change).
+   * </pre>
+   *
+   * <code>int32 reindex_done = 8 [json_name = "reindexDone"];</code>
+   */
+  private void clearReindexDone() {
+
+    reindexDone_ = 0;
+  }
+
+  public static final int REINDEX_TOTAL_FIELD_NUMBER = 9;
+  private int reindexTotal_;
+  /**
+   * <code>int32 reindex_total = 9 [json_name = "reindexTotal"];</code>
+   * @return The reindexTotal.
+   */
+  @java.lang.Override
+  public int getReindexTotal() {
+    return reindexTotal_;
+  }
+  /**
+   * <code>int32 reindex_total = 9 [json_name = "reindexTotal"];</code>
+   * @param value The reindexTotal to set.
+   */
+  private void setReindexTotal(int value) {
+    
+    reindexTotal_ = value;
+  }
+  /**
+   * <code>int32 reindex_total = 9 [json_name = "reindexTotal"];</code>
+   */
+  private void clearReindexTotal() {
+
+    reindexTotal_ = 0;
+  }
+
+  public static final int REINDEX_FAILURES_FIELD_NUMBER = 10;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> reindexFailures_;
+  /**
+   * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+   * @return A list containing the reindexFailures.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getReindexFailuresList() {
+    return reindexFailures_;
+  }
+  /**
+   * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+   * @return The count of reindexFailures.
+   */
+  @java.lang.Override
+  public int getReindexFailuresCount() {
+    return reindexFailures_.size();
+  }
+  /**
+   * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+   * @param index The index of the element to return.
+   * @return The reindexFailures at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getReindexFailures(int index) {
+    return reindexFailures_.get(index);
+  }
+  /**
+   * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the reindexFailures at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getReindexFailuresBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        reindexFailures_.get(index));
+  }
+  private void ensureReindexFailuresIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        reindexFailures_;  if (!tmp.isModifiable()) {
+      reindexFailures_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+   * @param index The index to set the value at.
+   * @param value The reindexFailures to set.
+   */
+  private void setReindexFailures(
+      int index, java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureReindexFailuresIsMutable();
+    reindexFailures_.set(index, value);
+  }
+  /**
+   * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+   * @param value The reindexFailures to add.
+   */
+  private void addReindexFailures(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureReindexFailuresIsMutable();
+    reindexFailures_.add(value);
+  }
+  /**
+   * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+   * @param values The reindexFailures to add.
+   */
+  private void addAllReindexFailures(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureReindexFailuresIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, reindexFailures_);
+  }
+  /**
+   * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+   */
+  private void clearReindexFailures() {
+    reindexFailures_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+   * @param value The bytes of the reindexFailures to add.
+   */
+  private void addReindexFailuresBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureReindexFailuresIsMutable();
+    reindexFailures_.add(value.toStringUtf8());
+  }
+
+  public static final int REINDEX_NOTE_FIELD_NUMBER = 11;
+  private java.lang.String reindexNote_;
+  /**
+   * <code>string reindex_note = 11 [json_name = "reindexNote"];</code>
+   * @return The reindexNote.
+   */
+  @java.lang.Override
+  public java.lang.String getReindexNote() {
+    return reindexNote_;
+  }
+  /**
+   * <code>string reindex_note = 11 [json_name = "reindexNote"];</code>
+   * @return The bytes for reindexNote.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getReindexNoteBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(reindexNote_);
+  }
+  /**
+   * <code>string reindex_note = 11 [json_name = "reindexNote"];</code>
+   * @param value The reindexNote to set.
+   */
+  private void setReindexNote(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    reindexNote_ = value;
+  }
+  /**
+   * <code>string reindex_note = 11 [json_name = "reindexNote"];</code>
+   */
+  private void clearReindexNote() {
+
+    reindexNote_ = getDefaultInstance().getReindexNote();
+  }
+  /**
+   * <code>string reindex_note = 11 [json_name = "reindexNote"];</code>
+   * @param value The bytes for reindexNote to set.
+   */
+  private void setReindexNoteBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    reindexNote_ = value.toStringUtf8();
 
   }
 
@@ -791,6 +1006,224 @@ public  final class FleetMachine extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The machine's Dewey reindex after this rollout changed its Dewey
+     * binary: vaults handled so far and in all (state "reindexing" shows
+     * them as "reindexing 7/15"), the vaults that failed or were skipped
+     * ("&lt;dir&gt;: &lt;why&gt;"), and a summary ("" when the pin didn't change).
+     * </pre>
+     *
+     * <code>int32 reindex_done = 8 [json_name = "reindexDone"];</code>
+     * @return The reindexDone.
+     */
+    @java.lang.Override
+    public int getReindexDone() {
+      return instance.getReindexDone();
+    }
+    /**
+     * <pre>
+     * The machine's Dewey reindex after this rollout changed its Dewey
+     * binary: vaults handled so far and in all (state "reindexing" shows
+     * them as "reindexing 7/15"), the vaults that failed or were skipped
+     * ("&lt;dir&gt;: &lt;why&gt;"), and a summary ("" when the pin didn't change).
+     * </pre>
+     *
+     * <code>int32 reindex_done = 8 [json_name = "reindexDone"];</code>
+     * @param value The reindexDone to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReindexDone(int value) {
+      copyOnWrite();
+      instance.setReindexDone(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The machine's Dewey reindex after this rollout changed its Dewey
+     * binary: vaults handled so far and in all (state "reindexing" shows
+     * them as "reindexing 7/15"), the vaults that failed or were skipped
+     * ("&lt;dir&gt;: &lt;why&gt;"), and a summary ("" when the pin didn't change).
+     * </pre>
+     *
+     * <code>int32 reindex_done = 8 [json_name = "reindexDone"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearReindexDone() {
+      copyOnWrite();
+      instance.clearReindexDone();
+      return this;
+    }
+
+    /**
+     * <code>int32 reindex_total = 9 [json_name = "reindexTotal"];</code>
+     * @return The reindexTotal.
+     */
+    @java.lang.Override
+    public int getReindexTotal() {
+      return instance.getReindexTotal();
+    }
+    /**
+     * <code>int32 reindex_total = 9 [json_name = "reindexTotal"];</code>
+     * @param value The reindexTotal to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReindexTotal(int value) {
+      copyOnWrite();
+      instance.setReindexTotal(value);
+      return this;
+    }
+    /**
+     * <code>int32 reindex_total = 9 [json_name = "reindexTotal"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearReindexTotal() {
+      copyOnWrite();
+      instance.clearReindexTotal();
+      return this;
+    }
+
+    /**
+     * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+     * @return A list containing the reindexFailures.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getReindexFailuresList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getReindexFailuresList());
+    }
+    /**
+     * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+     * @return The count of reindexFailures.
+     */
+    @java.lang.Override
+    public int getReindexFailuresCount() {
+      return instance.getReindexFailuresCount();
+    }
+    /**
+     * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+     * @param index The index of the element to return.
+     * @return The reindexFailures at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getReindexFailures(int index) {
+      return instance.getReindexFailures(index);
+    }
+    /**
+     * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the reindexFailures at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getReindexFailuresBytes(int index) {
+      return instance.getReindexFailuresBytes(index);
+    }
+    /**
+     * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+     * @param index The index to set the value at.
+     * @param value The reindexFailures to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReindexFailures(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setReindexFailures(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+     * @param value The reindexFailures to add.
+     * @return This builder for chaining.
+     */
+    public Builder addReindexFailures(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addReindexFailures(value);
+      return this;
+    }
+    /**
+     * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+     * @param values The reindexFailures to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllReindexFailures(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllReindexFailures(values);
+      return this;
+    }
+    /**
+     * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearReindexFailures() {
+      copyOnWrite();
+      instance.clearReindexFailures();
+      return this;
+    }
+    /**
+     * <code>repeated string reindex_failures = 10 [json_name = "reindexFailures"];</code>
+     * @param value The bytes of the reindexFailures to add.
+     * @return This builder for chaining.
+     */
+    public Builder addReindexFailuresBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addReindexFailuresBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>string reindex_note = 11 [json_name = "reindexNote"];</code>
+     * @return The reindexNote.
+     */
+    @java.lang.Override
+    public java.lang.String getReindexNote() {
+      return instance.getReindexNote();
+    }
+    /**
+     * <code>string reindex_note = 11 [json_name = "reindexNote"];</code>
+     * @return The bytes for reindexNote.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getReindexNoteBytes() {
+      return instance.getReindexNoteBytes();
+    }
+    /**
+     * <code>string reindex_note = 11 [json_name = "reindexNote"];</code>
+     * @param value The reindexNote to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReindexNote(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setReindexNote(value);
+      return this;
+    }
+    /**
+     * <code>string reindex_note = 11 [json_name = "reindexNote"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearReindexNote() {
+      copyOnWrite();
+      instance.clearReindexNote();
+      return this;
+    }
+    /**
+     * <code>string reindex_note = 11 [json_name = "reindexNote"];</code>
+     * @param value The bytes for reindexNote to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReindexNoteBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setReindexNoteBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.FleetMachine)
   }
   @java.lang.Override
@@ -815,10 +1248,15 @@ public  final class FleetMachine extends
             "appliedShort_",
             "waited_",
             "lastError_",
+            "reindexDone_",
+            "reindexTotal_",
+            "reindexFailures_",
+            "reindexNote_",
           };
           java.lang.String info =
-              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0007\u0004\u0208\u0005\u0208\u0006\u1009\u0000\u0007\u0208";
+              "\u0000\u000b\u0000\u0001\u0001\u000b\u000b\u0000\u0001\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0007\u0004\u0208\u0005\u0208\u0006\u1009\u0000\u0007\u0208\b\u0004\t\u0004" +
+              "\n\u021a\u000b\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

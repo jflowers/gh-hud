@@ -699,6 +699,8 @@ func fleetToPB(f fleet.Snapshot) *pb.FleetSnapshot {
 				Name: m.Name, State: string(m.State), Reachable: m.Reachable,
 				Applied: m.Applied, AppliedShort: m.AppliedShort,
 				Waited: dur(m.Waited), LastError: m.LastErr,
+				ReindexDone: int32(m.Reindex.Done), ReindexTotal: int32(m.Reindex.Total), //nolint:gosec // G115: vault counts
+				ReindexFailures: m.Reindex.Failed, ReindexNote: m.Reindex.Note,
 			}
 		}),
 	}
@@ -721,6 +723,10 @@ func fleetFromPB(p *pb.FleetSnapshot) fleet.Snapshot {
 				Name: m.GetName(), State: fleet.State(m.GetState()), Reachable: m.GetReachable(),
 				Applied: m.GetApplied(), AppliedShort: m.GetAppliedShort(),
 				Waited: fromDur(m.GetWaited()), LastErr: m.GetLastError(),
+				Reindex: fleet.ReindexProgress{
+					Done: int(m.GetReindexDone()), Total: int(m.GetReindexTotal()),
+					Failed: m.GetReindexFailures(), Note: m.GetReindexNote(),
+				},
 			}
 		}),
 	}

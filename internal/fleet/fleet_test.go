@@ -164,6 +164,12 @@ func machines() []dispatch.Machine {
 
 func newHarness(t *testing.T, stateDir string, applied map[string]string) *harness {
 	t.Helper()
+	return newHarnessWith(t, stateDir, applied, nil)
+}
+
+// newHarnessWith is newHarness with a last say over the options.
+func newHarnessWith(t *testing.T, stateDir string, applied map[string]string, edit func(*harness, *Options)) *harness {
+	t.Helper()
 	h := &harness{
 		gh:    &fakeGH{sha: targetSHA, runs: []CheckRun{{Status: "completed", Conclusion: "success"}}},
 		run:   newFakeRunner(applied),
@@ -178,7 +184,7 @@ func newHarness(t *testing.T, stateDir string, applied map[string]string) *harne
 		Enabled: true, Repo: "acme/dotfiles", Branch: "main",
 		Poll: "5m", RequireCI: true, MaxWait: "1h", Notify: true,
 	}
-	c, err := New(Options{
+	opts := Options{
 		Config:        cfg,
 		Machines:      machines(),
 		StateDir:      stateDir,
@@ -188,7 +194,11 @@ func newHarness(t *testing.T, stateDir string, applied map[string]string) *harne
 		Notifier:      h.notes,
 		Clock:         h.clock,
 		BinaryChanged: func() string { return h.bin },
-	})
+	}
+	if edit != nil {
+		edit(h, &opts)
+	}
+	c, err := New(opts)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}

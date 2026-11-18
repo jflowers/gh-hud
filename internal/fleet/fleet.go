@@ -27,6 +27,7 @@ const (
 	StatePending     State = "pending"     // waiting for its turn
 	StateDraining    State = "draining"    // marked draining, waiting for agents to exit
 	StateApplying    State = "applying"    // fleet-apply <sha> running
+	StateReindexing  State = "reindexing"  // reindexing Dewey vaults after a pin change (dewey.go)
 	StateVerifying   State = "verifying"   // --check/--status confirmation
 	StateFailed      State = "failed"      // apply or verify failed; rollout paused
 	StateUnreachable State = "unreachable" // last probe failed
@@ -56,10 +57,13 @@ type Options struct {
 	Machines  []dispatch.Machine // rollout targets in order, local hub last
 	StateDir  string             // default ~/.local/state/gh-hud (fleet.json)
 	Scheduler Scheduler          // dispatch drain gate + placement (optional)
-	GH        GH                 // target/CI source (default: gh CLI)
-	Runner    Runner             // fleet-apply runner (default: ssh/local exec)
-	Notifier  Notifier           // alerts (default: herdr notification)
-	Clock     Clock              // default: wall clock
+	// Dewey reindexes a machine's vaults when its apply changes the Dewey
+	// binary, per dewey_reindex (dewey.go). Optional: nil does nothing.
+	Dewey    Dewey
+	GH       GH       // target/CI source (default: gh CLI)
+	Runner   Runner   // fleet-apply runner (default: ssh/local exec)
+	Notifier Notifier // alerts (default: herdr notification)
+	Clock    Clock    // default: wall clock
 	// BinaryChanged says how the gh-hud binary differs from the running
 	// one after a local apply ("" for unchanged); the restart banner shows
 	// only then. Default: compare PATH's gh-hud with the start-time binary.
@@ -103,6 +107,13 @@ type machineState struct {
 	LastErr      string
 	DrainStart   time.Time
 	WaitNotified bool // max_wait notification sent for this drain
+	// DeweyBefore is the machine's Dewey binary before this rollout's
+	// apply ("" = not read); kept until the machine is current, so a retry
+	// or a resumed rollout still sees the change. deweyBeforeErr is why it
+	// couldn't be read.
+	DeweyBefore    string
+	deweyBeforeErr string
+	Reindex        ReindexProgress // this rollout's Dewey reindex
 }
 
 // New builds a Coordinator, defaulting unset options and loading
@@ -303,7 +314,7 @@ func (c *Coordinator) planLocked() (string, op) {
 			return ms.Name, opProbe
 		case StateDraining:
 			return ms.Name, opDrain
-		case StateFailed, StateApplying, StateVerifying:
+		case StateFailed, StateApplying, StateReindexing, StateVerifying:
 			// Failed machines wait for Retry; applying/verifying only
 			// exist transiently inside doDrain.
 			return ms.Name, opNone
@@ -350,6 +361,7 @@ func (c *Coordinator) newTargetLocked(sha string) {
 		ms.State = StatePending
 		ms.LastErr = ""
 		ms.WaitNotified = false
+		ms.Reindex = ReindexProgress{}
 	}
 	c.syncDrainLocked()
 	c.persistLocked()
@@ -380,6 +392,7 @@ func (c *Coordinator) doProbe(ctx context.Context, name string) bool {
 	ms.LastErr = ""
 	if applied == c.target {
 		ms.State = StateCurrent
+		ms.DeweyBefore = ""
 		c.syncDrainLocked()
 		c.persistLocked()
 		return false
@@ -426,12 +439,15 @@ func (c *Coordinator) doDrain(ctx context.Context, name string) bool {
 	return c.doApply(ctx, name, target)
 }
 
-// doApply runs `fleet-apply <sha>` (long timeout, cancellable via ctx) and
-// verifies the result. Failure pauses the rollout, keeps the machine
-// drained, and notifies once. Returns true when the rollout should wait.
+// doApply runs `fleet-apply <sha>` (long timeout, cancellable via ctx),
+// reindexes the machine's Dewey vaults when the apply changed its Dewey
+// binary (dewey.go), and verifies the result. Failure pauses the rollout,
+// keeps the machine drained, and notifies once; a failed reindex doesn't.
+// Returns true when the rollout should wait.
 func (c *Coordinator) doApply(ctx context.Context, name, target string) bool {
 	actx, cancel := context.WithTimeout(ctx, applyTimeout)
 	defer cancel()
+	c.deweyBefore(actx, name)
 	out, errOut, err := c.opts.Runner.Run(actx, name, "fleet-apply", target)
 	c.mu.Lock()
 	ms := c.machineLocked(name)
@@ -446,6 +462,14 @@ func (c *Coordinator) doApply(ctx context.Context, name, target string) bool {
 		c.persistLocked()
 		c.syncDrainLocked() // stays drained
 		c.notifyLocked("fleet rollout failed on "+name, ms.LastErr)
+		c.mu.Unlock()
+		return true
+	}
+	c.mu.Unlock()
+	// Still drained: no agent can start in a checkout being reindexed.
+	c.deweyAfterApply(ctx, name)
+	c.mu.Lock()
+	if ms = c.machineLocked(name); ms == nil {
 		c.mu.Unlock()
 		return true
 	}
@@ -484,6 +508,7 @@ func (c *Coordinator) doVerify(ctx context.Context, name, target string) bool {
 	ms.State = StateCurrent
 	ms.Reachable = true
 	ms.LastErr = ""
+	ms.DeweyBefore = ""
 	c.skipWait = false
 	if c.isLocal[name] {
 		// Only when the apply changed gh-hud itself: tools the agents run
@@ -506,7 +531,7 @@ func (c *Coordinator) Busy() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, ms := range c.machines {
-		if ms.State == StateApplying || ms.State == StateVerifying {
+		if ms.State == StateApplying || ms.State == StateReindexing || ms.State == StateVerifying {
 			return true
 		}
 	}
@@ -532,7 +557,7 @@ func (c *Coordinator) syncDrainLocked() {
 	var names []string
 	for _, ms := range c.machines {
 		switch ms.State {
-		case StateDraining, StateApplying, StateVerifying, StateFailed:
+		case StateDraining, StateApplying, StateReindexing, StateVerifying, StateFailed:
 			names = append(names, ms.Name)
 		}
 	}
@@ -609,6 +634,16 @@ type MachineStatus struct {
 	AppliedShort string
 	Waited       time.Duration // draining duration
 	LastErr      string
+	Reindex      ReindexProgress // Dewey reindex after a pin change (dewey.go)
+}
+
+// StateText is the state as the fleet view shows it: "reindexing 7/15"
+// while the machine reindexes its Dewey vaults.
+func (ms MachineStatus) StateText() string {
+	if ms.State == StateReindexing && ms.Reindex.Total > 0 {
+		return fmt.Sprintf("%s %d/%d", ms.State, ms.Reindex.Done, ms.Reindex.Total)
+	}
+	return string(ms.State)
 }
 
 // Snapshot is the coordinator's thread-safe view state.
@@ -648,12 +683,13 @@ func (c *Coordinator) Snapshot() Snapshot {
 			Applied:      ms.Applied,
 			AppliedShort: shortSHA(ms.Applied),
 			LastErr:      ms.LastErr,
+			Reindex:      ms.Reindex.clone(),
 		}
 		if ms.State == StateDraining && !ms.DrainStart.IsZero() {
 			st.Waited = c.opts.Clock.Now().Sub(ms.DrainStart)
 		}
 		switch ms.State {
-		case StateDraining, StateApplying, StateVerifying:
+		case StateDraining, StateApplying, StateReindexing, StateVerifying:
 			snap.Active = true
 		case StatePending:
 			if !c.paused && !c.blocked && c.ci.Status == CIGreen {

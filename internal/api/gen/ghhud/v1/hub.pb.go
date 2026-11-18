@@ -6116,16 +6116,24 @@ func (x *FleetSnapshot) GetMachines() []*FleetMachine {
 }
 
 type FleetMachine struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	State         string                 `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
-	Reachable     bool                   `protobuf:"varint,3,opt,name=reachable,proto3" json:"reachable,omitempty"`
-	Applied       string                 `protobuf:"bytes,4,opt,name=applied,proto3" json:"applied,omitempty"`
-	AppliedShort  string                 `protobuf:"bytes,5,opt,name=applied_short,json=appliedShort,proto3" json:"applied_short,omitempty"`
-	Waited        *durationpb.Duration   `protobuf:"bytes,6,opt,name=waited,proto3" json:"waited,omitempty"` // time spent draining
-	LastError     string                 `protobuf:"bytes,7,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Name         string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	State        string                 `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
+	Reachable    bool                   `protobuf:"varint,3,opt,name=reachable,proto3" json:"reachable,omitempty"`
+	Applied      string                 `protobuf:"bytes,4,opt,name=applied,proto3" json:"applied,omitempty"`
+	AppliedShort string                 `protobuf:"bytes,5,opt,name=applied_short,json=appliedShort,proto3" json:"applied_short,omitempty"`
+	Waited       *durationpb.Duration   `protobuf:"bytes,6,opt,name=waited,proto3" json:"waited,omitempty"` // time spent draining
+	LastError    string                 `protobuf:"bytes,7,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	// The machine's Dewey reindex after this rollout changed its Dewey
+	// binary: vaults handled so far and in all (state "reindexing" shows
+	// them as "reindexing 7/15"), the vaults that failed or were skipped
+	// ("<dir>: <why>"), and a summary ("" when the pin didn't change).
+	ReindexDone     int32    `protobuf:"varint,8,opt,name=reindex_done,json=reindexDone,proto3" json:"reindex_done,omitempty"`
+	ReindexTotal    int32    `protobuf:"varint,9,opt,name=reindex_total,json=reindexTotal,proto3" json:"reindex_total,omitempty"`
+	ReindexFailures []string `protobuf:"bytes,10,rep,name=reindex_failures,json=reindexFailures,proto3" json:"reindex_failures,omitempty"`
+	ReindexNote     string   `protobuf:"bytes,11,opt,name=reindex_note,json=reindexNote,proto3" json:"reindex_note,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *FleetMachine) Reset() {
@@ -6203,6 +6211,34 @@ func (x *FleetMachine) GetWaited() *durationpb.Duration {
 func (x *FleetMachine) GetLastError() string {
 	if x != nil {
 		return x.LastError
+	}
+	return ""
+}
+
+func (x *FleetMachine) GetReindexDone() int32 {
+	if x != nil {
+		return x.ReindexDone
+	}
+	return 0
+}
+
+func (x *FleetMachine) GetReindexTotal() int32 {
+	if x != nil {
+		return x.ReindexTotal
+	}
+	return 0
+}
+
+func (x *FleetMachine) GetReindexFailures() []string {
+	if x != nil {
+		return x.ReindexFailures
+	}
+	return nil
+}
+
+func (x *FleetMachine) GetReindexNote() string {
+	if x != nil {
+		return x.ReindexNote
 	}
 	return ""
 }
@@ -7331,7 +7367,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\n" +
 	"last_error\x18\n" +
 	" \x01(\tR\tlastError\x122\n" +
-	"\bmachines\x18\v \x03(\v2\x16.ghhud.v1.FleetMachineR\bmachines\"\xe7\x01\n" +
+	"\bmachines\x18\v \x03(\v2\x16.ghhud.v1.FleetMachineR\bmachines\"\xfd\x02\n" +
 	"\fFleetMachine\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\tR\x05state\x12\x1c\n" +
@@ -7340,7 +7376,12 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\rapplied_short\x18\x05 \x01(\tR\fappliedShort\x121\n" +
 	"\x06waited\x18\x06 \x01(\v2\x19.google.protobuf.DurationR\x06waited\x12\x1d\n" +
 	"\n" +
-	"last_error\x18\a \x01(\tR\tlastError\"k\n" +
+	"last_error\x18\a \x01(\tR\tlastError\x12!\n" +
+	"\freindex_done\x18\b \x01(\x05R\vreindexDone\x12#\n" +
+	"\rreindex_total\x18\t \x01(\x05R\freindexTotal\x12)\n" +
+	"\x10reindex_failures\x18\n" +
+	" \x03(\tR\x0freindexFailures\x12!\n" +
+	"\freindex_note\x18\v \x01(\tR\vreindexNote\"k\n" +
 	"\x05Event\x12'\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x13.ghhud.v1.EventKindR\x04kind\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12%\n" +

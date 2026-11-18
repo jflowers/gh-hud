@@ -56,6 +56,10 @@ const busyReindexing = "reindexing"
 // dewey.lock. Not a failure; nothing is notified.
 var errReindexSkipped = errors.New("reindex skipped")
 
+// errMachineReindexing is the skip for a machine already reindexing
+// another vault; the fleet rollout (#134) waits it out instead.
+var errMachineReindexing = errors.New("another reindex is running on the machine")
+
 // ReindexResult is the outcome of one reindex of a checkout's vault.
 type ReindexResult struct {
 	At       time.Time     `json:"at"`       // when it ended
@@ -122,12 +126,10 @@ func reindexable(h IndexHealth) bool {
 // success, the binary as its baseline. reasons say why it runs. An error
 // wrapping errReindexSkipped means it didn't start; ctx bounds it all
 // (reindexTimeout is the automatic one's).
-//
-//nolint:unparam // the fleet rollout (#134) reads the result
 func (d *Dispatcher) reindexCheckout(ctx context.Context, m Machine, r Record, reasons []string) (ReindexResult, error) {
 	key := m.key()
-	if by := d.takeReindexSlot(key, r.Dir); by != "" {
-		return ReindexResult{}, fmt.Errorf("%w: %s", errReindexSkipped, by)
+	if err := d.takeReindexSlot(key, r.Dir); err != nil {
+		return ReindexResult{}, fmt.Errorf("%w: %w", errReindexSkipped, err)
 	}
 	defer d.releaseReindexSlot(key, r.Dir)
 	if d.busyElsewhere(ctx, r) {
@@ -150,16 +152,17 @@ func (d *Dispatcher) reindexCheckout(ctx context.Context, m Machine, r Record, r
 }
 
 // takeReindexSlot claims the machine's one reindex and the checkout's dir
-// for it; it returns why it can't ("" when it took them).
-func (d *Dispatcher) takeReindexSlot(machine, dir string) string {
+// for it; it returns why it can't (nil when it took them), wrapping
+// errMachineReindexing when the machine is reindexing another vault.
+func (d *Dispatcher) takeReindexSlot(machine, dir string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if other, ok := d.reindexing[machine]; ok {
-		return "another reindex is running on the machine (" + filepath.Base(other) + ")"
+		return fmt.Errorf("%w (%s)", errMachineReindexing, filepath.Base(other))
 	}
 	dirKey := "dir|" + machine + "|" + dir
 	if by, ok := d.claims[dirKey]; ok {
-		return "the checkout is being dispatched (" + by + ")"
+		return fmt.Errorf("the checkout is being dispatched (%s)", by)
 	}
 	if d.reindexing == nil {
 		d.reindexing = map[string]string{}
@@ -169,7 +172,7 @@ func (d *Dispatcher) takeReindexSlot(machine, dir string) string {
 	}
 	d.reindexing[machine] = dir
 	d.claims[dirKey] = busyReindexing
-	return ""
+	return nil
 }
 
 func (d *Dispatcher) releaseReindexSlot(machine, dir string) {
