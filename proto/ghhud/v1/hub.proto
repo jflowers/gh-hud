@@ -588,6 +588,9 @@ message Run {
   // "reindex needed: <reasons>", "check failed: <err>", a machine
   // problem, or a skip. Empty when the checkout isn't a Dewey vault.
   string index_health = 25;
+  // opencode: the machine's `opencode --version` when the run started;
+  // empty when unknown.
+  string opencode = 26;
 }
 
 message MachineUsage {
@@ -595,6 +598,9 @@ message MachineUsage {
   int64 used = 2;
   int64 max = 3;
   bool ok = 4; // reachable and enabled
+  // opencode: the machine's opencode version as last polled (at most every
+  // few minutes), e.g. "1.14.2"; empty when not known.
+  string opencode = 5;
 }
 
 // Stage is a PR's position in the auto pipeline.

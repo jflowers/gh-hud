@@ -368,18 +368,39 @@ func shortDur(d time.Duration) string {
 	}
 }
 
-// machineUsageText renders the per-machine slot line:
-// "local 1/2 · lap1 0/2 · lap2 —" (— = unreachable or disabled).
+// machineUsageText renders the per-machine slot line, each machine's
+// opencode version after its slots when known:
+// "local 1/2 oc 1.14.2 · lap1 0/2 oc 2.0.0 · lap2 —" (— = unreachable or
+// disabled).
 func machineUsageText(p paint, usage []dispatch.MachineUsage) string {
 	parts := make([]string, 0, len(usage))
 	for _, u := range usage {
+		oc := ""
+		if u.Opencode != "" {
+			oc = p.text(cComment, " oc "+u.Opencode)
+		}
 		if !u.OK {
-			parts = append(parts, p.text(cDim, u.Name+" —"))
+			parts = append(parts, p.text(cDim, u.Name+" —")+oc)
 			continue
 		}
-		parts = append(parts, p.text(cDim, u.Name+" ")+p.text(cSubtle, fmt.Sprintf("%d/%d", u.Used, u.Max)))
+		parts = append(parts, p.text(cDim, u.Name+" ")+p.text(cSubtle, fmt.Sprintf("%d/%d", u.Used, u.Max))+oc)
 	}
 	return strings.Join(parts, p.text(cDim, " · "))
+}
+
+// machineVersionsText is the Agents view's machine line: each machine's
+// opencode version, "local opencode 1.14.2 · lap1 opencode 2.0.0-beta.3 ·
+// lap2 opencode ?" (? = not known yet, or opencode didn't answer).
+func machineVersionsText(usage []dispatch.MachineUsage) string {
+	parts := make([]string, 0, len(usage))
+	for _, u := range usage {
+		v := u.Opencode
+		if v == "" {
+			v = "?"
+		}
+		parts = append(parts, u.Name+" opencode "+v)
+	}
+	return strings.Join(parts, " · ")
 }
 
 // fleetIndicatorText is the compact header chip: shown only while a rollout

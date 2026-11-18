@@ -255,6 +255,8 @@ func (d *Dispatcher) Plan(items []model.Item, runs []Run) []PlanRow {
 				row.Note = "waits: " + string(row.Stage.Task) + " agent on it"
 			case d.reserved(e.Ref):
 				row.Note = "starting"
+			case d.labelWhy(it) != "":
+				row.Note = d.labelWhy(it)
 			case e.LastErr != "":
 				row.Note = e.LastErr
 			default:

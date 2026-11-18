@@ -132,10 +132,19 @@ func (m *Model) agentsView() string {
 
 	list := m.visibleAgents()
 	rows, detailH := m.agentsLayout()
-	lines := []string{m.headerBar(), dim.Render(
-		"    " + padPlain("task", agTaskW, false) + " " + padPlain("agent", nameW, false) + " " +
-			padPlain("where", agMachW, false) + " " + padPlain("workspace", agWsW, false) + " " +
-			padPlain("status", agStatusW, false) + " " + padPlain("took", agTookW, true) + " " + padPlain("age", agAgeW, true))}
+	lines := []string{m.headerBar()}
+	if len(m.machineUsage) > 0 {
+		// The machines' opencode versions take a table row's line.
+		lines = append(lines, comment.Render(truncatePlain("    "+machineVersionsText(m.machineUsage), w)))
+		if rows > 1 {
+			rows--
+		}
+	}
+	top := len(lines)
+	lines = append(lines, dim.Render(
+		"    "+padPlain("task", agTaskW, false)+" "+padPlain("agent", nameW, false)+" "+
+			padPlain("where", agMachW, false)+" "+padPlain("workspace", agWsW, false)+" "+
+			padPlain("status", agStatusW, false)+" "+padPlain("took", agTookW, true)+" "+padPlain("age", agAgeW, true)))
 
 	start, end := 0, len(list)
 	if len(list) > rows {
@@ -184,7 +193,7 @@ func (m *Model) agentsView() string {
 		lines = append(lines, marker+lipgloss.NewStyle().Foreground(color).Render(glyph)+" "+
 			rowStyle.Render(row)+stStyle.Render(st)+rowStyle.Render(tail))
 	}
-	for len(lines) < 2+rows {
+	for len(lines) < top+1+rows {
 		lines = append(lines, "")
 	}
 
@@ -219,7 +228,7 @@ func (m *Model) agentsView() string {
 		for _, l := range body {
 			lines = append(lines, "  "+l)
 		}
-		for len(lines) < 3+rows+detailH {
+		for len(lines) < top+2+rows+detailH {
 			lines = append(lines, "")
 		}
 	}

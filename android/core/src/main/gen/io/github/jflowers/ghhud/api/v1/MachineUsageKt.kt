@@ -104,6 +104,33 @@ public object MachineUsageKt {
     public fun clearOk() {
       _builder.clearOk()
     }
+
+    /**
+     * ```
+     * opencode: the machine's opencode version as last polled (at most every
+     * few minutes), e.g. "1.14.2"; empty when not known.
+     * ```
+     *
+     * `string opencode = 5 [json_name = "opencode"];`
+     */
+    public var opencode: kotlin.String
+      @kotlin.jvm.JvmName("getOpencode")
+        get() = _builder.opencode
+      @kotlin.jvm.JvmName("setOpencode")
+        set(value) {
+        _builder.opencode = value
+      }
+    /**
+     * ```
+     * opencode: the machine's opencode version as last polled (at most every
+     * few minutes), e.g. "1.14.2"; empty when not known.
+     * ```
+     *
+     * `string opencode = 5 [json_name = "opencode"];`
+     */
+    public fun clearOpencode() {
+      _builder.clearOpencode()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.MachineUsage.copy(block: `io.github.jflowers.ghhud.api.v1`.MachineUsageKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.MachineUsage =

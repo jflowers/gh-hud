@@ -303,10 +303,11 @@ func findRun(runs []dispatch.Run, arg string) (dispatch.Run, error) {
 // --- views: what the commands print, with stable JSON names ---
 
 type machineView struct {
-	Name string `json:"name"`
-	Used int    `json:"used"`
-	Max  int    `json:"max"`
-	OK   bool   `json:"ok"`
+	Name     string `json:"name"`
+	Used     int    `json:"used"`
+	Max      int    `json:"max"`
+	OK       bool   `json:"ok"`
+	Opencode string `json:"opencode,omitempty"`
 }
 
 type agentView struct {
@@ -375,7 +376,7 @@ func statusOf(s hub.Snapshot) statusView {
 	v := statusView{FetchedAt: s.FetchedAt, Dispatch: s.Dispatch, Follower: s.Follower, Warnings: s.ConfigWarnings,
 		Machines: []machineView{}, Agents: []agentView{}, Plan: []planView{}, Queue: queueOf(s.Queue), Epics: []epicSummary{}}
 	for _, m := range s.Usage {
-		v.Machines = append(v.Machines, machineView{Name: m.Name, Used: m.Used, Max: m.Max, OK: m.OK})
+		v.Machines = append(v.Machines, machineView{Name: m.Name, Used: m.Used, Max: m.Max, OK: m.OK, Opencode: m.Opencode})
 	}
 	for _, se := range s.Sessions {
 		if !se.Running && !se.Blocked {
@@ -418,10 +419,14 @@ func printStatus(w io.Writer, v statusView) {
 	}
 	var ms []string
 	for _, m := range v.Machines {
+		oc := ""
+		if m.Opencode != "" {
+			oc = " (opencode " + m.Opencode + ")"
+		}
 		if m.OK {
-			ms = append(ms, fmt.Sprintf("%s %d/%d", m.Name, m.Used, m.Max))
+			ms = append(ms, fmt.Sprintf("%s %d/%d%s", m.Name, m.Used, m.Max, oc))
 		} else {
-			ms = append(ms, m.Name+" —")
+			ms = append(ms, m.Name+" —"+oc)
 		}
 	}
 	fmt.Fprintf(w, "machines: %s\n", strings.Join(ms, "  "))
@@ -496,12 +501,14 @@ type runView struct {
 	Left     []string   `json:"left,omitempty"`
 	Index    string     `json:"index_health,omitempty"`
 	Session  string     `json:"session,omitempty"`
+	Opencode string     `json:"opencode,omitempty"`
 }
 
 func runOf(r dispatch.Run) runView {
 	return runView{ID: r.ID, Task: string(r.Task), Ref: r.Ref, Machine: machineName(r.Machine), Where: r.Workspace,
 		Status: string(r.Status), Auto: r.Auto, Started: r.StartedAt, Finished: r.FinishedAt, Reason: r.Reason,
-		Summary: r.Summary, Branch: r.Branch, Pushed: r.Pushed, Left: r.Left, Index: r.IndexHealth, Session: r.SessionID}
+		Summary: r.Summary, Branch: r.Branch, Pushed: r.Pushed, Left: r.Left, Index: r.IndexHealth, Session: r.SessionID,
+		Opencode: r.Opencode}
 }
 
 func printRuns(w io.Writer, rs []runView) {

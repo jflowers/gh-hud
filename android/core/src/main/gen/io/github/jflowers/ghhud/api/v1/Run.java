@@ -38,6 +38,7 @@ public  final class Run extends
     branch_ = "";
     fingerprint_ = "";
     indexHealth_ = "";
+    opencode_ = "";
   }
   private int bitField0_;
   public static final int ID_FIELD_NUMBER = 1;
@@ -1305,6 +1306,78 @@ public  final class Run extends
       com.google.protobuf.ByteString value) {
     checkByteStringIsUtf8(value);
     indexHealth_ = value.toStringUtf8();
+
+  }
+
+  public static final int OPENCODE_FIELD_NUMBER = 26;
+  private java.lang.String opencode_;
+  /**
+   * <pre>
+   * opencode: the machine's `opencode --version` when the run started;
+   * empty when unknown.
+   * </pre>
+   *
+   * <code>string opencode = 26 [json_name = "opencode"];</code>
+   * @return The opencode.
+   */
+  @java.lang.Override
+  public java.lang.String getOpencode() {
+    return opencode_;
+  }
+  /**
+   * <pre>
+   * opencode: the machine's `opencode --version` when the run started;
+   * empty when unknown.
+   * </pre>
+   *
+   * <code>string opencode = 26 [json_name = "opencode"];</code>
+   * @return The bytes for opencode.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getOpencodeBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(opencode_);
+  }
+  /**
+   * <pre>
+   * opencode: the machine's `opencode --version` when the run started;
+   * empty when unknown.
+   * </pre>
+   *
+   * <code>string opencode = 26 [json_name = "opencode"];</code>
+   * @param value The opencode to set.
+   */
+  private void setOpencode(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    opencode_ = value;
+  }
+  /**
+   * <pre>
+   * opencode: the machine's `opencode --version` when the run started;
+   * empty when unknown.
+   * </pre>
+   *
+   * <code>string opencode = 26 [json_name = "opencode"];</code>
+   */
+  private void clearOpencode() {
+
+    opencode_ = getDefaultInstance().getOpencode();
+  }
+  /**
+   * <pre>
+   * opencode: the machine's `opencode --version` when the run started;
+   * empty when unknown.
+   * </pre>
+   *
+   * <code>string opencode = 26 [json_name = "opencode"];</code>
+   * @param value The bytes for opencode to set.
+   */
+  private void setOpencodeBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    opencode_ = value.toStringUtf8();
 
   }
 
@@ -2721,6 +2794,80 @@ public  final class Run extends
       return this;
     }
 
+    /**
+     * <pre>
+     * opencode: the machine's `opencode --version` when the run started;
+     * empty when unknown.
+     * </pre>
+     *
+     * <code>string opencode = 26 [json_name = "opencode"];</code>
+     * @return The opencode.
+     */
+    @java.lang.Override
+    public java.lang.String getOpencode() {
+      return instance.getOpencode();
+    }
+    /**
+     * <pre>
+     * opencode: the machine's `opencode --version` when the run started;
+     * empty when unknown.
+     * </pre>
+     *
+     * <code>string opencode = 26 [json_name = "opencode"];</code>
+     * @return The bytes for opencode.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getOpencodeBytes() {
+      return instance.getOpencodeBytes();
+    }
+    /**
+     * <pre>
+     * opencode: the machine's `opencode --version` when the run started;
+     * empty when unknown.
+     * </pre>
+     *
+     * <code>string opencode = 26 [json_name = "opencode"];</code>
+     * @param value The opencode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setOpencode(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setOpencode(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * opencode: the machine's `opencode --version` when the run started;
+     * empty when unknown.
+     * </pre>
+     *
+     * <code>string opencode = 26 [json_name = "opencode"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearOpencode() {
+      copyOnWrite();
+      instance.clearOpencode();
+      return this;
+    }
+    /**
+     * <pre>
+     * opencode: the machine's `opencode --version` when the run started;
+     * empty when unknown.
+     * </pre>
+     *
+     * <code>string opencode = 26 [json_name = "opencode"];</code>
+     * @param value The bytes for opencode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setOpencodeBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setOpencodeBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.Run)
   }
   @java.lang.Override
@@ -2763,13 +2910,14 @@ public  final class Run extends
             "fingerprint_",
             "humanNeeded_",
             "indexHealth_",
+            "opencode_",
           };
           java.lang.String info =
-              "\u0000\u0019\u0000\u0001\u0001\u0019\u0019\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u001a\u0000\u0001\u0001\u001a\u001a\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\u0208\u0005\u0002\u0006\u0208\u0007\u0208\b\u0208\t\u0208\n\u0007" +
               "\u000b\u1009\u0000\f\u1009\u0001\r\u0208\u000e\u0208\u000f\u0208\u0010\u0208\u0011" +
               "\u0208\u0012\u0208\u0013\u021a\u0014\u021a\u0015\u0208\u0016\u0007\u0017\u0208\u0018" +
-              "\u0007\u0019\u0208";
+              "\u0007\u0019\u0208\u001a\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

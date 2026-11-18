@@ -197,6 +197,9 @@ func (m *Model) runLines(r dispatch.Run, w int) []string {
 	if r.Auto {
 		lines = append(lines, field("trigger", "auto-dispatch"))
 	}
+	if r.Opencode != "" {
+		lines = append(lines, field("opencode", r.Opencode))
+	}
 	if r.SessionID != "" {
 		lines = append(lines, field("session", r.SessionID))
 	}

@@ -16,6 +16,7 @@ public  final class MachineUsage extends
     MachineUsageOrBuilder {
   private MachineUsage() {
     name_ = "";
+    opencode_ = "";
   }
   public static final int NAME_FIELD_NUMBER = 1;
   private java.lang.String name_;
@@ -152,6 +153,78 @@ public  final class MachineUsage extends
   private void clearOk() {
 
     ok_ = false;
+  }
+
+  public static final int OPENCODE_FIELD_NUMBER = 5;
+  private java.lang.String opencode_;
+  /**
+   * <pre>
+   * opencode: the machine's opencode version as last polled (at most every
+   * few minutes), e.g. "1.14.2"; empty when not known.
+   * </pre>
+   *
+   * <code>string opencode = 5 [json_name = "opencode"];</code>
+   * @return The opencode.
+   */
+  @java.lang.Override
+  public java.lang.String getOpencode() {
+    return opencode_;
+  }
+  /**
+   * <pre>
+   * opencode: the machine's opencode version as last polled (at most every
+   * few minutes), e.g. "1.14.2"; empty when not known.
+   * </pre>
+   *
+   * <code>string opencode = 5 [json_name = "opencode"];</code>
+   * @return The bytes for opencode.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getOpencodeBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(opencode_);
+  }
+  /**
+   * <pre>
+   * opencode: the machine's opencode version as last polled (at most every
+   * few minutes), e.g. "1.14.2"; empty when not known.
+   * </pre>
+   *
+   * <code>string opencode = 5 [json_name = "opencode"];</code>
+   * @param value The opencode to set.
+   */
+  private void setOpencode(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    opencode_ = value;
+  }
+  /**
+   * <pre>
+   * opencode: the machine's opencode version as last polled (at most every
+   * few minutes), e.g. "1.14.2"; empty when not known.
+   * </pre>
+   *
+   * <code>string opencode = 5 [json_name = "opencode"];</code>
+   */
+  private void clearOpencode() {
+
+    opencode_ = getDefaultInstance().getOpencode();
+  }
+  /**
+   * <pre>
+   * opencode: the machine's opencode version as last polled (at most every
+   * few minutes), e.g. "1.14.2"; empty when not known.
+   * </pre>
+   *
+   * <code>string opencode = 5 [json_name = "opencode"];</code>
+   * @param value The bytes for opencode to set.
+   */
+  private void setOpencodeBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    opencode_ = value.toStringUtf8();
+
   }
 
   public static io.github.jflowers.ghhud.api.v1.MachineUsage parseFrom(
@@ -396,6 +469,80 @@ public  final class MachineUsage extends
       return this;
     }
 
+    /**
+     * <pre>
+     * opencode: the machine's opencode version as last polled (at most every
+     * few minutes), e.g. "1.14.2"; empty when not known.
+     * </pre>
+     *
+     * <code>string opencode = 5 [json_name = "opencode"];</code>
+     * @return The opencode.
+     */
+    @java.lang.Override
+    public java.lang.String getOpencode() {
+      return instance.getOpencode();
+    }
+    /**
+     * <pre>
+     * opencode: the machine's opencode version as last polled (at most every
+     * few minutes), e.g. "1.14.2"; empty when not known.
+     * </pre>
+     *
+     * <code>string opencode = 5 [json_name = "opencode"];</code>
+     * @return The bytes for opencode.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getOpencodeBytes() {
+      return instance.getOpencodeBytes();
+    }
+    /**
+     * <pre>
+     * opencode: the machine's opencode version as last polled (at most every
+     * few minutes), e.g. "1.14.2"; empty when not known.
+     * </pre>
+     *
+     * <code>string opencode = 5 [json_name = "opencode"];</code>
+     * @param value The opencode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setOpencode(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setOpencode(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * opencode: the machine's opencode version as last polled (at most every
+     * few minutes), e.g. "1.14.2"; empty when not known.
+     * </pre>
+     *
+     * <code>string opencode = 5 [json_name = "opencode"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearOpencode() {
+      copyOnWrite();
+      instance.clearOpencode();
+      return this;
+    }
+    /**
+     * <pre>
+     * opencode: the machine's opencode version as last polled (at most every
+     * few minutes), e.g. "1.14.2"; empty when not known.
+     * </pre>
+     *
+     * <code>string opencode = 5 [json_name = "opencode"];</code>
+     * @param value The bytes for opencode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setOpencodeBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setOpencodeBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.MachineUsage)
   }
   @java.lang.Override
@@ -416,10 +563,11 @@ public  final class MachineUsage extends
             "used_",
             "max_",
             "ok_",
+            "opencode_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u0002" +
-              "\u0003\u0002\u0004\u0007";
+              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0208\u0002\u0002" +
+              "\u0003\u0002\u0004\u0007\u0005\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

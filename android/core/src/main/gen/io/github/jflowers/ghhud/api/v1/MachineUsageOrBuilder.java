@@ -43,4 +43,26 @@ public interface MachineUsageOrBuilder extends
    * @return The ok.
    */
   boolean getOk();
+
+  /**
+   * <pre>
+   * opencode: the machine's opencode version as last polled (at most every
+   * few minutes), e.g. "1.14.2"; empty when not known.
+   * </pre>
+   *
+   * <code>string opencode = 5 [json_name = "opencode"];</code>
+   * @return The opencode.
+   */
+  java.lang.String getOpencode();
+  /**
+   * <pre>
+   * opencode: the machine's opencode version as last polled (at most every
+   * few minutes), e.g. "1.14.2"; empty when not known.
+   * </pre>
+   *
+   * <code>string opencode = 5 [json_name = "opencode"];</code>
+   * @return The bytes for opencode.
+   */
+  com.google.protobuf.ByteString
+      getOpencodeBytes();
 }

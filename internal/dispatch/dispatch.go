@@ -164,6 +164,9 @@ type Record struct {
 	// <err>", a machine problem, or a skip. "" when the checkout isn't a
 	// Dewey vault or the run left work behind.
 	IndexHealth string `json:"index_health,omitempty"`
+	// Opencode is the machine's `opencode --version` when the run started
+	// (as last polled, see opencodeVersion); "" when unknown.
+	Opencode string `json:"opencode,omitempty"`
 	// Unread: the outcome couldn't be read because the machine didn't
 	// answer; it's read again later (reread.go), RereadTries times so far.
 	Unread      bool       `json:"unread,omitempty"`
@@ -221,6 +224,11 @@ type Options struct {
 	// Machines are remote dispatch workers (herdr-managed). Empty keeps
 	// the historic hub-only behavior.
 	Machines []Machine
+	// LocalLabels and LocalExcludeLabels are the hub machine's placement
+	// rules by item label (top-level labels and exclude_labels; see
+	// Machine.Labels).
+	LocalLabels        []string
+	LocalExcludeLabels []string
 	// LocalIndex is the hub's ghws workspace index, used for placement.
 	LocalIndex *ghws.Index
 	// InstancesOnly restricts dispatch targets to @ instance workspaces
@@ -261,6 +269,15 @@ type Dispatcher struct {
 	reachAt      time.Time
 	indexCache   map[string]indexEntry // machine label → ghws index
 	indexLoading map[string]bool
+	// ocVersions are each machine's opencode version (machine key →
+	// answer; ocversion.go), guarded by cacheMu like the other caches.
+	// ocLocalBusy marks the hub's probe in flight; ocLocal runs it (a
+	// hook for tests; nil runs opencode --version).
+	ocVersions  map[string]ocVersionEntry
+	ocLocalBusy bool
+	ocLocal     func(ctx context.Context) (string, error)
+	// scanHook stands in for scanRemote (a hook for tests).
+	scanHook func(ctx context.Context, m Machine, version bool) (*ghws.Index, string, bool, error)
 
 	scanMu   sync.Mutex
 	scans    map[string]sessionScan // checkout dir → last good session listing
@@ -500,9 +517,10 @@ func (d *Dispatcher) dispatchWith(ctx context.Context, task Task, it model.Item,
 	if err != nil {
 		return Record{}, err
 	}
-	cands := d.candidates(ctx, task, it)
+	v := d.buildState(ctx)
+	cands := candidates(v, task, it, d.o().InstancesOnly)
 	if len(cands) == 0 {
-		return Record{}, fmt.Errorf("no dispatch target for %s (machines busy or full, or no idle checkout)", it.Ref())
+		return Record{}, fmt.Errorf("no dispatch target for %s: %s", it.Ref(), noPlacement(v, task, it, d.o().InstancesOnly))
 	}
 	var refusals []string
 	noToken := false
@@ -624,6 +642,11 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 		return Record{}, fmt.Errorf("remote dispatch requires runner = %q", "herdr")
 	}
 	ref := it.Ref()
+	// A machine you name runs only what its label rules take, like one
+	// placement picks.
+	if b := m.labelBlock(it.Labels); b != "" {
+		return Record{}, fmt.Errorf("%s %s, so it doesn't take %s", machineLabel(m), b, ref)
+	}
 	// Hold the PR and the checkout from the busy checks until the run is
 	// recorded: the preflight below takes seconds, and without the claim a
 	// second dispatch passes the same checks before this one is on record.
@@ -717,7 +740,7 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 		rec, err := d.dispatchHerdr(ctx, task, it, m, co, name, args, title, stash, auto)
 		if !errors.Is(err, errHerdrDown) {
 			if err == nil {
-				rec = d.setStartHead(rec, startHead)
+				rec = d.setStart(rec, startHead, d.opencodeVersion(m))
 				d.invalidateScan(co.Dir)
 			}
 			return rec, err
@@ -735,21 +758,31 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 	}
 	rec, err := d.dispatchLocal(task, it, co, name, args, title, stash, auto)
 	if err == nil {
-		rec = d.setStartHead(rec, startHead)
+		rec = d.setStart(rec, startHead, d.opencodeVersion(m))
 		d.invalidateScan(co.Dir)
 	}
 	return rec, err
 }
 
-// setStartHead stores the commit the agent started from, so the after-run
-// inspection can list what the run pushed.
-func (d *Dispatcher) setStartHead(rec Record, head string) Record {
-	rec.StartHead = head
+// setStart stores the commit the agent started from, so the after-run
+// inspection can list what the run pushed, and the machine's opencode
+// version, so the run says which opencode it ran on.
+func (d *Dispatcher) setStart(rec Record, head, opencode string) Record {
+	rec.StartHead, rec.Opencode = head, opencode
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	for i := range d.records {
-		if sameRecord(d.records[i], rec) && d.records[i].StartHead == "" {
-			d.records[i].StartHead = head
+		if !sameRecord(d.records[i], rec) {
+			continue
+		}
+		changed := false
+		if d.records[i].StartHead == "" && head != "" {
+			d.records[i].StartHead, changed = head, true
+		}
+		if d.records[i].Opencode == "" && opencode != "" {
+			d.records[i].Opencode, changed = opencode, true
+		}
+		if changed {
 			d.saveStateLocked()
 		}
 	}
@@ -1047,7 +1080,7 @@ func (d *Dispatcher) choices(it model.Item, tasks []Task) (out []MenuChoice, why
 			continue
 		}
 		configured++
-		cs := candidates(v, task, it.Ref(), it.Repo, it.HeadBranch, d.o().InstancesOnly)
+		cs := candidates(v, task, it, d.o().InstancesOnly)
 		if len(cs) == 0 {
 			if w := noPlacement(v, task, it, d.o().InstancesOnly); !slices.Contains(whys, w) {
 				whys = append(whys, w)
@@ -1075,6 +1108,9 @@ type MachineUsage struct {
 	Used int
 	Max  int
 	OK   bool // reachable and enabled; false renders as "—"
+	// Opencode is the machine's opencode version as last polled (e.g.
+	// "1.14.2"); "" when not known yet or opencode didn't answer.
+	Opencode string
 }
 
 // MachineUsage reports live dispatch counts per machine (local first,
@@ -1087,13 +1123,15 @@ func (d *Dispatcher) MachineUsage(ctx context.Context) []MachineUsage {
 			live[r.Machine]++
 		}
 	}
-	out := []MachineUsage{{Name: "local", Used: live[""], Max: d.o().MaxConcurrent, OK: true}}
+	out := []MachineUsage{{Name: "local", Used: live[""], Max: d.o().MaxConcurrent, OK: true,
+		Opencode: d.opencodeVersion(d.localMachine())}}
 	for _, m := range d.o().Machines {
 		out = append(out, MachineUsage{
-			Name: m.Name,
-			Used: live[m.Name],
-			Max:  m.Max,
-			OK:   m.Enabled && snaps[m.Name].ok,
+			Name:     m.Name,
+			Used:     live[m.Name],
+			Max:      m.Max,
+			OK:       m.Enabled && snaps[m.Name].ok,
+			Opencode: d.opencodeVersion(m),
 		})
 	}
 	return out
@@ -1102,7 +1140,9 @@ func (d *Dispatcher) MachineUsage(ctx context.Context) []MachineUsage {
 // localMachine is the hub machine; its slot count is the top-level
 // max_concurrent.
 func (d *Dispatcher) localMachine() Machine {
-	return Machine{Name: "local", Max: d.o().MaxConcurrent, GhwsRoot: d.o().Root, Enabled: true, Local: true}
+	o := d.o()
+	return Machine{Name: "local", Max: o.MaxConcurrent, GhwsRoot: o.Root, Enabled: true, Local: true,
+		Labels: o.LocalLabels, ExcludeLabels: o.LocalExcludeLabels}
 }
 
 // remoteMachines returns the enabled remote machines in config order.
@@ -1131,11 +1171,6 @@ func (d *Dispatcher) machineFor(name string) Machine {
 		}
 	}
 	return d.localMachine()
-}
-
-// candidates returns ranked placements for the item (see scheduler.go).
-func (d *Dispatcher) candidates(ctx context.Context, task Task, it model.Item) []placement {
-	return candidates(d.buildState(ctx), task, it.Ref(), it.Repo, it.HeadBranch, d.o().InstancesOnly)
 }
 
 // buildState assembles the scheduler's view: live records, reachability,

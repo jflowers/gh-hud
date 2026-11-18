@@ -80,6 +80,12 @@ type Config struct {
 	// agents can ask questions and auto-question can answer them).
 	// [[machines]] dispatch_mode overrides it per machine.
 	DispatchMode string `toml:"dispatch_mode"`
+	// Labels and ExcludeLabels are the hub's own placement rules by item
+	// label, like [[machines]] labels and exclude_labels: the hub takes
+	// only items with at least one of Labels (empty takes any), and never
+	// one with any of ExcludeLabels. Matching ignores case.
+	Labels        []string `toml:"labels"`
+	ExcludeLabels []string `toml:"exclude_labels"`
 	// BlockedNotifySecs sends a desktop notification when a dispatched
 	// agent stays blocked this long; 0 disables it. Requires notify. The
 	// default sits past auto-question's 120s handler timeout so a slow
@@ -388,6 +394,11 @@ type Machine struct {
 	Tasks         []string `toml:"tasks"`          // task allowlist; empty allows every task
 	Enabled       *bool    `toml:"enabled"`        // defaults to true
 	DispatchMode  string   `toml:"dispatch_mode"`  // "run" | "tui"; empty uses the top-level dispatch_mode
+	// Labels: the machine takes only items with at least one of these
+	// labels; empty takes any. ExcludeLabels: it never takes an item with
+	// any of them. Matching ignores case.
+	Labels        []string `toml:"labels"`
+	ExcludeLabels []string `toml:"exclude_labels"`
 }
 
 // IsEnabled reports whether the machine participates in dispatch.
@@ -562,6 +573,15 @@ func Load(path string) (*Config, error) {
 	}
 	if err := validateMachines(cfg.Machines); err != nil {
 		return nil, err
+	}
+	if err := normalizeLabelRules("", &cfg.Labels, &cfg.ExcludeLabels); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	for i := range cfg.Machines {
+		mc := &cfg.Machines[i]
+		if err := normalizeLabelRules("machines "+mc.Name+": ", &mc.Labels, &mc.ExcludeLabels); err != nil {
+			return nil, fmt.Errorf("%s: %w", path, err)
+		}
 	}
 	switch cfg.AutoMerge.Method {
 	case "":
@@ -750,6 +770,43 @@ func validateMachines(ms []Machine) error {
 		seen[m.Name] = true
 	}
 	return nil
+}
+
+// normalizeLabelRules tidies a machine's labels and exclude_labels: names
+// trimmed, empty ones dropped, repeats (ignoring case) kept once. A label
+// in both lists is an error: the machine could never take an item with it,
+// which is exclude_labels alone. where prefixes the error ("" for the hub).
+func normalizeLabelRules(where string, labels, exclude *[]string) error {
+	*labels = tidyLabels(*labels)
+	*exclude = tidyLabels(*exclude)
+	for _, l := range *labels {
+		for _, x := range *exclude {
+			if strings.EqualFold(l, x) {
+				return fmt.Errorf("%slabel %q is in both labels and exclude_labels", where, l)
+			}
+		}
+	}
+	return nil
+}
+
+// tidyLabels trims each label, drops empty ones and keeps the first of
+// labels that differ only in case. nil stays nil.
+func tidyLabels(in []string) []string {
+	if in == nil {
+		return nil
+	}
+	out := make([]string, 0, len(in))
+	seen := map[string]bool{}
+	for _, l := range in {
+		l = strings.TrimSpace(l)
+		k := strings.ToLower(l)
+		if l == "" || seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, l)
+	}
+	return out
 }
 
 // Gestures are the modified clicks iTerm2 actually forwards to a
