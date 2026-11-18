@@ -223,6 +223,13 @@ func (m *Model) runLines(r dispatch.Run, w int) []string {
 			lines = append(lines, fg.Render("  "+truncatePlain(p, w-2)))
 		}
 	}
+	if r.IndexHealth != "" {
+		st := fg
+		if r.IndexHealth != "ok" {
+			st = lipgloss.NewStyle().Foreground(cOrange)
+		}
+		lines = append(lines, "", h.Render("Dewey index"), st.Render("  "+truncatePlain(r.IndexHealth, w-2)))
+	}
 	if r.Summary != "" {
 		lines = append(lines, "", h.Render("Final message"))
 		for _, l := range wrapText(r.Summary, w-2) {

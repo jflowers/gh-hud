@@ -494,13 +494,14 @@ type runView struct {
 	Branch   string     `json:"branch,omitempty"`
 	Pushed   []string   `json:"pushed,omitempty"`
 	Left     []string   `json:"left,omitempty"`
+	Index    string     `json:"index_health,omitempty"`
 	Session  string     `json:"session,omitempty"`
 }
 
 func runOf(r dispatch.Run) runView {
 	return runView{ID: r.ID, Task: string(r.Task), Ref: r.Ref, Machine: machineName(r.Machine), Where: r.Workspace,
 		Status: string(r.Status), Auto: r.Auto, Started: r.StartedAt, Finished: r.FinishedAt, Reason: r.Reason,
-		Summary: r.Summary, Branch: r.Branch, Pushed: r.Pushed, Left: r.Left, Session: r.SessionID}
+		Summary: r.Summary, Branch: r.Branch, Pushed: r.Pushed, Left: r.Left, Index: r.IndexHealth, Session: r.SessionID}
 }
 
 func printRuns(w io.Writer, rs []runView) {

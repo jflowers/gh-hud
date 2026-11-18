@@ -318,4 +318,28 @@ public interface RunOrBuilder extends
    * @return The humanNeeded.
    */
   boolean getHumanNeeded();
+
+  /**
+   * <pre>
+   * index_health: the checkout's Dewey index after a clean run: "ok",
+   * "reindex needed: &lt;reasons&gt;", "check failed: &lt;err&gt;", a machine
+   * problem, or a skip. Empty when the checkout isn't a Dewey vault.
+   * </pre>
+   *
+   * <code>string index_health = 25 [json_name = "indexHealth"];</code>
+   * @return The indexHealth.
+   */
+  java.lang.String getIndexHealth();
+  /**
+   * <pre>
+   * index_health: the checkout's Dewey index after a clean run: "ok",
+   * "reindex needed: &lt;reasons&gt;", "check failed: &lt;err&gt;", a machine
+   * problem, or a skip. Empty when the checkout isn't a Dewey vault.
+   * </pre>
+   *
+   * <code>string index_health = 25 [json_name = "indexHealth"];</code>
+   * @return The bytes for indexHealth.
+   */
+  com.google.protobuf.ByteString
+      getIndexHealthBytes();
 }

@@ -596,6 +596,35 @@ public object RunKt {
     public fun clearHumanNeeded() {
       _builder.clearHumanNeeded()
     }
+
+    /**
+     * ```
+     * index_health: the checkout's Dewey index after a clean run: "ok",
+     * "reindex needed: <reasons>", "check failed: <err>", a machine
+     * problem, or a skip. Empty when the checkout isn't a Dewey vault.
+     * ```
+     *
+     * `string index_health = 25 [json_name = "indexHealth"];`
+     */
+    public var indexHealth: kotlin.String
+      @kotlin.jvm.JvmName("getIndexHealth")
+        get() = _builder.indexHealth
+      @kotlin.jvm.JvmName("setIndexHealth")
+        set(value) {
+        _builder.indexHealth = value
+      }
+    /**
+     * ```
+     * index_health: the checkout's Dewey index after a clean run: "ok",
+     * "reindex needed: <reasons>", "check failed: <err>", a machine
+     * problem, or a skip. Empty when the checkout isn't a Dewey vault.
+     * ```
+     *
+     * `string index_health = 25 [json_name = "indexHealth"];`
+     */
+    public fun clearIndexHealth() {
+      _builder.clearIndexHealth()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.Run.copy(block: `io.github.jflowers.ghhud.api.v1`.RunKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.Run =

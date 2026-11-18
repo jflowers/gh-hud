@@ -398,6 +398,7 @@ func RunToPB(r dispatch.Run) *pb.Run {
 		Cleaned:     r.Cleaned,
 		Fingerprint: r.Fingerprint,
 		HumanNeeded: r.HumanNeeded,
+		IndexHealth: r.IndexHealth,
 	}
 }
 
@@ -428,6 +429,7 @@ func RunFromPB(p *pb.Run) dispatch.Run {
 		Cleaned:     p.GetCleaned(),
 		Fingerprint: p.GetFingerprint(),
 		HumanNeeded: p.GetHumanNeeded(),
+		IndexHealth: p.GetIndexHealth(),
 	}
 }
 

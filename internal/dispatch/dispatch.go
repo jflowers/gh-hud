@@ -159,6 +159,11 @@ type Record struct {
 	Cleaned      bool       `json:"cleaned,omitempty"`       // returned to the default branch
 	InspectError string     `json:"inspect_error,omitempty"` // inspection could not run
 	InspectedAt  *time.Time `json:"inspected_at,omitempty"`
+	// IndexHealth is the checkout's Dewey index health after a clean run
+	// (deweyhealth.go): "ok", "reindex needed: <reasons>", "check failed:
+	// <err>", a machine problem, or a skip. "" when the checkout isn't a
+	// Dewey vault or the run left work behind.
+	IndexHealth string `json:"index_health,omitempty"`
 	// Unread: the outcome couldn't be read because the machine didn't
 	// answer; it's read again later (reread.go), RereadTries times so far.
 	Unread      bool       `json:"unread,omitempty"`
@@ -332,6 +337,12 @@ type Dispatcher struct {
 	// automatic one finished.
 	pruning  bool
 	prunedAt time.Time
+	// deweyBases are the Dewey binaries each checkout's index was last
+	// built with (deweyhealth.go), guarded by baseMu; deweyBasesMod is
+	// dewey-baselines.json's mtime at the last load or save.
+	baseMu        sync.Mutex
+	deweyBases    map[string]DeweyBaseline
+	deweyBasesMod time.Time
 }
 
 // agentSnapshot is one machine's live herdr agent list.

@@ -2002,6 +2002,14 @@ public nonisolated struct Ghhud_V1_Run: @unchecked Sendable {
     set {_uniqueStorage()._humanNeeded = newValue}
   }
 
+  /// index_health: the checkout's Dewey index after a clean run: "ok",
+  /// "reindex needed: <reasons>", "check failed: <err>", a machine
+  /// problem, or a skip. Empty when the checkout isn't a Dewey vault.
+  public var indexHealth: String {
+    get {_storage._indexHealth}
+    set {_uniqueStorage()._indexHealth = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -5735,7 +5743,7 @@ nonisolated extension Ghhud_V1_Session: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Run"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}task\0\u{1}ref\0\u{1}repo\0\u{1}num\0\u{1}machine\0\u{1}workspace\0\u{1}dir\0\u{1}status\0\u{1}auto\0\u{3}started_at\0\u{3}finished_at\0\u{3}session_id\0\u{3}pane_id\0\u{3}ws_id\0\u{1}log\0\u{1}reason\0\u{1}summary\0\u{1}left\0\u{1}pushed\0\u{1}branch\0\u{1}cleaned\0\u{1}fingerprint\0\u{3}human_needed\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}task\0\u{1}ref\0\u{1}repo\0\u{1}num\0\u{1}machine\0\u{1}workspace\0\u{1}dir\0\u{1}status\0\u{1}auto\0\u{3}started_at\0\u{3}finished_at\0\u{3}session_id\0\u{3}pane_id\0\u{3}ws_id\0\u{1}log\0\u{1}reason\0\u{1}summary\0\u{1}left\0\u{1}pushed\0\u{1}branch\0\u{1}cleaned\0\u{1}fingerprint\0\u{3}human_needed\0\u{3}index_health\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -5762,6 +5770,7 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
     var _cleaned: Bool = false
     var _fingerprint: String = String()
     var _humanNeeded: Bool = false
+    var _indexHealth: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5796,6 +5805,7 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
       _cleaned = source._cleaned
       _fingerprint = source._fingerprint
       _humanNeeded = source._humanNeeded
+      _indexHealth = source._indexHealth
     }
   }
 
@@ -5838,6 +5848,7 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
         case 22: try { try decoder.decodeSingularBoolField(value: &_storage._cleaned) }()
         case 23: try { try decoder.decodeSingularStringField(value: &_storage._fingerprint) }()
         case 24: try { try decoder.decodeSingularBoolField(value: &_storage._humanNeeded) }()
+        case 25: try { try decoder.decodeSingularStringField(value: &_storage._indexHealth) }()
         default: break
         }
       }
@@ -5922,6 +5933,9 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
       if _storage._humanNeeded != false {
         try visitor.visitSingularBoolField(value: _storage._humanNeeded, fieldNumber: 24)
       }
+      if !_storage._indexHealth.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._indexHealth, fieldNumber: 25)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -5955,6 +5969,7 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
         if _storage._cleaned != rhs_storage._cleaned {return false}
         if _storage._fingerprint != rhs_storage._fingerprint {return false}
         if _storage._humanNeeded != rhs_storage._humanNeeded {return false}
+        if _storage._indexHealth != rhs_storage._indexHealth {return false}
         return true
       }
       if !storagesAreEqual {return false}
