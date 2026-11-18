@@ -55,9 +55,10 @@ func TestRunViewFitsAndShowsDetail(t *testing.T) {
 		ID: "x", Task: dispatch.TaskCI, Ref: "acme/r#9", Machine: "lap1", Workspace: "acme@oak",
 		Status: dispatch.RunLeftWork, StartedAt: done.Add(-20 * time.Minute), FinishedAt: &done,
 		SessionID: "ses_1", Branch: "fix/ci",
-		Left:    []string{"unpushed 0ff46d8 fix: npm 11", "overlay .uf/fullsend: uncommitted ?? openspec/x.md"},
-		Pushed:  []string{"60ca3d0 fix(scaffold): npm 11"},
-		Summary: strings.Repeat("Fixed the plugin test install. ", 80),
+		Left:        []string{"unpushed 0ff46d8 fix: npm 11", "overlay .uf/fullsend: uncommitted ?? openspec/x.md"},
+		Pushed:      []string{"60ca3d0 fix(scaffold): npm 11"},
+		IndexHealth: "reindex needed: learnings changed",
+		Summary:     strings.Repeat("Fixed the plugin test install. ", 80),
 	}
 	m := &Model{width: 100, height: 24, runs: []dispatch.Run{r}}
 	m.openRun("x")
@@ -66,7 +67,7 @@ func TestRunViewFitsAndShowsDetail(t *testing.T) {
 		t.Errorf("run view is %d lines, terminal is %d", n, m.height)
 	}
 	plain := ansiRe.ReplaceAllString(out, "")
-	for _, want := range []string{"left work behind", "lap1:acme@oak", "Left behind", "unpushed 0ff46d8", "overlay .uf/fullsend", "Pushed", "60ca3d0", "more (j)"} {
+	for _, want := range []string{"left work behind", "lap1:acme@oak", "Left behind", "unpushed 0ff46d8", "overlay .uf/fullsend", "Pushed", "60ca3d0", "Dewey index", "reindex needed: learnings changed", "more (j)"} {
 		if !strings.Contains(plain, want) {
 			t.Errorf("run view missing %q", want)
 		}

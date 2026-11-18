@@ -37,6 +37,7 @@ public  final class Run extends
     pushed_ = emptyProtobufList();
     branch_ = "";
     fingerprint_ = "";
+    indexHealth_ = "";
   }
   private int bitField0_;
   public static final int ID_FIELD_NUMBER = 1;
@@ -1228,6 +1229,83 @@ public  final class Run extends
   private void clearHumanNeeded() {
 
     humanNeeded_ = false;
+  }
+
+  public static final int INDEX_HEALTH_FIELD_NUMBER = 25;
+  private java.lang.String indexHealth_;
+  /**
+   * <pre>
+   * index_health: the checkout's Dewey index after a clean run: "ok",
+   * "reindex needed: &lt;reasons&gt;", "check failed: &lt;err&gt;", a machine
+   * problem, or a skip. Empty when the checkout isn't a Dewey vault.
+   * </pre>
+   *
+   * <code>string index_health = 25 [json_name = "indexHealth"];</code>
+   * @return The indexHealth.
+   */
+  @java.lang.Override
+  public java.lang.String getIndexHealth() {
+    return indexHealth_;
+  }
+  /**
+   * <pre>
+   * index_health: the checkout's Dewey index after a clean run: "ok",
+   * "reindex needed: &lt;reasons&gt;", "check failed: &lt;err&gt;", a machine
+   * problem, or a skip. Empty when the checkout isn't a Dewey vault.
+   * </pre>
+   *
+   * <code>string index_health = 25 [json_name = "indexHealth"];</code>
+   * @return The bytes for indexHealth.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getIndexHealthBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(indexHealth_);
+  }
+  /**
+   * <pre>
+   * index_health: the checkout's Dewey index after a clean run: "ok",
+   * "reindex needed: &lt;reasons&gt;", "check failed: &lt;err&gt;", a machine
+   * problem, or a skip. Empty when the checkout isn't a Dewey vault.
+   * </pre>
+   *
+   * <code>string index_health = 25 [json_name = "indexHealth"];</code>
+   * @param value The indexHealth to set.
+   */
+  private void setIndexHealth(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    indexHealth_ = value;
+  }
+  /**
+   * <pre>
+   * index_health: the checkout's Dewey index after a clean run: "ok",
+   * "reindex needed: &lt;reasons&gt;", "check failed: &lt;err&gt;", a machine
+   * problem, or a skip. Empty when the checkout isn't a Dewey vault.
+   * </pre>
+   *
+   * <code>string index_health = 25 [json_name = "indexHealth"];</code>
+   */
+  private void clearIndexHealth() {
+
+    indexHealth_ = getDefaultInstance().getIndexHealth();
+  }
+  /**
+   * <pre>
+   * index_health: the checkout's Dewey index after a clean run: "ok",
+   * "reindex needed: &lt;reasons&gt;", "check failed: &lt;err&gt;", a machine
+   * problem, or a skip. Empty when the checkout isn't a Dewey vault.
+   * </pre>
+   *
+   * <code>string index_health = 25 [json_name = "indexHealth"];</code>
+   * @param value The bytes for indexHealth to set.
+   */
+  private void setIndexHealthBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    indexHealth_ = value.toStringUtf8();
+
   }
 
   public static io.github.jflowers.ghhud.api.v1.Run parseFrom(
@@ -2564,6 +2642,85 @@ public  final class Run extends
       return this;
     }
 
+    /**
+     * <pre>
+     * index_health: the checkout's Dewey index after a clean run: "ok",
+     * "reindex needed: &lt;reasons&gt;", "check failed: &lt;err&gt;", a machine
+     * problem, or a skip. Empty when the checkout isn't a Dewey vault.
+     * </pre>
+     *
+     * <code>string index_health = 25 [json_name = "indexHealth"];</code>
+     * @return The indexHealth.
+     */
+    @java.lang.Override
+    public java.lang.String getIndexHealth() {
+      return instance.getIndexHealth();
+    }
+    /**
+     * <pre>
+     * index_health: the checkout's Dewey index after a clean run: "ok",
+     * "reindex needed: &lt;reasons&gt;", "check failed: &lt;err&gt;", a machine
+     * problem, or a skip. Empty when the checkout isn't a Dewey vault.
+     * </pre>
+     *
+     * <code>string index_health = 25 [json_name = "indexHealth"];</code>
+     * @return The bytes for indexHealth.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getIndexHealthBytes() {
+      return instance.getIndexHealthBytes();
+    }
+    /**
+     * <pre>
+     * index_health: the checkout's Dewey index after a clean run: "ok",
+     * "reindex needed: &lt;reasons&gt;", "check failed: &lt;err&gt;", a machine
+     * problem, or a skip. Empty when the checkout isn't a Dewey vault.
+     * </pre>
+     *
+     * <code>string index_health = 25 [json_name = "indexHealth"];</code>
+     * @param value The indexHealth to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIndexHealth(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setIndexHealth(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * index_health: the checkout's Dewey index after a clean run: "ok",
+     * "reindex needed: &lt;reasons&gt;", "check failed: &lt;err&gt;", a machine
+     * problem, or a skip. Empty when the checkout isn't a Dewey vault.
+     * </pre>
+     *
+     * <code>string index_health = 25 [json_name = "indexHealth"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearIndexHealth() {
+      copyOnWrite();
+      instance.clearIndexHealth();
+      return this;
+    }
+    /**
+     * <pre>
+     * index_health: the checkout's Dewey index after a clean run: "ok",
+     * "reindex needed: &lt;reasons&gt;", "check failed: &lt;err&gt;", a machine
+     * problem, or a skip. Empty when the checkout isn't a Dewey vault.
+     * </pre>
+     *
+     * <code>string index_health = 25 [json_name = "indexHealth"];</code>
+     * @param value The bytes for indexHealth to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIndexHealthBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setIndexHealthBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.Run)
   }
   @java.lang.Override
@@ -2605,13 +2762,14 @@ public  final class Run extends
             "cleaned_",
             "fingerprint_",
             "humanNeeded_",
+            "indexHealth_",
           };
           java.lang.String info =
-              "\u0000\u0018\u0000\u0001\u0001\u0018\u0018\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0019\u0000\u0001\u0001\u0019\u0019\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\u0208\u0005\u0002\u0006\u0208\u0007\u0208\b\u0208\t\u0208\n\u0007" +
               "\u000b\u1009\u0000\f\u1009\u0001\r\u0208\u000e\u0208\u000f\u0208\u0010\u0208\u0011" +
               "\u0208\u0012\u0208\u0013\u021a\u0014\u021a\u0015\u0208\u0016\u0007\u0017\u0208\u0018" +
-              "\u0007";
+              "\u0007\u0019\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

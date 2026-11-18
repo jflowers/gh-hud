@@ -64,6 +64,9 @@ type Run struct {
 	// HumanNeeded: the agent handed a decision to a person (auto-question's
 	// escalation) and stopped; the run counts as failed.
 	HumanNeeded bool
+	// IndexHealth is the checkout's Dewey index health after the run (see
+	// Record.IndexHealth).
+	IndexHealth string
 }
 
 // runID identifies a record across snapshots.
@@ -124,7 +127,7 @@ func (d *Dispatcher) Runs(ctx context.Context) []Run {
 			SessionID: r.SessionID, PaneID: r.PaneID, WSID: r.WSID, Log: r.Log,
 			Reason: reason, Summary: r.Summary, Left: r.Left, Pushed: r.Pushed,
 			Branch: r.Branch, Cleaned: r.Cleaned, Fingerprint: r.Fingerprint,
-			HumanNeeded: r.HumanNeeded,
+			HumanNeeded: r.HumanNeeded, IndexHealth: r.IndexHealth,
 		})
 	}
 	return out
@@ -512,6 +515,9 @@ type inspection struct {
 	pushed  []string
 	cleaned bool
 	err     string
+	// indexHealth is the Dewey index health check's result ("" when it
+	// didn't run or the checkout isn't a vault).
+	indexHealth string
 }
 
 func (in inspection) apply(rec *Record) {
@@ -520,6 +526,7 @@ func (in inspection) apply(rec *Record) {
 	rec.Pushed = in.pushed
 	rec.Cleaned = in.cleaned
 	rec.InspectError = in.err
+	rec.IndexHealth = in.indexHealth
 	now := time.Now().UTC()
 	rec.InspectedAt = &now
 }
@@ -599,7 +606,7 @@ func overlayName(path string) string {
 // moves its untracked learnings into a chore PR (learnings.go).
 func (d *Dispatcher) inspect(ctx context.Context, m Machine, r Record) inspection {
 	if d.busyElsewhere(ctx, r) {
-		return inspection{err: "skipped: another agent is active in the checkout"}
+		return inspection{err: busySkip, indexHealth: d.busyIndexHealth(ctx, m, r)}
 	}
 	out, err := m.shell(ctx, inspectScript(r.Dir, r.StartHead))
 	if err != nil {
@@ -637,8 +644,14 @@ func (d *Dispatcher) inspect(ctx context.Context, m Machine, r Record) inspectio
 	} else if line != "" {
 		in.pushed = append(in.pushed, line)
 	}
+	// Last, with the run's opencode (and its dewey serve) gone: the index
+	// as the next dispatch will find it. Read-only; never marks the run.
+	in.indexHealth = d.checkIndexHealth(ctx, m, r)
 	return in
 }
+
+// busySkip is why an inspection, and the index check, didn't run.
+const busySkip = "skipped: another agent is active in the checkout"
 
 // busyElsewhere reports whether another run or herdr agent is live in r's
 // checkout: its state belongs to that run, so this one must not inspect

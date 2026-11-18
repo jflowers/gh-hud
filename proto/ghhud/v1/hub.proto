@@ -584,6 +584,10 @@ message Run {
   // human_needed: the agent handed a decision to a person and stopped
   // (auto-question's escalation); status is failed.
   bool human_needed = 24;
+  // index_health: the checkout's Dewey index after a clean run: "ok",
+  // "reindex needed: <reasons>", "check failed: <err>", a machine
+  // problem, or a skip. Empty when the checkout isn't a Dewey vault.
+  string index_health = 25;
 }
 
 message MachineUsage {
