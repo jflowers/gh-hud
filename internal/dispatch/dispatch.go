@@ -344,6 +344,9 @@ type Dispatcher struct {
 	baseMu        sync.Mutex
 	deweyBases    map[string]DeweyBaseline
 	deweyBasesMod time.Time
+	// idxStatus is the last dewey status read per checkout, for the
+	// Workspaces tab (workspaces_index.go).
+	idxStatus indexStatusCache
 }
 
 // agentSnapshot is one machine's live herdr agent list.

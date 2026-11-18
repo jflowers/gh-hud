@@ -747,6 +747,16 @@ message CheckoutHealth {
   string busy = 13;
   bool no_upstream = 14;
   string error = 15;
+  // Dewey index health: "" not read, "none" not a vault, "ok",
+  // "reindex needed: <reasons>", "check failed: …", "machine problem: …"
+  // (joined with "; "). A reindex need doesn't make the checkout unready.
+  string index = 16;
+  google.protobuf.Timestamp index_built = 17; // graph.db mtime; unset = no index
+  // From dewey status, as of index_status_at (unset = never read).
+  int64 index_pages = 18;
+  int64 index_blocks = 19;
+  int64 index_embeddings = 20;
+  google.protobuf.Timestamp index_status_at = 21;
 }
 
 message FleetSnapshot {

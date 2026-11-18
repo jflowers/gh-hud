@@ -193,4 +193,80 @@ public interface CheckoutHealthOrBuilder extends
    */
   com.google.protobuf.ByteString
       getErrorBytes();
+
+  /**
+   * <pre>
+   * Dewey index health: "" not read, "none" not a vault, "ok",
+   * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
+   * (joined with "; "). A reindex need doesn't make the checkout unready.
+   * </pre>
+   *
+   * <code>string index = 16 [json_name = "index"];</code>
+   * @return The index.
+   */
+  java.lang.String getIndex();
+  /**
+   * <pre>
+   * Dewey index health: "" not read, "none" not a vault, "ok",
+   * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
+   * (joined with "; "). A reindex need doesn't make the checkout unready.
+   * </pre>
+   *
+   * <code>string index = 16 [json_name = "index"];</code>
+   * @return The bytes for index.
+   */
+  com.google.protobuf.ByteString
+      getIndexBytes();
+
+  /**
+   * <pre>
+   * graph.db mtime; unset = no index
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp index_built = 17 [json_name = "indexBuilt"];</code>
+   * @return Whether the indexBuilt field is set.
+   */
+  boolean hasIndexBuilt();
+  /**
+   * <pre>
+   * graph.db mtime; unset = no index
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp index_built = 17 [json_name = "indexBuilt"];</code>
+   * @return The indexBuilt.
+   */
+  com.google.protobuf.Timestamp getIndexBuilt();
+
+  /**
+   * <pre>
+   * From dewey status, as of index_status_at (unset = never read).
+   * </pre>
+   *
+   * <code>int64 index_pages = 18 [json_name = "indexPages"];</code>
+   * @return The indexPages.
+   */
+  long getIndexPages();
+
+  /**
+   * <code>int64 index_blocks = 19 [json_name = "indexBlocks"];</code>
+   * @return The indexBlocks.
+   */
+  long getIndexBlocks();
+
+  /**
+   * <code>int64 index_embeddings = 20 [json_name = "indexEmbeddings"];</code>
+   * @return The indexEmbeddings.
+   */
+  long getIndexEmbeddings();
+
+  /**
+   * <code>.google.protobuf.Timestamp index_status_at = 21 [json_name = "indexStatusAt"];</code>
+   * @return Whether the indexStatusAt field is set.
+   */
+  boolean hasIndexStatusAt();
+  /**
+   * <code>.google.protobuf.Timestamp index_status_at = 21 [json_name = "indexStatusAt"];</code>
+   * @return The indexStatusAt.
+   */
+  com.google.protobuf.Timestamp getIndexStatusAt();
 }

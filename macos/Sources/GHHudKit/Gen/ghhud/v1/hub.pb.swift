@@ -2560,46 +2560,136 @@ public nonisolated struct Ghhud_V1_EpicNode: Sendable {
 }
 
 /// CheckoutHealth is whether a ghws checkout can take a dispatch.
-public nonisolated struct Ghhud_V1_CheckoutHealth: Sendable {
+public nonisolated struct Ghhud_V1_CheckoutHealth: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var machine: String = String()
+  public var machine: String {
+    get {_storage._machine}
+    set {_uniqueStorage()._machine = newValue}
+  }
 
-  public var workspace: String = String()
+  public var workspace: String {
+    get {_storage._workspace}
+    set {_uniqueStorage()._workspace = newValue}
+  }
 
-  public var repo: String = String()
+  public var repo: String {
+    get {_storage._repo}
+    set {_uniqueStorage()._repo = newValue}
+  }
 
-  public var dir: String = String()
+  public var dir: String {
+    get {_storage._dir}
+    set {_uniqueStorage()._dir = newValue}
+  }
 
-  public var branch: String = String()
+  public var branch: String {
+    get {_storage._branch}
+    set {_uniqueStorage()._branch = newValue}
+  }
 
-  public var defaultBranch: String = String()
+  public var defaultBranch: String {
+    get {_storage._defaultBranch}
+    set {_uniqueStorage()._defaultBranch = newValue}
+  }
 
   /// -1 unknown
-  public var ahead: Int64 = 0
+  public var ahead: Int64 {
+    get {_storage._ahead}
+    set {_uniqueStorage()._ahead = newValue}
+  }
 
   /// -1 unknown
-  public var behind: Int64 = 0
+  public var behind: Int64 {
+    get {_storage._behind}
+    set {_uniqueStorage()._behind = newValue}
+  }
 
-  public var dirty: [String] = []
+  public var dirty: [String] {
+    get {_storage._dirty}
+    set {_uniqueStorage()._dirty = newValue}
+  }
 
-  public var learnings: Int64 = 0
+  public var learnings: Int64 {
+    get {_storage._learnings}
+    set {_uniqueStorage()._learnings = newValue}
+  }
 
-  public var localOnly: [String] = []
+  public var localOnly: [String] {
+    get {_storage._localOnly}
+    set {_uniqueStorage()._localOnly = newValue}
+  }
 
-  public var stashes: Int64 = 0
+  public var stashes: Int64 {
+    get {_storage._stashes}
+    set {_uniqueStorage()._stashes = newValue}
+  }
 
-  public var busy: String = String()
+  public var busy: String {
+    get {_storage._busy}
+    set {_uniqueStorage()._busy = newValue}
+  }
 
-  public var noUpstream: Bool = false
+  public var noUpstream: Bool {
+    get {_storage._noUpstream}
+    set {_uniqueStorage()._noUpstream = newValue}
+  }
 
-  public var error: String = String()
+  public var error: String {
+    get {_storage._error}
+    set {_uniqueStorage()._error = newValue}
+  }
+
+  /// Dewey index health: "" not read, "none" not a vault, "ok",
+  /// "reindex needed: <reasons>", "check failed: …", "machine problem: …"
+  /// (joined with "; "). A reindex need doesn't make the checkout unready.
+  public var index: String {
+    get {_storage._index}
+    set {_uniqueStorage()._index = newValue}
+  }
+
+  /// graph.db mtime; unset = no index
+  public var indexBuilt: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_storage._indexBuilt ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_uniqueStorage()._indexBuilt = newValue}
+  }
+  /// Returns true if `indexBuilt` has been explicitly set.
+  public var hasIndexBuilt: Bool {_storage._indexBuilt != nil}
+  /// Clears the value of `indexBuilt`. Subsequent reads from it will return its default value.
+  public mutating func clearIndexBuilt() {_uniqueStorage()._indexBuilt = nil}
+
+  /// From dewey status, as of index_status_at (unset = never read).
+  public var indexPages: Int64 {
+    get {_storage._indexPages}
+    set {_uniqueStorage()._indexPages = newValue}
+  }
+
+  public var indexBlocks: Int64 {
+    get {_storage._indexBlocks}
+    set {_uniqueStorage()._indexBlocks = newValue}
+  }
+
+  public var indexEmbeddings: Int64 {
+    get {_storage._indexEmbeddings}
+    set {_uniqueStorage()._indexEmbeddings = newValue}
+  }
+
+  public var indexStatusAt: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_storage._indexStatusAt ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_uniqueStorage()._indexStatusAt = newValue}
+  }
+  /// Returns true if `indexStatusAt` has been explicitly set.
+  public var hasIndexStatusAt: Bool {_storage._indexStatusAt != nil}
+  /// Clears the value of `indexStatusAt`. Subsequent reads from it will return its default value.
+  public mutating func clearIndexStatusAt() {_uniqueStorage()._indexStatusAt = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public nonisolated struct Ghhud_V1_FleetSnapshot: Sendable {
@@ -6932,99 +7022,209 @@ nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CheckoutHealth"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machine\0\u{1}workspace\0\u{1}repo\0\u{1}dir\0\u{1}branch\0\u{3}default_branch\0\u{1}ahead\0\u{1}behind\0\u{1}dirty\0\u{1}learnings\0\u{3}local_only\0\u{1}stashes\0\u{1}busy\0\u{3}no_upstream\0\u{1}error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machine\0\u{1}workspace\0\u{1}repo\0\u{1}dir\0\u{1}branch\0\u{3}default_branch\0\u{1}ahead\0\u{1}behind\0\u{1}dirty\0\u{1}learnings\0\u{3}local_only\0\u{1}stashes\0\u{1}busy\0\u{3}no_upstream\0\u{1}error\0\u{1}index\0\u{3}index_built\0\u{3}index_pages\0\u{3}index_blocks\0\u{3}index_embeddings\0\u{3}index_status_at\0")
+
+  fileprivate class _StorageClass {
+    var _machine: String = String()
+    var _workspace: String = String()
+    var _repo: String = String()
+    var _dir: String = String()
+    var _branch: String = String()
+    var _defaultBranch: String = String()
+    var _ahead: Int64 = 0
+    var _behind: Int64 = 0
+    var _dirty: [String] = []
+    var _learnings: Int64 = 0
+    var _localOnly: [String] = []
+    var _stashes: Int64 = 0
+    var _busy: String = String()
+    var _noUpstream: Bool = false
+    var _error: String = String()
+    var _index: String = String()
+    var _indexBuilt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+    var _indexPages: Int64 = 0
+    var _indexBlocks: Int64 = 0
+    var _indexEmbeddings: Int64 = 0
+    var _indexStatusAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _machine = source._machine
+      _workspace = source._workspace
+      _repo = source._repo
+      _dir = source._dir
+      _branch = source._branch
+      _defaultBranch = source._defaultBranch
+      _ahead = source._ahead
+      _behind = source._behind
+      _dirty = source._dirty
+      _learnings = source._learnings
+      _localOnly = source._localOnly
+      _stashes = source._stashes
+      _busy = source._busy
+      _noUpstream = source._noUpstream
+      _error = source._error
+      _index = source._index
+      _indexBuilt = source._indexBuilt
+      _indexPages = source._indexPages
+      _indexBlocks = source._indexBlocks
+      _indexEmbeddings = source._indexEmbeddings
+      _indexStatusAt = source._indexStatusAt
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.machine) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.workspace) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.repo) }()
-      case 4: try { try decoder.decodeSingularStringField(value: &self.dir) }()
-      case 5: try { try decoder.decodeSingularStringField(value: &self.branch) }()
-      case 6: try { try decoder.decodeSingularStringField(value: &self.defaultBranch) }()
-      case 7: try { try decoder.decodeSingularInt64Field(value: &self.ahead) }()
-      case 8: try { try decoder.decodeSingularInt64Field(value: &self.behind) }()
-      case 9: try { try decoder.decodeRepeatedStringField(value: &self.dirty) }()
-      case 10: try { try decoder.decodeSingularInt64Field(value: &self.learnings) }()
-      case 11: try { try decoder.decodeRepeatedStringField(value: &self.localOnly) }()
-      case 12: try { try decoder.decodeSingularInt64Field(value: &self.stashes) }()
-      case 13: try { try decoder.decodeSingularStringField(value: &self.busy) }()
-      case 14: try { try decoder.decodeSingularBoolField(value: &self.noUpstream) }()
-      case 15: try { try decoder.decodeSingularStringField(value: &self.error) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._machine) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._workspace) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._repo) }()
+        case 4: try { try decoder.decodeSingularStringField(value: &_storage._dir) }()
+        case 5: try { try decoder.decodeSingularStringField(value: &_storage._branch) }()
+        case 6: try { try decoder.decodeSingularStringField(value: &_storage._defaultBranch) }()
+        case 7: try { try decoder.decodeSingularInt64Field(value: &_storage._ahead) }()
+        case 8: try { try decoder.decodeSingularInt64Field(value: &_storage._behind) }()
+        case 9: try { try decoder.decodeRepeatedStringField(value: &_storage._dirty) }()
+        case 10: try { try decoder.decodeSingularInt64Field(value: &_storage._learnings) }()
+        case 11: try { try decoder.decodeRepeatedStringField(value: &_storage._localOnly) }()
+        case 12: try { try decoder.decodeSingularInt64Field(value: &_storage._stashes) }()
+        case 13: try { try decoder.decodeSingularStringField(value: &_storage._busy) }()
+        case 14: try { try decoder.decodeSingularBoolField(value: &_storage._noUpstream) }()
+        case 15: try { try decoder.decodeSingularStringField(value: &_storage._error) }()
+        case 16: try { try decoder.decodeSingularStringField(value: &_storage._index) }()
+        case 17: try { try decoder.decodeSingularMessageField(value: &_storage._indexBuilt) }()
+        case 18: try { try decoder.decodeSingularInt64Field(value: &_storage._indexPages) }()
+        case 19: try { try decoder.decodeSingularInt64Field(value: &_storage._indexBlocks) }()
+        case 20: try { try decoder.decodeSingularInt64Field(value: &_storage._indexEmbeddings) }()
+        case 21: try { try decoder.decodeSingularMessageField(value: &_storage._indexStatusAt) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.machine.isEmpty {
-      try visitor.visitSingularStringField(value: self.machine, fieldNumber: 1)
-    }
-    if !self.workspace.isEmpty {
-      try visitor.visitSingularStringField(value: self.workspace, fieldNumber: 2)
-    }
-    if !self.repo.isEmpty {
-      try visitor.visitSingularStringField(value: self.repo, fieldNumber: 3)
-    }
-    if !self.dir.isEmpty {
-      try visitor.visitSingularStringField(value: self.dir, fieldNumber: 4)
-    }
-    if !self.branch.isEmpty {
-      try visitor.visitSingularStringField(value: self.branch, fieldNumber: 5)
-    }
-    if !self.defaultBranch.isEmpty {
-      try visitor.visitSingularStringField(value: self.defaultBranch, fieldNumber: 6)
-    }
-    if self.ahead != 0 {
-      try visitor.visitSingularInt64Field(value: self.ahead, fieldNumber: 7)
-    }
-    if self.behind != 0 {
-      try visitor.visitSingularInt64Field(value: self.behind, fieldNumber: 8)
-    }
-    if !self.dirty.isEmpty {
-      try visitor.visitRepeatedStringField(value: self.dirty, fieldNumber: 9)
-    }
-    if self.learnings != 0 {
-      try visitor.visitSingularInt64Field(value: self.learnings, fieldNumber: 10)
-    }
-    if !self.localOnly.isEmpty {
-      try visitor.visitRepeatedStringField(value: self.localOnly, fieldNumber: 11)
-    }
-    if self.stashes != 0 {
-      try visitor.visitSingularInt64Field(value: self.stashes, fieldNumber: 12)
-    }
-    if !self.busy.isEmpty {
-      try visitor.visitSingularStringField(value: self.busy, fieldNumber: 13)
-    }
-    if self.noUpstream != false {
-      try visitor.visitSingularBoolField(value: self.noUpstream, fieldNumber: 14)
-    }
-    if !self.error.isEmpty {
-      try visitor.visitSingularStringField(value: self.error, fieldNumber: 15)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._machine.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._machine, fieldNumber: 1)
+      }
+      if !_storage._workspace.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._workspace, fieldNumber: 2)
+      }
+      if !_storage._repo.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._repo, fieldNumber: 3)
+      }
+      if !_storage._dir.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._dir, fieldNumber: 4)
+      }
+      if !_storage._branch.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._branch, fieldNumber: 5)
+      }
+      if !_storage._defaultBranch.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._defaultBranch, fieldNumber: 6)
+      }
+      if _storage._ahead != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._ahead, fieldNumber: 7)
+      }
+      if _storage._behind != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._behind, fieldNumber: 8)
+      }
+      if !_storage._dirty.isEmpty {
+        try visitor.visitRepeatedStringField(value: _storage._dirty, fieldNumber: 9)
+      }
+      if _storage._learnings != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._learnings, fieldNumber: 10)
+      }
+      if !_storage._localOnly.isEmpty {
+        try visitor.visitRepeatedStringField(value: _storage._localOnly, fieldNumber: 11)
+      }
+      if _storage._stashes != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._stashes, fieldNumber: 12)
+      }
+      if !_storage._busy.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._busy, fieldNumber: 13)
+      }
+      if _storage._noUpstream != false {
+        try visitor.visitSingularBoolField(value: _storage._noUpstream, fieldNumber: 14)
+      }
+      if !_storage._error.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._error, fieldNumber: 15)
+      }
+      if !_storage._index.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._index, fieldNumber: 16)
+      }
+      try { if let v = _storage._indexBuilt {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
+      } }()
+      if _storage._indexPages != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._indexPages, fieldNumber: 18)
+      }
+      if _storage._indexBlocks != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._indexBlocks, fieldNumber: 19)
+      }
+      if _storage._indexEmbeddings != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._indexEmbeddings, fieldNumber: 20)
+      }
+      try { if let v = _storage._indexStatusAt {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 21)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: Ghhud_V1_CheckoutHealth, rhs: Ghhud_V1_CheckoutHealth) -> Bool {
-    if lhs.machine != rhs.machine {return false}
-    if lhs.workspace != rhs.workspace {return false}
-    if lhs.repo != rhs.repo {return false}
-    if lhs.dir != rhs.dir {return false}
-    if lhs.branch != rhs.branch {return false}
-    if lhs.defaultBranch != rhs.defaultBranch {return false}
-    if lhs.ahead != rhs.ahead {return false}
-    if lhs.behind != rhs.behind {return false}
-    if lhs.dirty != rhs.dirty {return false}
-    if lhs.learnings != rhs.learnings {return false}
-    if lhs.localOnly != rhs.localOnly {return false}
-    if lhs.stashes != rhs.stashes {return false}
-    if lhs.busy != rhs.busy {return false}
-    if lhs.noUpstream != rhs.noUpstream {return false}
-    if lhs.error != rhs.error {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._machine != rhs_storage._machine {return false}
+        if _storage._workspace != rhs_storage._workspace {return false}
+        if _storage._repo != rhs_storage._repo {return false}
+        if _storage._dir != rhs_storage._dir {return false}
+        if _storage._branch != rhs_storage._branch {return false}
+        if _storage._defaultBranch != rhs_storage._defaultBranch {return false}
+        if _storage._ahead != rhs_storage._ahead {return false}
+        if _storage._behind != rhs_storage._behind {return false}
+        if _storage._dirty != rhs_storage._dirty {return false}
+        if _storage._learnings != rhs_storage._learnings {return false}
+        if _storage._localOnly != rhs_storage._localOnly {return false}
+        if _storage._stashes != rhs_storage._stashes {return false}
+        if _storage._busy != rhs_storage._busy {return false}
+        if _storage._noUpstream != rhs_storage._noUpstream {return false}
+        if _storage._error != rhs_storage._error {return false}
+        if _storage._index != rhs_storage._index {return false}
+        if _storage._indexBuilt != rhs_storage._indexBuilt {return false}
+        if _storage._indexPages != rhs_storage._indexPages {return false}
+        if _storage._indexBlocks != rhs_storage._indexBlocks {return false}
+        if _storage._indexEmbeddings != rhs_storage._indexEmbeddings {return false}
+        if _storage._indexStatusAt != rhs_storage._indexStatusAt {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

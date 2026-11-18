@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/jflowers/gh-hud/internal/ghws"
 )
@@ -29,6 +30,21 @@ type CheckoutHealth struct {
 	Busy       string // ref of the live run in the checkout
 	NoUpstream bool
 	Err        string // the machine or checkout could not be read
+
+	// Dewey index health (#132), from the teardown's check (deweyhealth.go).
+	// A checkout whose index needs a reindex is still ready: the agent just
+	// works with that index.
+	Index      string    // "" not read, IndexNone, else IndexHealth.String()
+	IndexBuilt time.Time // graph.db's mtime; zero = no index
+	// Pages, blocks and embeddings come from dewey status, which the poll
+	// runs only now and then (workspaces_index.go): they are as of
+	// IndexStatusAt (zero = never read).
+	IndexPages      int
+	IndexBlocks     int
+	IndexEmbeddings int
+	IndexStatusAt   time.Time
+
+	facts *deweyFacts // this read's DW lines, for applyIndexHealth
 }
 
 // Problem is why a dispatch would not use or would refuse the checkout
@@ -90,25 +106,21 @@ func (d *Dispatcher) Workspaces(ctx context.Context) []CheckoutHealth {
 			if !m.Local {
 				ix = d.remoteIndex(ctx, m)
 			}
-			results[i] = d.machineWorkspaces(ctx, m, ix)
+			results[i] = d.machineWorkspaces(ctx, m, ix, busy)
 		}()
 	}
 	wg.Wait()
 
 	var out []CheckoutHealth
 	for _, rows := range results {
-		for _, h := range rows {
-			if ref, ok := busy[h.Machine+"\x00"+h.Dir]; ok {
-				h.Busy = ref
-			}
-			out = append(out, h)
-		}
+		out = append(out, rows...)
 	}
 	return out
 }
 
-// machineWorkspaces checks one machine's checkouts.
-func (d *Dispatcher) machineWorkspaces(ctx context.Context, m Machine, ix *ghws.Index) []CheckoutHealth {
+// machineWorkspaces checks one machine's checkouts. busy maps machine key
+// + "\x00" + dir to the ref of the live run there.
+func (d *Dispatcher) machineWorkspaces(ctx context.Context, m Machine, ix *ghws.Index, busy map[string]string) []CheckoutHealth {
 	var cos []ghws.Checkout
 	for _, co := range ix.Checkouts() {
 		if d.o().InstancesOnly && !co.Instance {
@@ -138,16 +150,19 @@ func (d *Dispatcher) machineWorkspaces(ctx context.Context, m Machine, ix *ghws.
 			}
 		}
 		h.Machine, h.Workspace, h.Repo, h.Dir = m.key(), co.Workspace, co.Repo, co.Dir
+		h.Busy = busy[h.Machine+"\x00"+h.Dir]
 		rows = append(rows, h)
 	}
+	d.applyIndexHealth(ctx, m, rows, time.Now())
 	return rows
 }
 
 // workspacesScript prints, per checkout dir, a CO line followed by its
 // state: BR branch, DEF upstream default (or NOUP), AB ahead/behind of the
 // local default branch, ST porcelain lines, LO branches with commits on no
-// remote, SH stash count. Each dir runs in a subshell so a missing one
-// prints ERR and the rest continue.
+// remote, SH stash count, and the Dewey index check's DW lines without
+// dewey status (deweyHealthFragment(false): stat and git log only). Each
+// dir runs in a subshell so a missing one prints ERR and the rest continue.
 func workspacesScript(dirs []string) string {
 	quoted := make([]string, len(dirs))
 	for i, d := range dirs {
@@ -177,16 +192,18 @@ printf 'CO %s\n' "$d"
     if [ "${n:-0}" -gt 0 ]; then printf 'LO %s\t%s\n' "$b" "$n"; fi
   done
   printf 'SH %s\n' "$(git stash list 2>/dev/null | wc -l | tr -d ' ')"
-)
+` + deweyHealthFragment(false) + `)
 done`
 }
 
 // parseWorkspaces parses workspacesScript output, keyed by dir as given.
+// Each checkout's DW lines are parsed apart from the others', so one
+// checkout's index facts never mix with the next one's.
 func parseWorkspaces(out string) map[string]CheckoutHealth {
 	rows := map[string]CheckoutHealth{}
 	dir := ""
 	var h CheckoutHealth
-	var status []string
+	var status, dw []string
 	flush := func() {
 		if dir == "" {
 			return
@@ -194,6 +211,9 @@ func parseWorkspaces(out string) map[string]CheckoutHealth {
 		porcelain := strings.Join(status, "\n")
 		h.Dirty = dirtyLines(porcelain)
 		h.Learnings = len(nonEmptyLines(porcelain)) - len(h.Dirty)
+		if f, ok := parseDeweyFacts(strings.Join(dw, "\n")); ok {
+			h.facts = &f
+		}
 		rows[dir] = h
 	}
 	for _, line := range strings.Split(out, "\n") {
@@ -202,7 +222,7 @@ func parseWorkspaces(out string) map[string]CheckoutHealth {
 		switch tag {
 		case "CO":
 			flush()
-			dir, h, status = rest, CheckoutHealth{Ahead: -1, Behind: -1}, nil
+			dir, h, status, dw = rest, CheckoutHealth{Ahead: -1, Behind: -1}, nil, nil
 		case "ERR":
 			h.Err = rest
 		case "BR":
@@ -222,6 +242,8 @@ func parseWorkspaces(out string) map[string]CheckoutHealth {
 			h.LocalOnly = append(h.LocalOnly, rest)
 		case "SH":
 			h.Stashes, _ = strconv.Atoi(strings.TrimSpace(rest))
+		case "DW":
+			dw = append(dw, line)
 		}
 	}
 	flush()
