@@ -619,6 +619,13 @@ func checkoutToPB(h dispatch.CheckoutHealth) *pb.CheckoutHealth {
 		Busy:          h.Busy,
 		NoUpstream:    h.NoUpstream,
 		Error:         h.Err,
+
+		Index:           h.Index,
+		IndexBuilt:      ts(h.IndexBuilt),
+		IndexPages:      int64(h.IndexPages),
+		IndexBlocks:     int64(h.IndexBlocks),
+		IndexEmbeddings: int64(h.IndexEmbeddings),
+		IndexStatusAt:   ts(h.IndexStatusAt),
 	}
 }
 
@@ -639,6 +646,13 @@ func checkoutFromPB(p *pb.CheckoutHealth) dispatch.CheckoutHealth {
 		Busy:       p.GetBusy(),
 		NoUpstream: p.GetNoUpstream(),
 		Err:        p.GetError(),
+
+		Index:           p.GetIndex(),
+		IndexBuilt:      fromTS(p.GetIndexBuilt()),
+		IndexPages:      int(p.GetIndexPages()),
+		IndexBlocks:     int(p.GetIndexBlocks()),
+		IndexEmbeddings: int(p.GetIndexEmbeddings()),
+		IndexStatusAt:   fromTS(p.GetIndexStatusAt()),
 	}
 }
 

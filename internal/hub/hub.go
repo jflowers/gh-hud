@@ -309,6 +309,11 @@ type Hub struct {
 
 	// muted counts clients that show alerts themselves (MuteNotifier).
 	muted atomic.Int32
+
+	// wsByHand is set by RefreshWorkspaces: the next read also asks Dewey
+	// for each idle vault's status, which the timed poll does only now and
+	// then.
+	wsByHand atomic.Bool
 }
 
 type subscriber struct {
@@ -440,7 +445,11 @@ func (h *Hub) Refresh(context.Context) error {
 func (h *Hub) RefreshAgents(context.Context) error { poke(h.agentsReq); return nil }
 
 // RefreshWorkspaces asks for a checkout-health read now.
-func (h *Hub) RefreshWorkspaces(context.Context) error { poke(h.wsReq); return nil }
+func (h *Hub) RefreshWorkspaces(context.Context) error {
+	h.wsByHand.Store(true)
+	poke(h.wsReq)
+	return nil
+}
 
 func (h *Hub) ownsDispatch() bool {
 	if h.opts.Dispatcher == nil {
@@ -566,6 +575,9 @@ func (h *Hub) refreshAgents(ctx context.Context) {
 func (h *Hub) refreshWorkspaces(ctx context.Context) {
 	h.update(func(s *Snapshot) { s.WorkspacesLoading = true })
 	wctx, cancel := context.WithTimeout(ctx, workspacesTimeout)
+	if h.wsByHand.Swap(false) {
+		wctx = dispatch.WithIndexStatus(wctx)
+	}
 	ws := h.opts.Dispatcher.Workspaces(wctx)
 	cancel()
 	h.update(func(s *Snapshot) {

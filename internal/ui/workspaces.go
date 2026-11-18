@@ -108,17 +108,18 @@ func (m *Model) workspacesView() string {
 	dim := lipgloss.NewStyle().Foreground(cDim)
 	fg := lipgloss.NewStyle().Foreground(cFg)
 	w := m.width
-	notesW := w - (4 + wsMachW + 1 + wsNameW + 1 + wsRepoW + 1 + wsBranchW + 1 + wsSyncW + 1 + wsStateW + 1)
+	notesW := w - (4 + wsMachW + 1 + wsNameW + 1 + wsRepoW + 1 + wsBranchW + 1 + wsSyncW + 1 + wsStateW + 1 + wsIndexW + 1)
 	if notesW < 0 {
 		notesW = 0
 	}
+	now := time.Now()
 
 	rows, detailH := m.agentsLayout()
 	lines := []string{m.headerBar(), dim.Render(
 		"    " + padPlain("where", wsMachW, false) + " " + padPlain("workspace", wsNameW, false) + " " +
 			padPlain("repo", wsRepoW, false) + " " + padPlain("branch", wsBranchW, false) + " " +
 			padPlain("upstream", wsSyncW, false) + " " + padPlain("state", wsStateW, false) + " " +
-			padPlain("notes", notesW, false))}
+			padPlain("index", wsIndexW, false) + " " + padPlain("notes", notesW, false))}
 
 	list := m.ws
 	start, end := 0, len(list)
@@ -154,17 +155,21 @@ func (m *Model) workspacesView() string {
 			padPlain(repoName(h.Repo), wsRepoW, false) + " " + padPlain(branch, wsBranchW, false) + " " +
 			padPlain(wsSync(h), wsSyncW, false) + " "
 		st := padPlain(state, wsStateW, false)
+		idxText, idxColor := wsIndex(h, now)
+		idx := " " + padPlain(idxText, wsIndexW, false)
 		tail := " " + padPlain(wsNotes(h), notesW, false)
 		marker := "  "
 		rowStyle, stStyle, tailStyle := fg, lipgloss.NewStyle().Foreground(color), comment
+		idxStyle := lipgloss.NewStyle().Foreground(idxColor)
 		if i == m.wsSel {
 			marker = "▶ "
 			rowStyle = rowStyle.Background(cSel).Bold(true)
 			stStyle = stStyle.Background(cSel)
+			idxStyle = idxStyle.Background(cSel)
 			tailStyle = tailStyle.Background(cSel)
 		}
 		lines = append(lines, marker+lipgloss.NewStyle().Foreground(color).Render(glyph)+" "+
-			rowStyle.Render(row)+stStyle.Render(st)+tailStyle.Render(tail))
+			rowStyle.Render(row)+stStyle.Render(st)+idxStyle.Render(idx)+tailStyle.Render(tail))
 	}
 	for len(lines) < 2+rows {
 		lines = append(lines, "")
@@ -266,6 +271,9 @@ func wsDetail(h dispatch.CheckoutHealth, w int) []string {
 	if h.Behind >= 0 {
 		lines = append(lines, field("upstream", fmt.Sprintf("%s is %d behind, %d ahead of upstream/%s (as of the last fetch)",
 			h.Default, h.Behind, h.Ahead, h.Default)))
+	}
+	for _, kv := range wsIndexDetail(h, time.Now()) {
+		lines = append(lines, field(kv[0], kv[1]))
 	}
 	if len(h.Dirty) > 0 {
 		lines = append(lines, field("uncommitted", fmt.Sprintf("%d file(s)", len(h.Dirty))))

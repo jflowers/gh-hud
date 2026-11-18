@@ -409,8 +409,168 @@ public object CheckoutHealthKt {
     public fun clearError() {
       _builder.clearError()
     }
+
+    /**
+     * ```
+     * Dewey index health: "" not read, "none" not a vault, "ok",
+     * "reindex needed: <reasons>", "check failed: …", "machine problem: …"
+     * (joined with "; "). A reindex need doesn't make the checkout unready.
+     * ```
+     *
+     * `string index = 16 [json_name = "index"];`
+     */
+    public var index: kotlin.String
+      @kotlin.jvm.JvmName("getIndex")
+        get() = _builder.index
+      @kotlin.jvm.JvmName("setIndex")
+        set(value) {
+        _builder.index = value
+      }
+    /**
+     * ```
+     * Dewey index health: "" not read, "none" not a vault, "ok",
+     * "reindex needed: <reasons>", "check failed: …", "machine problem: …"
+     * (joined with "; "). A reindex need doesn't make the checkout unready.
+     * ```
+     *
+     * `string index = 16 [json_name = "index"];`
+     */
+    public fun clearIndex() {
+      _builder.clearIndex()
+    }
+
+    /**
+     * ```
+     * graph.db mtime; unset = no index
+     * ```
+     *
+     * `.google.protobuf.Timestamp index_built = 17 [json_name = "indexBuilt"];`
+     */
+    public var indexBuilt: com.google.protobuf.Timestamp
+      @kotlin.jvm.JvmName("getIndexBuilt")
+        get() = _builder.indexBuilt
+      @kotlin.jvm.JvmName("setIndexBuilt")
+        set(value) {
+        _builder.indexBuilt = value
+      }
+    /**
+     * ```
+     * graph.db mtime; unset = no index
+     * ```
+     *
+     * `.google.protobuf.Timestamp index_built = 17 [json_name = "indexBuilt"];`
+     */
+    public fun clearIndexBuilt() {
+      _builder.clearIndexBuilt()
+    }
+    /**
+     * ```
+     * graph.db mtime; unset = no index
+     * ```
+     *
+     * `.google.protobuf.Timestamp index_built = 17 [json_name = "indexBuilt"];`
+     * @return Whether the indexBuilt field is set.
+     */
+    public fun hasIndexBuilt(): kotlin.Boolean {
+      return _builder.hasIndexBuilt()
+    }
+
+    public val CheckoutHealthKt.Dsl.indexBuiltOrNull: com.google.protobuf.Timestamp?
+      get() = _builder.indexBuiltOrNull
+
+    /**
+     * ```
+     * From dewey status, as of index_status_at (unset = never read).
+     * ```
+     *
+     * `int64 index_pages = 18 [json_name = "indexPages"];`
+     */
+    public var indexPages: kotlin.Long
+      @kotlin.jvm.JvmName("getIndexPages")
+        get() = _builder.indexPages
+      @kotlin.jvm.JvmName("setIndexPages")
+        set(value) {
+        _builder.indexPages = value
+      }
+    /**
+     * ```
+     * From dewey status, as of index_status_at (unset = never read).
+     * ```
+     *
+     * `int64 index_pages = 18 [json_name = "indexPages"];`
+     */
+    public fun clearIndexPages() {
+      _builder.clearIndexPages()
+    }
+
+    /**
+     * `int64 index_blocks = 19 [json_name = "indexBlocks"];`
+     */
+    public var indexBlocks: kotlin.Long
+      @kotlin.jvm.JvmName("getIndexBlocks")
+        get() = _builder.indexBlocks
+      @kotlin.jvm.JvmName("setIndexBlocks")
+        set(value) {
+        _builder.indexBlocks = value
+      }
+    /**
+     * `int64 index_blocks = 19 [json_name = "indexBlocks"];`
+     */
+    public fun clearIndexBlocks() {
+      _builder.clearIndexBlocks()
+    }
+
+    /**
+     * `int64 index_embeddings = 20 [json_name = "indexEmbeddings"];`
+     */
+    public var indexEmbeddings: kotlin.Long
+      @kotlin.jvm.JvmName("getIndexEmbeddings")
+        get() = _builder.indexEmbeddings
+      @kotlin.jvm.JvmName("setIndexEmbeddings")
+        set(value) {
+        _builder.indexEmbeddings = value
+      }
+    /**
+     * `int64 index_embeddings = 20 [json_name = "indexEmbeddings"];`
+     */
+    public fun clearIndexEmbeddings() {
+      _builder.clearIndexEmbeddings()
+    }
+
+    /**
+     * `.google.protobuf.Timestamp index_status_at = 21 [json_name = "indexStatusAt"];`
+     */
+    public var indexStatusAt: com.google.protobuf.Timestamp
+      @kotlin.jvm.JvmName("getIndexStatusAt")
+        get() = _builder.indexStatusAt
+      @kotlin.jvm.JvmName("setIndexStatusAt")
+        set(value) {
+        _builder.indexStatusAt = value
+      }
+    /**
+     * `.google.protobuf.Timestamp index_status_at = 21 [json_name = "indexStatusAt"];`
+     */
+    public fun clearIndexStatusAt() {
+      _builder.clearIndexStatusAt()
+    }
+    /**
+     * `.google.protobuf.Timestamp index_status_at = 21 [json_name = "indexStatusAt"];`
+     * @return Whether the indexStatusAt field is set.
+     */
+    public fun hasIndexStatusAt(): kotlin.Boolean {
+      return _builder.hasIndexStatusAt()
+    }
+
+    public val CheckoutHealthKt.Dsl.indexStatusAtOrNull: com.google.protobuf.Timestamp?
+      get() = _builder.indexStatusAtOrNull
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.CheckoutHealth.copy(block: `io.github.jflowers.ghhud.api.v1`.CheckoutHealthKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.CheckoutHealth =
   `io.github.jflowers.ghhud.api.v1`.CheckoutHealthKt.Dsl._create(this.toBuilder()).apply { block() }._build()
+
+public val io.github.jflowers.ghhud.api.v1.CheckoutHealthOrBuilder.indexBuiltOrNull: com.google.protobuf.Timestamp?
+  get() = if (hasIndexBuilt()) getIndexBuilt() else null
+
+public val io.github.jflowers.ghhud.api.v1.CheckoutHealthOrBuilder.indexStatusAtOrNull: com.google.protobuf.Timestamp?
+  get() = if (hasIndexStatusAt()) getIndexStatusAt() else null
 

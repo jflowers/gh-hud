@@ -29,7 +29,9 @@ public  final class CheckoutHealth extends
     localOnly_ = emptyProtobufList();
     busy_ = "";
     error_ = "";
+    index_ = "";
   }
+  private int bitField0_;
   public static final int MACHINE_FIELD_NUMBER = 1;
   private java.lang.String machine_;
   /**
@@ -744,6 +746,287 @@ public  final class CheckoutHealth extends
     checkByteStringIsUtf8(value);
     error_ = value.toStringUtf8();
 
+  }
+
+  public static final int INDEX_FIELD_NUMBER = 16;
+  private java.lang.String index_;
+  /**
+   * <pre>
+   * Dewey index health: "" not read, "none" not a vault, "ok",
+   * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
+   * (joined with "; "). A reindex need doesn't make the checkout unready.
+   * </pre>
+   *
+   * <code>string index = 16 [json_name = "index"];</code>
+   * @return The index.
+   */
+  @java.lang.Override
+  public java.lang.String getIndex() {
+    return index_;
+  }
+  /**
+   * <pre>
+   * Dewey index health: "" not read, "none" not a vault, "ok",
+   * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
+   * (joined with "; "). A reindex need doesn't make the checkout unready.
+   * </pre>
+   *
+   * <code>string index = 16 [json_name = "index"];</code>
+   * @return The bytes for index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getIndexBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(index_);
+  }
+  /**
+   * <pre>
+   * Dewey index health: "" not read, "none" not a vault, "ok",
+   * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
+   * (joined with "; "). A reindex need doesn't make the checkout unready.
+   * </pre>
+   *
+   * <code>string index = 16 [json_name = "index"];</code>
+   * @param value The index to set.
+   */
+  private void setIndex(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    index_ = value;
+  }
+  /**
+   * <pre>
+   * Dewey index health: "" not read, "none" not a vault, "ok",
+   * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
+   * (joined with "; "). A reindex need doesn't make the checkout unready.
+   * </pre>
+   *
+   * <code>string index = 16 [json_name = "index"];</code>
+   */
+  private void clearIndex() {
+
+    index_ = getDefaultInstance().getIndex();
+  }
+  /**
+   * <pre>
+   * Dewey index health: "" not read, "none" not a vault, "ok",
+   * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
+   * (joined with "; "). A reindex need doesn't make the checkout unready.
+   * </pre>
+   *
+   * <code>string index = 16 [json_name = "index"];</code>
+   * @param value The bytes for index to set.
+   */
+  private void setIndexBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    index_ = value.toStringUtf8();
+
+  }
+
+  public static final int INDEX_BUILT_FIELD_NUMBER = 17;
+  private com.google.protobuf.Timestamp indexBuilt_;
+  /**
+   * <pre>
+   * graph.db mtime; unset = no index
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp index_built = 17 [json_name = "indexBuilt"];</code>
+   */
+  @java.lang.Override
+  public boolean hasIndexBuilt() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <pre>
+   * graph.db mtime; unset = no index
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp index_built = 17 [json_name = "indexBuilt"];</code>
+   */
+  @java.lang.Override
+  public com.google.protobuf.Timestamp getIndexBuilt() {
+    return indexBuilt_ == null ? com.google.protobuf.Timestamp.getDefaultInstance() : indexBuilt_;
+  }
+  /**
+   * <pre>
+   * graph.db mtime; unset = no index
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp index_built = 17 [json_name = "indexBuilt"];</code>
+   */
+  private void setIndexBuilt(com.google.protobuf.Timestamp value) {
+    java.util.Objects.requireNonNull(value);
+    indexBuilt_ = value;
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <pre>
+   * graph.db mtime; unset = no index
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp index_built = 17 [json_name = "indexBuilt"];</code>
+   */
+  @java.lang.SuppressWarnings("ReferenceEquality")
+  private void mergeIndexBuilt(com.google.protobuf.Timestamp value) {
+    java.util.Objects.requireNonNull(value);
+    if (indexBuilt_ != null &&
+        indexBuilt_ != com.google.protobuf.Timestamp.getDefaultInstance()) {
+      indexBuilt_ =
+        com.google.protobuf.Timestamp.newBuilder(indexBuilt_).mergeFrom(value).buildPartial();
+    } else {
+      indexBuilt_ = value;
+    }
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <pre>
+   * graph.db mtime; unset = no index
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp index_built = 17 [json_name = "indexBuilt"];</code>
+   */
+  private void clearIndexBuilt() {
+    indexBuilt_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int INDEX_PAGES_FIELD_NUMBER = 18;
+  private long indexPages_;
+  /**
+   * <pre>
+   * From dewey status, as of index_status_at (unset = never read).
+   * </pre>
+   *
+   * <code>int64 index_pages = 18 [json_name = "indexPages"];</code>
+   * @return The indexPages.
+   */
+  @java.lang.Override
+  public long getIndexPages() {
+    return indexPages_;
+  }
+  /**
+   * <pre>
+   * From dewey status, as of index_status_at (unset = never read).
+   * </pre>
+   *
+   * <code>int64 index_pages = 18 [json_name = "indexPages"];</code>
+   * @param value The indexPages to set.
+   */
+  private void setIndexPages(long value) {
+    
+    indexPages_ = value;
+  }
+  /**
+   * <pre>
+   * From dewey status, as of index_status_at (unset = never read).
+   * </pre>
+   *
+   * <code>int64 index_pages = 18 [json_name = "indexPages"];</code>
+   */
+  private void clearIndexPages() {
+
+    indexPages_ = 0L;
+  }
+
+  public static final int INDEX_BLOCKS_FIELD_NUMBER = 19;
+  private long indexBlocks_;
+  /**
+   * <code>int64 index_blocks = 19 [json_name = "indexBlocks"];</code>
+   * @return The indexBlocks.
+   */
+  @java.lang.Override
+  public long getIndexBlocks() {
+    return indexBlocks_;
+  }
+  /**
+   * <code>int64 index_blocks = 19 [json_name = "indexBlocks"];</code>
+   * @param value The indexBlocks to set.
+   */
+  private void setIndexBlocks(long value) {
+    
+    indexBlocks_ = value;
+  }
+  /**
+   * <code>int64 index_blocks = 19 [json_name = "indexBlocks"];</code>
+   */
+  private void clearIndexBlocks() {
+
+    indexBlocks_ = 0L;
+  }
+
+  public static final int INDEX_EMBEDDINGS_FIELD_NUMBER = 20;
+  private long indexEmbeddings_;
+  /**
+   * <code>int64 index_embeddings = 20 [json_name = "indexEmbeddings"];</code>
+   * @return The indexEmbeddings.
+   */
+  @java.lang.Override
+  public long getIndexEmbeddings() {
+    return indexEmbeddings_;
+  }
+  /**
+   * <code>int64 index_embeddings = 20 [json_name = "indexEmbeddings"];</code>
+   * @param value The indexEmbeddings to set.
+   */
+  private void setIndexEmbeddings(long value) {
+    
+    indexEmbeddings_ = value;
+  }
+  /**
+   * <code>int64 index_embeddings = 20 [json_name = "indexEmbeddings"];</code>
+   */
+  private void clearIndexEmbeddings() {
+
+    indexEmbeddings_ = 0L;
+  }
+
+  public static final int INDEX_STATUS_AT_FIELD_NUMBER = 21;
+  private com.google.protobuf.Timestamp indexStatusAt_;
+  /**
+   * <code>.google.protobuf.Timestamp index_status_at = 21 [json_name = "indexStatusAt"];</code>
+   */
+  @java.lang.Override
+  public boolean hasIndexStatusAt() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.google.protobuf.Timestamp index_status_at = 21 [json_name = "indexStatusAt"];</code>
+   */
+  @java.lang.Override
+  public com.google.protobuf.Timestamp getIndexStatusAt() {
+    return indexStatusAt_ == null ? com.google.protobuf.Timestamp.getDefaultInstance() : indexStatusAt_;
+  }
+  /**
+   * <code>.google.protobuf.Timestamp index_status_at = 21 [json_name = "indexStatusAt"];</code>
+   */
+  private void setIndexStatusAt(com.google.protobuf.Timestamp value) {
+    java.util.Objects.requireNonNull(value);
+    indexStatusAt_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.google.protobuf.Timestamp index_status_at = 21 [json_name = "indexStatusAt"];</code>
+   */
+  @java.lang.SuppressWarnings("ReferenceEquality")
+  private void mergeIndexStatusAt(com.google.protobuf.Timestamp value) {
+    java.util.Objects.requireNonNull(value);
+    if (indexStatusAt_ != null &&
+        indexStatusAt_ != com.google.protobuf.Timestamp.getDefaultInstance()) {
+      indexStatusAt_ =
+        com.google.protobuf.Timestamp.newBuilder(indexStatusAt_).mergeFrom(value).buildPartial();
+    } else {
+      indexStatusAt_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.google.protobuf.Timestamp index_status_at = 21 [json_name = "indexStatusAt"];</code>
+   */
+  private void clearIndexStatusAt() {
+    indexStatusAt_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
   }
 
   public static io.github.jflowers.ghhud.api.v1.CheckoutHealth parseFrom(
@@ -1587,6 +1870,299 @@ public  final class CheckoutHealth extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Dewey index health: "" not read, "none" not a vault, "ok",
+     * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
+     * (joined with "; "). A reindex need doesn't make the checkout unready.
+     * </pre>
+     *
+     * <code>string index = 16 [json_name = "index"];</code>
+     * @return The index.
+     */
+    @java.lang.Override
+    public java.lang.String getIndex() {
+      return instance.getIndex();
+    }
+    /**
+     * <pre>
+     * Dewey index health: "" not read, "none" not a vault, "ok",
+     * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
+     * (joined with "; "). A reindex need doesn't make the checkout unready.
+     * </pre>
+     *
+     * <code>string index = 16 [json_name = "index"];</code>
+     * @return The bytes for index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getIndexBytes() {
+      return instance.getIndexBytes();
+    }
+    /**
+     * <pre>
+     * Dewey index health: "" not read, "none" not a vault, "ok",
+     * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
+     * (joined with "; "). A reindex need doesn't make the checkout unready.
+     * </pre>
+     *
+     * <code>string index = 16 [json_name = "index"];</code>
+     * @param value The index to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIndex(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setIndex(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Dewey index health: "" not read, "none" not a vault, "ok",
+     * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
+     * (joined with "; "). A reindex need doesn't make the checkout unready.
+     * </pre>
+     *
+     * <code>string index = 16 [json_name = "index"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearIndex() {
+      copyOnWrite();
+      instance.clearIndex();
+      return this;
+    }
+    /**
+     * <pre>
+     * Dewey index health: "" not read, "none" not a vault, "ok",
+     * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
+     * (joined with "; "). A reindex need doesn't make the checkout unready.
+     * </pre>
+     *
+     * <code>string index = 16 [json_name = "index"];</code>
+     * @param value The bytes for index to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIndexBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setIndexBytes(value);
+      return this;
+    }
+
+    /**
+     * <pre>
+     * graph.db mtime; unset = no index
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp index_built = 17 [json_name = "indexBuilt"];</code>
+     */
+    @java.lang.Override
+    public boolean hasIndexBuilt() {
+      return instance.hasIndexBuilt();
+    }
+    /**
+     * <pre>
+     * graph.db mtime; unset = no index
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp index_built = 17 [json_name = "indexBuilt"];</code>
+     */
+    @java.lang.Override
+    public com.google.protobuf.Timestamp getIndexBuilt() {
+      return instance.getIndexBuilt();
+    }
+    /**
+     * <pre>
+     * graph.db mtime; unset = no index
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp index_built = 17 [json_name = "indexBuilt"];</code>
+     */
+    public Builder setIndexBuilt(com.google.protobuf.Timestamp value) {
+      copyOnWrite();
+      instance.setIndexBuilt(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * graph.db mtime; unset = no index
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp index_built = 17 [json_name = "indexBuilt"];</code>
+     */
+    public Builder setIndexBuilt(
+        com.google.protobuf.Timestamp.Builder builderForValue) {
+      copyOnWrite();
+      instance.setIndexBuilt(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * graph.db mtime; unset = no index
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp index_built = 17 [json_name = "indexBuilt"];</code>
+     */
+    public Builder mergeIndexBuilt(com.google.protobuf.Timestamp value) {
+      copyOnWrite();
+      instance.mergeIndexBuilt(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * graph.db mtime; unset = no index
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp index_built = 17 [json_name = "indexBuilt"];</code>
+     */
+    public Builder clearIndexBuilt() {  copyOnWrite();
+      instance.clearIndexBuilt();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * From dewey status, as of index_status_at (unset = never read).
+     * </pre>
+     *
+     * <code>int64 index_pages = 18 [json_name = "indexPages"];</code>
+     * @return The indexPages.
+     */
+    @java.lang.Override
+    public long getIndexPages() {
+      return instance.getIndexPages();
+    }
+    /**
+     * <pre>
+     * From dewey status, as of index_status_at (unset = never read).
+     * </pre>
+     *
+     * <code>int64 index_pages = 18 [json_name = "indexPages"];</code>
+     * @param value The indexPages to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIndexPages(long value) {
+      copyOnWrite();
+      instance.setIndexPages(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * From dewey status, as of index_status_at (unset = never read).
+     * </pre>
+     *
+     * <code>int64 index_pages = 18 [json_name = "indexPages"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearIndexPages() {
+      copyOnWrite();
+      instance.clearIndexPages();
+      return this;
+    }
+
+    /**
+     * <code>int64 index_blocks = 19 [json_name = "indexBlocks"];</code>
+     * @return The indexBlocks.
+     */
+    @java.lang.Override
+    public long getIndexBlocks() {
+      return instance.getIndexBlocks();
+    }
+    /**
+     * <code>int64 index_blocks = 19 [json_name = "indexBlocks"];</code>
+     * @param value The indexBlocks to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIndexBlocks(long value) {
+      copyOnWrite();
+      instance.setIndexBlocks(value);
+      return this;
+    }
+    /**
+     * <code>int64 index_blocks = 19 [json_name = "indexBlocks"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearIndexBlocks() {
+      copyOnWrite();
+      instance.clearIndexBlocks();
+      return this;
+    }
+
+    /**
+     * <code>int64 index_embeddings = 20 [json_name = "indexEmbeddings"];</code>
+     * @return The indexEmbeddings.
+     */
+    @java.lang.Override
+    public long getIndexEmbeddings() {
+      return instance.getIndexEmbeddings();
+    }
+    /**
+     * <code>int64 index_embeddings = 20 [json_name = "indexEmbeddings"];</code>
+     * @param value The indexEmbeddings to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIndexEmbeddings(long value) {
+      copyOnWrite();
+      instance.setIndexEmbeddings(value);
+      return this;
+    }
+    /**
+     * <code>int64 index_embeddings = 20 [json_name = "indexEmbeddings"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearIndexEmbeddings() {
+      copyOnWrite();
+      instance.clearIndexEmbeddings();
+      return this;
+    }
+
+    /**
+     * <code>.google.protobuf.Timestamp index_status_at = 21 [json_name = "indexStatusAt"];</code>
+     */
+    @java.lang.Override
+    public boolean hasIndexStatusAt() {
+      return instance.hasIndexStatusAt();
+    }
+    /**
+     * <code>.google.protobuf.Timestamp index_status_at = 21 [json_name = "indexStatusAt"];</code>
+     */
+    @java.lang.Override
+    public com.google.protobuf.Timestamp getIndexStatusAt() {
+      return instance.getIndexStatusAt();
+    }
+    /**
+     * <code>.google.protobuf.Timestamp index_status_at = 21 [json_name = "indexStatusAt"];</code>
+     */
+    public Builder setIndexStatusAt(com.google.protobuf.Timestamp value) {
+      copyOnWrite();
+      instance.setIndexStatusAt(value);
+      return this;
+      }
+    /**
+     * <code>.google.protobuf.Timestamp index_status_at = 21 [json_name = "indexStatusAt"];</code>
+     */
+    public Builder setIndexStatusAt(
+        com.google.protobuf.Timestamp.Builder builderForValue) {
+      copyOnWrite();
+      instance.setIndexStatusAt(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.google.protobuf.Timestamp index_status_at = 21 [json_name = "indexStatusAt"];</code>
+     */
+    public Builder mergeIndexStatusAt(com.google.protobuf.Timestamp value) {
+      copyOnWrite();
+      instance.mergeIndexStatusAt(value);
+      return this;
+    }
+    /**
+     * <code>.google.protobuf.Timestamp index_status_at = 21 [json_name = "indexStatusAt"];</code>
+     */
+    public Builder clearIndexStatusAt() {  copyOnWrite();
+      instance.clearIndexStatusAt();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.CheckoutHealth)
   }
   @java.lang.Override
@@ -1603,6 +2179,7 @@ public  final class CheckoutHealth extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "machine_",
             "workspace_",
             "repo_",
@@ -1618,11 +2195,18 @@ public  final class CheckoutHealth extends
             "busy_",
             "noUpstream_",
             "error_",
+            "index_",
+            "indexBuilt_",
+            "indexPages_",
+            "indexBlocks_",
+            "indexEmbeddings_",
+            "indexStatusAt_",
           };
           java.lang.String info =
-              "\u0000\u000f\u0000\u0000\u0001\u000f\u000f\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0015\u0000\u0001\u0001\u0015\u0015\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u0208\u0007\u0002\b\u0002\t\u021a\n\u0002" +
-              "\u000b\u021a\f\u0002\r\u0208\u000e\u0007\u000f\u0208";
+              "\u000b\u021a\f\u0002\r\u0208\u000e\u0007\u000f\u0208\u0010\u0208\u0011\u1009\u0000" +
+              "\u0012\u0002\u0013\u0002\u0014\u0002\u0015\u1009\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
