@@ -4,7 +4,9 @@ package dispatch
 // .uf/dewey/learnings/ after most runs. Untracked learnings never count as
 // dirty — a fresh, uniquely named file can't conflict with a checkout or a
 // fast-forward — and after a clean run gh-hud moves them into a chore PR
-// to upstream, at most once a day per checkout.
+// to upstream, at most once a day per checkout. Learnings inside the
+// stealth overlays the checkout links into get the same treatment, with a
+// PR on each overlay's own repo.
 
 import (
 	"context"
@@ -94,4 +96,81 @@ func (d *Dispatcher) learningsPR(ctx context.Context, m Machine, r Record, def s
 		}
 	}
 	return "", nil
+}
+
+// overlayLearningsPRScript does what learningsPRScript does for every
+// stealth overlay the checkout links into (overlayScan): it commits the
+// overlay's untracked learnings on branch, cut from the overlay's upstream
+// branch (@{u}), pushes it to the overlay's origin and opens a PR on the
+// GitHub repo of that upstream's remote (origin itself, for a ghws
+// overlay). This is the only path that pushes an overlay: preflight's
+// overlaySyncScript never does.
+//
+// The overlay's working tree, index and branch are never switched (a
+// sibling checkout of the same instance may be using the overlay), so the
+// commit is built in a scratch index on top of @{u} and pushed by hash.
+// The committed files are removed only once the push succeeded (they come
+// back with the merged PR on the next fast-forward); a failed push leaves
+// them untracked where they were. Per overlay it prints
+// "onone|oexists|oskip|ofail<TAB>overlay[<TAB>why]" or
+// "opr<TAB>overlay<TAB>count<TAB>url".
+func overlayLearningsPRScript(dir, branch, title, body string) string {
+	q := shellQuote
+	return "cd -- " + shellQuoteTilde(dir) + " || exit 1\n" +
+		"tmp=$(mktemp -d) || exit 1\n" +
+		"trap 'rm -rf \"$tmp\"' EXIT\n" +
+		"list=\"$tmp/list\" idx=\"$tmp/index\"\n" +
+		"for o in $(" + overlayScan + "); do\n" +
+		"  rm -f \"$list\" \"$idx\"\n" +
+		"  git -C \"$o\" ls-files -z --others --exclude-standard -- " + learningsDir + " >\"$list\" 2>/dev/null\n" +
+		"  n=$(tr -cd '\\000' <\"$list\" | wc -c | tr -d ' ')\n" +
+		"  [ \"$n\" -gt 0 ] || { printf 'onone\\t%s\\n' \"$o\"; continue; }\n" +
+		"  u=$(git -C \"$o\" rev-parse --abbrev-ref '@{u}' 2>/dev/null) || { printf 'oskip\\t%s\\tno upstream\\n' \"$o\"; continue; }\n" +
+		"  ur=${u%%/*} base=${u#*/}\n" +
+		"  if git -C \"$o\" ls-remote --exit-code --heads origin " + q(branch) + " >/dev/null 2>&1; then printf 'oexists\\t%s\\n' \"$o\"; continue; fi\n" +
+		"  git -C \"$o\" fetch -q \"$ur\" 2>/dev/null || { printf 'ofail\\t%s\\tfetch %s failed\\n' \"$o\" \"$ur\"; continue; }\n" +
+		"  c=$(cd -- \"$o\" && export GIT_INDEX_FILE=\"$idx\" && git read-tree \"refs/remotes/$u\" &&\n" +
+		"    git add --pathspec-from-file=\"$list\" --pathspec-file-nul && t=$(git write-tree) &&\n" +
+		"    git commit-tree \"$t\" -p \"refs/remotes/$u\" -m " + q(title) + ") || { printf 'ofail\\t%s\\tcommit failed\\n' \"$o\"; continue; }\n" +
+		"  git -C \"$o\" push -q origin \"$c:refs/heads/\"" + q(branch) + " 2>/dev/null || { printf 'ofail\\t%s\\tpush to origin failed\\n' \"$o\"; continue; }\n" +
+		"  (cd -- \"$o\" && xargs -0 rm -f -- <\"$list\")\n" +
+		"  repo=$(git -C \"$o\" remote get-url \"$ur\" | sed -E 's#\\.git$##; s#^.*[:/]([^/]+/[^/]+)$#\\1#')\n" +
+		"  owner=$(git -C \"$o\" remote get-url origin | sed -E 's#\\.git$##; s#^.*[:/]([^/]+)/[^/]+$#\\1#')\n" +
+		"  url=$(cd -- \"$o\" && gh pr create --repo \"$repo\" --base \"$base\" --head \"$owner:\"" + q(branch) +
+		" --title " + q(title) + " --body " + q(body) + ") || { printf 'ofail\\t%s\\tgh pr create failed; learnings are on origin/%s\\n' \"$o\" " + q(branch) + "; continue; }\n" +
+		"  printf 'opr\\t%s\\t%s\\t%s\\n' \"$o\" \"$n\" \"$url\"\n" +
+		"done\n"
+}
+
+// overlayLearningsPRs runs overlayLearningsPRScript after a clean run and
+// returns a "Pushed" line per PR it opened; overlays that failed come back
+// as the error (the others still count).
+func (d *Dispatcher) overlayLearningsPRs(ctx context.Context, m Machine, r Record) ([]string, error) {
+	if !d.o().LearningsPR {
+		return nil, nil
+	}
+	where := r.Workspace
+	if r.Machine != "" {
+		where = r.Machine + ":" + where
+	}
+	title := "chore(dewey): store learnings from " + r.Workspace
+	body := fmt.Sprintf("Dewey learnings written by agent sessions in `%s` into this stealth overlay, collected by gh-hud after a run.", where)
+	out, err := m.shell(ctx, overlayLearningsPRScript(r.Dir, learningsBranch(r, time.Now()), title, body))
+	if err != nil {
+		return nil, err
+	}
+	var pushed, failed []string
+	for _, line := range nonEmptyLines(out) {
+		f := strings.Split(line, "\t")
+		switch {
+		case len(f) == 4 && f[0] == "opr":
+			pushed = append(pushed, fmt.Sprintf("overlay %s learnings PR %s (%s file(s))", overlayName(f[1]), f[3], f[2]))
+		case len(f) == 3 && f[0] == "ofail":
+			failed = append(failed, "overlay "+overlayName(f[1])+": "+f[2])
+		}
+	}
+	if len(failed) > 0 {
+		return pushed, fmt.Errorf("%s", strings.Join(failed, "; "))
+	}
+	return pushed, nil
 }

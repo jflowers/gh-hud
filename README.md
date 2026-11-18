@@ -408,7 +408,8 @@ opencode session updated within `busy_window_secs`), applies your `dirty`
 policy to uncommitted files, and fast-forward syncs the default branch to
 `upstream` before launching. It also fast-forwards every stealth overlay
 the checkout links into (the `.uf/<repo>` clones behind `.opencode`,
-`openspec`, …) onto its upstream; it never pushes one, and an overlay
+`openspec`, …) onto its upstream; it never pushes one (only the
+learnings PR below does), and an overlay
 with uncommitted changes or unpushed commits refuses the dispatch. PR
 tasks (rebase, ci, feedback) then check the PR head out with
 `gh pr checkout --force`, so the agent starts on the PR exactly as it is
@@ -441,7 +442,14 @@ a clean run, gh-hud commits a checkout's untracked learnings on
 pushes it to `origin` and opens a PR on the upstream repo — at most one a
 day per checkout, shown under Pushed in the run view. A failed push puts
 the files back; set `learnings_pr = false` to only ignore them. Learnings
-inside a stealth overlay are ignored but not PR'd.
+inside a stealth overlay the checkout links into get the same treatment on
+the overlay's own repo: gh-hud commits them on the same day's branch, cut
+from the overlay's upstream branch, pushes it to the overlay's `origin`
+and opens a PR on the overlay's GitHub repo (listed under Pushed as
+`overlay .uf/<repo> learnings PR …`). The overlay itself is never
+switched: the commit is built aside, and the files leave the overlay only
+once the push has succeeded. Other instances pick the merged learnings up
+on their next preflight fast-forward.
 
 By default (`runner = "herdr"`) dispatch goes through a local herdr
 server: one herdr workspace per ghws workspace (created lazily, reused,
@@ -1512,7 +1520,7 @@ max_concurrent = 2         # max simultaneously dispatched agents (hub)
 busy_window_secs = 900     # foreign session newer than this blocks dispatch
 dirty = "refuse"           # dirty checkout policy: refuse | stash | stash-tracked
 dispatch_instances_only = true  # only @ instance workspaces are targets
-learnings_pr = true        # chore PR of untracked dewey learnings after a clean run (daily per checkout)
+learnings_pr = true        # chore PR of untracked dewey learnings after a clean run (daily per checkout and overlay)
 agent_watch_cmd = "/Applications/Ghostty.app/Contents/MacOS/ghostty -e tail -n 200 -f {log}"
 herdr_watch_cmd = "/Applications/Ghostty.app/Contents/MacOS/ghostty -e herdr"  # {workspace} {pane} {machine}
 
