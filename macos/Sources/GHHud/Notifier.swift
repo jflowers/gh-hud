@@ -26,26 +26,15 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     func post(_ alert: Ghhud_V1_Alert) {
         guard let center else { return }
         let content = UNMutableNotificationContent()
-        content.title = Self.title(alert.type)
+        content.title = Links.alertTitle(alert.type)
         content.body = alert.text
         content.sound = .default
         if let url = Links.forAlert(alert) {
             content.userInfo = ["url": url.absoluteString]
-        } else if alert.type == .toolkitTarget || alert.type == .toolRelease {
-            content.userInfo = ["pane": "toolkit"]
+        } else if let pane = Links.paneForAlert(alert.type) {
+            content.userInfo = ["pane": pane]
         }
         center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
-    }
-
-    static func title(_ t: Ghhud_V1_AlertType) -> String {
-        switch t {
-        case .ready: return "Ready for review"
-        case .blocked: return "An agent is waiting on you"
-        case .runFinished: return "Agent run finished"
-        case .toolRelease: return "A tool released"
-        case .toolkitTarget: return "A tool rollout needs you"
-        default: return "gh-hud"
-        }
     }
 
     nonisolated func userNotificationCenter(
@@ -54,8 +43,14 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         let info = response.notification.request.content.userInfo
         if let link = info["url"] as? String, let url = URL(string: link) {
             await MainActor.run { _ = NSWorkspace.shared.open(url) }
-        } else if info["pane"] as? String == "toolkit" {
-            await MainActor.run { DashboardOpener.shared.open(.toolkit) }
+        } else if let pane = info["pane"] as? String {
+            await MainActor.run {
+                switch pane {
+                case "toolkit": DashboardOpener.shared.open(.toolkit)
+                case "workspaces": DashboardOpener.shared.open(.workspaces)
+                default: break
+                }
+            }
         }
     }
 

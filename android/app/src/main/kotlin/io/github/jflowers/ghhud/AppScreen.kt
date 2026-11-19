@@ -73,6 +73,8 @@ fun AppScreen(
     act: AppActions,
     shared: String? = null,
     onShared: () -> Unit = {},
+    checkout: String? = null,
+    onCheckout: () -> Unit = {},
 ) {
     var place by rememberSaveable { mutableStateOf(Place.INBOX) }
     // Start an agent on an item you name: the field's first text, or null
@@ -85,6 +87,7 @@ fun AppScreen(
         }
     }
     // The open detail screen, if any: "item:<url>", "agent:<id>", "ws:<id>",
+    // "wsref:<[machine:]workspace>" (from a notification),
     // "watch:<run:id|session:id>" or "transcript:<run id>"; the viewers'
     // titles ride along in viewTitle.
     var detail by rememberSaveable { mutableStateOf<String?>(null) }
@@ -121,6 +124,14 @@ fun AppScreen(
         if (detail == null) under = null
     }
     BackHandler(enabled = detail != null) { goBack() }
+    LaunchedEffect(checkout) {
+        if (checkout != null) {
+            place = Place.AGENTS
+            under = null
+            detail = "wsref:$checkout"
+            onCheckout()
+        }
+    }
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
@@ -174,6 +185,11 @@ fun AppScreen(
                     if (t != null) WatchScreen(t, act, onBack = back)
                 }
                 d != null && d.startsWith("transcript:") -> TranscriptScreen(d.removePrefix("transcript:"), viewTitle, act, onBack = back)
+                d != null && d.startsWith("wsref:") -> {
+                    val ref = d.removePrefix("wsref:")
+                    val row = remember(s, ref) { WorkspaceList.byRef(s, ref) }
+                    WorkspaceScreen(row, act, onBack = back)
+                }
                 d != null && d.startsWith("ws:") -> {
                     val id = d.removePrefix("ws:")
                     val row = remember(s, id) { WorkspaceList.rows(s).firstOrNull { it.id == id } }

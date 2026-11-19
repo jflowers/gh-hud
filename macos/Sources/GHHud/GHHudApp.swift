@@ -166,6 +166,9 @@ extension SnapshotMode {
                 } else if pane == .workspaces {
                     let rows = WorkspaceList.rows(conn.snapshot)
                     if n < rows.count { ui.workspaceSelection = rows[n].id }
+                } else if pane == .fleet {
+                    let rows = FleetList.rows(conn.snapshot)
+                    if n < rows.count { ui.fleetSelection = rows[n].id }
                 }
             }
             if let n = arg("--select").flatMap(Int.init),

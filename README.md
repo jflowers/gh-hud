@@ -270,22 +270,30 @@ waiting, needs you or is merging. A queued task moves earlier or later
 (⌥⌘↑/⌥⌘↓) and ⌫ takes it off the queue; the right-click menu also
 queues a row's task, starts an agent or opens the item. Agents lists the sessions and the runs behind them,
 with the selected one's outcome below: where it ran, how long it took,
-the reason it failed, what it left behind or pushed, and its final
-message. Double-click watches a session; the right-click menu re-checks
+the reason it failed, what it left behind or pushed, its checkout's
+Dewey index health after the run, and its final message. Double-click watches a session; the right-click menu re-checks
 its run, opens its transcript or copies its ID or directory. **Show
 Stale** adds sessions idle for over a day. Workspaces lists every
 checkout a dispatch could use and whether the next run could start
 there, with what's in the way (uncommitted files, a diverged default
-branch, commits on no remote) below. Opening it reads the checkouts again
+branch, commits on no remote) below. Its Index column is each checkout's
+Dewey index (`ok 2d 100%`, `old format`, `unindexed`, `reindexing…`, `—`
+for a checkout that isn't a vault), in orange when the machine is at
+fault and a reindex won't help; the detail lists each reindex reason,
+what built the index, what it holds and the last reindex. Opening it reads the checkouts again
 when they're over 30 seconds old, and Refresh (⌘R) refreshes whichever
 pane is showing.
 
 When the fleet is on, **Rollout** (the TUI's `F`) shows the target commit
 and its CI, whether the rollout is moving, paused, blocked or failed, and
 each machine's state, the commit it has, its agent slots, how long it has
-waited for agents to drain and its last error. The toolbar pauses or
-resumes the rollout, applies now, skips the drain wait (after asking),
-and retries the failed machine.
+waited for agents to drain, its Dewey reindex (`reindexing 3/12`, then
+the summary) and its last error; the selected machine's failed and
+skipped vaults are listed below. The toolbar pauses or resumes the
+rollout, applies now, skips the drain wait (after asking), and retries
+the failed machine. Reindex Dewey reindexes the vaults that need it on
+the selected machine or every machine, or every vault with Force, after
+asking, and cancels a pass.
 
 Its source is in `macos/` and it needs a hub running (see "The hub") with
 TCP on, which is the default.
@@ -370,6 +378,18 @@ To start an agent on any open issue or PR, tap **+** on Items and paste
 its link, or share the link to gh-hud from your browser or the GitHub
 app. As on the Mac (Start Agent on URL), it offers every task that fits,
 the suggested ones marked.
+
+Dewey indexes show where the TUI shows them: each checkout on
+**Agents → Workspaces** has a `dewey` line (`ok 2d 100%`, `old format`,
+`unindexed`, `no embeddings`, `reindexing…`), and its screen has the
+verdict, each reason on its own line, what built the index and when, its
+contents and the last reindex. A run's screen shows its after-run index
+check. On **Fleet**, each machine lists its rollout's reindex and the
+pass you asked for (`dewey pass: reindexing 3/12`, then the summary with
+the vaults that failed or were skipped); **Reindex vaults now…** (every
+machine, or one: tap its row) starts a pass after a confirmation, with
+**Force** to reindex every vault, and **Cancel pass** stops one. A failed
+automatic reindex or upkeep is a notification that opens the checkout.
 
 **Install.** Each release (a `v*` tag) carries `gh-hud-VERSION.apk`, for
 any phone or tablet on Android 10 or later. Open the release page on the

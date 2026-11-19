@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -38,10 +39,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.jflowers.ghhud.api.v1.FleetAction
+import io.github.jflowers.ghhud.api.v1.FleetMachine
 import io.github.jflowers.ghhud.api.v1.FleetSnapshot
 import io.github.jflowers.ghhud.core.AgentList
 import io.github.jflowers.ghhud.core.Answer
 import io.github.jflowers.ghhud.core.ColumnFilter
+import io.github.jflowers.ghhud.core.DeweyCommands
+import io.github.jflowers.ghhud.core.DeweyFleet
 import io.github.jflowers.ghhud.core.FleetCommands
 import io.github.jflowers.ghhud.core.FleetList
 import io.github.jflowers.ghhud.core.FleetRow
@@ -50,23 +54,36 @@ import io.github.jflowers.ghhud.core.TableFilter
 import io.github.jflowers.ghhud.core.Tone
 import io.github.jflowers.ghhud.core.filterChoices
 import kotlinx.coroutines.launch
+import java.time.Instant
 
 /** What the Fleet can ask the hub for. */
 interface FleetActions {
     /** Runs a control; the answer is what to say. */
     suspend fun fleet(action: FleetAction): Answer<String>
 
+    /**
+     * Starts a Dewey reindex pass on a machine, or on every one (null):
+     * the vaults that need it, or every vault when forced.
+     */
+    suspend fun dewey(machine: String?, force: Boolean): Answer<String>
+
+    /** Cancels the Dewey reindex pass on a machine, or on every one (null). */
+    suspend fun deweyCancel(machine: String?): Answer<String>
+
     /** Changes the machine list's view, as it is then (see ItemsControl.update). */
     fun updateFleet(change: (ListState<FleetSort>) -> ListState<FleetSort>)
 }
 
+/** A Dewey reindex pass waiting for your go-ahead: on a machine, or every one (null). */
+private data class DeweyAsk(val machine: String?)
+
 /**
  * The GitOps rollout: the target and its CI, the controls (the TUI's p, a,
- * s and r), and a row per machine.
+ * s and r), Dewey reindex passes (d, D, f and x), and a row per machine.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FleetScreen(ui: Ui, view: ListState<FleetSort>, act: FleetActions, say: Say, refresh: () -> Unit) {
+fun FleetScreen(ui: Ui, view: ListState<FleetSort>, act: FleetActions, say: Say, refresh: () -> Unit, now: Instant = Instant.now()) {
     val s = ui.hub.snapshot
     val f = s.fleet
     val off = FleetCommands.off(ui.hub)
@@ -76,16 +93,19 @@ fun FleetScreen(ui: Ui, view: ListState<FleetSort>, act: FleetActions, say: Say,
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     var confirmSkip by remember { mutableStateOf(false) }
-    fun run(a: FleetAction) {
+    var confirmDewey by remember { mutableStateOf<DeweyAsk?>(null) }
+    fun answer(call: suspend () -> Answer<String>) {
         busy = true
         scope.launch {
-            when (val r = act.fleet(a)) {
+            when (val r = call()) {
                 is Answer.Ok -> say(r.value, false)
                 is Answer.No -> say(r.why, true)
             }
             busy = false
         }
     }
+    fun run(a: FleetAction) = answer { act.fleet(a) }
+    val enabled = off == null && !busy
     Scaffold(
         contentWindowInsets = WindowInsets(0),
         topBar = {
@@ -105,7 +125,13 @@ fun FleetScreen(ui: Ui, view: ListState<FleetSort>, act: FleetActions, say: Say,
             LazyColumn(Modifier.fillMaxSize().testTag("fleet")) {
                 item {
                     Header(f)
-                    Controls(f, enabled = off == null && !busy, onRun = ::run, onSkip = { confirmSkip = true })
+                    Controls(f, enabled = enabled, onRun = ::run, onSkip = { confirmSkip = true })
+                    DeweyControls(
+                        f,
+                        enabled = enabled,
+                        onStart = { confirmDewey = DeweyAsk(null) },
+                        onCancel = { answer { act.deweyCancel(null) } },
+                    )
                     off?.let {
                         Text(it, color = Tone.MUTED.color(), modifier = Modifier.padding(horizontal = 16.dp).testTag("off"))
                     }
@@ -124,7 +150,13 @@ fun FleetScreen(ui: Ui, view: ListState<FleetSort>, act: FleetActions, say: Say,
                     }
                 }
                 items(rows, key = { it.name }) { r ->
-                    MachineRow(r, onFilter = { k -> act.updateFleet { it.adding(k) } })
+                    val m = f.machinesList.firstOrNull { it.name == r.name }
+                    MachineRow(
+                        r, m, now, enabled,
+                        onFilter = { k -> act.updateFleet { it.adding(k) } },
+                        onReindex = { confirmDewey = DeweyAsk(r.name) },
+                        onCancel = { answer { act.deweyCancel(r.name) } },
+                    )
                     HorizontalDivider()
                 }
             }
@@ -148,6 +180,55 @@ fun FleetScreen(ui: Ui, view: ListState<FleetSort>, act: FleetActions, say: Say,
             },
             dismissButton = { TextButton(onClick = { confirmSkip = false }) { Text("Cancel") } },
         )
+    }
+    confirmDewey?.let { ask ->
+        DeweyDialog(ask.machine, onDismiss = { confirmDewey = null }, onStart = { force ->
+            confirmDewey = null
+            answer { act.dewey(ask.machine, force) }
+        })
+    }
+}
+
+/** The go-ahead for a Dewey reindex pass, with Force: every vault, not just the ones that need it. */
+@Composable
+private fun DeweyDialog(machine: String?, onDismiss: () -> Unit, onStart: (force: Boolean) -> Unit) {
+    var force by remember { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(DeweyCommands.ask(machine, force), modifier = Modifier.testTag("dewey-ask")) },
+        text = {
+            Column {
+                Text(DeweyCommands.explain(force))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = force, onCheckedChange = { force = it }, modifier = Modifier.testTag("dewey-force"))
+                    Text("Force: every vault, whatever its check says")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onStart(force) }, modifier = Modifier.testTag("dewey-confirm")) { Text("Reindex") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+/** Reindex the Dewey vaults on every machine, or cancel the passes that run. A machine's own are on its row. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DeweyControls(f: FleetSnapshot, enabled: Boolean, onStart: () -> Unit, onCancel: () -> Unit) {
+    FlowRow(
+        Modifier.padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        OutlinedButton(onClick = onStart, enabled = enabled && f.machinesCount > 0, modifier = Modifier.testTag("dewey-all")) {
+            Text("Reindex vaults now…")
+        }
+        if (DeweyCommands.running(f)) {
+            OutlinedButton(onClick = onCancel, enabled = enabled, modifier = Modifier.testTag("dewey-cancel-all")) {
+                Text("Cancel passes")
+            }
+        }
     }
 }
 
@@ -202,12 +283,21 @@ private fun Controls(f: FleetSnapshot, enabled: Boolean, onRun: (FleetAction) ->
 
 /**
  * A machine: its state, the commit it has (and the target, while it
- * isn't there), slots, how long it has drained, and its last error. A
- * tap shows the whole error; a long press filters by its values.
+ * isn't there), slots, how long it has drained, its last error, and its
+ * Dewey reindexes. A tap shows the whole error and the machine's Dewey
+ * controls; a long press filters by its values.
  */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
-private fun MachineRow(r: FleetRow, onFilter: (ColumnFilter) -> Unit) {
+private fun MachineRow(
+    r: FleetRow,
+    m: FleetMachine?,
+    now: Instant,
+    enabled: Boolean,
+    onFilter: (ColumnFilter) -> Unit,
+    onReindex: () -> Unit,
+    onCancel: () -> Unit,
+) {
     var menu by remember { mutableStateOf(false) }
     var whole by remember { mutableStateOf(false) }
     Box {
@@ -221,7 +311,7 @@ private fun MachineRow(r: FleetRow, onFilter: (ColumnFilter) -> Unit) {
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(r.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                    Text(r.state, color = r.tone.color(), modifier = Modifier.testTag("machine-state:" + r.name))
+                    Text(r.stateText, color = r.tone.color(), modifier = Modifier.testTag("machine-state:" + r.name))
                 }
                 Text(r.applied, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, maxLines = 1,
                     overflow = TextOverflow.Ellipsis)
@@ -235,6 +325,25 @@ private fun MachineRow(r: FleetRow, onFilter: (ColumnFilter) -> Unit) {
                     Text(r.error, style = MaterialTheme.typography.bodySmall, color = Tone.BAD.color(),
                         maxLines = if (whole) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.testTag("machine-error:" + r.name))
+                }
+                if (m != null) {
+                    for ((i, l) in (DeweyFleet.rolloutLines(m) + DeweyFleet.passLines(m, now)).withIndex()) {
+                        Text(l.text, style = MaterialTheme.typography.bodySmall, color = l.tone.color(),
+                            maxLines = if (whole) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.testTag("dewey-line:${r.name}:$i"))
+                    }
+                    if (whole) {
+                        FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = onReindex, enabled = enabled, modifier = Modifier.testTag("dewey:" + r.name)) {
+                                Text("Reindex vaults now…")
+                            }
+                            if (m.hasDeweyPass() && m.deweyPass.running) {
+                                OutlinedButton(onClick = onCancel, enabled = enabled, modifier = Modifier.testTag("dewey-cancel:" + r.name)) {
+                                    Text("Cancel pass")
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

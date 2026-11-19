@@ -191,6 +191,7 @@ public data class WorkspaceRow(
                     val i = h.busy.lastIndexOf('#')
                     "running ${if (i >= 0) h.busy.substring(i) else h.busy}" to Tone.PENDING
                 }
+                h.reindexing || h.upkeeping -> problem to Tone.PENDING
                 h.noUpstream -> problem to Tone.WARN
                 problem.isNotEmpty() -> problem to Tone.BAD
                 else -> "ready" to Tone.GOOD
@@ -200,12 +201,15 @@ public data class WorkspaceRow(
                 if (local > 0) add("$local local-only")
                 if (h.stashes > 0) add("${h.stashes} stash")
                 if (h.learnings > 0) add("${h.learnings} learnings")
+                if (DeweyIndex.reindexFailed(h)) add("reindex failed")
             }.joinToString(" · ")
             val ready = problem.isEmpty()
             val explanation = when {
                 ready && h.defaultBranch.isNotEmpty() && h.branch != h.defaultBranch ->
                     "A run here switches to ${h.defaultBranch} and fast-forwards it."
                 ready -> "A run here fast-forwards ${h.defaultBranch} to upstream."
+                h.reindexing -> "gh-hud is reindexing its Dewey index: no run starts here until it ends."
+                h.upkeeping -> "gh-hud is fetching and fast-forwarding it: no run starts here until it ends."
                 h.dirtyCount > 0 && h.busy.isEmpty() -> "A run here is refused until these are committed or discarded."
                 h.ahead > 0 && h.behind > 0 -> "${h.defaultBranch} can't fast-forward to upstream/${h.defaultBranch}."
                 else -> null
@@ -228,6 +232,8 @@ public data class WorkspaceRow(
         internal fun problem(h: CheckoutHealth): String = when {
             h.error.isNotEmpty() -> h.error
             h.busy.isNotEmpty() -> "running " + h.busy
+            h.reindexing -> "reindexing"
+            h.upkeeping -> "upkeep"
             h.noUpstream -> "no upstream remote"
             h.dirtyCount > 0 -> "${h.dirtyCount} uncommitted"
             h.ahead > 0 && h.behind > 0 -> h.defaultBranch + " diverged"
@@ -243,6 +249,21 @@ public data class WorkspaceRow(
 public object WorkspaceList {
     /** The checkouts; a worker's unmanaged-removal row isn't one. */
     public fun rows(s: Snapshot): List<WorkspaceRow> = s.workspacesList.filter { !it.unmanaged }.map { WorkspaceRow.of(it) }
+
+    /**
+     * The checkout an alert names: "[machine:]workspace", or with "/repo"
+     * after it (upkeep's). Null when it is no longer in the list.
+     */
+    public fun byRef(s: Snapshot, ref: String): WorkspaceRow? {
+        val rows = rows(s)
+        rows.firstOrNull { it.place == ref }?.let { return it }
+        val i = ref.lastIndexOf('/')
+        if (i < 0) return null
+        val place = ref.substring(0, i)
+        val repo = ref.substring(i + 1)
+        return rows.firstOrNull { it.place == place && (it.repo == repo || it.health.repo.endsWith("/$repo")) }
+            ?: rows.firstOrNull { it.place == place }
+    }
 
     /** Checkouts the next run could use: the count on the tab. */
     public fun ready(s: Snapshot): Int = rows(s).count { it.ready }

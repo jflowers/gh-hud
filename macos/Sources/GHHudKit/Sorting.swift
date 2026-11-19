@@ -65,6 +65,9 @@ extension WorkspaceRow {
     public var workspace: String { health.workspace }
     public var branch: String { health.branch }
     public var stateRank: Int { tone.rank }
+    /// The index most in need of you first: a failed check, a machine
+    /// problem, a reindex need; not a vault and not read last.
+    public var indexRank: Int { DeweyIndex.rank(health) }
     /// Furthest behind upstream first when descending; unknown last.
     public var syncKey: Int {
         health.behind < 0 || health.ahead < 0 ? .max : Int(health.behind) * 1000 + Int(health.ahead)
@@ -73,5 +76,7 @@ extension WorkspaceRow {
 
 extension FleetRow {
     public var stateRank: Int { tone.rank }
+    /// Running first, then failed, skipped, done; nothing last.
+    public var deweyRank: Int { dewey.isEmpty ? Tone.muted.rank + 1 : deweyTone == .pending ? -1 : deweyTone.rank }
     public var waitedKey: Double { SortKey.duration(waited) }
 }
