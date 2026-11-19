@@ -16,15 +16,16 @@ import (
 	"github.com/jflowers/gh-hud/internal/model"
 )
 
-// reindexFake is a fake dewey (and mise) on PATH for the reindex: status
-// reports a healthy index, reindex creates graph.db (or fails with
-// $FAKE_DEWEY_FAIL, or the vault's fail-reindex file, or hangs while the
-// vault has a hang-reindex file, ignoring SIGTERM when it says
-// "ignore-term"), and serve logs "background indexing complete" (once
-// gate exists, when gate is set) and runs until its stdin closes. Every
-// invocation is appended to calls. A running reindex or serve keeps a
-// marker, marks/<reindex|serve>.<pid>; a reindex that starts while
-// another one is alive appends to overlap.
+// reindexFake is a fake Dewey 3.9.0 (and mise) on PATH for the reindex:
+// reindex writes graph.db as format 1 (or fails with $FAKE_DEWEY_FAIL, or
+// the vault's fail-reindex file, or hangs while the vault has a
+// hang-reindex file, ignoring SIGTERM when it says "ignore-term"); status
+// reports a format 1 index as up to date and any other graph.db as
+// format 0, reindex recommended (lap1's), or hangs while gate is set and
+// doesn't exist. Every invocation is appended to calls. A running
+// reindex or status keeps a marker, marks/<reindex|status>.<pid>; a
+// reindex that starts while another one is alive appends to overlap.
+// Nothing starts a dewey serve any more (#138): serve exits 2.
 type reindexFake struct {
 	calls, which, gate, v1, v2, bin, marks, overlap string
 }
@@ -42,7 +43,15 @@ func fakeReindexDewey(t *testing.T) *reindexFake {
 echo "$*" >> ` + shellQuote(f.calls) + `
 marks=` + shellQuote(f.marks) + `
 case $1 in
-status) printf '{"pages": 1, "blocks": 10, "embeddings": 10}\n' ;;
+status)
+  : > "$marks/status.$$"
+  if [ -n "$FAKE_DEWEY_GATE" ]; then while [ ! -e "$FAKE_DEWEY_GATE" ]; do sleep 0.1; done; fi
+  if grep -q format1 .uf/dewey/graph.db 2>/dev/null; then
+    printf '{"pages": 1, "blocks": 10, "embeddings": 10, "embeddingAvailable": true, "deweyVersion": "3.9.0", "indexFormat": 1, "reindexRecommended": false, "reindexReasons": []}\n'
+  else
+    printf '{"pages": 1, "blocks": 10, "embeddings": 10, "embeddingAvailable": true, "deweyVersion": "", "indexFormat": 0, "reindexRecommended": true, "reindexReasons": ["index format 0, this Dewey writes 1"]}\n'
+  fi
+  rm -f "$marks/status.$$" ;;
 reindex)
   : > "$marks/reindex.$$"
   for m in "$marks"/reindex.*; do
@@ -59,17 +68,7 @@ reindex)
   rm -f "$marks/reindex.$$"
   if [ -n "$FAKE_DEWEY_FAIL" ]; then echo "Error: $FAKE_DEWEY_FAIL" >&2; exit 1; fi
   if [ -e .uf/dewey/fail-reindex ]; then echo "Error: $(cat .uf/dewey/fail-reindex)" >&2; exit 1; fi
-  mkdir -p .uf/dewey && : > .uf/dewey/graph.db ;;
-serve)
-  : > "$marks/serve.$$"
-  log=
-  while [ $# -gt 0 ]; do [ "$1" = --log-file ] && log=$2; shift; done
-  echo 'INFO serve starting' >> "$log"
-  echo 'INFO background indexing started' >> "$log"
-  if [ -n "$FAKE_DEWEY_GATE" ]; then while [ ! -e "$FAKE_DEWEY_GATE" ]; do sleep 0.1; done; fi
-  echo 'INFO background indexing complete elapsed=1ms' >> "$log"
-  cat >/dev/null
-  rm -f "$marks/serve.$$" ;;
+  mkdir -p .uf/dewey && echo format1 > .uf/dewey/graph.db ;;
 *) exit 2 ;;
 esac
 `
@@ -90,7 +89,6 @@ esac
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-	t.Setenv("DEWEY_EMBEDDING_ENDPOINT", "http://127.0.0.1:1")
 	t.Setenv("FAKE_DEWEY_FAIL", "")
 	t.Setenv("FAKE_DEWEY_GATE", "")
 	// Only this fake's reindexes count as running on the machine, not a
@@ -139,12 +137,15 @@ func TestReindexVault(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reindexVault: %v (%+v)", err, res)
 	}
-	if res.Binary != f.v1 || res.Err != "" || res.Skipped != "" || res.At.IsZero() || res.Duration <= 0 {
+	if res.Binary != f.v1 || res.Err != "" || res.Skipped != "" || res.At.IsZero() || res.Duration <= 0 ||
+		res.DeweyVersion != "3.9.0" || res.IndexFormat != 1 {
 		t.Errorf("result = %+v", res)
 	}
-	if f.count(t, "reindex") != 1 || f.count(t, "serve") != 1 {
-		t.Errorf("calls: reindex %d serve %d, want 1 each", f.count(t, "reindex"), f.count(t, "serve"))
+	// No warm-up serve (#138): one reindex, then one status read.
+	if f.count(t, "reindex") != 1 || f.count(t, "status") != 1 || f.count(t, "serve") != 0 {
+		t.Errorf("calls: reindex %d status %d serve %d, want 1, 1, 0", f.count(t, "reindex"), f.count(t, "status"), f.count(t, "serve"))
 	}
+	assertNoPidFile(t, work)
 	if _, err := os.Stat(filepath.Join(work, ".uf", "dewey", "graph.db")); err != nil {
 		t.Errorf("no index built: %v", err)
 	}
@@ -160,9 +161,23 @@ func TestReindexVault(t *testing.T) {
 	if !res.Failed() || !strings.HasPrefix(res.String(), "failed after ") {
 		t.Errorf("failed String = %q", res.String())
 	}
-	if f.count(t, "serve") != 1 {
-		t.Error("warmed after a failed reindex")
+	if f.count(t, "status") != 1 {
+		t.Error("read status after a failed reindex")
 	}
+}
+
+// A status read that doesn't answer after the reindex doesn't fail it;
+// the status is stopped, and the outcome has no provenance.
+func TestReindexVaultStatusHangs(t *testing.T) {
+	f := fakeReindexDewey(t)
+	t.Setenv("FAKE_DEWEY_GATE", f.gate) // never created: status never answers
+	work := vaultCheckout(t)
+	res, err := reindexVault(context.Background(), d0(), work, 2*time.Second)
+	if err != nil || res.DeweyVersion != "" || res.IndexFormat != 0 {
+		t.Errorf("reindexVault = %+v, %v; want ok without provenance", res, err)
+	}
+	f.assertNoneAlive(t, "status")
+	assertNoPidFile(t, work)
 }
 
 // A held dewey.lock (a dewey serve with the store open) skips the reindex.
@@ -195,8 +210,8 @@ func TestReindexVaultLockHeld(t *testing.T) {
 
 // While a checkout reindexes it is busy: placement skips it, reserve
 // refuses it, the Workspaces row says so, and a second reindex on the
-// machine is skipped. Success clears the mark, records the last reindex
-// and the binary it ran as the baseline.
+// machine is skipped. Success clears the mark and records the last
+// reindex, with what the index records now.
 func TestReindexCheckoutBusyAndOnePerMachine(t *testing.T) {
 	f := fakeReindexDewey(t)
 	t.Setenv("FAKE_DEWEY_GATE", f.gate)
@@ -204,15 +219,14 @@ func TestReindexCheckoutBusyAndOnePerMachine(t *testing.T) {
 	d := newTestDispatcher(t, "refuse")
 	d.opts.Tasks = map[string]config.TaskConfig{"issue": {Command: "/x {num}"}}
 	d.opts.LocalIndex = ghws.NewIndex([]ghws.Checkout{{Workspace: "acme", Repo: "acme/r", Dir: work}})
-	d.setDeweyBaseline("", work, f.v1)
-	writeFile(t, f.which, f.v2+"\n") // dewey upgraded
+	writeFile(t, f.which, f.v2+"\n")
 	iss := model.Item{Kind: model.KindIssue, Repo: "acme/r", Num: 2}
 	m := d.localMachine()
 	ctx := context.Background()
 
 	done := make(chan error, 1)
 	go func() {
-		_, err := d.reindexCheckout(ctx, m, Record{Dir: work}, []string{reasonDeweyUpgraded})
+		_, err := d.reindexCheckout(ctx, m, Record{Dir: work}, []string{"index format 0, this Dewey writes 1"})
 		done <- err
 	}()
 	deadline := time.Now().Add(10 * time.Second)
@@ -256,11 +270,9 @@ func TestReindexCheckoutBusyAndOnePerMachine(t *testing.T) {
 	if f.count(t, "reindex") != 1 {
 		t.Errorf("reindex ran %d times, want 1 (the second was skipped)", f.count(t, "reindex"))
 	}
-	if b, _ := d.deweyBaseline("", work); b.Binary != f.v2 {
-		t.Errorf("baseline = %q, want the binary the reindex ran (%s)", b.Binary, f.v2)
-	}
 	last, ok := d.lastReindex(work)
-	if !ok || last.Failed() || last.Binary != f.v2 || len(last.Reasons) != 1 || last.Reasons[0] != reasonDeweyUpgraded {
+	if !ok || last.Failed() || last.Binary != f.v2 || len(last.Reasons) != 1 || last.Reasons[0] != "index format 0, this Dewey writes 1" ||
+		last.IndexFormat != 1 || last.DeweyVersion != "3.9.0" {
 		t.Errorf("last reindex = %+v %v", last, ok)
 	}
 	for _, h := range d.Workspaces(ctx) {
@@ -273,7 +285,7 @@ func TestReindexCheckoutBusyAndOnePerMachine(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r, ok := d2.lastReindex(work); !ok || r.Binary != f.v2 {
+	if r, ok := d2.lastReindex(work); !ok || r.Binary != f.v2 || r.IndexFormat != 1 {
 		t.Errorf("reloaded last reindex = %+v %v", r, ok)
 	}
 }
@@ -341,10 +353,8 @@ func TestDeweyReindexSwitch(t *testing.T) {
 				t.Errorf("last reindex = %+v %v", last, ok)
 			}
 			if tc.reindexes > 0 {
-				if b, _ := d.deweyBaseline("", work); b.Binary != f.v1 {
-					t.Errorf("baseline = %+v", b)
-				}
-				// Reindexed: the next check finds it healthy.
+				// Reindexed: the next check finds it current, by Dewey's
+				// own record.
 				if got := d.checkIndexHealth(context.Background(), d.localMachine(), Record{Dir: work}); got != "ok" {
 					t.Errorf("after the reindex: %q", got)
 				}
@@ -362,9 +372,14 @@ func TestReindexable(t *testing.T) {
 	}{
 		{IndexHealth{Reasons: []string{reasonUnindexed}}, true},
 		{IndexHealth{}, false},
-		{IndexHealth{Reasons: []string{reasonUnindexed}, Machine: "no dewey binary found"}, false},
-		{IndexHealth{Machine: "no embeddings, and no embedder reachable at x"}, false},
-		{IndexHealth{Reasons: []string{reasonLearningsChanged}, Err: "dewey status: database is locked"}, false},
+		{IndexHealth{Reasons: []string{"index format 0, this Dewey writes 1"}}, true},
+		{IndexHealth{Machine: "no dewey binary found"}, false},
+		{IndexHealth{Machine: "dewey 3.8.0 is older than 3.9.0: can't tell whether the index needs a reindex"}, false},
+		{IndexHealth{Machine: "no embeddings, and the m embedding model isn't available"}, false},
+		// The format still gets fixed; the machine problem stays.
+		{IndexHealth{Reasons: []string{"index format 0, this Dewey writes 1"}, Machine: "no embeddings, and the m embedding model isn't available"}, true},
+		{IndexHealth{Reasons: []string{reasonUnindexed}, Err: "dewey status: database is locked"}, false},
+		{IndexHealth{Unchecked: true}, false},
 	} {
 		if got := reindexable(tc.h); got != tc.want {
 			t.Errorf("reindexable(%s) = %v", tc.h, got)
@@ -390,10 +405,6 @@ func TestAutoReindexFailureRecordedNotRetried(t *testing.T) {
 	last, ok := d.lastReindex(work)
 	if !ok || !last.Failed() || !strings.Contains(last.Err, "no embedder") {
 		t.Fatalf("last reindex = %+v %v", last, ok)
-	}
-	if b, _ := d.deweyBaseline("", work); b.Binary != f.v1 {
-		// the check's first baseline, not a reindex's
-		t.Errorf("baseline = %+v", b)
 	}
 	var row CheckoutHealth
 	for _, h := range d.Workspaces(context.Background()) {
@@ -425,6 +436,7 @@ func TestCheckoutHealthReindexingProblem(t *testing.T) {
 func TestParseReindex(t *testing.T) {
 	for _, tc := range []struct{ out, want string }{
 		{"RX bin /d\nRX ok\n", "ok in 0s"},
+		{"RX bin /d\nRX status {\"deweyVersion\": \"3.9.0\", \"indexFormat\": 1}\nRX ok\n", "ok in 0s"},
 		{"noise\nRX bin /d\nRX held\n", "skipped: dewey.lock held"},
 		{"RX bin \nRX err no dewey binary found\n", "failed after 0s: no dewey binary found"},
 		{"RX bin /d\n", "failed after 0s: no result"},
@@ -433,6 +445,12 @@ func TestParseReindex(t *testing.T) {
 			t.Errorf("%q: %q, want %q", tc.out, got, tc.want)
 		}
 	}
+	if r := parseReindex("RX bin /d\nRX status {\"deweyVersion\": \"3.9.0\", \"indexFormat\": 1}\nRX ok\n"); r.DeweyVersion != "3.9.0" || r.IndexFormat != 1 {
+		t.Errorf("status = %+v", r)
+	}
+	if r := parseReindex("RX bin /d\nRX status garbage\nRX ok\n"); r.Failed() || r.IndexFormat != 0 {
+		t.Errorf("unreadable status = %+v", r)
+	}
 	r := parseReindex("RX bin /d\nRX busy 42 /usr/bin/dewey reindex --vault /w/a b\n")
 	if r.busy != "pid 42, vault /w/a b" || r.Err != "" {
 		t.Errorf("busy = %+v", r)
@@ -440,5 +458,19 @@ func TestParseReindex(t *testing.T) {
 	r = parseReindex("RX bin /d\nRX alive 42\nRX err timed out after 2h0m0s (dewey reindex)\n")
 	if r.alive != "pid 42 survived SIGKILL" || r.Err != "timed out after 2h0m0s (dewey reindex)" {
 		t.Errorf("alive = %+v", r)
+	}
+}
+
+// The script starts no dewey serve, and the warm step's share of the
+// limit is gone (#138).
+func TestReindexScriptHasNoWarmStep(t *testing.T) {
+	s := reindexScript("~/w/a b", time.Hour)
+	for _, gone := range []string{" serve ", "mkfifo", "background indexing", "warm"} {
+		if strings.Contains(s, gone) {
+			t.Errorf("reindex script still has %q", gone)
+		}
+	}
+	if !strings.Contains(s, "status --vault") {
+		t.Error("reindex script doesn't read dewey status after the reindex")
 	}
 }

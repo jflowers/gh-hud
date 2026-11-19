@@ -366,9 +366,10 @@ public class HubServiceClient(
 
 
   /**
-   *  DeweyReindex starts, or cancels, a pass that reindexes every Dewey
-   *  vault on a fleet machine, or on every one (#139). A pass goes vault
-   *  by vault, skipping busy ones; its progress is FleetMachine.dewey_pass.
+   *  DeweyReindex starts, or cancels, a pass that reindexes the Dewey
+   *  vaults on a fleet machine, or on every one (#139): the ones Dewey
+   *  says need it (#138), or every one with force. A pass goes vault by
+   *  vault, skipping busy ones; its progress is FleetMachine.dewey_pass.
    *  FAILED_PRECONDITION when the fleet is off; refused when
    *  &#91;dispatch&#93; dewey_reindex is "off", a pass already runs there, or this
    *  hub doesn't own dispatch.

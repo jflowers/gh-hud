@@ -263,6 +263,50 @@ public object ReindexResultKt {
     public fun clearError() {
       _builder.clearError()
     }
+
+    /**
+     * ```
+     * What the index records after the reindex (one dewey status read);
+     * "" and 0 when it couldn't be read.
+     * ```
+     *
+     * `string dewey_version = 7 [json_name = "deweyVersion"];`
+     */
+    public var deweyVersion: kotlin.String
+      @kotlin.jvm.JvmName("getDeweyVersion")
+        get() = _builder.deweyVersion
+      @kotlin.jvm.JvmName("setDeweyVersion")
+        set(value) {
+        _builder.deweyVersion = value
+      }
+    /**
+     * ```
+     * What the index records after the reindex (one dewey status read);
+     * "" and 0 when it couldn't be read.
+     * ```
+     *
+     * `string dewey_version = 7 [json_name = "deweyVersion"];`
+     */
+    public fun clearDeweyVersion() {
+      _builder.clearDeweyVersion()
+    }
+
+    /**
+     * `int64 index_format = 8 [json_name = "indexFormat"];`
+     */
+    public var indexFormat: kotlin.Long
+      @kotlin.jvm.JvmName("getIndexFormat")
+        get() = _builder.indexFormat
+      @kotlin.jvm.JvmName("setIndexFormat")
+        set(value) {
+        _builder.indexFormat = value
+      }
+    /**
+     * `int64 index_format = 8 [json_name = "indexFormat"];`
+     */
+    public fun clearIndexFormat() {
+      _builder.clearIndexFormat()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.ReindexResult.copy(block: `io.github.jflowers.ghhud.api.v1`.ReindexResultKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.ReindexResult =

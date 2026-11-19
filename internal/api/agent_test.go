@@ -136,7 +136,7 @@ func TestServeLANWithAgentToken(t *testing.T) {
 	if err := c.FleetApplyNow(t.Context()); err != nil {
 		t.Errorf("agent FleetApplyNow: %v", err)
 	}
-	if _, err := c.DeweyReindex(t.Context(), "lap1"); err != nil {
+	if _, err := c.DeweyReindex(t.Context(), "lap1", false); err != nil {
 		t.Errorf("agent DeweyReindex: %v", err)
 	}
 	if fake.Called("FleetApplyNow") != 1 || fake.Called("DeweyReindex lap1") != 1 {

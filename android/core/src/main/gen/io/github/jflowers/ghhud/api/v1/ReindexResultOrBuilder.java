@@ -132,4 +132,32 @@ public interface ReindexResultOrBuilder extends
    */
   com.google.protobuf.ByteString
       getErrorBytes();
+
+  /**
+   * <pre>
+   * What the index records after the reindex (one dewey status read);
+   * "" and 0 when it couldn't be read.
+   * </pre>
+   *
+   * <code>string dewey_version = 7 [json_name = "deweyVersion"];</code>
+   * @return The deweyVersion.
+   */
+  java.lang.String getDeweyVersion();
+  /**
+   * <pre>
+   * What the index records after the reindex (one dewey status read);
+   * "" and 0 when it couldn't be read.
+   * </pre>
+   *
+   * <code>string dewey_version = 7 [json_name = "deweyVersion"];</code>
+   * @return The bytes for deweyVersion.
+   */
+  com.google.protobuf.ByteString
+      getDeweyVersionBytes();
+
+  /**
+   * <code>int64 index_format = 8 [json_name = "indexFormat"];</code>
+   * @return The indexFormat.
+   */
+  long getIndexFormat();
 }

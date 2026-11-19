@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jflowers/gh-hud/internal/config"
+	"github.com/jflowers/gh-hud/internal/dispatch"
 )
 
 // A pass on every machine reindexes each machine's vaults one after
@@ -27,7 +28,7 @@ func TestDeweyPassReindexesEveryVault(t *testing.T) {
 			t.Error("not Busy during a pass")
 		}
 	}
-	st, err := h.coord.StartDeweyReindex("")
+	st, err := h.coord.StartDeweyReindex("", false)
 	if err != nil || !slices.Equal(st.Started, []string{"lap1", "lap2", "local"}) || len(st.Refused) != 0 {
 		t.Fatalf("StartDeweyReindex = %+v, %v", st, err)
 	}
@@ -73,7 +74,7 @@ func TestDeweyPassSkipsAndFailures(t *testing.T) {
 	h, fd := newDeweyHarness(t, config.DeweyReindexAuto)
 	fd.skip = map[string]string{"/w/acme@a/r": "another agent is active in the checkout"}
 	fd.fail["/w/acme@b/r"] = true
-	if _, err := h.coord.StartDeweyReindex("lap1"); err != nil {
+	if _, err := h.coord.StartDeweyReindex("lap1", false); err != nil {
 		t.Fatal(err)
 	}
 	h.coord.passWork.Wait()
@@ -102,7 +103,7 @@ func TestDeweyPassSkipsAndFailures(t *testing.T) {
 func TestDeweyPassStopsOnStuckMachine(t *testing.T) {
 	h, fd := newDeweyHarness(t, config.DeweyReindexAuto)
 	fd.stuck = map[string]string{"/w/acme@b/r": "pid 7 survived SIGKILL"}
-	if _, err := h.coord.StartDeweyReindex("lap1"); err != nil {
+	if _, err := h.coord.StartDeweyReindex("lap1", false); err != nil {
 		t.Fatal(err)
 	}
 	h.coord.passWork.Wait()
@@ -127,23 +128,23 @@ func TestDeweyPassStopsOnStuckMachine(t *testing.T) {
 func TestDeweyPassRefusalsAndCancel(t *testing.T) {
 	h, fd := newDeweyHarness(t, config.DeweyReindexReport)
 	fd.block = make(chan struct{})
-	if _, err := h.coord.StartDeweyReindex("lap1"); err != nil {
+	if _, err := h.coord.StartDeweyReindex("lap1", false); err != nil {
 		t.Fatal(err)
 	}
 	waitFor(t, func() bool { return len(filterEvents(fd.eventLog(), "requested lap1")) == 1 })
-	if _, err := h.coord.StartDeweyReindex("lap1"); err == nil || !strings.Contains(err.Error(), "lap1: a Dewey reindex pass is already running (reindexing 0/3)") {
+	if _, err := h.coord.StartDeweyReindex("lap1", false); err == nil || !strings.Contains(err.Error(), "lap1: a Dewey reindex pass is already running (reindexing 0/3)") {
 		t.Errorf("second start: %v", err)
 	}
 	h.coord.mu.Lock()
 	h.coord.machineLocked("local").State = StateApplying
 	h.coord.mu.Unlock()
-	st, err := h.coord.StartDeweyReindex("")
+	st, err := h.coord.StartDeweyReindex("", false)
 	if err != nil || !slices.Equal(st.Started, []string{"lap2"}) || len(st.Refused) != 2 ||
 		!strings.HasPrefix(st.Refused[0], "lap1: a Dewey reindex pass is already running") ||
 		!strings.HasPrefix(st.Refused[1], "local: its fleet rollout is applying") {
 		t.Errorf("start all = %+v, %v", st, err)
 	}
-	if _, err := h.coord.StartDeweyReindex("nowhere"); err == nil || !strings.Contains(err.Error(), "unknown machine \"nowhere\" (the fleet's: lap1, lap2, local)") {
+	if _, err := h.coord.StartDeweyReindex("nowhere", false); err == nil || !strings.Contains(err.Error(), "unknown machine \"nowhere\" (the fleet's: lap1, lap2, local)") {
 		t.Errorf("unknown machine: %v", err)
 	}
 
@@ -167,14 +168,14 @@ func TestDeweyPassRefusalsAndCancel(t *testing.T) {
 	}
 
 	off, fdOff := newDeweyHarness(t, config.DeweyReindexOff)
-	if _, err := off.coord.StartDeweyReindex("lap1"); err == nil || !strings.Contains(err.Error(), "dewey_reindex is off") {
+	if _, err := off.coord.StartDeweyReindex("lap1", false); err == nil || !strings.Contains(err.Error(), "dewey_reindex is off") {
 		t.Errorf("off: %v", err)
 	}
 	if ev := fdOff.eventLog(); len(ev) != 0 {
 		t.Errorf("off looked: %v", ev)
 	}
 	none := newHarness(t, t.TempDir(), map[string]string{"lap1": oldSHA, "lap2": oldSHA, "local": oldSHA})
-	if _, err := none.coord.StartDeweyReindex(""); err == nil || !strings.Contains(err.Error(), "dispatch is off") {
+	if _, err := none.coord.StartDeweyReindex("", false); err == nil || !strings.Contains(err.Error(), "dispatch is off") {
 		t.Errorf("no dispatcher: %v", err)
 	}
 }
@@ -187,5 +188,50 @@ func waitFor(t *testing.T, cond func() bool) {
 			t.Fatal("timed out waiting")
 		}
 		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// A pass reindexes only the vaults whose check says so (#138), with the
+// check's reasons, and lists the others: up to date, or skipped with why
+// (a failed check, a machine problem). A forced pass reindexes every
+// vault, unchecked.
+func TestDeweyPassOnlyWhatDeweyFlags(t *testing.T) {
+	h, fd := newDeweyHarness(t, config.DeweyReindexAuto)
+	fd.health = map[string]dispatch.IndexHealth{
+		"/w/acme@a/r": {},
+		"/w/acme/r":   {Machine: "dewey 3.8.0 is older than 3.9.0: can't tell whether the index needs a reindex"},
+	}
+	if _, err := h.coord.StartDeweyReindex("lap1", false); err != nil {
+		t.Fatal(err)
+	}
+	h.coord.passWork.Wait()
+	if got := filterEvents(fd.eventLog(), "requested"); !slices.Equal(got, []string{"requested lap1 /w/acme@b/r"}) {
+		t.Errorf("reindexed %v, want only the flagged vault", got)
+	}
+	if !slices.Equal(fd.reasons["/w/acme@b/r"], []string{formatReason}) {
+		t.Errorf("reasons = %v", fd.reasons)
+	}
+	p := stateOf(t, h.coord.Snapshot(), "lap1").Pass
+	if p.Forced || p.Reindexed != 1 || p.Done != 3 || !slices.Equal(p.Current, []string{"/w/acme@a/r"}) ||
+		!slices.Equal(p.Skipped, []string{"/w/acme/r: machine problem: dewey 3.8.0 is older than 3.9.0: can't tell whether the index needs a reindex"}) ||
+		p.Note != "reindexed 1/3, 1 up to date, 1 skipped" {
+		t.Errorf("pass = %+v", p)
+	}
+
+	if _, err := h.coord.StartDeweyReindex("lap1", true); err != nil {
+		t.Fatal(err)
+	}
+	h.coord.passWork.Wait()
+	if got := filterEvents(fd.eventLog(), "requested lap1"); len(got) != 4 {
+		t.Errorf("forced pass reindexed %v, want all three more", got)
+	}
+	for _, dir := range []string{"/w/acme@a/r", "/w/acme@b/r", "/w/acme/r"} {
+		if !slices.Equal(fd.reasons[dir], []string{dispatch.ReasonForced}) {
+			t.Errorf("%s reasons = %v", dir, fd.reasons[dir])
+		}
+	}
+	p = stateOf(t, h.coord.Snapshot(), "lap1").Pass
+	if !p.Forced || p.Reindexed != 3 || len(p.Current) != 0 || p.Note != "reindexed 3/3 (forced)" {
+		t.Errorf("forced pass = %+v", p)
 	}
 }

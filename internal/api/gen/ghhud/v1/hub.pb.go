@@ -3136,10 +3136,13 @@ func (*FleetControlResponse) Descriptor() ([]byte, []int) {
 }
 
 type DeweyReindexRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Machine       string                 `protobuf:"bytes,1,opt,name=machine,proto3" json:"machine,omitempty"` // a fleet machine ("local" is the hub); "" with all
-	All           bool                   `protobuf:"varint,2,opt,name=all,proto3" json:"all,omitempty"`        // every fleet machine
-	Cancel        bool                   `protobuf:"varint,3,opt,name=cancel,proto3" json:"cancel,omitempty"`  // cancel the running pass instead of starting one
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Machine string                 `protobuf:"bytes,1,opt,name=machine,proto3" json:"machine,omitempty"` // a fleet machine ("local" is the hub); "" with all
+	All     bool                   `protobuf:"varint,2,opt,name=all,proto3" json:"all,omitempty"`        // every fleet machine
+	Cancel  bool                   `protobuf:"varint,3,opt,name=cancel,proto3" json:"cancel,omitempty"`  // cancel the running pass instead of starting one
+	// force reindexes every vault, not just the ones whose index check
+	// (Dewey's own verdict) says so.
+	Force         bool `protobuf:"varint,4,opt,name=force,proto3" json:"force,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3191,6 +3194,13 @@ func (x *DeweyReindexRequest) GetAll() bool {
 func (x *DeweyReindexRequest) GetCancel() bool {
 	if x != nil {
 		return x.Cancel
+	}
+	return false
+}
+
+func (x *DeweyReindexRequest) GetForce() bool {
+	if x != nil {
+		return x.Force
 	}
 	return false
 }
@@ -5852,8 +5862,11 @@ type CheckoutHealth struct {
 	NoUpstream    bool                   `protobuf:"varint,14,opt,name=no_upstream,json=noUpstream,proto3" json:"no_upstream,omitempty"`
 	Error         string                 `protobuf:"bytes,15,opt,name=error,proto3" json:"error,omitempty"`
 	// Dewey index health: "" not read, "none" not a vault, "ok",
+	// "unchecked" (dewey status not read since the index was built),
 	// "reindex needed: <reasons>", "check failed: …", "machine problem: …"
-	// (joined with "; "). A reindex need doesn't make the checkout unready.
+	// (joined with "; "). The reasons are "unindexed", "no embeddings" and
+	// Dewey's own reindexReasons (#138). A reindex need doesn't make the
+	// checkout unready.
 	Index      string                 `protobuf:"bytes,16,opt,name=index,proto3" json:"index,omitempty"`
 	IndexBuilt *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=index_built,json=indexBuilt,proto3" json:"index_built,omitempty"` // graph.db mtime; unset = no index
 	// From dewey status, as of index_status_at (unset = never read).
@@ -5866,8 +5879,15 @@ type CheckoutHealth struct {
 	LastReindex *ReindexResult `protobuf:"bytes,23,opt,name=last_reindex,json=lastReindex,proto3" json:"last_reindex,omitempty"` // unset: none recorded
 	// gh-hud is keeping the checkout up (fetch, fast-forward): it takes no
 	// dispatch.
-	Upkeeping     bool          `protobuf:"varint,24,opt,name=upkeeping,proto3" json:"upkeeping,omitempty"`
-	LastUpkeep    *UpkeepResult `protobuf:"bytes,25,opt,name=last_upkeep,json=lastUpkeep,proto3" json:"last_upkeep,omitempty"` // unset: none yet
+	Upkeeping  bool          `protobuf:"varint,24,opt,name=upkeeping,proto3" json:"upkeeping,omitempty"`
+	LastUpkeep *UpkeepResult `protobuf:"bytes,25,opt,name=last_upkeep,json=lastUpkeep,proto3" json:"last_upkeep,omitempty"` // unset: none yet
+	// The Dewey version and index format the index records (dewey status,
+	// as of index_status_at): "" and 0 for an index built before Dewey
+	// 3.9.0 recorded them.
+	IndexDeweyVersion string `protobuf:"bytes,26,opt,name=index_dewey_version,json=indexDeweyVersion,proto3" json:"index_dewey_version,omitempty"`
+	IndexFormat       int64  `protobuf:"varint,27,opt,name=index_format,json=indexFormat,proto3" json:"index_format,omitempty"`
+	// index's reindex reasons as a list (Dewey's contain commas).
+	IndexReasons  []string `protobuf:"bytes,28,rep,name=index_reasons,json=indexReasons,proto3" json:"index_reasons,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6077,6 +6097,27 @@ func (x *CheckoutHealth) GetLastUpkeep() *UpkeepResult {
 	return nil
 }
 
+func (x *CheckoutHealth) GetIndexDeweyVersion() string {
+	if x != nil {
+		return x.IndexDeweyVersion
+	}
+	return ""
+}
+
+func (x *CheckoutHealth) GetIndexFormat() int64 {
+	if x != nil {
+		return x.IndexFormat
+	}
+	return 0
+}
+
+func (x *CheckoutHealth) GetIndexReasons() []string {
+	if x != nil {
+		return x.IndexReasons
+	}
+	return nil
+}
+
 // UpkeepResult is the last upkeep of an idle fleet checkout: fetched,
 // then fast-forwarded only.
 type UpkeepResult struct {
@@ -6189,13 +6230,17 @@ func (x *UpkeepResult) GetError() string {
 
 // ReindexResult is the outcome of an automatic Dewey reindex of a checkout.
 type ReindexResult struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	At            *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=at,proto3" json:"at,omitempty"` // when it ended
-	Duration      *durationpb.Duration   `protobuf:"bytes,2,opt,name=duration,proto3" json:"duration,omitempty"`
-	Binary        string                 `protobuf:"bytes,3,opt,name=binary,proto3" json:"binary,omitempty"`
-	Reasons       []string               `protobuf:"bytes,4,rep,name=reasons,proto3" json:"reasons,omitempty"` // why it ran
-	Skipped       string                 `protobuf:"bytes,5,opt,name=skipped,proto3" json:"skipped,omitempty"` // why it didn't run ("dewey.lock held")
-	Error         string                 `protobuf:"bytes,6,opt,name=error,proto3" json:"error,omitempty"`     // why it failed
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	At       *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=at,proto3" json:"at,omitempty"` // when it ended
+	Duration *durationpb.Duration   `protobuf:"bytes,2,opt,name=duration,proto3" json:"duration,omitempty"`
+	Binary   string                 `protobuf:"bytes,3,opt,name=binary,proto3" json:"binary,omitempty"`
+	Reasons  []string               `protobuf:"bytes,4,rep,name=reasons,proto3" json:"reasons,omitempty"` // why it ran
+	Skipped  string                 `protobuf:"bytes,5,opt,name=skipped,proto3" json:"skipped,omitempty"` // why it didn't run ("dewey.lock held")
+	Error    string                 `protobuf:"bytes,6,opt,name=error,proto3" json:"error,omitempty"`     // why it failed
+	// What the index records after the reindex (one dewey status read);
+	// "" and 0 when it couldn't be read.
+	DeweyVersion  string `protobuf:"bytes,7,opt,name=dewey_version,json=deweyVersion,proto3" json:"dewey_version,omitempty"`
+	IndexFormat   int64  `protobuf:"varint,8,opt,name=index_format,json=indexFormat,proto3" json:"index_format,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6270,6 +6315,20 @@ func (x *ReindexResult) GetError() string {
 		return x.Error
 	}
 	return ""
+}
+
+func (x *ReindexResult) GetDeweyVersion() string {
+	if x != nil {
+		return x.DeweyVersion
+	}
+	return ""
+}
+
+func (x *ReindexResult) GetIndexFormat() int64 {
+	if x != nil {
+		return x.IndexFormat
+	}
+	return 0
 }
 
 type FleetSnapshot struct {
@@ -6414,8 +6473,11 @@ type FleetMachine struct {
 	ReindexFailures []string   `protobuf:"bytes,10,rep,name=reindex_failures,json=reindexFailures,proto3" json:"reindex_failures,omitempty"`
 	ReindexNote     string     `protobuf:"bytes,11,opt,name=reindex_note,json=reindexNote,proto3" json:"reindex_note,omitempty"`
 	DeweyPass       *DeweyPass `protobuf:"bytes,12,opt,name=dewey_pass,json=deweyPass,proto3" json:"dewey_pass,omitempty"` // unset: no pass asked for since the hub started
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The vaults the rollout's check found up to date (#138): nothing to
+	// reindex.
+	ReindexCurrent []string `protobuf:"bytes,13,rep,name=reindex_current,json=reindexCurrent,proto3" json:"reindex_current,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *FleetMachine) Reset() {
@@ -6532,7 +6594,14 @@ func (x *FleetMachine) GetDeweyPass() *DeweyPass {
 	return nil
 }
 
-// DeweyPass is a machine's latest "reindex every vault now" pass (#139).
+func (x *FleetMachine) GetReindexCurrent() []string {
+	if x != nil {
+		return x.ReindexCurrent
+	}
+	return nil
+}
+
+// DeweyPass is a machine's latest "reindex the vaults now" pass (#139).
 type DeweyPass struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Running       bool                   `protobuf:"varint,1,opt,name=running,proto3" json:"running,omitempty"`
@@ -6543,7 +6612,9 @@ type DeweyPass struct {
 	Failed        []string               `protobuf:"bytes,6,rep,name=failed,proto3" json:"failed,omitempty"`   // "<dir>: <why>": it ran and failed
 	Note          string                 `protobuf:"bytes,7,opt,name=note,proto3" json:"note,omitempty"`       // the summary ("reindexed 10/12, 1 skipped, 1 failed")
 	Started       *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=started,proto3" json:"started,omitempty"`
-	Ended         *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=ended,proto3" json:"ended,omitempty"` // unset while it runs
+	Ended         *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=ended,proto3" json:"ended,omitempty"`      // unset while it runs
+	Current       []string               `protobuf:"bytes,10,rep,name=current,proto3" json:"current,omitempty"` // vaults whose check found them up to date
+	Forced        bool                   `protobuf:"varint,11,opt,name=forced,proto3" json:"forced,omitempty"`  // every vault reindexed, unchecked
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6639,6 +6710,20 @@ func (x *DeweyPass) GetEnded() *timestamppb.Timestamp {
 		return x.Ended
 	}
 	return nil
+}
+
+func (x *DeweyPass) GetCurrent() []string {
+	if x != nil {
+		return x.Current
+	}
+	return nil
+}
+
+func (x *DeweyPass) GetForced() bool {
+	if x != nil {
+		return x.Forced
+	}
+	return false
 }
 
 type Event struct {
@@ -7441,11 +7526,12 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x06failed\x18\x03 \x01(\bR\x06failed\"D\n" +
 	"\x13FleetControlRequest\x12-\n" +
 	"\x06action\x18\x01 \x01(\x0e2\x15.ghhud.v1.FleetActionR\x06action\"\x16\n" +
-	"\x14FleetControlResponse\"Y\n" +
+	"\x14FleetControlResponse\"o\n" +
 	"\x13DeweyReindexRequest\x12\x18\n" +
 	"\amachine\x18\x01 \x01(\tR\amachine\x12\x10\n" +
 	"\x03all\x18\x02 \x01(\bR\x03all\x12\x16\n" +
-	"\x06cancel\x18\x03 \x01(\bR\x06cancel\"L\n" +
+	"\x06cancel\x18\x03 \x01(\bR\x06cancel\x12\x14\n" +
+	"\x05force\x18\x04 \x01(\bR\x05force\"L\n" +
 	"\x14DeweyReindexResponse\x12\x1a\n" +
 	"\bmachines\x18\x01 \x03(\tR\bmachines\x12\x18\n" +
 	"\arefused\x18\x02 \x03(\tR\arefused\"E\n" +
@@ -7724,7 +7810,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\acleared\x18\n" +
 	" \x01(\bR\acleared\x12\x16\n" +
 	"\x06labels\x18\v \x03(\tR\x06labels\x12!\n" +
-	"\flabels_known\x18\f \x01(\bR\vlabelsKnown\"\xcc\x06\n" +
+	"\flabels_known\x18\f \x01(\bR\vlabelsKnown\"\xc4\a\n" +
 	"\x0eCheckoutHealth\x12\x18\n" +
 	"\amachine\x18\x01 \x01(\tR\amachine\x12\x1c\n" +
 	"\tworkspace\x18\x02 \x01(\tR\tworkspace\x12\x12\n" +
@@ -7758,7 +7844,10 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\flast_reindex\x18\x17 \x01(\v2\x17.ghhud.v1.ReindexResultR\vlastReindex\x12\x1c\n" +
 	"\tupkeeping\x18\x18 \x01(\bR\tupkeeping\x127\n" +
 	"\vlast_upkeep\x18\x19 \x01(\v2\x16.ghhud.v1.UpkeepResultR\n" +
-	"lastUpkeep\"\xfd\x01\n" +
+	"lastUpkeep\x12.\n" +
+	"\x13index_dewey_version\x18\x1a \x01(\tR\x11indexDeweyVersion\x12!\n" +
+	"\findex_format\x18\x1b \x01(\x03R\vindexFormat\x12#\n" +
+	"\rindex_reasons\x18\x1c \x03(\tR\findexReasons\"\xfd\x01\n" +
 	"\fUpkeepResult\x12*\n" +
 	"\x02at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x12\x16\n" +
 	"\x06report\x18\x02 \x01(\bR\x06report\x12%\n" +
@@ -7768,14 +7857,16 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x03did\x18\x06 \x03(\tR\x03did\x12\x12\n" +
 	"\x04left\x18\a \x03(\tR\x04left\x12\x18\n" +
 	"\askipped\x18\b \x01(\tR\askipped\x12\x14\n" +
-	"\x05error\x18\t \x01(\tR\x05error\"\xd4\x01\n" +
+	"\x05error\x18\t \x01(\tR\x05error\"\x9c\x02\n" +
 	"\rReindexResult\x12*\n" +
 	"\x02at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x125\n" +
 	"\bduration\x18\x02 \x01(\v2\x19.google.protobuf.DurationR\bduration\x12\x16\n" +
 	"\x06binary\x18\x03 \x01(\tR\x06binary\x12\x18\n" +
 	"\areasons\x18\x04 \x03(\tR\areasons\x12\x18\n" +
 	"\askipped\x18\x05 \x01(\tR\askipped\x12\x14\n" +
-	"\x05error\x18\x06 \x01(\tR\x05error\"\xc4\x02\n" +
+	"\x05error\x18\x06 \x01(\tR\x05error\x12#\n" +
+	"\rdewey_version\x18\a \x01(\tR\fdeweyVersion\x12!\n" +
+	"\findex_format\x18\b \x01(\x03R\vindexFormat\"\xc4\x02\n" +
 	"\rFleetSnapshot\x12\x16\n" +
 	"\x06target\x18\x01 \x01(\tR\x06target\x12!\n" +
 	"\ftarget_short\x18\x02 \x01(\tR\vtargetShort\x12\x0e\n" +
@@ -7789,7 +7880,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\n" +
 	"last_error\x18\n" +
 	" \x01(\tR\tlastError\x122\n" +
-	"\bmachines\x18\v \x03(\v2\x16.ghhud.v1.FleetMachineR\bmachines\"\xb1\x03\n" +
+	"\bmachines\x18\v \x03(\v2\x16.ghhud.v1.FleetMachineR\bmachines\"\xda\x03\n" +
 	"\fFleetMachine\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\tR\x05state\x12\x1c\n" +
@@ -7805,7 +7896,8 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	" \x03(\tR\x0freindexFailures\x12!\n" +
 	"\freindex_note\x18\v \x01(\tR\vreindexNote\x122\n" +
 	"\n" +
-	"dewey_pass\x18\f \x01(\v2\x13.ghhud.v1.DeweyPassR\tdeweyPass\"\x9b\x02\n" +
+	"dewey_pass\x18\f \x01(\v2\x13.ghhud.v1.DeweyPassR\tdeweyPass\x12'\n" +
+	"\x0freindex_current\x18\r \x03(\tR\x0ereindexCurrent\"\xcd\x02\n" +
 	"\tDeweyPass\x12\x18\n" +
 	"\arunning\x18\x01 \x01(\bR\arunning\x12\x12\n" +
 	"\x04done\x18\x02 \x01(\x05R\x04done\x12\x14\n" +
@@ -7815,7 +7907,10 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x06failed\x18\x06 \x03(\tR\x06failed\x12\x12\n" +
 	"\x04note\x18\a \x01(\tR\x04note\x124\n" +
 	"\astarted\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\astarted\x120\n" +
-	"\x05ended\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x05ended\"k\n" +
+	"\x05ended\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x05ended\x12\x18\n" +
+	"\acurrent\x18\n" +
+	" \x03(\tR\acurrent\x12\x16\n" +
+	"\x06forced\x18\v \x01(\bR\x06forced\"k\n" +
 	"\x05Event\x12'\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x13.ghhud.v1.EventKindR\x04kind\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12%\n" +

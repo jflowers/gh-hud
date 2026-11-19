@@ -31,10 +31,16 @@ type fakeDewey struct {
 	fail   map[string]bool   // dir → reindex fails
 	skip   map[string]string // dir → why its reindex is skipped
 	stuck  map[string]string // dir → why its machine is stuck after it
-	block  chan struct{}     // when set, a reindex waits for it (or ctx)
-	events []string
-	active int // reindexes running now
-	maxRun int // most at once
+	// health is a vault's index check (default: Dewey recommends a
+	// reindex, formatReason); checkErr fails it. reasons is what each
+	// reindex was asked to record, by dir.
+	health   map[string]dispatch.IndexHealth
+	checkErr map[string]string
+	reasons  map[string][]string
+	block    chan struct{} // when set, a reindex waits for it (or ctx)
+	events   []string
+	active   int // reindexes running now
+	maxRun   int // most at once
 	// activeOn and maxOn are active and maxRun per machine.
 	activeOn map[string]int
 	maxOn    map[string]int
@@ -65,12 +71,38 @@ func (f *fakeDewey) DeweyVaults(ctx context.Context, machine string) ([]string, 
 	return f.vaults[machine], nil
 }
 
-func (f *fakeDewey) RolloutReindex(ctx context.Context, machine, dir string) (dispatch.ReindexResult, error) {
+// formatReason is Dewey 3.9.0's reason for an index built before it.
+const formatReason = "index format 0, this Dewey writes 1"
+
+func (f *fakeDewey) VaultIndexHealth(ctx context.Context, machine, dir string) (dispatch.IndexHealth, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if why, ok := f.checkErr[dir]; ok {
+		return dispatch.IndexHealth{}, errors.New(why)
+	}
+	if h, ok := f.health[dir]; ok {
+		return h, nil
+	}
+	return dispatch.IndexHealth{Reasons: []string{formatReason}}, nil
+}
+
+func (f *fakeDewey) RolloutReindex(ctx context.Context, machine, dir string, reasons []string) (dispatch.ReindexResult, error) {
+	f.noteReasons(dir, reasons)
 	return f.reindex(ctx, "reindex", machine, dir)
 }
 
-func (f *fakeDewey) RequestedReindex(ctx context.Context, machine, dir string) (dispatch.ReindexResult, error) {
+func (f *fakeDewey) RequestedReindex(ctx context.Context, machine, dir string, reasons []string) (dispatch.ReindexResult, error) {
+	f.noteReasons(dir, reasons)
 	return f.reindex(ctx, "requested", machine, dir)
+}
+
+func (f *fakeDewey) noteReasons(dir string, reasons []string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.reasons == nil {
+		f.reasons = map[string][]string{}
+	}
+	f.reasons[dir] = reasons
 }
 
 // reindex logs "<kind> <machine> <dir>" and fails, skips or blocks the
@@ -300,7 +332,7 @@ func TestRolloutReindexStopsOnStuckMachine(t *testing.T) {
 	}
 	lap1 := stateOf(t, h.coord.Snapshot(), "lap1").Reindex
 	if lap1.Done != 1 || len(lap1.Failed) != 1 || !strings.Contains(lap1.Failed[0], "pid 7 survived SIGKILL") ||
-		!strings.Contains(lap1.Note, "reindexed 0/3 (stopped: dewey reindex stuck on the machine: pid 7 survived SIGKILL)") {
+		!strings.Contains(lap1.Note, "reindexed 0/1 (stopped: dewey reindex stuck on the machine: pid 7 survived SIGKILL)") {
 		t.Errorf("lap1 reindex = %+v", lap1)
 	}
 	if got := filterEvents(fd.eventLog(), "reindex lap2"); len(got) != 1 {
@@ -317,8 +349,8 @@ func TestRolloutDeweyReportAndOff(t *testing.T) {
 		t.Errorf("report mode reindexed: %v", got)
 	}
 	lap1 := stateOf(t, h.coord.Snapshot(), "lap1")
-	if lap1.State != StateCurrent || lap1.Reindex.Total != 3 || lap1.Reindex.Done != 0 ||
-		lap1.Reindex.Note != "dewey pin changed (1.0.0 → 1.1.0): 3 vaults need a reindex (dewey_reindex = report)" {
+	if lap1.State != StateCurrent || lap1.Reindex.Total != 3 || lap1.Reindex.Done != 3 ||
+		lap1.Reindex.Note != "dewey pin changed (1.0.0 → 1.1.0): 3 of 3 vaults need a reindex (dewey_reindex = report)" {
 		t.Errorf("lap1 = %s %+v", lap1.State, lap1.Reindex)
 	}
 
@@ -390,8 +422,50 @@ func TestDeweyVersion(t *testing.T) {
 		deweyV1:                   "1.0.0",
 		"/opt/homebrew/bin/dewey": "/opt/homebrew/bin/dewey",
 	} {
-		if got := deweyVersion(in); got != want {
-			t.Errorf("deweyVersion(%q) = %q, want %q", in, got, want)
+		if got := dispatch.DeweyVersionOf(in); got != want {
+			t.Errorf("DeweyVersionOf(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+// A pin change reindexes only the vaults Dewey's own check says need it
+// (#138), with its reasons; an up-to-date vault is counted, a vault whose
+// check fails or that only has a machine problem is listed, and neither
+// is reindexed. report counts only the ones that need it.
+func TestRolloutReindexesOnlyWhatDeweyFlags(t *testing.T) {
+	for _, mode := range []string{config.DeweyReindexAuto, config.DeweyReindexReport} {
+		t.Run(mode, func(t *testing.T) {
+			h, fd := newDeweyHarness(t, mode)
+			fd.health = map[string]dispatch.IndexHealth{
+				"/w/acme@a/r": {},
+				"/w/acme/r":   {Machine: "no embeddings, and the m embedding model isn't available"},
+			}
+			fd.checkErr = map[string]string{"/h/acme@b/r": "another agent is active in the checkout"}
+			h.coord.poll(context.Background())
+
+			wantRx := []string{"reindex lap1 /w/acme@b/r", "reindex local /h/acme@a/r"} // lap2 has only /w/acme@a/r: up to date
+			if mode == config.DeweyReindexReport {
+				wantRx = nil
+			}
+			if got := filterEvents(fd.eventLog(), "reindex"); !slices.Equal(got, wantRx) {
+				t.Errorf("reindexes = %v, want %v", got, wantRx)
+			}
+			if mode == config.DeweyReindexAuto && !slices.Equal(fd.reasons["/w/acme@b/r"], []string{formatReason}) {
+				t.Errorf("reasons = %v", fd.reasons)
+			}
+			lap1 := stateOf(t, h.coord.Snapshot(), "lap1").Reindex
+			wantNote := "dewey pin changed (1.0.0 → 1.1.0): reindexed 1/1, 1 up to date, 1 failed or skipped"
+			if mode == config.DeweyReindexReport {
+				wantNote = "dewey pin changed (1.0.0 → 1.1.0): 1 of 3 vaults need a reindex (dewey_reindex = report), 1 up to date, 1 failed or skipped"
+			}
+			if lap1.Done != 3 || lap1.Note != wantNote || !slices.Equal(lap1.Current, []string{"/w/acme@a/r"}) ||
+				!slices.Equal(lap1.Failed, []string{"/w/acme/r: machine problem: no embeddings, and the m embedding model isn't available"}) {
+				t.Errorf("lap1 reindex = %+v", lap1)
+			}
+			local := stateOf(t, h.coord.Snapshot(), "local").Reindex
+			if !slices.Equal(local.Failed, []string{"/h/acme@b/r: another agent is active in the checkout"}) {
+				t.Errorf("local reindex = %+v", local)
+			}
+		})
 	}
 }

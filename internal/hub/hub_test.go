@@ -162,7 +162,10 @@ func (f *fakeFleet) SetPaused(p bool) { f.paused.Store(p); f.op("pause") }
 func (f *fakeFleet) ApplyNow()        { f.op("apply") }
 func (f *fakeFleet) SkipWait()        { f.op("skip") }
 func (f *fakeFleet) Retry()           { f.op("retry") }
-func (f *fakeFleet) StartDeweyReindex(machine string) (fleet.PassStart, error) {
+func (f *fakeFleet) StartDeweyReindex(machine string, force bool) (fleet.PassStart, error) {
+	if force {
+		machine = "-force " + machine
+	}
 	f.op("dewey " + machine)
 	return fleet.PassStart{Started: []string{machine}}, nil
 }

@@ -413,8 +413,11 @@ public object CheckoutHealthKt {
     /**
      * ```
      * Dewey index health: "" not read, "none" not a vault, "ok",
+     * "unchecked" (dewey status not read since the index was built),
      * "reindex needed: <reasons>", "check failed: …", "machine problem: …"
-     * (joined with "; "). A reindex need doesn't make the checkout unready.
+     * (joined with "; "). The reasons are "unindexed", "no embeddings" and
+     * Dewey's own reindexReasons (#138). A reindex need doesn't make the
+     * checkout unready.
      * ```
      *
      * `string index = 16 [json_name = "index"];`
@@ -429,8 +432,11 @@ public object CheckoutHealthKt {
     /**
      * ```
      * Dewey index health: "" not read, "none" not a vault, "ok",
+     * "unchecked" (dewey status not read since the index was built),
      * "reindex needed: <reasons>", "check failed: …", "machine problem: …"
-     * (joined with "; "). A reindex need doesn't make the checkout unready.
+     * (joined with "; "). The reasons are "unindexed", "no embeddings" and
+     * Dewey's own reindexReasons (#138). A reindex need doesn't make the
+     * checkout unready.
      * ```
      *
      * `string index = 16 [json_name = "index"];`
@@ -693,7 +699,151 @@ public object CheckoutHealthKt {
 
     public val CheckoutHealthKt.Dsl.lastUpkeepOrNull: io.github.jflowers.ghhud.api.v1.UpkeepResult?
       get() = _builder.lastUpkeepOrNull
-  }
+
+    /**
+     * ```
+     * The Dewey version and index format the index records (dewey status,
+     * as of index_status_at): "" and 0 for an index built before Dewey
+     * 3.9.0 recorded them.
+     * ```
+     *
+     * `string index_dewey_version = 26 [json_name = "indexDeweyVersion"];`
+     */
+    public var indexDeweyVersion: kotlin.String
+      @kotlin.jvm.JvmName("getIndexDeweyVersion")
+        get() = _builder.indexDeweyVersion
+      @kotlin.jvm.JvmName("setIndexDeweyVersion")
+        set(value) {
+        _builder.indexDeweyVersion = value
+      }
+    /**
+     * ```
+     * The Dewey version and index format the index records (dewey status,
+     * as of index_status_at): "" and 0 for an index built before Dewey
+     * 3.9.0 recorded them.
+     * ```
+     *
+     * `string index_dewey_version = 26 [json_name = "indexDeweyVersion"];`
+     */
+    public fun clearIndexDeweyVersion() {
+      _builder.clearIndexDeweyVersion()
+    }
+
+    /**
+     * `int64 index_format = 27 [json_name = "indexFormat"];`
+     */
+    public var indexFormat: kotlin.Long
+      @kotlin.jvm.JvmName("getIndexFormat")
+        get() = _builder.indexFormat
+      @kotlin.jvm.JvmName("setIndexFormat")
+        set(value) {
+        _builder.indexFormat = value
+      }
+    /**
+     * `int64 index_format = 27 [json_name = "indexFormat"];`
+     */
+    public fun clearIndexFormat() {
+      _builder.clearIndexFormat()
+    }
+
+    /**
+     * An uninstantiable, behaviorless type to represent the field in
+     * generics.
+     */
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+    public class IndexReasonsProxy private constructor() : com.google.protobuf.kotlin.DslProxy()
+    /**
+     * ```
+     * index's reindex reasons as a list (Dewey's contain commas).
+     * ```
+     *
+     * `repeated string index_reasons = 28 [json_name = "indexReasons"];`
+     * @return A list containing the indexReasons.
+     */
+    public val indexReasons: com.google.protobuf.kotlin.DslList<kotlin.String, IndexReasonsProxy>
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+      get() = com.google.protobuf.kotlin.DslList(
+        _builder.indexReasonsList
+      )
+    /**
+     * ```
+     * index's reindex reasons as a list (Dewey's contain commas).
+     * ```
+     *
+     * `repeated string index_reasons = 28 [json_name = "indexReasons"];`
+     * @param value The indexReasons to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addIndexReasons")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, IndexReasonsProxy>.add(value: kotlin.String) {
+      _builder.addIndexReasons(value)
+    }
+    /**
+     * ```
+     * index's reindex reasons as a list (Dewey's contain commas).
+     * ```
+     *
+     * `repeated string index_reasons = 28 [json_name = "indexReasons"];`
+     * @param value The indexReasons to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignIndexReasons")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, IndexReasonsProxy>.plusAssign(value: kotlin.String) {
+      add(value)
+    }
+    /**
+     * ```
+     * index's reindex reasons as a list (Dewey's contain commas).
+     * ```
+     *
+     * `repeated string index_reasons = 28 [json_name = "indexReasons"];`
+     * @param values The indexReasons to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addAllIndexReasons")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, IndexReasonsProxy>.addAll(values: kotlin.collections.Iterable<kotlin.String>) {
+      _builder.addAllIndexReasons(values)
+    }
+    /**
+     * ```
+     * index's reindex reasons as a list (Dewey's contain commas).
+     * ```
+     *
+     * `repeated string index_reasons = 28 [json_name = "indexReasons"];`
+     * @param values The indexReasons to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignAllIndexReasons")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, IndexReasonsProxy>.plusAssign(values: kotlin.collections.Iterable<kotlin.String>) {
+      addAll(values)
+    }
+    /**
+     * ```
+     * index's reindex reasons as a list (Dewey's contain commas).
+     * ```
+     *
+     * `repeated string index_reasons = 28 [json_name = "indexReasons"];`
+     * @param index The index to set the value at.
+     * @param value The indexReasons to set.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setIndexReasons")
+    public operator fun com.google.protobuf.kotlin.DslList<kotlin.String, IndexReasonsProxy>.set(index: kotlin.Int, value: kotlin.String) {
+      _builder.setIndexReasons(index, value)
+    }/**
+     * ```
+     * index's reindex reasons as a list (Dewey's contain commas).
+     * ```
+     *
+     * `repeated string index_reasons = 28 [json_name = "indexReasons"];`
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setIndexReasons")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, IndexReasonsProxy>.clear() {
+      _builder.clearIndexReasons()
+    }}
 }
 public inline fun io.github.jflowers.ghhud.api.v1.CheckoutHealth.copy(block: `io.github.jflowers.ghhud.api.v1`.CheckoutHealthKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.CheckoutHealth =
   `io.github.jflowers.ghhud.api.v1`.CheckoutHealthKt.Dsl._create(this.toBuilder()).apply { block() }._build()

@@ -2,22 +2,23 @@ package dispatch
 
 // Dewey index health on the Workspaces tab (#132). The 2-minute poll runs
 // the cheap half of the teardown's check (deweyHealthFragment(false):
-// stat and git log) in every checkout, inside workspacesScript. The costly
-// half, dewey status --json plus the embedder probe, is what gives pages,
-// embedding coverage and "no embeddings"; it runs as a second script, and
-// only for the vaults that need it this poll (indexStatusDue):
+// stat-level facts only: is it a vault, is there a graph.db, its mtime)
+// in every checkout, inside workspacesScript. Dewey's verdict, pages and
+// embeddings come from dewey status --json, which runs as a second script
+// and only for the vaults that need it this poll (indexStatusDue):
 //
 //   - on a manual refresh (r, or opening the tab on stale data: the hub
 //     marks the context with WithIndexStatus),
-//   - when the checkout's last status read is older than indexStatusEvery,
+//   - when the checkout's last status read is older than indexStatusEvery
+//     (a Dewey pin change makes Dewey recommend a reindex without the
+//     index changing, so the read can't wait for graph.db to change),
 //   - when graph.db changed since that read (a run rebuilt the index),
 //   - when there is no read yet (the hub's first poll).
 //
 // A checkout with a live run is never read: an agent's dewey serve owns
 // the index. The last read is cached per machine and checkout, and shown
-// as of when it was taken. The poll never writes a baseline: only the
-// teardown and a reindex record one, so a checkout without one just isn't
-// judged "dewey upgraded" yet.
+// as of when it was taken; it judges the index only while graph.db is
+// the one it read (else the index is "unchecked" until the next read).
 
 import (
 	"context"
@@ -40,12 +41,11 @@ const indexStatusTimeout = 40 * time.Second
 
 // indexStatus is the last dewey status read of one checkout.
 type indexStatus struct {
-	Status       *deweyStatus
-	Err          string // the read failed: deweyFacts.StatusErr
-	Embedder     string
-	EmbedderCode string
-	Mtime        int64 // graph.db's mtime when it was read
-	At           time.Time
+	Binary string       // the dewey that ran ("" none found)
+	Status *deweyStatus // nil when the read failed
+	Err    string       // the read failed: deweyFacts.StatusErr
+	Mtime  int64        // graph.db's mtime when it was read
+	At     time.Time
 }
 
 // indexStatusCache holds the last status read per machine and checkout
@@ -133,7 +133,7 @@ func parseIndexStatus(out string) map[string]deweyFacts {
 // indexed reports whether the facts are of a vault with an index that
 // dewey status can read.
 func (f *deweyFacts) indexed() bool {
-	return f != nil && f.Vault != "" && f.Err == "" && !f.NoDB && f.Binary != ""
+	return f != nil && f.Vault != "" && f.Err == "" && !f.NoDB
 }
 
 // applyIndexHealth fills each row's index fields from the poll's facts,
@@ -159,8 +159,8 @@ func (d *Dispatcher) applyIndexHealth(ctx context.Context, m Machine, rows []Che
 			s := indexStatus{At: now}
 			f, ok := got[dir]
 			switch {
-			case ok && (f.Status != nil || f.StatusErr != ""):
-				s.Status, s.Err, s.Embedder, s.EmbedderCode, s.Mtime = f.Status, f.StatusErr, f.Embedder, f.EmbedderCode, f.Mtime
+			case ok && f.Read:
+				s.Binary, s.Status, s.Err, s.Mtime = f.Binary, f.Status, f.StatusErr, f.Mtime
 			case err != nil:
 				s.Err = "dewey status: " + err.Error()
 			default:
@@ -187,7 +187,7 @@ func mtimeOf(rows []CheckoutHealth, dir string) int64 {
 }
 
 // judgeCheckoutIndex sets h's index fields from its facts and the cached
-// status, against the recorded baseline (read only).
+// status read.
 func (d *Dispatcher) judgeCheckoutIndex(m Machine, h *CheckoutHealth) {
 	f := h.facts
 	h.facts = nil
@@ -201,19 +201,18 @@ func (d *Dispatcher) judgeCheckoutIndex(m Machine, h *CheckoutHealth) {
 	if f.Mtime > 0 {
 		h.IndexBuilt = time.Unix(f.Mtime, 0)
 	}
-	key := deweyBaseKey(m.key(), h.Dir)
-	if s, ok := d.idxStatus.get(key); ok && !f.NoDB {
+	if s, ok := d.idxStatus.get(deweyBaseKey(m.key(), h.Dir)); ok && !f.NoDB {
 		if st := s.Status; st != nil {
 			h.IndexPages, h.IndexBlocks, h.IndexEmbeddings = st.Pages, st.Blocks, st.Embeddings
+			h.IndexDeweyVersion, h.IndexFormat = st.DeweyVersion, st.IndexFormat
 			h.IndexStatusAt = s.At
 		}
 		// Judge with the cached read only while it's of this index: an
-		// older one says nothing about embeddings in a rebuilt index.
+		// older one says nothing about a rebuilt index.
 		if s.Mtime == f.Mtime {
-			f.Status, f.StatusErr, f.Embedder, f.EmbedderCode = s.Status, s.Err, s.Embedder, s.EmbedderCode
+			f.Read, f.Binary, f.Status, f.StatusErr = true, s.Binary, s.Status, s.Err
 		}
 	}
-	base, have := d.deweyBaseline(m.key(), h.Dir)
-	ih, _ := judgeIndexHealth(*f, base.Binary, have)
-	h.Index = ih.String()
+	ih := judgeIndexHealth(*f)
+	h.Index, h.IndexReasons = ih.String(), ih.Reasons
 }

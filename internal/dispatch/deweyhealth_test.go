@@ -4,56 +4,65 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
 )
 
-// Fixture output of deweyHealthFragment(true), one per verdict.
+// Fixtures of deweyHealthFragment(true) output.
 const (
-	dwVault = "DW vault /h/p/acme@oak/.uf/dewey\nDW bin /h/.local/share/mise/installs/go-github-com-unbound-force-dewey/0.9.0/bin/dewey\n"
-	dwIndex = "DW mtime 1763400000\nDW prefix .uf/dewey/\n"
-	dwFull  = `DW status {  "blocks": 120,  "embeddings": 118,  "pages": 9}` + "\nDW embedder 200 http://localhost:11434\n"
+	dwBin   = "/h/.local/share/mise/installs/go-github-com-unbound-force-dewey/3.9.0/bin/dewey"
+	dwIndex = "DW vault /h/p/acme@oak/.uf/dewey\nDW mtime 1763400000\nDW bin " + dwBin + "\n"
+
+	// lap1's real `dewey status --json` from Dewey 3.9.0, of an index
+	// built before 3.9.0 (trust trimmed).
+	statusLap1 = `{"blocks":5279,"deweyVersion":"","embeddingAvailable":true,"embeddingCoverage":100,"embeddingModel":"granite-embedding:30m","embeddings":5279,"indexFormat":0,"pages":585,"path":"/h/p/acme@oak/.uf/dewey","reindexReasons":["index format 0, this Dewey writes 1"],"reindexRecommended":true,"sources":null,"trust":{"ref":"main"}}`
+	// An index 3.9.0 built.
+	statusCurrent = `{"blocks":120,"deweyVersion":"3.9.0","embeddingAvailable":true,"embeddingModel":"granite-embedding:30m","embeddings":118,"indexFormat":1,"pages":9,"reindexReasons":[],"reindexRecommended":false}`
+	// Dewey 3.8.0's status: no provenance, no verdict.
+	status380 = `{"blocks":120,"embeddingAvailable":false,"embeddingModel":"granite-embedding:30m","embeddings":118,"pages":9,"sources":null}`
 )
 
+func noEmbeddings(available bool) string {
+	a := "false"
+	if available {
+		a = "true"
+	}
+	return `{"blocks":120,"deweyVersion":"3.9.0","embeddingAvailable":` + a + `,"embeddingModel":"granite-embedding:30m","embeddings":0,"indexFormat":1,"pages":9,"reindexReasons":[],"reindexRecommended":false}`
+}
+
 func TestJudgeIndexHealth(t *testing.T) {
-	bin := "/h/.local/share/mise/installs/go-github-com-unbound-force-dewey/0.9.0/bin/dewey"
 	cases := []struct {
-		name, out, base, want string
-		haveBase              bool
+		name, out, want string
 	}{
-		{"ok", dwVault + dwIndex + dwFull, bin, "ok", true},
-		{"unindexed", dwVault + "DW nodb\n", bin, "reindex needed: unindexed", true},
-		{"no embeddings", dwVault + dwIndex +
-			`DW status {"blocks": 120, "embeddings": 0, "pages": 9}` + "\nDW embedder 200 http://localhost:11434\n",
-			bin, "reindex needed: no embeddings", true},
-		{"no embeddings, no embedder", dwVault + dwIndex +
-			`DW status {"blocks": 120, "embeddings": 0, "pages": 9}` + "\nDW embedder 000 http://localhost:11434\n",
-			bin, "machine problem: no embeddings, and no embedder reachable at http://localhost:11434", true},
-		{"empty index has nothing to embed", dwVault + dwIndex +
-			`DW status {"blocks": 0, "embeddings": 0}` + "\nDW embedder 000 http://localhost:11434\n", bin, "ok", true},
-		{"learnings changed", dwVault + dwIndex + "DW changed .uf/dewey/learnings/git-1.md\n" + dwFull,
-			bin, "reindex needed: learnings changed", true},
-		{"knowledge changed", dwVault + dwIndex + "DW changed .uf/dewey/knowledge/store.md\n" + dwFull,
-			bin, "reindex needed: knowledge changed", true},
-		{"dewey upgraded", dwVault + dwIndex + dwFull,
-			"/h/.local/share/mise/installs/go-github-com-unbound-force-dewey/0.8.2/bin/dewey", "reindex needed: dewey upgraded", true},
-		{"no baseline yet is not an upgrade", dwVault + dwIndex + dwFull, "", "ok", false},
-		{"overlay vault, several reasons", "DW vault /h/p/.uf/fullsend/dewey\nDW bin " + bin + "\nDW mtime 1763400000\nDW prefix dewey/\n" +
-			"DW changed dewey/knowledge/a.md\nDW changed dewey/learnings/b.md\nDW changed elsewhere/learnings/c.md\n" + dwFull,
-			"/old/dewey", "reindex needed: learnings changed, knowledge changed, dewey upgraded", true},
-		{"status failed", dwVault + dwIndex + "DW statuserr Error: database is locked\nDW embedder 200 http://x\n",
-			bin, "check failed: dewey status: Error: database is locked", true},
-		{"unreadable vault", "DW err .uf/dewey is not a readable directory\n", bin, "check failed: .uf/dewey is not a readable directory", true},
-		{"no dewey", "DW vault /v\nDW bin \nDW mtime 1\nDW prefix .uf/dewey/\n", "", "machine problem: no dewey binary found", false},
+		{"lap1: reindex recommended", dwIndex + "DW status " + statusLap1 + "\n", "reindex needed: index format 0, this Dewey writes 1"},
+		{"up to date", dwIndex + "DW status " + statusCurrent + "\n", "ok"},
+		{"pretty-printed status", dwIndex + "DW status {  \"blocks\": 120,  \"embeddings\": 118,  \"reindexRecommended\": false,  \"reindexReasons\": []}\n", "ok"},
+		{"unindexed", "DW vault /v\nDW nodb\n", "reindex needed: unindexed"},
+		{"no embeddings, model available", dwIndex + "DW status " + noEmbeddings(true) + "\n", "reindex needed: no embeddings"},
+		{"no embeddings, model unavailable", dwIndex + "DW status " + noEmbeddings(false) + "\n",
+			"machine problem: no embeddings, and the granite-embedding:30m embedding model isn't available"},
+		{"empty index has nothing to embed", dwIndex + `DW status {"blocks":0,"embeddings":0,"embeddingAvailable":false,"reindexRecommended":false,"reindexReasons":[]}` + "\n", "ok"},
+		{"recommended without a reason", dwIndex + `DW status {"blocks":1,"embeddings":1,"reindexRecommended":true,"reindexReasons":null}` + "\n",
+			"reindex needed: dewey recommends a reindex"},
+		{"no embeddings and recommended", dwIndex + `DW status {"blocks":3,"embeddings":0,"embeddingAvailable":true,"reindexRecommended":true,"reindexReasons":["index format 0, this Dewey writes 1"]}` + "\n",
+			"reindex needed: no embeddings, index format 0, this Dewey writes 1"},
+		{"dewey older than 3.9.0", strings.Replace(dwIndex, "3.9.0", "3.8.0", 1) + "DW status " + status380 + "\n",
+			"machine problem: dewey 3.8.0 is older than 3.9.0: can't tell whether the index needs a reindex"},
+		{"old dewey off mise", "DW vault /v\nDW mtime 1\nDW bin /usr/local/bin/dewey\nDW status " + status380 + "\n",
+			"machine problem: the dewey at /usr/local/bin/dewey is older than 3.9.0: can't tell whether the index needs a reindex"},
+		{"malformed JSON", dwIndex + "DW status {\"blocks\": 12,\n", "check failed: dewey status: unreadable output"},
+		{"status failed", dwIndex + "DW statuserr Error: database is locked\n", "check failed: dewey status: Error: database is locked"},
+		{"unreadable vault", "DW err .uf/dewey is not a readable directory\n", "check failed: .uf/dewey is not a readable directory"},
+		{"no dewey", "DW vault /v\nDW mtime 1\nDW bin \n", "machine problem: no dewey binary found"},
+		{"poll facts only", "DW vault /v\nDW mtime 1\n", IndexUnchecked},
 	}
 	for _, tc := range cases {
 		f, ok := parseDeweyFacts("login noise\n" + tc.out)
 		if !ok {
 			t.Fatalf("%s: no DW lines parsed", tc.name)
 		}
-		h, _ := judgeIndexHealth(f, tc.base, tc.haveBase)
+		h := judgeIndexHealth(f)
 		if got := h.String(); got != tc.want {
 			t.Errorf("%s: %q, want %q", tc.name, got, tc.want)
 		}
@@ -63,13 +72,35 @@ func TestJudgeIndexHealth(t *testing.T) {
 	}
 }
 
-func TestJudgeIndexHealthRecordsFirstBaseline(t *testing.T) {
-	f, _ := parseDeweyFacts(dwVault + dwIndex + dwFull)
-	if _, nb := judgeIndexHealth(f, "", false); nb != f.Binary {
-		t.Errorf("new baseline = %q, want the current binary %q", nb, f.Binary)
+// The lap1 fixture's provenance reads through.
+func TestParseDeweyStatusLap1(t *testing.T) {
+	st, ok := parseDeweyStatus(statusLap1)
+	if !ok || st.Pages != 585 || st.Embeddings != 5279 || st.IndexFormat != 0 || st.DeweyVersion != "" ||
+		st.ReindexRecommended == nil || !*st.ReindexRecommended || !st.EmbeddingAvailable || st.EmbeddingModel != "granite-embedding:30m" {
+		t.Errorf("status = %+v %v", st, ok)
 	}
-	if _, nb := judgeIndexHealth(f, "/old/dewey", true); nb != "" {
-		t.Errorf("new baseline = %q over a recorded one, want none (a reindex records it)", nb)
+	if _, ok := parseDeweyStatus("not json"); ok {
+		t.Error("parsed malformed JSON")
+	}
+}
+
+func TestReindexDecision(t *testing.T) {
+	for _, tc := range []struct {
+		h       IndexHealth
+		reindex bool
+		why     string
+	}{
+		{IndexHealth{Reasons: []string{"index format 0, this Dewey writes 1"}}, true, ""},
+		{IndexHealth{Reasons: []string{reasonUnindexed}}, true, ""},
+		{IndexHealth{}, false, ""},
+		{IndexHealth{Machine: "dewey 3.8.0 is older than 3.9.0: …"}, false, "machine problem: dewey 3.8.0 is older than 3.9.0: …"},
+		{IndexHealth{Err: "dewey status: locked"}, false, "check failed: dewey status: locked"},
+		{IndexHealth{Unchecked: true}, false, "not checked"},
+	} {
+		reindex, why := ReindexDecision(tc.h)
+		if reindex != tc.reindex || why != tc.why {
+			t.Errorf("%s: %v %q, want %v %q", tc.h, reindex, why, tc.reindex, tc.why)
+		}
 	}
 }
 
@@ -81,113 +112,93 @@ func TestParseDeweyFactsNotAVault(t *testing.T) {
 }
 
 // fakeDewey puts a fake mise and dewey first on PATH: mise which dewey
-// prints the binary named in the returned file (v1's dewey to start; v2
-// is the upgrade), which reports blocks and embeddings. The embedder endpoint refuses connections.
-func fakeDewey(t *testing.T, embeddings int) (which, v2 string) {
+// prints the binary named in the returned file, whose status prints the
+// JSON in the returned status file.
+func fakeDewey(t *testing.T, status string) (which, statusFile string) {
 	t.Helper()
 	bin := t.TempDir()
-	for _, v := range []string{"v1", "v2"} {
-		dir := filepath.Join(bin, v)
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			t.Fatal(err)
-		}
-		script := "#!/bin/sh\n[ \"$1\" = status ] || exit 2\nprintf '{\\n  \"blocks\": 10,\\n  \"embeddings\": " + strconv.Itoa(embeddings) + "\\n}\\n'\n"
-		writeFile(t, filepath.Join(dir, "dewey"), script)
-		if err := os.Chmod(filepath.Join(dir, "dewey"), 0o755); err != nil {
-			t.Fatal(err)
-		}
+	statusFile = filepath.Join(bin, "status.json")
+	writeFile(t, statusFile, status+"\n")
+	dewey := filepath.Join(bin, "v1", "dewey")
+	if err := os.MkdirAll(filepath.Dir(dewey), 0o755); err != nil {
+		t.Fatal(err)
 	}
-	v1 := filepath.Join(bin, "v1", "dewey")
-	v2 = filepath.Join(bin, "v2", "dewey")
+	writeFile(t, dewey, "#!/bin/sh\n[ \"$1\" = status ] || exit 2\ncat "+shellQuote(statusFile)+"\n")
+	if err := os.Chmod(dewey, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	which = filepath.Join(bin, "which")
-	writeFile(t, which, v1+"\n")
-	writeFile(t, filepath.Join(bin, "mise"), "#!/bin/sh\n[ \"$1 $2\" = 'which dewey' ] || exit 1\ncat "+which+"\n")
+	writeFile(t, which, dewey+"\n")
+	writeFile(t, filepath.Join(bin, "mise"), "#!/bin/sh\n[ \"$1 $2\" = 'which dewey' ] || exit 1\ncat "+shellQuote(which)+"\n")
 	if err := os.Chmod(filepath.Join(bin, "mise"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-	t.Setenv("DEWEY_EMBEDDING_ENDPOINT", "http://127.0.0.1:1")
-	return which, v2
+	return which, statusFile
 }
 
-// The check end to end on a real checkout: a vault with an index, a
-// learning edited and committed after it was built, an added learning
-// (which doesn't count), and the Dewey binary changing under it.
+// The check end to end on a real checkout: not a vault, unindexed, then
+// whatever Dewey's status says, passed through; and no curl, git log or
+// baseline file along the way.
 func TestCheckIndexHealth(t *testing.T) {
 	_, work := setupClone(t)
-	which, v2 := fakeDewey(t, 3)
+	_, statusFile := fakeDewey(t, statusLap1)
 	d := newTestDispatcher(t, "refuse")
 	ctx := context.Background()
-	r := Record{Dir: work}
-	check := func() string { return d.checkIndexHealth(ctx, d.localMachine(), r) }
+	check := func() string { return d.checkIndexHealth(ctx, d.localMachine(), Record{Dir: work}) }
 
 	if got := check(); got != "" {
 		t.Fatalf("no .uf/dewey: %q, want nothing recorded", got)
 	}
-	vault := filepath.Join(work, ".uf", "dewey")
 	writeLearning(t, work, "git-1.md")
-	gitRun(t, work, "add", ".")
-	gitRun(t, work, "commit", "-q", "-m", "learning")
 	if got := check(); got != "reindex needed: unindexed" {
 		t.Fatalf("no graph.db: %q", got)
 	}
-	if b, ok := d.deweyBaseline("", work); !ok || !strings.HasSuffix(b.Binary, "v1/dewey") {
-		t.Fatalf("baseline = %+v %v, want v1 recorded", b, ok)
+	writeFile(t, filepath.Join(work, ".uf", "dewey", "graph.db"), "")
+	if got := check(); got != "reindex needed: index format 0, this Dewey writes 1" {
+		t.Errorf("lap1's index: %q", got)
 	}
-
-	db := filepath.Join(vault, "graph.db")
-	writeFile(t, db, "")
-	past := time.Now().Add(-time.Hour)
-	if err := os.Chtimes(db, past, past); err != nil {
-		t.Fatal(err)
-	}
+	writeFile(t, statusFile, statusCurrent)
 	if got := check(); got != "ok" {
-		t.Fatalf("fresh index: %q, want ok", got)
+		t.Errorf("current index: %q, want ok", got)
 	}
-	writeLearning(t, work, "git-2.md") // added: startup picks it up
-	gitRun(t, work, "add", ".")
-	gitRun(t, work, "commit", "-q", "-m", "another learning")
-	if got := check(); got != "ok" {
-		t.Errorf("added learning: %q, want ok", got)
+	writeFile(t, statusFile, noEmbeddings(false))
+	if got := check(); got != "machine problem: no embeddings, and the granite-embedding:30m embedding model isn't available" {
+		t.Errorf("no model: %q", got)
 	}
-	writeFile(t, filepath.Join(vault, "learnings", "git-1.md"), "edited\n")
-	gitRun(t, work, "commit", "-q", "-am", "edit learning")
-	if got := check(); got != "reindex needed: learnings changed" {
-		t.Errorf("edited learning: %q", got)
-	}
-
-	writeFile(t, which, v2+"\n")
-	if got := check(); got != "reindex needed: learnings changed, dewey upgraded" {
-		t.Errorf("new dewey: %q", got)
-	}
-	d.setDeweyBaseline("", work, v2)         // what a reindex records
-	later := time.Now().Add(2 * time.Second) // git log --since is inclusive to the second
-	if err := os.Chtimes(db, later, later); err != nil {
-		t.Fatal(err)
-	}
-	if got := check(); got != "ok" {
-		t.Errorf("after reindex: %q, want ok", got)
-	}
-
-	// The baseline survives a restart.
-	d2, err := New(Options{Root: t.TempDir(), StateDir: d.o().StateDir})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if b, ok := d2.deweyBaseline("", work); !ok || b.Binary != v2 {
-		t.Errorf("reloaded baseline = %+v %v, want %s", b, ok, v2)
+	if _, err := os.Stat(filepath.Join(d.o().StateDir, deweyLegacyBasesName)); err == nil {
+		t.Error("the check wrote a baseline file")
 	}
 }
 
-func TestCheckIndexHealthNoEmbedder(t *testing.T) {
-	_, work := setupClone(t)
-	fakeDewey(t, 0)
-	writeLearning(t, work, "x.md")
-	writeFile(t, filepath.Join(work, ".uf", "dewey", "graph.db"), "")
-	d := newTestDispatcher(t, "refuse")
-	got := d.checkIndexHealth(context.Background(), d.localMachine(), Record{Dir: work})
-	if got != "machine problem: no embeddings, and no embedder reachable at http://127.0.0.1:1" {
-		t.Errorf("health = %q", got)
+func TestDeweyHealthFragmentDropsTheOldProbes(t *testing.T) {
+	for _, withStatus := range []bool{false, true} {
+		s := deweyHealthFragment(withStatus)
+		for _, gone := range []string{"curl", "git ", "learnings/", "knowledge/"} {
+			if strings.Contains(s, gone) {
+				t.Errorf("fragment(%v) still runs %q", withStatus, gone)
+			}
+		}
+	}
+	if strings.Contains(deweyHealthFragment(false), "mise") || strings.Contains(deweyHealthFragment(false), "status --json") {
+		t.Error("the poll's fragment runs dewey or mise")
+	}
+}
+
+// The owner removes the old binary-path baselines file.
+func TestLegacyBaselinesRemoved(t *testing.T) {
+	state := t.TempDir()
+	path := filepath.Join(state, deweyLegacyBasesName)
+	writeFile(t, path, "{}")
+	d, err := New(Options{Root: t.TempDir(), StateDir: state})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !d.owns() {
+		t.Fatal("couldn't take ownership")
+	}
+	if _, err := os.Stat(path); err == nil {
+		t.Errorf("%s still there", path)
 	}
 }
 
@@ -195,7 +206,7 @@ func TestCheckIndexHealthNoEmbedder(t *testing.T) {
 // that isn't a vault, records none.
 func TestInspectRecordsIndexHealth(t *testing.T) {
 	_, work := setupClone(t)
-	fakeDewey(t, 3)
+	fakeDewey(t, statusCurrent)
 	d := newTestDispatcher(t, "refuse")
 	ctx := context.Background()
 	if in := d.inspect(ctx, d.localMachine(), Record{Dir: work}); in.indexHealth != "" {
@@ -219,7 +230,7 @@ func TestInspectRecordsIndexHealth(t *testing.T) {
 
 func TestInspectBusySkipsIndexHealth(t *testing.T) {
 	_, work := setupClone(t)
-	fakeDewey(t, 3)
+	fakeDewey(t, statusCurrent)
 	writeLearning(t, work, "x.md")
 	d := newTestDispatcher(t, "refuse")
 	old := Record{Dir: work, StartedAt: time.Now().Add(-time.Hour), PID: 1}

@@ -12,7 +12,7 @@ public inline fun deweyPass(block: io.github.jflowers.ghhud.api.v1.DeweyPassKt.D
   io.github.jflowers.ghhud.api.v1.DeweyPassKt.Dsl._create(io.github.jflowers.ghhud.api.v1.DeweyPass.newBuilder()).apply { block() }._build()
 /**
  * ```
- * DeweyPass is a machine's latest "reindex every vault now" pass (#139).
+ * DeweyPass is a machine's latest "reindex the vaults now" pass (#139).
  * ```
  *
  * Protobuf type `ghhud.v1.DeweyPass`
@@ -395,6 +395,129 @@ public object DeweyPassKt {
 
     public val DeweyPassKt.Dsl.endedOrNull: com.google.protobuf.Timestamp?
       get() = _builder.endedOrNull
+
+    /**
+     * An uninstantiable, behaviorless type to represent the field in
+     * generics.
+     */
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+    public class CurrentProxy private constructor() : com.google.protobuf.kotlin.DslProxy()
+    /**
+     * ```
+     * vaults whose check found them up to date
+     * ```
+     *
+     * `repeated string current = 10 [json_name = "current"];`
+     * @return A list containing the current.
+     */
+    public val current: com.google.protobuf.kotlin.DslList<kotlin.String, CurrentProxy>
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+      get() = com.google.protobuf.kotlin.DslList(
+        _builder.currentList
+      )
+    /**
+     * ```
+     * vaults whose check found them up to date
+     * ```
+     *
+     * `repeated string current = 10 [json_name = "current"];`
+     * @param value The current to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addCurrent")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, CurrentProxy>.add(value: kotlin.String) {
+      _builder.addCurrent(value)
+    }
+    /**
+     * ```
+     * vaults whose check found them up to date
+     * ```
+     *
+     * `repeated string current = 10 [json_name = "current"];`
+     * @param value The current to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignCurrent")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, CurrentProxy>.plusAssign(value: kotlin.String) {
+      add(value)
+    }
+    /**
+     * ```
+     * vaults whose check found them up to date
+     * ```
+     *
+     * `repeated string current = 10 [json_name = "current"];`
+     * @param values The current to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addAllCurrent")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, CurrentProxy>.addAll(values: kotlin.collections.Iterable<kotlin.String>) {
+      _builder.addAllCurrent(values)
+    }
+    /**
+     * ```
+     * vaults whose check found them up to date
+     * ```
+     *
+     * `repeated string current = 10 [json_name = "current"];`
+     * @param values The current to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignAllCurrent")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, CurrentProxy>.plusAssign(values: kotlin.collections.Iterable<kotlin.String>) {
+      addAll(values)
+    }
+    /**
+     * ```
+     * vaults whose check found them up to date
+     * ```
+     *
+     * `repeated string current = 10 [json_name = "current"];`
+     * @param index The index to set the value at.
+     * @param value The current to set.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setCurrent")
+    public operator fun com.google.protobuf.kotlin.DslList<kotlin.String, CurrentProxy>.set(index: kotlin.Int, value: kotlin.String) {
+      _builder.setCurrent(index, value)
+    }/**
+     * ```
+     * vaults whose check found them up to date
+     * ```
+     *
+     * `repeated string current = 10 [json_name = "current"];`
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setCurrent")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, CurrentProxy>.clear() {
+      _builder.clearCurrent()
+    }
+    /**
+     * ```
+     * every vault reindexed, unchecked
+     * ```
+     *
+     * `bool forced = 11 [json_name = "forced"];`
+     */
+    public var forced: kotlin.Boolean
+      @kotlin.jvm.JvmName("getForced")
+        get() = _builder.forced
+      @kotlin.jvm.JvmName("setForced")
+        set(value) {
+        _builder.forced = value
+      }
+    /**
+     * ```
+     * every vault reindexed, unchecked
+     * ```
+     *
+     * `bool forced = 11 [json_name = "forced"];`
+     */
+    public fun clearForced() {
+      _builder.clearForced()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.DeweyPass.copy(block: `io.github.jflowers.ghhud.api.v1`.DeweyPassKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.DeweyPass =

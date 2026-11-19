@@ -103,6 +103,33 @@ public object DeweyReindexRequestKt {
     public fun clearCancel() {
       _builder.clearCancel()
     }
+
+    /**
+     * ```
+     * force reindexes every vault, not just the ones whose index check
+     * (Dewey's own verdict) says so.
+     * ```
+     *
+     * `bool force = 4 [json_name = "force"];`
+     */
+    public var force: kotlin.Boolean
+      @kotlin.jvm.JvmName("getForce")
+        get() = _builder.force
+      @kotlin.jvm.JvmName("setForce")
+        set(value) {
+        _builder.force = value
+      }
+    /**
+     * ```
+     * force reindexes every vault, not just the ones whose index check
+     * (Dewey's own verdict) says so.
+     * ```
+     *
+     * `bool force = 4 [json_name = "force"];`
+     */
+    public fun clearForce() {
+      _builder.clearForce()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.DeweyReindexRequest.copy(block: `io.github.jflowers.ghhud.api.v1`.DeweyReindexRequestKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.DeweyReindexRequest =

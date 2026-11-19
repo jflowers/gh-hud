@@ -30,6 +30,8 @@ public  final class CheckoutHealth extends
     busy_ = "";
     error_ = "";
     index_ = "";
+    indexDeweyVersion_ = "";
+    indexReasons_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int MACHINE_FIELD_NUMBER = 1;
@@ -753,8 +755,11 @@ public  final class CheckoutHealth extends
   /**
    * <pre>
    * Dewey index health: "" not read, "none" not a vault, "ok",
+   * "unchecked" (dewey status not read since the index was built),
    * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
-   * (joined with "; "). A reindex need doesn't make the checkout unready.
+   * (joined with "; "). The reasons are "unindexed", "no embeddings" and
+   * Dewey's own reindexReasons (#138). A reindex need doesn't make the
+   * checkout unready.
    * </pre>
    *
    * <code>string index = 16 [json_name = "index"];</code>
@@ -767,8 +772,11 @@ public  final class CheckoutHealth extends
   /**
    * <pre>
    * Dewey index health: "" not read, "none" not a vault, "ok",
+   * "unchecked" (dewey status not read since the index was built),
    * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
-   * (joined with "; "). A reindex need doesn't make the checkout unready.
+   * (joined with "; "). The reasons are "unindexed", "no embeddings" and
+   * Dewey's own reindexReasons (#138). A reindex need doesn't make the
+   * checkout unready.
    * </pre>
    *
    * <code>string index = 16 [json_name = "index"];</code>
@@ -782,8 +790,11 @@ public  final class CheckoutHealth extends
   /**
    * <pre>
    * Dewey index health: "" not read, "none" not a vault, "ok",
+   * "unchecked" (dewey status not read since the index was built),
    * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
-   * (joined with "; "). A reindex need doesn't make the checkout unready.
+   * (joined with "; "). The reasons are "unindexed", "no embeddings" and
+   * Dewey's own reindexReasons (#138). A reindex need doesn't make the
+   * checkout unready.
    * </pre>
    *
    * <code>string index = 16 [json_name = "index"];</code>
@@ -798,8 +809,11 @@ public  final class CheckoutHealth extends
   /**
    * <pre>
    * Dewey index health: "" not read, "none" not a vault, "ok",
+   * "unchecked" (dewey status not read since the index was built),
    * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
-   * (joined with "; "). A reindex need doesn't make the checkout unready.
+   * (joined with "; "). The reasons are "unindexed", "no embeddings" and
+   * Dewey's own reindexReasons (#138). A reindex need doesn't make the
+   * checkout unready.
    * </pre>
    *
    * <code>string index = 16 [json_name = "index"];</code>
@@ -811,8 +825,11 @@ public  final class CheckoutHealth extends
   /**
    * <pre>
    * Dewey index health: "" not read, "none" not a vault, "ok",
+   * "unchecked" (dewey status not read since the index was built),
    * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
-   * (joined with "; "). A reindex need doesn't make the checkout unready.
+   * (joined with "; "). The reasons are "unindexed", "no embeddings" and
+   * Dewey's own reindexReasons (#138). A reindex need doesn't make the
+   * checkout unready.
    * </pre>
    *
    * <code>string index = 16 [json_name = "index"];</code>
@@ -1240,6 +1257,238 @@ public  final class CheckoutHealth extends
   private void clearLastUpkeep() {
     lastUpkeep_ = null;
     bitField0_ = (bitField0_ & ~0x00000008);
+  }
+
+  public static final int INDEX_DEWEY_VERSION_FIELD_NUMBER = 26;
+  private java.lang.String indexDeweyVersion_;
+  /**
+   * <pre>
+   * The Dewey version and index format the index records (dewey status,
+   * as of index_status_at): "" and 0 for an index built before Dewey
+   * 3.9.0 recorded them.
+   * </pre>
+   *
+   * <code>string index_dewey_version = 26 [json_name = "indexDeweyVersion"];</code>
+   * @return The indexDeweyVersion.
+   */
+  @java.lang.Override
+  public java.lang.String getIndexDeweyVersion() {
+    return indexDeweyVersion_;
+  }
+  /**
+   * <pre>
+   * The Dewey version and index format the index records (dewey status,
+   * as of index_status_at): "" and 0 for an index built before Dewey
+   * 3.9.0 recorded them.
+   * </pre>
+   *
+   * <code>string index_dewey_version = 26 [json_name = "indexDeweyVersion"];</code>
+   * @return The bytes for indexDeweyVersion.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getIndexDeweyVersionBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(indexDeweyVersion_);
+  }
+  /**
+   * <pre>
+   * The Dewey version and index format the index records (dewey status,
+   * as of index_status_at): "" and 0 for an index built before Dewey
+   * 3.9.0 recorded them.
+   * </pre>
+   *
+   * <code>string index_dewey_version = 26 [json_name = "indexDeweyVersion"];</code>
+   * @param value The indexDeweyVersion to set.
+   */
+  private void setIndexDeweyVersion(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    indexDeweyVersion_ = value;
+  }
+  /**
+   * <pre>
+   * The Dewey version and index format the index records (dewey status,
+   * as of index_status_at): "" and 0 for an index built before Dewey
+   * 3.9.0 recorded them.
+   * </pre>
+   *
+   * <code>string index_dewey_version = 26 [json_name = "indexDeweyVersion"];</code>
+   */
+  private void clearIndexDeweyVersion() {
+
+    indexDeweyVersion_ = getDefaultInstance().getIndexDeweyVersion();
+  }
+  /**
+   * <pre>
+   * The Dewey version and index format the index records (dewey status,
+   * as of index_status_at): "" and 0 for an index built before Dewey
+   * 3.9.0 recorded them.
+   * </pre>
+   *
+   * <code>string index_dewey_version = 26 [json_name = "indexDeweyVersion"];</code>
+   * @param value The bytes for indexDeweyVersion to set.
+   */
+  private void setIndexDeweyVersionBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    indexDeweyVersion_ = value.toStringUtf8();
+
+  }
+
+  public static final int INDEX_FORMAT_FIELD_NUMBER = 27;
+  private long indexFormat_;
+  /**
+   * <code>int64 index_format = 27 [json_name = "indexFormat"];</code>
+   * @return The indexFormat.
+   */
+  @java.lang.Override
+  public long getIndexFormat() {
+    return indexFormat_;
+  }
+  /**
+   * <code>int64 index_format = 27 [json_name = "indexFormat"];</code>
+   * @param value The indexFormat to set.
+   */
+  private void setIndexFormat(long value) {
+    
+    indexFormat_ = value;
+  }
+  /**
+   * <code>int64 index_format = 27 [json_name = "indexFormat"];</code>
+   */
+  private void clearIndexFormat() {
+
+    indexFormat_ = 0L;
+  }
+
+  public static final int INDEX_REASONS_FIELD_NUMBER = 28;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> indexReasons_;
+  /**
+   * <pre>
+   * index's reindex reasons as a list (Dewey's contain commas).
+   * </pre>
+   *
+   * <code>repeated string index_reasons = 28 [json_name = "indexReasons"];</code>
+   * @return A list containing the indexReasons.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getIndexReasonsList() {
+    return indexReasons_;
+  }
+  /**
+   * <pre>
+   * index's reindex reasons as a list (Dewey's contain commas).
+   * </pre>
+   *
+   * <code>repeated string index_reasons = 28 [json_name = "indexReasons"];</code>
+   * @return The count of indexReasons.
+   */
+  @java.lang.Override
+  public int getIndexReasonsCount() {
+    return indexReasons_.size();
+  }
+  /**
+   * <pre>
+   * index's reindex reasons as a list (Dewey's contain commas).
+   * </pre>
+   *
+   * <code>repeated string index_reasons = 28 [json_name = "indexReasons"];</code>
+   * @param index The index of the element to return.
+   * @return The indexReasons at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getIndexReasons(int index) {
+    return indexReasons_.get(index);
+  }
+  /**
+   * <pre>
+   * index's reindex reasons as a list (Dewey's contain commas).
+   * </pre>
+   *
+   * <code>repeated string index_reasons = 28 [json_name = "indexReasons"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the indexReasons at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getIndexReasonsBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        indexReasons_.get(index));
+  }
+  private void ensureIndexReasonsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        indexReasons_;  if (!tmp.isModifiable()) {
+      indexReasons_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <pre>
+   * index's reindex reasons as a list (Dewey's contain commas).
+   * </pre>
+   *
+   * <code>repeated string index_reasons = 28 [json_name = "indexReasons"];</code>
+   * @param index The index to set the value at.
+   * @param value The indexReasons to set.
+   */
+  private void setIndexReasons(
+      int index, java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureIndexReasonsIsMutable();
+    indexReasons_.set(index, value);
+  }
+  /**
+   * <pre>
+   * index's reindex reasons as a list (Dewey's contain commas).
+   * </pre>
+   *
+   * <code>repeated string index_reasons = 28 [json_name = "indexReasons"];</code>
+   * @param value The indexReasons to add.
+   */
+  private void addIndexReasons(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureIndexReasonsIsMutable();
+    indexReasons_.add(value);
+  }
+  /**
+   * <pre>
+   * index's reindex reasons as a list (Dewey's contain commas).
+   * </pre>
+   *
+   * <code>repeated string index_reasons = 28 [json_name = "indexReasons"];</code>
+   * @param values The indexReasons to add.
+   */
+  private void addAllIndexReasons(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureIndexReasonsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, indexReasons_);
+  }
+  /**
+   * <pre>
+   * index's reindex reasons as a list (Dewey's contain commas).
+   * </pre>
+   *
+   * <code>repeated string index_reasons = 28 [json_name = "indexReasons"];</code>
+   */
+  private void clearIndexReasons() {
+    indexReasons_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * index's reindex reasons as a list (Dewey's contain commas).
+   * </pre>
+   *
+   * <code>repeated string index_reasons = 28 [json_name = "indexReasons"];</code>
+   * @param value The bytes of the indexReasons to add.
+   */
+  private void addIndexReasonsBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureIndexReasonsIsMutable();
+    indexReasons_.add(value.toStringUtf8());
   }
 
   public static io.github.jflowers.ghhud.api.v1.CheckoutHealth parseFrom(
@@ -2086,8 +2335,11 @@ public  final class CheckoutHealth extends
     /**
      * <pre>
      * Dewey index health: "" not read, "none" not a vault, "ok",
+     * "unchecked" (dewey status not read since the index was built),
      * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
-     * (joined with "; "). A reindex need doesn't make the checkout unready.
+     * (joined with "; "). The reasons are "unindexed", "no embeddings" and
+     * Dewey's own reindexReasons (#138). A reindex need doesn't make the
+     * checkout unready.
      * </pre>
      *
      * <code>string index = 16 [json_name = "index"];</code>
@@ -2100,8 +2352,11 @@ public  final class CheckoutHealth extends
     /**
      * <pre>
      * Dewey index health: "" not read, "none" not a vault, "ok",
+     * "unchecked" (dewey status not read since the index was built),
      * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
-     * (joined with "; "). A reindex need doesn't make the checkout unready.
+     * (joined with "; "). The reasons are "unindexed", "no embeddings" and
+     * Dewey's own reindexReasons (#138). A reindex need doesn't make the
+     * checkout unready.
      * </pre>
      *
      * <code>string index = 16 [json_name = "index"];</code>
@@ -2115,8 +2370,11 @@ public  final class CheckoutHealth extends
     /**
      * <pre>
      * Dewey index health: "" not read, "none" not a vault, "ok",
+     * "unchecked" (dewey status not read since the index was built),
      * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
-     * (joined with "; "). A reindex need doesn't make the checkout unready.
+     * (joined with "; "). The reasons are "unindexed", "no embeddings" and
+     * Dewey's own reindexReasons (#138). A reindex need doesn't make the
+     * checkout unready.
      * </pre>
      *
      * <code>string index = 16 [json_name = "index"];</code>
@@ -2132,8 +2390,11 @@ public  final class CheckoutHealth extends
     /**
      * <pre>
      * Dewey index health: "" not read, "none" not a vault, "ok",
+     * "unchecked" (dewey status not read since the index was built),
      * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
-     * (joined with "; "). A reindex need doesn't make the checkout unready.
+     * (joined with "; "). The reasons are "unindexed", "no embeddings" and
+     * Dewey's own reindexReasons (#138). A reindex need doesn't make the
+     * checkout unready.
      * </pre>
      *
      * <code>string index = 16 [json_name = "index"];</code>
@@ -2147,8 +2408,11 @@ public  final class CheckoutHealth extends
     /**
      * <pre>
      * Dewey index health: "" not read, "none" not a vault, "ok",
+     * "unchecked" (dewey status not read since the index was built),
      * "reindex needed: &lt;reasons&gt;", "check failed: …", "machine problem: …"
-     * (joined with "; "). A reindex need doesn't make the checkout unready.
+     * (joined with "; "). The reasons are "unindexed", "no embeddings" and
+     * Dewey's own reindexReasons (#138). A reindex need doesn't make the
+     * checkout unready.
      * </pre>
      *
      * <code>string index = 16 [json_name = "index"];</code>
@@ -2601,6 +2865,241 @@ public  final class CheckoutHealth extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The Dewey version and index format the index records (dewey status,
+     * as of index_status_at): "" and 0 for an index built before Dewey
+     * 3.9.0 recorded them.
+     * </pre>
+     *
+     * <code>string index_dewey_version = 26 [json_name = "indexDeweyVersion"];</code>
+     * @return The indexDeweyVersion.
+     */
+    @java.lang.Override
+    public java.lang.String getIndexDeweyVersion() {
+      return instance.getIndexDeweyVersion();
+    }
+    /**
+     * <pre>
+     * The Dewey version and index format the index records (dewey status,
+     * as of index_status_at): "" and 0 for an index built before Dewey
+     * 3.9.0 recorded them.
+     * </pre>
+     *
+     * <code>string index_dewey_version = 26 [json_name = "indexDeweyVersion"];</code>
+     * @return The bytes for indexDeweyVersion.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getIndexDeweyVersionBytes() {
+      return instance.getIndexDeweyVersionBytes();
+    }
+    /**
+     * <pre>
+     * The Dewey version and index format the index records (dewey status,
+     * as of index_status_at): "" and 0 for an index built before Dewey
+     * 3.9.0 recorded them.
+     * </pre>
+     *
+     * <code>string index_dewey_version = 26 [json_name = "indexDeweyVersion"];</code>
+     * @param value The indexDeweyVersion to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIndexDeweyVersion(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setIndexDeweyVersion(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The Dewey version and index format the index records (dewey status,
+     * as of index_status_at): "" and 0 for an index built before Dewey
+     * 3.9.0 recorded them.
+     * </pre>
+     *
+     * <code>string index_dewey_version = 26 [json_name = "indexDeweyVersion"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearIndexDeweyVersion() {
+      copyOnWrite();
+      instance.clearIndexDeweyVersion();
+      return this;
+    }
+    /**
+     * <pre>
+     * The Dewey version and index format the index records (dewey status,
+     * as of index_status_at): "" and 0 for an index built before Dewey
+     * 3.9.0 recorded them.
+     * </pre>
+     *
+     * <code>string index_dewey_version = 26 [json_name = "indexDeweyVersion"];</code>
+     * @param value The bytes for indexDeweyVersion to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIndexDeweyVersionBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setIndexDeweyVersionBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>int64 index_format = 27 [json_name = "indexFormat"];</code>
+     * @return The indexFormat.
+     */
+    @java.lang.Override
+    public long getIndexFormat() {
+      return instance.getIndexFormat();
+    }
+    /**
+     * <code>int64 index_format = 27 [json_name = "indexFormat"];</code>
+     * @param value The indexFormat to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIndexFormat(long value) {
+      copyOnWrite();
+      instance.setIndexFormat(value);
+      return this;
+    }
+    /**
+     * <code>int64 index_format = 27 [json_name = "indexFormat"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearIndexFormat() {
+      copyOnWrite();
+      instance.clearIndexFormat();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * index's reindex reasons as a list (Dewey's contain commas).
+     * </pre>
+     *
+     * <code>repeated string index_reasons = 28 [json_name = "indexReasons"];</code>
+     * @return A list containing the indexReasons.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getIndexReasonsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getIndexReasonsList());
+    }
+    /**
+     * <pre>
+     * index's reindex reasons as a list (Dewey's contain commas).
+     * </pre>
+     *
+     * <code>repeated string index_reasons = 28 [json_name = "indexReasons"];</code>
+     * @return The count of indexReasons.
+     */
+    @java.lang.Override
+    public int getIndexReasonsCount() {
+      return instance.getIndexReasonsCount();
+    }
+    /**
+     * <pre>
+     * index's reindex reasons as a list (Dewey's contain commas).
+     * </pre>
+     *
+     * <code>repeated string index_reasons = 28 [json_name = "indexReasons"];</code>
+     * @param index The index of the element to return.
+     * @return The indexReasons at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getIndexReasons(int index) {
+      return instance.getIndexReasons(index);
+    }
+    /**
+     * <pre>
+     * index's reindex reasons as a list (Dewey's contain commas).
+     * </pre>
+     *
+     * <code>repeated string index_reasons = 28 [json_name = "indexReasons"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the indexReasons at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getIndexReasonsBytes(int index) {
+      return instance.getIndexReasonsBytes(index);
+    }
+    /**
+     * <pre>
+     * index's reindex reasons as a list (Dewey's contain commas).
+     * </pre>
+     *
+     * <code>repeated string index_reasons = 28 [json_name = "indexReasons"];</code>
+     * @param index The index to set the value at.
+     * @param value The indexReasons to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIndexReasons(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setIndexReasons(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * index's reindex reasons as a list (Dewey's contain commas).
+     * </pre>
+     *
+     * <code>repeated string index_reasons = 28 [json_name = "indexReasons"];</code>
+     * @param value The indexReasons to add.
+     * @return This builder for chaining.
+     */
+    public Builder addIndexReasons(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addIndexReasons(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * index's reindex reasons as a list (Dewey's contain commas).
+     * </pre>
+     *
+     * <code>repeated string index_reasons = 28 [json_name = "indexReasons"];</code>
+     * @param values The indexReasons to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllIndexReasons(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllIndexReasons(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * index's reindex reasons as a list (Dewey's contain commas).
+     * </pre>
+     *
+     * <code>repeated string index_reasons = 28 [json_name = "indexReasons"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearIndexReasons() {
+      copyOnWrite();
+      instance.clearIndexReasons();
+      return this;
+    }
+    /**
+     * <pre>
+     * index's reindex reasons as a list (Dewey's contain commas).
+     * </pre>
+     *
+     * <code>repeated string index_reasons = 28 [json_name = "indexReasons"];</code>
+     * @param value The bytes of the indexReasons to add.
+     * @return This builder for chaining.
+     */
+    public Builder addIndexReasonsBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addIndexReasonsBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.CheckoutHealth)
   }
   @java.lang.Override
@@ -2643,13 +3142,16 @@ public  final class CheckoutHealth extends
             "lastReindex_",
             "upkeeping_",
             "lastUpkeep_",
+            "indexDeweyVersion_",
+            "indexFormat_",
+            "indexReasons_",
           };
           java.lang.String info =
-              "\u0000\u0019\u0000\u0001\u0001\u0019\u0019\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u001c\u0000\u0001\u0001\u001c\u001c\u0000\u0003\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u0208\u0007\u0002\b\u0002\t\u021a\n\u0002" +
               "\u000b\u021a\f\u0002\r\u0208\u000e\u0007\u000f\u0208\u0010\u0208\u0011\u1009\u0000" +
               "\u0012\u0002\u0013\u0002\u0014\u0002\u0015\u1009\u0001\u0016\u0007\u0017\u1009\u0002" +
-              "\u0018\u0007\u0019\u1009\u0003";
+              "\u0018\u0007\u0019\u1009\u0003\u001a\u0208\u001b\u0002\u001c\u021a";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -22,6 +22,7 @@ public  final class FleetMachine extends
     lastError_ = "";
     reindexFailures_ = emptyProtobufList();
     reindexNote_ = "";
+    reindexCurrent_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int NAME_FIELD_NUMBER = 1;
@@ -630,6 +631,144 @@ public  final class FleetMachine extends
   private void clearDeweyPass() {
     deweyPass_ = null;
     bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
+  public static final int REINDEX_CURRENT_FIELD_NUMBER = 13;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> reindexCurrent_;
+  /**
+   * <pre>
+   * The vaults the rollout's check found up to date (#138): nothing to
+   * reindex.
+   * </pre>
+   *
+   * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+   * @return A list containing the reindexCurrent.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getReindexCurrentList() {
+    return reindexCurrent_;
+  }
+  /**
+   * <pre>
+   * The vaults the rollout's check found up to date (#138): nothing to
+   * reindex.
+   * </pre>
+   *
+   * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+   * @return The count of reindexCurrent.
+   */
+  @java.lang.Override
+  public int getReindexCurrentCount() {
+    return reindexCurrent_.size();
+  }
+  /**
+   * <pre>
+   * The vaults the rollout's check found up to date (#138): nothing to
+   * reindex.
+   * </pre>
+   *
+   * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+   * @param index The index of the element to return.
+   * @return The reindexCurrent at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getReindexCurrent(int index) {
+    return reindexCurrent_.get(index);
+  }
+  /**
+   * <pre>
+   * The vaults the rollout's check found up to date (#138): nothing to
+   * reindex.
+   * </pre>
+   *
+   * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the reindexCurrent at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getReindexCurrentBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        reindexCurrent_.get(index));
+  }
+  private void ensureReindexCurrentIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        reindexCurrent_;  if (!tmp.isModifiable()) {
+      reindexCurrent_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <pre>
+   * The vaults the rollout's check found up to date (#138): nothing to
+   * reindex.
+   * </pre>
+   *
+   * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+   * @param index The index to set the value at.
+   * @param value The reindexCurrent to set.
+   */
+  private void setReindexCurrent(
+      int index, java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureReindexCurrentIsMutable();
+    reindexCurrent_.set(index, value);
+  }
+  /**
+   * <pre>
+   * The vaults the rollout's check found up to date (#138): nothing to
+   * reindex.
+   * </pre>
+   *
+   * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+   * @param value The reindexCurrent to add.
+   */
+  private void addReindexCurrent(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureReindexCurrentIsMutable();
+    reindexCurrent_.add(value);
+  }
+  /**
+   * <pre>
+   * The vaults the rollout's check found up to date (#138): nothing to
+   * reindex.
+   * </pre>
+   *
+   * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+   * @param values The reindexCurrent to add.
+   */
+  private void addAllReindexCurrent(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureReindexCurrentIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, reindexCurrent_);
+  }
+  /**
+   * <pre>
+   * The vaults the rollout's check found up to date (#138): nothing to
+   * reindex.
+   * </pre>
+   *
+   * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+   */
+  private void clearReindexCurrent() {
+    reindexCurrent_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * The vaults the rollout's check found up to date (#138): nothing to
+   * reindex.
+   * </pre>
+   *
+   * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+   * @param value The bytes of the reindexCurrent to add.
+   */
+  private void addReindexCurrentBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureReindexCurrentIsMutable();
+    reindexCurrent_.add(value.toStringUtf8());
   }
 
   public static io.github.jflowers.ghhud.api.v1.FleetMachine parseFrom(
@@ -1362,6 +1501,143 @@ public  final class FleetMachine extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The vaults the rollout's check found up to date (#138): nothing to
+     * reindex.
+     * </pre>
+     *
+     * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+     * @return A list containing the reindexCurrent.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getReindexCurrentList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getReindexCurrentList());
+    }
+    /**
+     * <pre>
+     * The vaults the rollout's check found up to date (#138): nothing to
+     * reindex.
+     * </pre>
+     *
+     * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+     * @return The count of reindexCurrent.
+     */
+    @java.lang.Override
+    public int getReindexCurrentCount() {
+      return instance.getReindexCurrentCount();
+    }
+    /**
+     * <pre>
+     * The vaults the rollout's check found up to date (#138): nothing to
+     * reindex.
+     * </pre>
+     *
+     * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+     * @param index The index of the element to return.
+     * @return The reindexCurrent at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getReindexCurrent(int index) {
+      return instance.getReindexCurrent(index);
+    }
+    /**
+     * <pre>
+     * The vaults the rollout's check found up to date (#138): nothing to
+     * reindex.
+     * </pre>
+     *
+     * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the reindexCurrent at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getReindexCurrentBytes(int index) {
+      return instance.getReindexCurrentBytes(index);
+    }
+    /**
+     * <pre>
+     * The vaults the rollout's check found up to date (#138): nothing to
+     * reindex.
+     * </pre>
+     *
+     * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+     * @param index The index to set the value at.
+     * @param value The reindexCurrent to set.
+     * @return This builder for chaining.
+     */
+    public Builder setReindexCurrent(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setReindexCurrent(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The vaults the rollout's check found up to date (#138): nothing to
+     * reindex.
+     * </pre>
+     *
+     * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+     * @param value The reindexCurrent to add.
+     * @return This builder for chaining.
+     */
+    public Builder addReindexCurrent(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addReindexCurrent(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The vaults the rollout's check found up to date (#138): nothing to
+     * reindex.
+     * </pre>
+     *
+     * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+     * @param values The reindexCurrent to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllReindexCurrent(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllReindexCurrent(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * The vaults the rollout's check found up to date (#138): nothing to
+     * reindex.
+     * </pre>
+     *
+     * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearReindexCurrent() {
+      copyOnWrite();
+      instance.clearReindexCurrent();
+      return this;
+    }
+    /**
+     * <pre>
+     * The vaults the rollout's check found up to date (#138): nothing to
+     * reindex.
+     * </pre>
+     *
+     * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+     * @param value The bytes of the reindexCurrent to add.
+     * @return This builder for chaining.
+     */
+    public Builder addReindexCurrentBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addReindexCurrentBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.FleetMachine)
   }
   @java.lang.Override
@@ -1391,11 +1667,12 @@ public  final class FleetMachine extends
             "reindexFailures_",
             "reindexNote_",
             "deweyPass_",
+            "reindexCurrent_",
           };
           java.lang.String info =
-              "\u0000\f\u0000\u0001\u0001\f\f\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
+              "\u0000\r\u0000\u0001\u0001\r\r\u0000\u0002\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
               "\u0004\u0208\u0005\u0208\u0006\u1009\u0000\u0007\u0208\b\u0004\t\u0004\n\u021a\u000b" +
-              "\u0208\f\u1009\u0001";
+              "\u0208\f\u1009\u0001\r\u021a";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -288,7 +288,7 @@ func (s *Server) DeweyReindex(ctx context.Context, req *connect.Request[pb.Dewey
 		got, err := s.b.DeweyReindexCancel(ctx, machine)
 		return reply(&pb.DeweyReindexResponse{Machines: got}, err)
 	}
-	st, err := s.b.DeweyReindex(ctx, machine)
+	st, err := s.b.DeweyReindex(ctx, machine, req.Msg.GetForce())
 	return reply(&pb.DeweyReindexResponse{Machines: st.Started, Refused: st.Refused}, err)
 }
 

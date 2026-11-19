@@ -303,7 +303,7 @@ func wsDetail(h dispatch.CheckoutHealth, w int) []string {
 		lines = append(lines, field("learnings", fmt.Sprintf("%d untracked; the next clean run opens the daily chore PR", h.Learnings)))
 	}
 	if h.Reindexing {
-		lines = append(lines, field("dewey", "reindexing and warming the index; no dispatch here until it ends"))
+		lines = append(lines, field("dewey", "reindexing the index; no dispatch here until it ends"))
 	}
 	if r := h.LastReindex; r != nil {
 		lines = append(lines, field("last reindex", reindexLine(*r, time.Now())))
@@ -324,11 +324,24 @@ func upkeepLine(u dispatch.UpkeepResult, now time.Time) string {
 }
 
 // reindexLine renders a last reindex for the detail pane: "ok in 3m12s,
-// Nov 18 09:30 (2h ago), for learnings changed".
+// Nov 18 09:30 (2h ago), for index format 0, this Dewey writes 1; now
+// format 1 by 3.9.0".
 func reindexLine(r dispatch.ReindexResult, now time.Time) string {
 	s := r.String() + ", " + r.At.Local().Format("Jan 2 15:04") + " (" + model.RelativeTime(r.At, now) + " ago)"
 	if len(r.Reasons) > 0 {
 		s += ", for " + strings.Join(r.Reasons, ", ")
+	}
+	if r.DeweyVersion != "" || r.IndexFormat > 0 {
+		s += "; now " + indexBuiltBy(r.DeweyVersion, r.IndexFormat)
+	}
+	return s
+}
+
+// indexBuiltBy names what built an index: "format 1 by 3.9.0".
+func indexBuiltBy(version string, format int) string {
+	s := fmt.Sprintf("format %d", format)
+	if version != "" {
+		s += " by " + version
 	}
 	return s
 }

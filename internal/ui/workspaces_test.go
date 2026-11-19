@@ -17,19 +17,27 @@ func TestWorkspacesTabReindex(t *testing.T) {
 	m.ws = []dispatch.CheckoutHealth{
 		{Workspace: "uf@chai", Repo: "unbound-force/dewey", Dir: "/w/uf@chai/dewey", Branch: "main", Default: "main",
 			LastReindex: &dispatch.ReindexResult{At: at, Duration: 20 * time.Second, Err: "dewey reindex: no embedder",
-				Reasons: []string{"dewey upgraded"}}},
+				Reasons: []string{"index format 0, this Dewey writes 1"}}},
+		{Workspace: "uf@elm", Repo: "unbound-force/dewey", Dir: "/w/uf@elm/dewey", Branch: "main", Default: "main",
+			LastReindex: &dispatch.ReindexResult{At: at, Duration: time.Minute, Reasons: []string{"unindexed"},
+				DeweyVersion: "3.9.0", IndexFormat: 1}},
 		{Machine: "lap1", Workspace: "uf@oak", Repo: "unbound-force/gaze", Branch: "main", Default: "main", Reindexing: true},
 	}
 	plain := ansiRe.ReplaceAllString(m.View(), "")
-	for _, want := range []string{"reindex failed", "reindexing", "1 ready · 1 running · 0 blocked",
-		"last reindex", "failed after 20s: dewey reindex: no embedder", "(2h ago), for dewey upgraded"} {
+	for _, want := range []string{"reindex failed", "reindexing", "2 ready · 1 running · 0 blocked",
+		"last reindex", "failed after 20s: dewey reindex: no embedder", "(2h ago), for index format 0, this Dewey writes 1"} {
 		if !strings.Contains(plain, want) {
 			t.Errorf("workspaces tab missing %q:\n%s", want, plain)
 		}
 	}
 	pressKey(t, m, "j")
 	plain = ansiRe.ReplaceAllString(m.View(), "")
-	if !strings.Contains(plain, "reindexing and warming the index") {
+	if !strings.Contains(plain, "ok in 1m0s") || !strings.Contains(plain, "for unindexed; now format 1 by 3.9.0") {
+		t.Errorf("reindexed checkout's detail:\n%s", plain)
+	}
+	pressKey(t, m, "j")
+	plain = ansiRe.ReplaceAllString(m.View(), "")
+	if !strings.Contains(plain, "reindexing the index; no dispatch") || strings.Contains(plain, "warm") {
 		t.Errorf("reindexing checkout's detail:\n%s", plain)
 	}
 }

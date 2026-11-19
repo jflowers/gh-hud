@@ -1,7 +1,8 @@
 package main
 
-// gh-hud dewey reindex|cancel|status: a pass that reindexes every Dewey
-// vault on a fleet machine, or on all of them (#139), from a shell.
+// gh-hud dewey reindex|cancel|status: a pass that reindexes the Dewey
+// vaults that need it on a fleet machine, or on all of them (#139), from
+// a shell; -force reindexes every vault (#138).
 
 import (
 	"encoding/json"
@@ -16,13 +17,17 @@ import (
 	"github.com/jflowers/gh-hud/internal/hub"
 )
 
-const deweyUsage = `usage: gh-hud dewey reindex <machine>|-all   reindex every Dewey vault on a fleet machine (local is the hub), or on all
-       gh-hud dewey cancel <machine>|-all    cancel the pass running there
-       gh-hud dewey status [<machine>]       each machine's latest pass
+const deweyUsage = `usage: gh-hud dewey reindex [-force] <machine>|-all   reindex the Dewey vaults that need it on a fleet machine (local is the hub), or on all
+       gh-hud dewey cancel <machine>|-all             cancel the pass running there
+       gh-hud dewey status [<machine>]                each machine's latest pass
 
-A pass goes vault by vault, one at a time per machine, skipping a vault
-with a live agent, leftovers or a held dewey.lock; machines run side by
-side. [dispatch] dewey_reindex = "off" refuses it. It's safe to run again.
+A pass goes vault by vault, one at a time per machine. It reindexes a
+vault that is unindexed or that Dewey (3.9.0 or later) recommends
+reindexing, or that has no embeddings while the model is available, and
+lists the rest as up to date; -force reindexes every vault, unchecked.
+It skips a vault with a live agent, leftovers or a held dewey.lock;
+machines run side by side. [dispatch] dewey_reindex = "off" refuses it.
+It's safe to run again.
 Every command takes -json, and -hub/-token-file to reach a hub on another
 machine.
 `
@@ -34,7 +39,9 @@ type deweyPassView struct {
 	Done      int       `json:"done"`
 	Total     int       `json:"total"`
 	Reindexed int       `json:"reindexed"`
+	Current   []string  `json:"current,omitempty"`
 	Skipped   []string  `json:"skipped,omitempty"`
+	Forced    bool      `json:"forced,omitempty"`
 	Failed    []string  `json:"failed,omitempty"`
 	Note      string    `json:"note,omitempty"`
 	Started   time.Time `json:"started,omitzero"`
@@ -47,6 +54,7 @@ func runDewey(args []string, stdout, stderr io.Writer) int {
 	hf := addHubFlags(fs)
 	asJSON := fs.Bool("json", false, "print JSON")
 	all := fs.Bool("all", false, "reindex, cancel: every fleet machine")
+	force := fs.Bool("force", false, "reindex: every vault, not just the ones whose check says so")
 	fs.Usage = func() {
 		fmt.Fprint(stderr, deweyUsage)
 		fmt.Fprintln(stderr, "\nflags:")
@@ -112,13 +120,17 @@ func runDewey(args []string, stdout, stderr io.Writer) int {
 	defer cancel()
 	switch sub {
 	case "reindex":
-		st, err := c.DeweyReindex(ctx, machine)
+		st, err := c.DeweyReindex(ctx, machine, *force)
 		if err != nil {
 			return fail(err)
 		}
 		v := map[string]any{"started": st.Started, "refused": st.Refused}
 		return out(v, func() {
-			fmt.Fprintf(stdout, "Dewey reindex pass started on %s (gh-hud dewey status to follow it)\n", strings.Join(st.Started, ", "))
+			what := "Dewey reindex pass"
+			if *force {
+				what = "Forced Dewey reindex pass (every vault)"
+			}
+			fmt.Fprintf(stdout, "%s started on %s (gh-hud dewey status to follow it)\n", what, strings.Join(st.Started, ", "))
 			for _, r := range st.Refused {
 				fmt.Fprintf(stdout, "not on %s\n", r)
 			}
@@ -164,7 +176,8 @@ func deweyPassesOf(s hub.Snapshot, machine string) ([]deweyPassView, error) {
 func passView(name string, p fleet.DeweyPass) deweyPassView {
 	return deweyPassView{
 		Machine: name, Running: p.Running, Done: p.Done, Total: p.Total, Reindexed: p.Reindexed,
-		Skipped: p.Skipped, Failed: p.Failed, Note: p.Note, Started: p.Started, Ended: p.Ended,
+		Current: p.Current, Skipped: p.Skipped, Forced: p.Forced, Failed: p.Failed, Note: p.Note,
+		Started: p.Started, Ended: p.Ended,
 	}
 }
 

@@ -417,15 +417,16 @@ func (h *Hub) FleetRetry(context.Context) error {
 }
 
 // DeweyReindex starts a Dewey reindex pass on the fleet machine, or on
-// every one for "". Only the dispatch owner reindexes.
-func (h *Hub) DeweyReindex(_ context.Context, machine string) (fleet.PassStart, error) {
+// every one for ""; force reindexes every vault. Only the dispatch owner
+// reindexes.
+func (h *Hub) DeweyReindex(_ context.Context, machine string, force bool) (fleet.PassStart, error) {
 	if h.opts.Fleet == nil {
 		return fleet.PassStart{}, ErrNoFleet
 	}
 	if !h.ownsDispatch() {
 		return fleet.PassStart{}, errNotOwner
 	}
-	st, err := h.opts.Fleet.StartDeweyReindex(machine)
+	st, err := h.opts.Fleet.StartDeweyReindex(machine, force)
 	h.publish()
 	return st, err
 }

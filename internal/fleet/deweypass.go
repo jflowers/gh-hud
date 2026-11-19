@@ -1,18 +1,22 @@
 package fleet
 
-// "Reindex every Dewey vault on a machine now" (#139). Some Dewey
-// releases change what an index stores (unbound-force/dewey#220), and a
-// pin that rolled out before the rollout reindex (#134) existed, or a
-// checkout whose baseline was first recorded under the new binary, leaves
-// vaults that nothing will ever flag. A person asks for a pass instead:
-// from the fleet view (d / D), the hub API (DeweyReindex) or the CLI
-// (gh-hud dewey reindex).
+// "Reindex the Dewey vaults on a machine now" (#139). Some Dewey releases
+// change what an index stores (unbound-force/dewey#220), and a pin that
+// rolled out before the rollout reindex (#134) existed leaves vaults
+// that nothing reindexed. A person asks for a pass instead: from the
+// fleet view (d / D), the hub API (DeweyReindex) or the CLI (gh-hud
+// dewey reindex).
 //
 // A pass lists the machine's vaults afresh (Dewey.DeweyVaults, as the
-// rollout does) and reindexes them one after another through the
-// dispatcher's gated routine (Dewey.RequestedReindex): busy mark, the
-// machine's one reindex slot, the live agent / leftovers / dewey.lock
-// checks, the last-reindex record and the baseline update are #133's. It
+// rollout does), checks each one (Dewey.VaultIndexHealth: Dewey's own
+// verdict, #138) and reindexes the ones that need it, unindexed or
+// recommended by Dewey, one after another through the dispatcher's gated
+// routine (Dewey.RequestedReindex). The others are listed as up to date,
+// or skipped with why (the check failed, or only the machine is at
+// fault). A forced pass (-force, f in the fleet view) skips the check and
+// reindexes every vault. The busy mark, the machine's one reindex slot,
+// the live agent / leftovers / dewey.lock checks and the last-reindex
+// record are #133's. It
 // doesn't drain the machine: a vault that's busy is skipped and listed
 // with why, not waited for. Passes on different machines run at the same
 // time; on one machine there is one pass, and the dispatcher's slot keeps
@@ -36,7 +40,7 @@ package fleet
 // are the machines whose Dewey pin the fleet manages (the reason a pass
 // is needed), and the rows the fleet view shows. A pass doesn't persist:
 // a hub restart ends it, and running it again is safe (a vault reindexed
-// already is just reindexed again).
+// already is up to date, unless the pass is forced).
 
 import (
 	"context"
@@ -54,14 +58,17 @@ import (
 // for the machine's reindex slot.
 const passTimeout = 24 * time.Hour
 
-// DeweyPass is a machine's latest "reindex every vault now" pass. Its
-// ReindexProgress counts the vaults handled (Done) of Total; unlike a
-// rollout's, Failed lists only the vaults that ran and failed ("<dir>:
-// <why>"), and Skipped the ones that didn't start. Note sums it up.
+// DeweyPass is a machine's latest "reindex the vaults now" pass. Its
+// ReindexProgress counts the vaults handled (Done) of Total and lists
+// the ones found up to date (Current); unlike a rollout's, Failed lists
+// only the vaults that ran and failed ("<dir>: <why>"), and Skipped the
+// ones that didn't start or couldn't be checked. Note sums it up. Forced
+// is a pass that reindexed every vault, unchecked.
 type DeweyPass struct {
 	ReindexProgress
 	Reindexed int
 	Skipped   []string
+	Forced    bool
 	Running   bool
 	Started   time.Time
 	Ended     time.Time // zero while it runs
@@ -90,10 +97,11 @@ type PassStart struct {
 }
 
 // StartDeweyReindex starts a pass on the named fleet machine ("local" is
-// the hub), or on every fleet machine for "". One machine that can't
+// the hub), or on every fleet machine for "". force reindexes every
+// vault, not just the ones whose check says so. One machine that can't
 // start is an error; for every machine, only none starting is, and the
 // rest are listed in Refused.
-func (c *Coordinator) StartDeweyReindex(machine string) (PassStart, error) {
+func (c *Coordinator) StartDeweyReindex(machine string, force bool) (PassStart, error) {
 	if c.opts.Dewey == nil {
 		return PassStart{}, errors.New("dispatch is off: nothing can reindex Dewey")
 	}
@@ -113,11 +121,11 @@ func (c *Coordinator) StartDeweyReindex(machine string) (PassStart, error) {
 			continue
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), passTimeout)
-		ms.Pass = DeweyPass{Running: true, Started: c.opts.Clock.Now(),
+		ms.Pass = DeweyPass{Running: true, Forced: force, Started: c.opts.Clock.Now(),
 			ReindexProgress: ReindexProgress{Note: "listing vaults"}}
 		ms.passCancel = cancel
 		c.passWork.Add(1)
-		go c.runPass(ctx, cancel, name)
+		go c.runPass(ctx, cancel, name, force)
 		st.Started = append(st.Started, name)
 	}
 	c.mu.Unlock()
@@ -191,7 +199,7 @@ func passRefusalLocked(ms *machineState) string {
 }
 
 // runPass is one machine's pass, on its own goroutine.
-func (c *Coordinator) runPass(ctx context.Context, cancel context.CancelFunc, name string) {
+func (c *Coordinator) runPass(ctx context.Context, cancel context.CancelFunc, name string, force bool) {
 	defer c.passWork.Done()
 	defer cancel()
 	update := func(f func(p *DeweyPass)) {
@@ -211,7 +219,30 @@ func (c *Coordinator) runPass(ctx context.Context, cancel context.CancelFunc, na
 		if ctx.Err() != nil {
 			break
 		}
-		res, err := c.opts.Dewey.RequestedReindex(ctx, name, dir)
+		reasons := []string{dispatch.ReasonForced}
+		if !force {
+			h, err := c.opts.Dewey.VaultIndexHealth(ctx, name, dir)
+			if err != nil && ctx.Err() != nil {
+				break // cancelled while checking
+			}
+			reindex, why := dispatch.ReindexDecision(h)
+			if err != nil {
+				why = err.Error()
+			}
+			if !reindex {
+				update(func(p *DeweyPass) {
+					p.Done++
+					if why == "" {
+						p.Current = append(p.Current, dir)
+					} else {
+						p.Skipped = append(p.Skipped, dir+": "+why)
+					}
+				})
+				continue
+			}
+			reasons = h.Reasons
+		}
+		res, err := c.opts.Dewey.RequestedReindex(ctx, name, dir, reasons)
 		if err != nil && ctx.Err() != nil && !res.Failed() {
 			break // cancelled before it ran: not this vault's outcome
 		}
@@ -272,6 +303,12 @@ func (c *Coordinator) endPass(ctx context.Context, name, why string) {
 		p.Note = "no vaults"
 	default:
 		p.Note = fmt.Sprintf("reindexed %d/%d", p.Reindexed, p.Total)
+		if p.Forced {
+			p.Note += " (forced)"
+		}
+		if n := len(p.Current); n > 0 {
+			p.Note += fmt.Sprintf(", %d up to date", n)
+		}
 		if n := len(p.Skipped); n > 0 {
 			p.Note += fmt.Sprintf(", %d skipped", n)
 		}

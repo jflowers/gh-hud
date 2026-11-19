@@ -242,7 +242,7 @@ func TestRequestedReindexKeepsUpFirst(t *testing.T) {
 	dir := ghwsCheckout(t, d.o().Root, "acme@a", upstream, "r")
 	gitRun(t, dir, "reset", "-q", "--hard", "HEAD~1") // behind upstream by one
 	writeLearning(t, dir, "x.md")
-	if _, err := d.RequestedReindex(context.Background(), "local", dir); err != nil {
+	if _, err := d.RequestedReindex(context.Background(), "local", dir, []string{ReasonForced}); err != nil {
 		t.Fatal(err)
 	}
 	if !fileExists(filepath.Join(dir, "b.txt")) {

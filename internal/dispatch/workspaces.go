@@ -34,15 +34,23 @@ type CheckoutHealth struct {
 	// Dewey index health (#132), from the teardown's check (deweyhealth.go).
 	// A checkout whose index needs a reindex is still ready: the agent just
 	// works with that index.
-	Index      string    // "" not read, IndexNone, else IndexHealth.String()
-	IndexBuilt time.Time // graph.db's mtime; zero = no index
+	Index string // "" not read, IndexNone, else IndexHealth.String()
+	// IndexReasons are Index's reindex reasons as a list: Dewey's own
+	// contain commas, so Index's text can't be split back into them.
+	IndexReasons []string
+	IndexBuilt   time.Time // graph.db's mtime; zero = no index
 	// Pages, blocks and embeddings come from dewey status, which the poll
 	// runs only now and then (workspaces_index.go): they are as of
 	// IndexStatusAt (zero = never read).
 	IndexPages      int
 	IndexBlocks     int
 	IndexEmbeddings int
-	IndexStatusAt   time.Time
+	// The Dewey version and index format that built the index, as its
+	// status recorded them ("" and 0 for an index built before Dewey
+	// 3.9.0 recorded them).
+	IndexDeweyVersion string
+	IndexFormat       int
+	IndexStatusAt     time.Time
 
 	facts *deweyFacts // this read's DW lines, for applyIndexHealth
 	// Reindexing: gh-hud is reindexing the checkout's Dewey index
@@ -194,7 +202,7 @@ func (d *Dispatcher) machineWorkspaces(ctx context.Context, m Machine, ix *ghws.
 // state: BR branch, DEF upstream default (or NOUP), AB ahead/behind of the
 // local default branch, ST porcelain lines, LO branches with commits on no
 // remote, SH stash count, and the Dewey index check's DW lines without
-// dewey status (deweyHealthFragment(false): stat and git log only). Each
+// dewey status (deweyHealthFragment(false): stat-level facts only). Each
 // dir runs in a subshell so a missing one prints ERR and the rest continue.
 func workspacesScript(dirs []string) string {
 	quoted := make([]string, len(dirs))

@@ -2,8 +2,7 @@ package dispatch
 
 // Automatic Dewey reindex (#133). With [dispatch] dewey_reindex = "auto",
 // a checkout the after-run index check (deweyhealth.go) flags is
-// reindexed and warmed once it's idle, detached from finishRecord's two
-// minutes:
+// reindexed once it's idle, detached from finishRecord's two minutes:
 //
 //   - The checkout is marked busy "reindexing" for the whole time: it
 //     takes a dir claim, so reserve refuses it, and placement skips it
@@ -16,15 +15,17 @@ package dispatch
 //   - The outcome and duration are kept per checkout ("last reindex",
 //     dewey-reindexes.json) and shown in the Workspaces tab; the hub
 //     notifies a failure once. A failure is not retried: the next
-//     teardown can flag the checkout again. Success records the binary
-//     it ran as the checkout's baseline, which clears "dewey upgraded".
+//     teardown can flag the checkout again. Once it has run, the index
+//     records the Dewey that built it (Dewey 3.9.0), so the next check
+//     finds it current.
 //
-// "Machine problem" verdicts (no embedder, no dewey binary) and checks
-// that failed don't reindex: a reindex wouldn't fix them.
+// A verdict with no reindex reason (a machine problem only: no dewey, a
+// Dewey older than 3.9.0, no embedding model) and checks that failed
+// don't reindex: a reindex wouldn't fix them.
 //
 // reindexCheckout is the gated routine and reindexVault the bare
-// reindex-and-warm; the fleet rollout (#134) reuses them for every vault
-// on a drained machine, one after another.
+// reindex; the fleet rollout (#134) and the requested pass (#139) reuse
+// them, one vault after another.
 
 import (
 	"context"
@@ -40,7 +41,7 @@ import (
 	"github.com/jflowers/gh-hud/internal/config"
 )
 
-// The time limits of one vault's reindex and warm (#139). The limit is
+// The time limits of one vault's reindex (#139). The limit is
 // [dispatch] dewey_reindex_timeout (default 2h: a worker embedding on CPU
 // through a local Ollama took longer than the old 30 minutes per vault).
 // The script on the machine enforces it itself (reindexScript): it kills
@@ -57,9 +58,9 @@ const reindexSlack = 2 * time.Minute
 // context after the reindex's own one ended.
 const reindexCleanupTimeout = time.Minute
 
-// warmShare is the warm-up's share of the limit: the warm-up `dewey
-// serve` gets at most limit/warmShare (the old 10 of 30 minutes).
-const warmShare = 3
+// reindexStatusSecs bounds the `dewey status --json` read after a
+// reindex (and the deadline bounds it too).
+const reindexStatusSecs = 60
 
 // reindexKillGrace is how long the script gives a dewey it stops on its
 // own deadline between SIGTERM and SIGKILL (seconds). A variable for
@@ -68,7 +69,7 @@ var reindexKillGrace = 10
 
 // reindexPidName is the file, in the vault's resolved .uf/dewey, that
 // holds the process group of the dewey the script is running there:
-// "<pgid> <reindex|serve> <vault>". reindexCleanup reads it.
+// "<pgid> <reindex|status> <vault>". reindexCleanup reads it.
 const reindexPidName = "gh-hud-reindex.pid"
 
 // reindexProcPattern is the extended regexp (pgrep -f) for a running
@@ -124,10 +125,15 @@ func (e busyError) Is(target error) bool {
 
 // ReindexResult is the outcome of one reindex of a checkout's vault.
 type ReindexResult struct {
-	At       time.Time     `json:"at"`       // when it ended
-	Duration time.Duration `json:"duration"` // reindex and warm
+	At       time.Time     `json:"at"` // when it ended
+	Duration time.Duration `json:"duration"`
 	Binary   string        `json:"binary,omitempty"`
 	Reasons  []string      `json:"reasons,omitempty"` // why it ran
+	// DeweyVersion and IndexFormat are what the index records after the
+	// reindex, from one dewey status read (empty and 0 when it couldn't
+	// be read).
+	DeweyVersion string `json:"dewey_version,omitempty"`
+	IndexFormat  int    `json:"index_format,omitempty"`
 	// Skipped is why it didn't run ("dewey.lock held"); Err why it failed.
 	Skipped string `json:"skipped,omitempty"`
 	Err     string `json:"err,omitempty"`
@@ -177,20 +183,22 @@ func (d *Dispatcher) indexCheck(ctx context.Context, m Machine, r Record) string
 	return rec
 }
 
-// reindexable reports whether a reindex would fix the verdict: it needs
-// one, and neither the machine nor the check is at fault.
+// reindexable reports whether a reindex would fix the verdict: it gives
+// a reason for one, and the check didn't fail. A machine problem beside
+// a reason (no embedding model, and Dewey recommends a reindex) still
+// reindexes: the reason is fixed, the machine problem stays.
 func reindexable(h IndexHealth) bool {
-	return h.NeedsReindex() && h.Machine == "" && h.Err == ""
+	return h.NeedsReindex() && h.Err == ""
 }
 
-// reindexCheckout reindexes and warms the Dewey vault of checkout r.Dir
+// reindexCheckout reindexes the Dewey vault of checkout r.Dir
 // on m (r.Machine is m's key; r itself, when it's the run that just
 // ended there, doesn't count as an agent in it; the rollout passes
 // Record{Machine, Dir}), within the rules: one per machine, none while
 // another agent is live in the checkout, it has leftovers, or
 // dewey.lock is held. The checkout is busy "reindexing"
-// meanwhile. The outcome is recorded as its last reindex and, on
-// success, the binary as its baseline. reasons say why it runs. An error
+// meanwhile. The outcome is recorded as its last reindex. reasons say why
+// it runs. An error
 // wrapping errReindexSkipped means it didn't start; ctx bounds it all
 // (reindexAttemptTimeout is the automatic one's). A dewey reindex already
 // running on the machine (one gh-hud isn't tracking) is a skip that
@@ -217,9 +225,6 @@ func (d *Dispatcher) reindexCheckout(ctx context.Context, m Machine, r Record, r
 	}
 	res.Reasons = reasons
 	d.recordReindex(key, r.Dir, res)
-	if err == nil {
-		d.setDeweyBaseline(key, r.Dir, res.Binary)
-	}
 	return res, err
 }
 
@@ -271,11 +276,12 @@ func (d *Dispatcher) reindexingDirs() map[string]string {
 }
 
 // reindexVault runs `dewey reindex` in the checkout dir's vault on m and
-// then warms the index, without any of reindexCheckout's gating except
+// then reads its dewey status once, without any of reindexCheckout's gating except
 // the dewey.lock check and the machine check (no other dewey reindex
 // running on m), which it makes right before the reindex. limit is the
-// script's own deadline for both; ctx should allow reindexSlack more.
-// It returns the outcome (At, Duration, Binary, and Skipped or Err) and
+// script's own deadline; ctx should allow reindexSlack more.
+// It returns the outcome (At, Duration, Binary, what the index records
+// now, and Skipped or Err) and
 // an error when it didn't succeed: one wrapping errReindexSkipped when
 // the lock was held or another reindex runs on the machine (that one
 // wraps errMachineReindexing too), and one wrapping errMachineStuck when
@@ -319,7 +325,7 @@ func reindexVault(ctx context.Context, m Machine, dir string, limit time.Duratio
 
 // reindexCleanup ends what a reindexScript that didn't finish started in
 // dir's vault on m: the process group in the vault's pid file, if its
-// leader is still the dewey reindex or serve of that vault (a pid can be
+// leader is still the dewey reindex or status of that vault (a pid can be
 // reused). It reports whether nothing of it is left, and when something
 // is (or the machine couldn't be asked), why.
 func reindexCleanup(m Machine, dir string) (gone bool, why string) {
@@ -363,7 +369,7 @@ stop() {
 // reindexCleanupScript is reindexCleanup's script for dir: it prints
 // "RC gone" (nothing of ours is running there), "RC killed <pgid>" or
 // "RC alive <pgid>". It kills only a group whose leader's command line is
-// the `dewey <reindex|serve> --vault <vault>` the pid file names.
+// the `dewey <reindex|status> --vault <vault>` the pid file names.
 func reindexCleanupScript(dir string) string {
 	return `cd -- ` + shellQuoteTilde(dir) + ` 2>/dev/null || { echo 'RC gone'; exit 0; }
 v=$(cd .uf/dewey 2>/dev/null && pwd -P) || { echo 'RC gone'; exit 0; }
@@ -373,7 +379,7 @@ pg= kind= vault=
 read -r pg kind vault <"$pf"
 case $pg in ''|*[!0-9]*) rm -f "$pf"; echo 'RC gone'; exit 0 ;; esac
 c=$(ps -ww -o command= -p "$pg" 2>/dev/null) || c=
-case $kind in reindex|serve) ;; *) c= ;; esac
+case $kind in reindex|status) ;; *) c= ;; esac
 case $c in
 *"dewey $kind --vault $vault"|*"dewey $kind --vault $vault "*) ;;
 *) rm -f "$pf"; echo 'RC gone'; exit 0 ;;
@@ -421,15 +427,15 @@ const deweyHeldFn = `held() {
   return 0
 }`
 
-// reindexScript reindexes and warms the vault in dir within limit,
-// printing:
+// reindexScript reindexes the vault in dir within limit, printing:
 //
 //	RX bin <path>        the dewey binary (mise which, else command -v)
 //	RX held              dewey.lock is held: nothing ran
 //	RX busy <pid> <cmd>  another dewey reindex runs on the machine: nothing ran
 //	RX err <msg>         it failed (or ran out of time)
 //	RX alive <pgid>      a dewey it started survived SIGKILL
-//	RX ok                reindexed and warmed
+//	RX status <json>     dewey status --json after the reindex, on one line
+//	RX ok                reindexed
 //
 // dewey takes an exclusive flock(2) on <vault>/dewey.lock for as long as
 // it has the store open (dewey serve, index, reindex, status). The test
@@ -451,7 +457,7 @@ const deweyHeldFn = `held() {
 // kept running side by side for hours after gh-hud had moved on, because
 // nothing on the machine stopped them. Each dewey runs in the background
 // as a process group of its own, recorded in <vault>/gh-hud-reindex.pid
-// ("<pgid> <reindex|serve> <vault>"), and the script polls it: at the
+// ("<pgid> <reindex|status> <vault>"), and the script polls it: at the
 // deadline it SIGTERMs the group, SIGKILLs it reindexKillGrace seconds
 // later, removes the pid file once the group is gone and says "timed
 // out". A SIGTERM, SIGHUP or SIGINT to the script itself (gh-hud's cancel
@@ -472,22 +478,17 @@ const deweyHeldFn = `held() {
 // while dewey starts, so the script's own short commands stay in the
 // script's group.
 //
-// Warming: dewey loads learnings and knowledge stores only at `dewey
-// serve` startup, not in `dewey reindex` (or `dewey index`), so the
-// script starts a serve on stdio, reads its log until "background
-// indexing complete" (or "background indexing failed", or limit/warmShare
-// seconds, or the deadline), and closes its stdin to stop it, then stops
-// its group. Its stdin is a fifo the script holds open, so if the script
-// dies the serve sees EOF and exits too. Drop the warm step once Dewey's
-// reindex loads them itself (#138).
+// There is no warm-up `dewey serve` after the reindex any more: since
+// Dewey 3.9.0 `dewey reindex` loads learnings and knowledge stores itself
+// (unbound-force/dewey#223, #138). The script reads `dewey status --json`
+// once instead, the same way (its own group, at most reindexStatusSecs
+// and never past the deadline), so the outcome says which Dewey version
+// and index format the index records now. A status that doesn't answer
+// doesn't fail the reindex.
 func reindexScript(dir string, limit time.Duration) string {
 	secs := int(limit / time.Second)
 	if secs < 1 {
 		secs = 1
-	}
-	warm := secs / warmShare
-	if warm < 1 {
-		warm = 1
 	}
 	grace := strconv.Itoa(reindexKillGrace)
 	return `cd -- ` + shellQuoteTilde(dir) + ` || exit 1
@@ -538,33 +539,24 @@ if [ "$rc" -ne 0 ]; then
   rm -rf "$t"
   exit 0
 fi
-wend=$(( $(date +%s) + ` + strconv.Itoa(warm) + ` ))
-[ "$wend" -le "$end" ] || wend=$end
-mkfifo "$t/in" || { rm -rf "$t"; echo 'RX err warm: mkfifo failed'; exit 0; }
+send=$(( $(date +%s) + ` + strconv.Itoa(reindexStatusSecs) + ` ))
+[ "$send" -le "$end" ] || send=$end
 set -m
-"$bin" serve --vault "$PWD" --log-file "$t/log" <"$t/in" >/dev/null 2>&1 &
+"$bin" status --vault "$PWD" --json </dev/null >"$t/st" 2>/dev/null &
 pg=$!
 set +m
-printf '%s serve %s\n' "$pg" "$PWD" >"$pf"
-exec 3>"$t/in"
-res=
-while [ -z "$res" ]; do
-  if grep -q 'background indexing complete' "$t/log" 2>/dev/null; then res=ok
-  elif grep -q 'background indexing failed' "$t/log" 2>/dev/null; then
-    res="err warm: $(grep 'background indexing failed' "$t/log" | tail -n 1)"
-  elif ! kill -0 "$pg" 2>/dev/null; then
-    res="err warm: dewey serve exited: $(sed '/^[[:space:]]*$/d' "$t/log" 2>/dev/null | tail -n 1)"
-  elif [ "$(date +%s)" -ge "$end" ]; then res='err timed out after ` + limit.String() + ` (warming)'
-  elif [ "$(date +%s)" -ge "$wend" ]; then res="err warm: no \"background indexing complete\" in ` + strconv.Itoa(warm) + `s"
-  else nap
-  fi
-done
-exec 3>&-
-i=0
-while kill -0 "$pg" 2>/dev/null && [ "$i" -lt 50 ]; do nap; i=$((i+1)); done
-ended "$pg"
+printf '%s status %s\n' "$pg" "$PWD" >"$pf"
+while kill -0 "$pg" 2>/dev/null && [ "$(date +%s)" -lt "$send" ]; do nap; done
+if kill -0 "$pg" 2>/dev/null; then
+  ended "$pg"
+else
+  wait "$pg" && printf 'RX status %s\n' "$(tr -d '\n' <"$t/st")"
+  kill -KILL -- "-$pg" 2>/dev/null
+  pg=
+  rm -f "$pf"
+fi
 rm -rf "$t"
-printf 'RX %s\n' "$res"
+echo 'RX ok'
 `
 }
 
@@ -589,6 +581,10 @@ func parseReindex(out string) ReindexResult {
 			r.alive = "pid " + strings.TrimSpace(val) + " survived SIGKILL"
 		case "err":
 			r.Err = strings.TrimSpace(val)
+		case "status":
+			if st, sok := parseDeweyStatus(val); sok {
+				r.DeweyVersion, r.IndexFormat = st.DeweyVersion, st.IndexFormat
+			}
 		case "ok":
 			ok = true
 		}

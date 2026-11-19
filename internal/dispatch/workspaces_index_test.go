@@ -2,28 +2,24 @@ package dispatch
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 )
 
-// Fixture workspacesScript output for three checkouts on one machine: a
-// vault whose index is fine, one with a learning edited since its index
-// was built, and a checkout that isn't a vault. Each checkout's DW lines
-// must stay with it.
+// Fixture workspacesScript output for checkouts on one machine: two
+// vaults with an index, a checkout that isn't a vault and one that's
+// missing. Each checkout's DW lines must stay with it.
 const wsIndexFixture = `CO /w/acme@oak/app
 BR main
 DEF main
 AB 0	0
 SH 0
 DW vault /w/acme@oak/app/.uf/dewey
-DW bin /mise/dewey/0.9.0/bin/dewey
 DW mtime 1763400000
-DW prefix .uf/dewey/
 CO /w/acme@elm/app
 BR main
 DEF main
@@ -31,10 +27,7 @@ AB 0	0
 ST ?? .uf/dewey/learnings/x.md
 SH 1
 DW vault /w/acme@elm/app/.uf/dewey
-DW bin /mise/dewey/0.9.0/bin/dewey
 DW mtime 1763300000
-DW prefix .uf/dewey/
-DW changed .uf/dewey/learnings/git-1.md
 CO /w/acme@ash/site
 BR main
 DEF main
@@ -48,10 +41,10 @@ ERR checkout missing
 func TestParseWorkspacesAttributesIndexFactsPerCheckout(t *testing.T) {
 	rows := parseWorkspaces(wsIndexFixture)
 	oak, elm, ash, fir := rows["/w/acme@oak/app"], rows["/w/acme@elm/app"], rows["/w/acme@ash/site"], rows["/w/acme@fir/app"]
-	if oak.facts == nil || oak.facts.Mtime != 1763400000 || len(oak.facts.Changed) != 0 {
+	if oak.facts == nil || oak.facts.Mtime != 1763400000 || oak.facts.Read {
 		t.Errorf("oak facts = %+v", oak.facts)
 	}
-	if elm.facts == nil || elm.facts.Mtime != 1763300000 || len(elm.facts.Changed) != 1 || elm.Stashes != 1 || elm.Learnings != 1 {
+	if elm.facts == nil || elm.facts.Mtime != 1763300000 || elm.Stashes != 1 || elm.Learnings != 1 {
 		t.Errorf("elm = %+v facts %+v", elm, elm.facts)
 	}
 	if ash.facts == nil || ash.facts.Vault != "" {
@@ -63,10 +56,10 @@ func TestParseWorkspacesAttributesIndexFactsPerCheckout(t *testing.T) {
 
 	d := newTestDispatcher(t, "refuse")
 	m := d.localMachine()
-	// oak has a status read of this index; elm none yet.
+	// oak has a status read of this index (lap1's); elm none yet.
+	lap1, _ := parseDeweyStatus(statusLap1)
 	d.idxStatus.set(deweyBaseKey("", "/w/acme@oak/app"), indexStatus{
-		Status: &deweyStatus{Pages: 9, Blocks: 120, Embeddings: 0}, EmbedderCode: "200", Embedder: "http://x",
-		Mtime: 1763400000, At: time.Unix(1763401000, 0)})
+		Binary: dwBin, Status: lap1, Mtime: 1763400000, At: time.Unix(1763401000, 0)})
 	got := map[string]CheckoutHealth{}
 	for dir, h := range rows {
 		h.Dir = dir
@@ -74,8 +67,8 @@ func TestParseWorkspacesAttributesIndexFactsPerCheckout(t *testing.T) {
 		got[dir] = h
 	}
 	want := map[string]string{
-		"/w/acme@oak/app":  "reindex needed: no embeddings",
-		"/w/acme@elm/app":  "reindex needed: learnings changed",
+		"/w/acme@oak/app":  "reindex needed: index format 0, this Dewey writes 1",
+		"/w/acme@elm/app":  IndexUnchecked,
 		"/w/acme@ash/site": IndexNone,
 		"/w/acme@fir/app":  "",
 	}
@@ -83,29 +76,33 @@ func TestParseWorkspacesAttributesIndexFactsPerCheckout(t *testing.T) {
 		if got[dir].Index != w {
 			t.Errorf("%s index = %q, want %q", dir, got[dir].Index, w)
 		}
+		if got[dir].Index == "reindex needed: index format 0, this Dewey writes 1" && !slices.Equal(got[dir].IndexReasons, []string{"index format 0, this Dewey writes 1"}) {
+			t.Errorf("%s reasons = %q", dir, got[dir].IndexReasons)
+		}
 		if got[dir].facts != nil {
 			t.Errorf("%s keeps its facts after judging", dir)
 		}
 	}
-	if o := got["/w/acme@oak/app"]; o.IndexPages != 9 || o.IndexBlocks != 120 || !o.IndexBuilt.Equal(time.Unix(1763400000, 0)) || o.IndexStatusAt.IsZero() {
+	if o := got["/w/acme@oak/app"]; o.IndexPages != 585 || o.IndexBlocks != 5279 || o.IndexFormat != 0 || o.IndexDeweyVersion != "" ||
+		!o.IndexBuilt.Equal(time.Unix(1763400000, 0)) || o.IndexStatusAt.IsZero() {
 		t.Errorf("oak = %+v", o)
 	}
 	if e := got["/w/acme@elm/app"]; !e.IndexStatusAt.IsZero() || !e.Ready() {
 		t.Errorf("elm = %+v (problem %q): no status yet, and a reindex need isn't a problem", e, e.Problem())
 	}
 	if !got["/w/acme@oak/app"].Ready() {
-		t.Errorf("no embeddings made oak unready: %q", got["/w/acme@oak/app"].Problem())
+		t.Errorf("a reindex need made oak unready: %q", got["/w/acme@oak/app"].Problem())
 	}
 
 	// A status read of an older index shows its numbers but doesn't judge
-	// embeddings in the rebuilt one.
+	// the rebuilt one.
 	d.idxStatus.set(deweyBaseKey("", "/w/acme@oak/app"), indexStatus{
-		Status: &deweyStatus{Pages: 9, Blocks: 120}, EmbedderCode: "200", Mtime: 1, At: time.Now()})
+		Binary: dwBin, Status: lap1, Mtime: 1, At: time.Now()})
 	h := parseWorkspaces(wsIndexFixture)["/w/acme@oak/app"]
 	h.Dir = "/w/acme@oak/app"
 	d.judgeCheckoutIndex(m, &h)
-	if h.Index != "ok" || h.IndexPages != 9 {
-		t.Errorf("stale status read: index %q pages %d, want ok and 9", h.Index, h.IndexPages)
+	if h.Index != IndexUnchecked || h.IndexPages != 585 {
+		t.Errorf("stale status read: index %q pages %d, want unchecked and 585", h.Index, h.IndexPages)
 	}
 }
 
@@ -134,18 +131,15 @@ func TestIndexStatusDue(t *testing.T) {
 }
 
 // countingDewey makes the fake dewey (fakeDewey) count its status calls
-// and report no embeddings, with a reachable embedder. It returns the
+// and report no embeddings with the model available. It returns the
 // count.
 func countingDewey(t *testing.T) func() int {
 	t.Helper()
-	which, _ := fakeDewey(t, 0)
-	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
-	t.Cleanup(srv.Close)
-	t.Setenv("DEWEY_EMBEDDING_ENDPOINT", srv.URL)
+	which, _ := fakeDewey(t, "")
 	dir := t.TempDir()
 	calls := filepath.Join(dir, "calls")
 	bin := filepath.Join(dir, "dewey")
-	writeFile(t, bin, "#!/bin/sh\necho x >> "+calls+"\nprintf '{\"pages\": 4, \"blocks\": 10, \"embeddings\": 0}\\n'\n")
+	writeFile(t, bin, "#!/bin/sh\necho x >> "+calls+"\nprintf '{\"pages\": 4, \"blocks\": 10, \"embeddings\": 0, \"embeddingAvailable\": true, \"deweyVersion\": \"3.9.0\", \"indexFormat\": 1, \"reindexRecommended\": false, \"reindexReasons\": []}\\n'\n")
 	if err := os.Chmod(bin, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -212,19 +206,19 @@ func TestWorkspacesIndexStatusCadence(t *testing.T) {
 	// A live run's checkout is never read, and the old read doesn't judge
 	// the rebuilt index.
 	h = pollIndex(WithIndexStatus(ctx), t, d, work, "acme/app#1", now.Add(40*time.Minute))
-	if calls() != 3 || h.Index != "ok" || h.IndexPages != 4 {
+	if calls() != 3 || h.Index != IndexUnchecked || h.IndexPages != 4 {
 		t.Errorf("busy: %d calls, %+v", calls(), h)
 	}
 	check("rebuilt index", pollIndex(ctx, t, d, work, "", now.Add(42*time.Minute)), 4)
-
-	if b, ok := d.deweyBaseline("", work); ok {
-		t.Errorf("the poll recorded a baseline %+v; only a teardown or reindex should", b)
+	if h := pollIndex(ctx, t, d, work, "", now.Add(44*time.Minute)); h.IndexDeweyVersion != "3.9.0" || h.IndexFormat != 1 {
+		t.Errorf("provenance = %q %d", h.IndexDeweyVersion, h.IndexFormat)
 	}
 }
 
 func TestWorkspacesScriptSkipsDeweyStatus(t *testing.T) {
-	if s := workspacesScript([]string{"/w/a"}); strings.Contains(s, "status --json") || strings.Contains(s, "curl") {
-		t.Error("the poll script runs dewey status or the embedder probe")
+	if s := workspacesScript([]string{"/w/a"}); strings.Contains(s, "status --json") || strings.Contains(s, "curl") ||
+		strings.Contains(s, "mise which dewey") || strings.Contains(s, "learnings/") {
+		t.Error("the poll script runs more than stat-level Dewey facts")
 	}
 	if s := indexStatusScript([]string{"/w/a"}); !strings.Contains(s, "status --json") {
 		t.Error("the status script doesn't run dewey status")

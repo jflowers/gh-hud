@@ -155,7 +155,7 @@ gh-hud dispatch acme/app#8 [-task issue]   # start one now (default: the suggest
 gh-hud queue [add|rm] …           # your queue
 gh-hud transcript <run|ref>       # a run's conversation (a ref: its newest run)
 gh-hud pane <run|ref>             # the screen of a run's live pane
-gh-hud dewey reindex <machine>|-all   # reindex every Dewey vault there now (see "Reindex every vault now")
+gh-hud dewey reindex [-force] <machine>|-all   # reindex the Dewey vaults there that need it now (see "Reindex the vaults now")
 ```
 
 They, `gh-hud epic` and `gh-hud branches` use the hub on this machine's
@@ -485,21 +485,60 @@ once the push has succeeded. Other instances pick the merged learnings up
 on their next preflight fast-forward.
 
 Last, a clean run checks the checkout's Dewey index and records on the
-run whether it needs a `dewey reindex` and why. `[dispatch]
-dewey_reindex` says what happens next: `"report"` (the default) only
-records it, `"off"` skips the check, and `"auto"` reindexes the checkout
-in the background once nothing else is using it. While that runs the
-checkout is busy `reindexing` in the Workspaces tab and takes no
-dispatch. The run is `dewey reindex`, then a short `dewey serve` until its
-log says `background indexing complete`, since only serve's startup
-loads learnings and knowledge stores. Each machine runs one reindex at a
-time, and none starts in a checkout with a live agent, leftovers, or a
-held `.uf/dewey/dewey.lock`. A flagged checkout that can't start now is
+run whether it needs a `dewey reindex` and why. The verdict is Dewey's
+own, so **Dewey 3.9.0 or later** is required on the machine: since 3.9.0
+the index records the Dewey version and index format that built it, and
+`dewey status --json` says `reindexRecommended`, with
+`reindexReasons`, when this Dewey writes a newer format
+(unbound-force/dewey#224). The reasons the check records are:
+
+- `unindexed`: no `graph.db` yet; the agent's first search builds one
+  mid-run.
+- Dewey's own reasons, verbatim, such as `index format 0, this Dewey
+  writes 1` for an index built before 3.9.0.
+- `no embeddings`: the index has blocks but no embeddings while Dewey's
+  embedding model is available. When the model isn't available, that's
+  a machine problem instead (`no embeddings, and the
+  granite-embedding:30m embedding model isn't available`): a reindex
+  wouldn't fix it.
+
+A Dewey older than 3.9.0 has no verdict to give, so the check reports
+the machine problem `dewey 3.8.0 is older than 3.9.0: can't tell whether
+the index needs a reindex` rather than guessing. gh-hud no longer looks
+for learnings or knowledge files changed since the index was built,
+compares the Dewey binary against a recorded baseline, or probes the
+embedder: Dewey resyncs learnings by content and prunes the pages of
+deleted files itself (unbound-force/dewey#221, #222), and reports
+whether its model is available (#225). The old `learnings changed`,
+`knowledge changed` and `dewey upgraded` reasons are gone, and so is
+`dewey-baselines.json` (the hub removes it).
+
+`[dispatch] dewey_reindex` says what happens next: `"report"` (the
+default) only records it, `"off"` skips the check, and `"auto"` reindexes
+the checkout in the background once nothing else is using it. While that
+runs the checkout is busy `reindexing` in the Workspaces tab and takes no
+dispatch. The run is `dewey reindex` alone: since Dewey 3.9.0 it loads
+learnings and knowledge stores itself (unbound-force/dewey#223), so the
+warm-up `dewey serve` that used to follow it is gone. Afterwards gh-hud
+reads `dewey status --json` once and records the Dewey version and index
+format the index now carries. Each machine runs one reindex at a time,
+and none starts in a checkout with a live agent, leftovers, or a held
+`.uf/dewey/dewey.lock`. A flagged checkout that can't start now is
 skipped, and the next clean run there flags it again. The Workspaces
 tab's detail shows the last reindex: its outcome, how long it took, when,
-and why it ran. A failure is also a notification and isn't retried. A
-machine problem, such as no embedder or no `dewey` binary, is never
+why it ran and what the index records now. A failure is also a
+notification and isn't retried. A verdict with only a machine problem,
+such as no `dewey` binary or a Dewey older than 3.9.0, is never
 reindexed, because a reindex wouldn't fix it.
+
+The Workspaces tab's index column shows the same verdict, compactly
+(`old format 2d 100%`, `unindexed`, `no embeddings`, `dewey too old`),
+and the detail has Dewey's reasons in full, with the version and format
+that built the index. The 2-minute poll only stats the vault (is there a
+`graph.db`, and its mtime); `dewey status --json` runs on `r`, every 30
+minutes, or when `graph.db` changed, and never in a checkout with a live
+run. An index rebuilt since the last read shows `unchecked` until the
+next one.
 
 One reindex per machine holds on the machine itself, not only in
 gh-hud's bookkeeping. Before a vault starts, gh-hud looks for a running
@@ -509,49 +548,52 @@ whoever started it. If it finds one, the automatic reindex skips with
 a pass or rollout waits for it. That wait is bounded by the time limit
 plus a few minutes. Past that, the machine's pass stops.
 
-Each vault's reindex and warm-up has a time limit, `[dispatch]
+Each vault's reindex has a time limit, `[dispatch]
 dewey_reindex_timeout` (default `"2h"`). The script on the machine
 enforces the limit itself, without relying on the ssh session to carry a
-cancel. It runs `dewey reindex`, and then the warm-up `dewey serve`, in
+cancel. It runs `dewey reindex`, and then the short `dewey status`, in
 the background as a process group of its own (`set -m` job control,
 which works the same in macOS and Linux shells, with no `setsid` or
 GNU `timeout` needed). It records the group in
 `.uf/dewey/gh-hud-reindex.pid`. At the deadline it sends the group
 SIGTERM, then SIGKILL 10 seconds later, removes the pid file, and records
-`timed out after 2h0m0s`. The warm-up gets at most a third of the limit.
-gh-hud waits two minutes longer than the script. If gh-hud stops waiting
+`timed out after 2h0m0s`. The status read gets at most a minute and
+never fails the reindex. gh-hud waits two minutes longer than the script. If gh-hud stops waiting
 first (a cancelled pass, an ssh drop, the hub shutting down), the script
 stops its dewey on the way out. gh-hud then runs a short cleanup on the
 machine that kills the group in the pid file, but only when that pid is
-still the vault's `dewey reindex` or `serve`. The result is recorded as
+still the vault's `dewey reindex` or `status`. The result is recorded as
 `cancelled: …` or `timed out: …`. If a dewey can't be confirmed gone,
 the machine's pass stops with that failure, so no second dewey starts
 beside it. The pid file isn't counted as leftover work.
 
-#### Reindex every vault now
+#### Reindex the vaults now
 
 Some Dewey releases change what an index stores, and only a reindex
-updates an existing one. unbound-force/dewey#220 (Dewey 3.8.0) is the
-case that needs it: every vault in the fleet needs one reindex, but the
-3.8.0 pin rolled out before the rollout reindex (see "Fleet rollout")
-existed, and the teardown check takes the binary it first sees as a
-checkout's baseline, so nothing ever flags those vaults. Ask for a pass
-instead:
+updates an existing one. A pin that rolled out before the rollout
+reindex (see "Fleet rollout") existed leaves vaults nothing reindexed.
+Ask for a pass instead:
 
 ```
-gh-hud dewey reindex lap1        # every vault on lap1 (local is the hub)
+gh-hud dewey reindex lap1        # the vaults on lap1 that need it (local is the hub)
 gh-hud dewey reindex -all        # every fleet machine, side by side
+gh-hud dewey reindex -force lap1 # every vault on lap1, whatever its check says
 gh-hud dewey status [lap1]       # reindexing 3/12, or the last summary
 gh-hud dewey cancel lap1|-all
 ```
 
 or, in the fleet view (`F`), `d` on the selected machine (`↑`/`↓`) or
-`D` for every machine, each pressed twice, and `x` to cancel. A pass
-lists the machine's vaults as the rollout does (every `@` instance's,
-plus base checkouts with a `graph.db`) and goes through them one at a
-time with the automatic reindex's routine: busy `reindexing`, the
-machine's one reindex at a time, the new binary recorded as the baseline
-on success. It doesn't drain the machine, so a vault with a live agent,
+`D` for every machine, each pressed twice (or `f` instead of the second
+press for a forced pass), and `x` to cancel. A pass lists the machine's
+vaults as the rollout does (every `@` instance's, plus base checkouts
+with a `graph.db`) and checks each one as the teardown does. It
+reindexes the ones that are unindexed, that Dewey recommends
+reindexing, or that have no embeddings while the model is available,
+and lists the rest as up to date; a vault whose check fails, or that
+has only a machine problem (a Dewey older than 3.9.0, say), is skipped
+with why. `-force` skips the check and reindexes every vault. Each
+reindex goes through the automatic reindex's routine: busy
+`reindexing`, the machine's one reindex at a time. It doesn't drain the machine, so a vault with a live agent,
 leftovers or a held `dewey.lock` is skipped and listed with why, not
 waited for. A `dewey reindex` already running on the machine is waited
 for, and a dewey that can't be stopped stops the pass on that machine
@@ -564,8 +606,8 @@ failed automatic reindex.
 The machines are `[fleet] order`'s (the fleet must be on), since the
 fleet's Dewey pin is why a pass is needed. A pass runs in the hub that
 owns dispatch, detached from the command that asked; a hub restart ends
-it. Running it again is safe: a vault already reindexed is just
-reindexed again, and a skipped one gets another try. `dewey_reindex =
+it. Running it again is safe: a vault already reindexed is up to date
+(unless the pass is forced), and a skipped one gets another try. `dewey_reindex =
 "off"` refuses a pass; `"report"` and `"auto"` allow it, since a person
 asking is the switch `"report"` leaves to a person. The agent token can
 start or cancel one too, so an agent you ask counts as that person.
@@ -1548,16 +1590,18 @@ it reminds you to restart it.
 When an apply changes the machine's Dewey binary (`mise which dewey`,
 else `command -v dewey`, compared before and after; mise's install path
 carries the version), the machine goes `applying` → `reindexing 7/15` →
-`verifying`: still drained, it reindexes and warms every Dewey vault in
-its ghws `@` instances, plus the base checkouts that have a `graph.db`,
+`verifying`: still drained, it checks every Dewey vault in its ghws `@`
+instances, plus the base checkouts that have a `graph.db`, with the new
+Dewey, and reindexes the ones the check flags (unindexed, or Dewey
+recommends a reindex because the new Dewey writes a newer index format),
 one at a time, under the same rules as the automatic reindex (busy
 `reindexing`, none with a live agent, leftovers or a held `dewey.lock`).
-Each success records the new binary as the checkout's baseline, so no
-teardown check reports `dewey upgraded` afterwards. A vault that fails or
-is skipped is listed under the machine in the fleet view and notified
-once, and the rollout goes on. This follows `[dispatch] dewey_reindex`:
-only `"auto"` reindexes; `"report"` (the default) lists how many vaults
-need a reindex and touches nothing; `"off"` doesn't look. When the binary
+A pin bump that doesn't change the index format reindexes nothing. A
+vault that fails, is skipped or can't be checked is listed under the
+machine in the fleet view and notified once, and the rollout goes on.
+This follows `[dispatch] dewey_reindex`: only `"auto"` reindexes;
+`"report"` (the default) checks the vaults, says how many need a
+reindex and touches nothing; `"off"` doesn't look. When the binary
 can't be read before or after the apply, the view says the change is
 unknown and nothing is reindexed. The hub is still last, so its own
 checkouts are reindexed after its own apply.
@@ -1567,8 +1611,9 @@ applied vs target sha, state, drain wait, last error) with target/CI/pause
 status in the header. Keys: `p` pause/resume · `a` apply now (force a
 poll) · `s` skip the drain wait (press twice — it applies with live agents
 still running) · `r` retry the failed machine and resume · `↑`/`↓`
-select a machine · `d` reindex every Dewey vault on it, `D` on every
-machine (press twice; see "Reindex every vault now") · `x` cancel its
+select a machine · `d` reindex its Dewey vaults that need it, `D` on every
+machine (press twice, or `f` for a forced pass of every vault; see
+"Reindex the vaults now") · `x` cancel its
 pass · `F`/`esc` close. The main header carries a compact fleet chip while a rollout is
 active or failed.
 
@@ -1803,7 +1848,7 @@ max_concurrent = 2
 
 [dispatch]
 dewey_reindex = "report"   # after a clean run, a Dewey index that needs a reindex: report | auto (reindex when idle) | off (also refuses `gh-hud dewey reindex`)
-dewey_reindex_timeout = "2h"  # one vault's reindex + warm-up; the machine kills dewey past it (CPU-only embedding is slow)
+dewey_reindex_timeout = "2h"  # one vault's reindex; the machine kills dewey past it (CPU-only embedding is slow)
 
 # dispatchable tasks, one table each (see "Configuring dispatch" above).
 # All five are built in with these commands; a table only needs the keys
