@@ -21,3 +21,13 @@ func TestDispatchOptionsCarryLabelRules(t *testing.T) {
 		t.Errorf("lap2 rules: %+v", m)
 	}
 }
+
+// remove_unmanaged and keep reach the dispatcher's machine.
+func TestDispatchOptionsRemoveUnmanaged(t *testing.T) {
+	cfg := config.Default()
+	cfg.Machines = []config.Machine{{Name: "lap1", RemoveUnmanaged: true, Keep: []string{"jflowers/x"}}}
+	o := dispatchOptions(cfg, t.TempDir(), nil, nil)
+	if m := o.Machines[0]; !m.RemoveUnmanaged || !slices.Equal(m.Keep, []string{"jflowers/x"}) {
+		t.Errorf("machine = %+v", m)
+	}
+}

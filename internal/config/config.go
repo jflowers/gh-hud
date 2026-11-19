@@ -430,6 +430,15 @@ type Machine struct {
 	// any of them. Matching ignores case.
 	Labels        []string `toml:"labels"`
 	ExcludeLabels []string `toml:"exclude_labels"`
+	// RemoveUnmanaged: upkeep removes what isn't the fleet's from the
+	// machine's ghws root (#161): every workspace dir except fleet
+	// instances, fleet orgs' plain dirs (ghws clones new instances from
+	// them) and Keep. Never the hub, which isn't a [[machines]] entry.
+	RemoveUnmanaged bool `toml:"remove_unmanaged"`
+	// Keep: paths under ghws_root removal leaves, a workspace dir
+	// ("jflowers") or one repo in it ("jflowers/opencode-session-notes"),
+	// e.g. the opencode plugins the machine loads from there.
+	Keep []string `toml:"keep"`
 }
 
 // IsEnabled reports whether the machine participates in dispatch.
@@ -837,8 +846,45 @@ func validateMachines(ms []Machine) error {
 			return fmt.Errorf("machines[%d]: duplicate name %q", i, m.Name)
 		}
 		seen[m.Name] = true
+		if m.RemoveUnmanaged && isLoopback(m.SSH) {
+			return fmt.Errorf("machines[%d]: remove_unmanaged: ssh %q is this machine, and the hub keeps what it has", i, m.SSH)
+		}
+		for _, k := range m.Keep {
+			if !validKeep(k) {
+				return fmt.Errorf("machines[%d]: keep %q: want a workspace dir or workspace/repo under ghws_root", i, k)
+			}
+		}
 	}
 	return nil
+}
+
+// isLoopback reports whether an ssh target ([user@]host) names this
+// machine by a loopback name.
+func isLoopback(target string) bool {
+	host := target
+	if _, h, ok := strings.Cut(target, "@"); ok {
+		host = h
+	}
+	switch strings.ToLower(strings.Trim(host, "[]")) {
+	case "localhost", "127.0.0.1", "::1":
+		return true
+	}
+	return false
+}
+
+// validKeep reports whether k is "<workspace>" or "<workspace>/<repo>":
+// one or two plain path components.
+func validKeep(k string) bool {
+	parts := strings.Split(k, "/")
+	if len(parts) > 2 {
+		return false
+	}
+	for _, p := range parts {
+		if p == "" || p == "." || p == ".." || strings.ContainsAny(p, "\t\n") {
+			return false
+		}
+	}
+	return true
 }
 
 // normalizeLabelRules tidies a machine's labels and exclude_labels: names

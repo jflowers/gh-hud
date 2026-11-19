@@ -230,8 +230,9 @@ public struct WorkspaceRow: Identifiable, Equatable, Sendable {
 }
 
 public enum WorkspaceList {
+    /// The checkouts; a worker's unmanaged-removal row isn't one.
     public static func rows(_ s: Ghhud_V1_Snapshot) -> [WorkspaceRow] {
-        s.workspaces.map(WorkspaceRow.init)
+        s.workspaces.filter { !$0.unmanaged }.map(WorkspaceRow.init)
     }
 
     /// Checkouts the next run could use: the sidebar's count.

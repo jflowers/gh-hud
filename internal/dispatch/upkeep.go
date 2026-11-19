@@ -378,7 +378,7 @@ func (d *Dispatcher) upkeepingDirs() map[string]string {
 // upkeepDue reports whether a checkout from the Workspaces read is idle
 // and hasn't been kept up within upkeepEvery.
 func upkeepDue(h CheckoutHealth, now time.Time) bool {
-	if h.Err != "" || h.Busy != "" || h.Reindexing || h.Upkeeping {
+	if h.Unmanaged || h.Err != "" || h.Busy != "" || h.Reindexing || h.Upkeeping {
 		return false
 	}
 	return h.LastUpkeep == nil || now.Sub(h.LastUpkeep.At) >= upkeepEvery
@@ -386,8 +386,10 @@ func upkeepDue(h CheckoutHealth, now time.Time) bool {
 
 // StartUpkeep keeps up, in the background, the checkouts of a Workspaces
 // read that are due: one sweep per machine, one checkout after another,
-// and none on a machine whose sweep is still running. Only the dispatch
-// owner keeps up; with mode off it does nothing.
+// and none on a machine whose sweep is still running. A worker with
+// remove_unmanaged then removes what isn't the fleet's, when that's due
+// (upkeep_unmanaged.go). Only the dispatch owner keeps up; with mode off
+// it does nothing.
 func (d *Dispatcher) StartUpkeep(ws []CheckoutHealth) {
 	if d.o().Upkeep == config.UpkeepOff || !d.owns() {
 		return
@@ -397,6 +399,11 @@ func (d *Dispatcher) StartUpkeep(ws []CheckoutHealth) {
 	for _, h := range ws {
 		if upkeepDue(h, now) {
 			due[h.Machine] = append(due[h.Machine], h.Dir)
+		}
+	}
+	for _, m := range d.remoteMachines() {
+		if _, ok := due[m.key()]; !ok && d.unmanagedDue(m, now) {
+			due[m.key()] = nil
 		}
 	}
 	for key, dirs := range due {
@@ -411,6 +418,11 @@ func (d *Dispatcher) StartUpkeep(ws []CheckoutHealth) {
 			for _, dir := range dirs {
 				ctx, cancel := context.WithTimeout(context.Background(), upkeepTimeout)
 				_, _ = d.upkeepCheckout(ctx, m, dir)
+				cancel()
+			}
+			if d.unmanagedDue(m, time.Now()) {
+				ctx, cancel := context.WithTimeout(context.Background(), unmanagedTimeout)
+				_, _ = d.removeUnmanaged(ctx, m)
 				cancel()
 			}
 		}()

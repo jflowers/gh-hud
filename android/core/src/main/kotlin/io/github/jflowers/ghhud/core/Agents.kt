@@ -241,7 +241,8 @@ public data class WorkspaceRow(
 }
 
 public object WorkspaceList {
-    public fun rows(s: Snapshot): List<WorkspaceRow> = s.workspacesList.map { WorkspaceRow.of(it) }
+    /** The checkouts; a worker's unmanaged-removal row isn't one. */
+    public fun rows(s: Snapshot): List<WorkspaceRow> = s.workspacesList.filter { !it.unmanaged }.map { WorkspaceRow.of(it) }
 
     /** Checkouts the next run could use: the count on the tab. */
     public fun ready(s: Snapshot): Int = rows(s).count { it.ready }

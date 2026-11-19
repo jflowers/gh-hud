@@ -294,8 +294,12 @@ func (a *Alerter) upkeepAlerts(ws []dispatch.CheckoutHealth, since time.Time) []
 		if !a.notify {
 			continue
 		}
-		out = append(out, Alert{Type: AlertUpkeepFailed, Ref: where,
-			Text: "Upkeep failed in " + where + ": " + truncate(u.Err, 120)})
+		text := "Upkeep failed in " + where + ": " + truncate(u.Err, 120)
+		if h.Unmanaged {
+			where = h.Machine + ":" + h.Dir
+			text = "Removing what isn't the fleet's on " + h.Machine + ": " + truncate(u.Err, 160)
+		}
+		out = append(out, Alert{Type: AlertUpkeepFailed, Ref: where, Text: text})
 	}
 	return out
 }

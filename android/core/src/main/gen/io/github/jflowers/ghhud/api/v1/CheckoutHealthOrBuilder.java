@@ -405,4 +405,15 @@ public interface CheckoutHealthOrBuilder extends
    */
   com.google.protobuf.ByteString
       getIndexReasonsBytes(int index);
+
+  /**
+   * <pre>
+   * Not a checkout: a worker's ghws root (dir) whose last_upkeep is its
+   * last removal of what isn't the fleet's ([[machines]] remove_unmanaged).
+   * </pre>
+   *
+   * <code>bool unmanaged = 29 [json_name = "unmanaged"];</code>
+   * @return The unmanaged.
+   */
+  boolean getUnmanaged();
 }

@@ -275,3 +275,20 @@ func TestWorkspacesAlertUpkeepFailures(t *testing.T) {
 		t.Errorf("a failure from before the hub started: %+v", got)
 	}
 }
+
+// A worker's removal of what isn't the fleet's that kept work alerts once,
+// naming the machine.
+func TestWorkspacesAlertUnmanagedKept(t *testing.T) {
+	start := time.Now()
+	u := &dispatch.UpkeepResult{At: start.Add(time.Minute), Err: "kept, work found nowhere else: jflowers/x (jflowers/x: 1 uncommitted, 0 on no remote)"}
+	row := dispatch.CheckoutHealth{Machine: "lap1", Workspace: "unmanaged", Dir: "~/Projects/github", Unmanaged: true, LastUpkeep: u}
+	a := NewAlerter(&config.Config{Notify: true})
+	got := a.Workspaces([]dispatch.CheckoutHealth{row}, start)
+	if len(got) != 1 || got[0].Type != AlertUpkeepFailed || got[0].Ref != "lap1:~/Projects/github" ||
+		got[0].Text != "Removing what isn't the fleet's on lap1: "+u.Err {
+		t.Fatalf("alerts = %+v", got)
+	}
+	if got := a.Workspaces([]dispatch.CheckoutHealth{row}, start); len(got) != 0 {
+		t.Errorf("again: %+v", got)
+	}
+}

@@ -1234,6 +1234,41 @@ mode = "auto"      # "report" (default): fetch and record what it would do (back
 keep_backups = 14  # days branch pruning keeps upkeep's wip/ and backup/ branches on the forks
 ```
 
+#### Removing what isn't the fleet's
+
+A worker can carry checkouts nothing uses: other orgs' workspaces
+(`jflowers/`, `Opencode-DCP/`) next to the fleet's instances. With
+`remove_unmanaged = true` on a `[[machines]]` entry, that worker's upkeep
+sweep (at most hourly) removes every directory under its `ghws_root`
+except:
+
+- fleet instances (`org@label` of an org in `orgs`);
+- the fleet orgs' plain dirs (`unbound-force/`), which ghws clones new
+  instances from;
+- the machine's `keep` paths: a workspace dir, or one repo in it (for
+  example the opencode plugins the machine loads from there);
+- hidden entries and plain files.
+
+A repo is removed only when it, and every repo under it, holds nothing
+that exists nowhere else: no uncommitted files (Dewey's cache churn aside)
+and no commits, stashes or tags no remote has. A repo that does, or a dir
+that isn't a git repo, is kept, and the upkeep alert names it. One a process
+is working in waits for the next sweep. A workspace dir goes once nothing
+in it is kept. `[upkeep] mode` applies: `report` lists what it would remove,
+`auto` removes it. The Workspaces tab shows each such worker's last
+removal as an `unmanaged` row.
+
+The hub never removes anything. It isn't a `[[machines]]` entry, the switch
+is refused for a loopback `ssh`, and the removal refuses to run on a host
+named like the hub.
+
+```toml
+[[machines]]
+name = "lap1"
+remove_unmanaged = true
+keep = ["Opencode-DCP/opencode-dynamic-context-pruning", "jflowers/opencode-session-search", "jflowers/opencode-session-notes"]
+```
+
 ## Configuring dispatch
 
 Dispatch is configured in three layers, all in `config.toml`:

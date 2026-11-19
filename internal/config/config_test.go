@@ -594,3 +594,36 @@ func TestUpkeepMode(t *testing.T) {
 		t.Errorf("bad mode: %v", err)
 	}
 }
+
+// remove_unmanaged and keep load per machine; the switch is refused for a
+// loopback ssh target (the hub keeps what it has), and keep takes only
+// "<workspace>" or "<workspace>/<repo>".
+func TestLoadRemoveUnmanaged(t *testing.T) {
+	load := func(body string) (*Config, error) {
+		path := filepath.Join(t.TempDir(), "config.toml")
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return Load(path)
+	}
+	c, err := load("[[machines]]\nname = \"lap1\"\nremove_unmanaged = true\nkeep = [\"jflowers/opencode-session-notes\", \"Opencode-DCP\"]\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m := c.Machines[0]; !m.RemoveUnmanaged || len(m.Keep) != 2 || m.Keep[1] != "Opencode-DCP" {
+		t.Errorf("machine = %+v", m)
+	}
+	for _, ssh := range []string{"localhost", "me@127.0.0.1", "[::1]", "LOCALHOST"} {
+		if _, err := load("[[machines]]\nname = \"self\"\nssh = \"" + ssh + "\"\nremove_unmanaged = true\n"); err == nil || !strings.Contains(err.Error(), "remove_unmanaged") {
+			t.Errorf("ssh %s: %v, want refused", ssh, err)
+		}
+	}
+	if _, err := load("[[machines]]\nname = \"self\"\nssh = \"localhost\"\n"); err != nil {
+		t.Errorf("a loopback machine without the switch: %v", err)
+	}
+	for _, k := range []string{"", "a/b/c", "../x", "a/", "/a", "a/.."} {
+		if _, err := load("[[machines]]\nname = \"lap1\"\nkeep = [\"" + k + "\"]\n"); err == nil {
+			t.Errorf("keep %q loaded", k)
+		}
+	}
+}
