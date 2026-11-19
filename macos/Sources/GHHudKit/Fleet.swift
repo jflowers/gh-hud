@@ -20,6 +20,12 @@ public struct FleetRow: Identifiable, Equatable, Sendable {
     /// How long it has waited for agents to drain.
     public let waited: TimeInterval?
     public let error: String
+    /// The machine's Dewey reindex: a running pass or rollout reindex
+    /// ("reindexing 3/12"), else the latest one's summary.
+    public let dewey: String
+    public let deweyTone: Tone
+    /// The machine as the hub sent it, for the detail.
+    public let machine: Ghhud_V1_FleetMachine
 
     public init(_ m: Ghhud_V1_FleetMachine, target: String, usage: [Ghhud_V1_MachineUsage]) {
         name = m.name
@@ -42,6 +48,8 @@ public struct FleetRow: Identifiable, Equatable, Sendable {
         let secs = TimeInterval(m.waited.seconds) + TimeInterval(m.waited.nanos) / 1e9
         waited = m.state == "draining" && secs > 0 ? secs : nil
         error = m.lastError.split(whereSeparator: \.isNewline).joined(separator: " ")
+        (dewey, deweyTone) = DeweyFleet.column(m)
+        machine = m
     }
 }
 
@@ -56,7 +64,7 @@ public enum FleetList {
         switch state {
         case "current": return .good
         case "pending": return .muted
-        case "draining", "applying", "verifying": return .pending
+        case "draining", "applying", "reindexing", "verifying": return .pending
         case "failed": return .bad
         default: return .warn // unreachable, skipped
         }

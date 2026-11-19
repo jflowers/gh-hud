@@ -621,6 +621,206 @@ do {
     s.fleet.failed = "oak"
     check(FleetList.state(s.fleet) == ("failed on oak", .bad), "failed outranks paused")
     check(FleetList.ciTone("no checks") == .warn && FleetList.ciTone("green") == .good && FleetList.ciTone("") == .muted, "CI tones")
+    check(FleetList.tone("reindexing") == .pending, "a rollout's reindex is in progress, not a warning")
+}
+
+// MARK: dewey index (#139)
+
+do {
+    let now = Date(timeIntervalSince1970: 5_000_000)
+    let day: TimeInterval = 86400
+    func health(_ ws: String, _ change: (inout Ghhud_V1_CheckoutHealth) -> Void) -> Ghhud_V1_CheckoutHealth {
+        var h = Ghhud_V1_CheckoutHealth()
+        h.workspace = ws
+        h.repo = "acme/r"
+        h.dir = "/w/" + ws
+        h.branch = "main"
+        h.defaultBranch = "main"
+        change(&h)
+        return h
+    }
+    func status(_ h: inout Ghhud_V1_CheckoutHealth, pages: Int64, blocks: Int64, embedded: Int64) {
+        h.indexBuilt = Google_Protobuf_Timestamp(date: now.addingTimeInterval(-2 * day))
+        h.indexStatusAt = Google_Protobuf_Timestamp(date: now.addingTimeInterval(-300))
+        h.indexPages = pages
+        h.indexBlocks = blocks
+        h.indexEmbeddings = embedded
+    }
+    let format = "index format 0, this Dewey writes 1"
+    let hs = [
+        health("ok") { status(&$0, pages: 12, blocks: 40, embedded: 40); $0.index = "ok"; $0.indexDeweyVersion = "3.9.0"; $0.indexFormat = 1 },
+        health("old") {
+            status(&$0, pages: 12, blocks: 40, embedded: 40)
+            $0.index = "reindex needed: " + format
+            $0.indexReasons = [format]
+        },
+        health("bare") { $0.index = "reindex needed: unindexed"; $0.indexReasons = ["unindexed"] },
+        health("two") {
+            status(&$0, pages: 3, blocks: 10, embedded: 0)
+            $0.index = "reindex needed: no embeddings, " + format
+            $0.indexReasons = ["no embeddings", format]
+        },
+        health("noembed") {
+            status(&$0, pages: 3, blocks: 10, embedded: 0)
+            $0.index = "machine problem: no embeddings, and the granite embedding model isn't available"
+        },
+        health("old-dewey") { $0.index = "machine problem: dewey 3.8.0 is older than 3.9.0: can't tell whether the index needs a reindex" },
+        health("broken") { $0.index = "check failed: dewey status: exit 1" },
+        health("busy") { $0.index = "reindex needed: unindexed"; $0.indexReasons = ["unindexed"]; $0.reindexing = true },
+        health("plain") { $0.index = "none" },
+        health("unread") { _ in },
+        health("fresh") { $0.index = "unchecked"; $0.indexBuilt = Google_Protobuf_Timestamp(date: now.addingTimeInterval(-3600)) },
+    ]
+    var s = Ghhud_V1_Snapshot()
+    s.workspaces = hs
+    let ws = WorkspaceList.rows(s, now: now)
+    check(ws.map(\.index) == ["ok 2d 100%", "old format 2d 100%", "unindexed", "no embeddings +1 2d 0%",
+                              "no embeddings 2d 0%", "dewey too old", "check failed", "reindexing…", "—", "—",
+                              "unchecked 1h"],
+          "index column \(ws.map(\.index))")
+    check(ws.map(\.indexTone) == [.good, .pending, .pending, .pending, .warn, .warn, .bad, .pending, .muted, .muted, .muted],
+          "index tones")
+    check(ws[1].state == "ready" && ws[1].ready, "a reindex need is still dispatchable")
+    check(ws[7].state == "reindexing" && ws[7].tone == .pending && !ws[7].ready, "reindexing takes no dispatch")
+    let byIndex = ws.sorted(using: KeyPathComparator(\.indexRank)).map(\.workspace)
+    check(byIndex == ["broken", "noembed", "old-dewey", "old", "bare", "two", "busy", "fresh", "ok", "plain", "unread"],
+          "index sort: most in need first \(byIndex)")
+    check(TableFilter.rows(ws, query: "index:\"old format\"", kept: []).map(\.workspace) == ["old"], "filter index:old format")
+    check(TableFilter.rows(ws, query: "index:reindexing", kept: []).map(\.workspace) == ["busy"], "filter index:reindexing")
+    check(TableFilter.rows(ws, query: "", kept: [ColumnFilter("index", "ok", exclude: true)]).count == 10, "hide ok")
+
+    // Reasons from the structured list, not the string: Dewey's contain commas.
+    check(DeweyIndex.reasons(hs[3]) == ["no embeddings", format], "structured reasons \(DeweyIndex.reasons(hs[3]))")
+    var old = hs[3]
+    old.indexReasons = []
+    check(DeweyIndex.reasons(old) == ["no embeddings", "index format 0", "this Dewey writes 1"], "an older hub's split string")
+    let p = DeweyIndex.parts("reindex needed: unindexed; machine problem: no dewey binary found")
+    check(p.reasons == ["unindexed"] && p.machine == "no dewey binary found" && p.failed.isEmpty, "parts")
+    check(DeweyIndex.short("dewey says so") == "dewey: reindex", "an unknown Dewey reason")
+
+    let d = DeweyIndex.detail(hs[3], now: now)
+    check(d?.verdict == "Needs a reindex (still dispatchable)" && d?.tone == .pending, "detail verdict")
+    check(d?.reasons.map(\.reason) == ["no embeddings", format], "each reason on its own line")
+    check(d?.reasons.first?.means == "keyword search only: semantic search finds nothing", "what a reason means")
+    check(d?.facts.map(\.key) == ["built", "contents"], "detail facts \(d?.facts.map(\.key) ?? [])")
+    check(d?.facts.first?.value.hasSuffix("(2d ago), by a Dewey before 3.9.0 (format 0)") == true, "built by an old Dewey: \(d?.facts.first?.value ?? "")")
+    check(d?.facts.last?.value == "3 pages · 10 blocks · 0 embedded (0%), as of dewey status 5m ago", "contents: \(d?.facts.last?.value ?? "")")
+    check(DeweyIndex.detail(hs[0], now: now)?.facts.first?.value.hasSuffix("(2d ago), format 1 by 3.9.0") == true, "built by")
+    let m = DeweyIndex.detail(hs[4], now: now)
+    check(m?.tone == .warn && m?.problems == ["machine problem: no embeddings, and the granite embedding model isn't available"]
+          && m?.verdict.contains("wouldn't help") == true, "machine problem detail")
+    check(DeweyIndex.detail(hs[8], now: now)?.verdict == "Not a Dewey vault", "not a vault")
+    check(DeweyIndex.detail(hs[9], now: now) == nil, "not read: no section")
+    check(DeweyIndex.detail(hs[7], now: now)?.verdict.hasPrefix("Reindexing now") == true, "reindexing verdict")
+
+    var r = Ghhud_V1_ReindexResult()
+    r.at = Google_Protobuf_Timestamp(date: now.addingTimeInterval(-7200))
+    r.duration.seconds = 192
+    r.reasons = [format]
+    r.deweyVersion = "3.9.0"
+    r.indexFormat = 1
+    let line = DeweyIndex.reindexLine(r, now: now)
+    check(line.hasPrefix("ok in 3m12s, ") && line.hasSuffix(" (2h ago), for \(format); now format 1 by 3.9.0"), "last reindex: \(line)")
+    r.error = "dewey reindex: boom"
+    r.duration.seconds = 20
+    check(DeweyIndex.outcome(r) == "failed after 20s: dewey reindex: boom", "failed reindex")
+    r.skipped = "dewey.lock held"
+    check(DeweyIndex.outcome(r) == "skipped: dewey.lock held", "skipped reindex")
+    check(DeweyIndex.goDuration(0) == "0s" && DeweyIndex.goDuration(3723) == "1h2m3s" && DeweyIndex.goDuration(180) == "3m0s",
+          "Go durations")
+    var failed = hs[0]
+    failed.lastReindex = r
+    failed.lastReindex.skipped = ""
+    check(WorkspaceRow(failed, now: now).notes == "reindex failed", "a failed reindex is a note")
+    check(DeweyIndex.detail(failed, now: now)?.facts.last?.key == "last reindex", "last reindex in the detail")
+
+    // A run's index health, next to Pushed.
+    check(DeweyIndex.run("") == nil, "no health: no section")
+    check(DeweyIndex.run("ok")?.tone == .good, "ok run")
+    let rh = DeweyIndex.run("reindex needed: unindexed; machine problem: no dewey binary found")
+    check(rh?.lines == ["reindex needed: unindexed", "machine problem: no dewey binary found"] && rh?.tone == .warn, "run health lines")
+    check(DeweyIndex.run("check failed: x")?.tone == .bad && DeweyIndex.run("reindex needed: unindexed")?.tone == .pending, "run tones")
+}
+
+// MARK: dewey in the fleet (#139)
+
+do {
+    let now = Date(timeIntervalSince1970: 6_000_000)
+    var m = Ghhud_V1_FleetMachine()
+    m.name = "lap2"
+    m.state = "current"
+    check(DeweyFleet.column(m) == ("", .muted) && DeweyFleet.lines(m, now: now).isEmpty, "no reindex, nothing shown")
+    m.state = "reindexing"
+    m.reindexDone = 7
+    m.reindexTotal = 15
+    m.reindexNote = "dewey pin changed (1.0.0 → 1.1.0): reindexing"
+    m.reindexFailures = ["/w/acme@a/r: failed after 3s:\ndewey reindex: boom"]
+    check(DeweyFleet.column(m) == ("reindexing 7/15", .pending), "rollout reindex progress")
+    check(DeweyFleet.lines(m, now: now).map(\.text) == ["rollout reindex: reindexing 7/15", "✗ /w/acme@a/r: failed after 3s: dewey reindex: boom"],
+          "rollout lines \(DeweyFleet.lines(m, now: now).map(\.text))")
+    m.state = "current"
+    m.reindexNote = "reindexed 14/15, 1 failed"
+    check(DeweyFleet.column(m) == ("reindexed 14/15, 1 failed", .bad), "rollout summary")
+
+    var p = Ghhud_V1_DeweyPass()
+    p.running = true
+    p.done = 3
+    p.total = 12
+    p.started = Google_Protobuf_Timestamp(date: now.addingTimeInterval(-240))
+    m.deweyPass = p
+    check(DeweyFleet.column(m) == ("reindexing 3/12", .pending), "a running pass outranks the rollout's summary")
+    check(DeweyFleet.lines(m, now: now).last?.text == "dewey pass: reindexing 3/12 · started 4m ago", "running pass line")
+    check(DeweyFleet.running(m), "running")
+    p.running = false
+    p.done = 5
+    p.total = 5
+    p.reindexed = 3
+    p.note = "reindexed 3/5, 1 skipped, 1 failed"
+    p.failed = ["/h/acme@b/r: failed after 2s: dewey reindex: boom"]
+    p.skipped = ["/h/acme@a/r: dewey.lock held"]
+    p.current = ["/h/acme@c/r"]
+    p.forced = true
+    p.ended = Google_Protobuf_Timestamp(date: now.addingTimeInterval(-120))
+    m.deweyPass = p
+    check(DeweyFleet.column(m) == ("reindexed 3/5, 1 skipped, 1 failed", .bad), "finished pass summary")
+    check(Array(DeweyFleet.lines(m, now: now).map(\.text).dropFirst(2)) == [
+        "dewey pass (forced): reindexed 3/5, 1 skipped, 1 failed · 2m ago",
+        "✗ /h/acme@b/r: failed after 2s: dewey reindex: boom",
+        "– /h/acme@a/r: dewey.lock held",
+        "1 vault up to date",
+    ], "pass lines \(DeweyFleet.lines(m, now: now).map(\.text))")
+    check(!DeweyFleet.running(m), "not running")
+    var s = Ghhud_V1_Snapshot()
+    s.fleet.machines = [m]
+    let row = FleetList.rows(s)[0]
+    check(row.dewey == "reindexed 3/5, 1 skipped, 1 failed" && row.deweyTone == .bad, "fleet row's Dewey column")
+    check(TableFilter.rows([row], query: "dewey:failed", kept: []).count == 1, "filter dewey:")
+
+    // What asking did: where it started, and the hub's refusals as it said them.
+    var resp = Ghhud_V1_DeweyReindexResponse()
+    resp.machines = ["lap1"]
+    resp.refused = ["lap2: a pass already runs there"]
+    check(DeweyFleet.said(resp, cancel: false, force: false)
+          == ("Reindexing the Dewey vaults that need it on lap1 · refused: lap2: a pass already runs there", false),
+          "started and refused: \(DeweyFleet.said(resp, cancel: false, force: false))")
+    resp.machines = []
+    check(DeweyFleet.said(resp, cancel: false, force: true) == ("refused: lap2: a pass already runs there", true), "only refused is bad")
+    check(DeweyFleet.said(Ghhud_V1_DeweyReindexResponse(), cancel: true, force: false) == ("No Dewey pass to cancel", true), "nothing to cancel")
+    resp.machines = ["lap1", "lap2"]
+    resp.refused = []
+    check(DeweyFleet.said(resp, cancel: true, force: false).0 == "Cancelled the Dewey pass on lap1, lap2", "cancelled")
+
+    let ask = DeweyFleet.Ask(machine: "lap2", force: true)
+    check(ask.title == "Reindex every Dewey vault on lap2?" && ask.button == "Reindex Every Vault", "forced ask")
+    check(DeweyFleet.Ask(machine: nil, force: false).title == "Reindex the Dewey vaults that need it on every machine?", "every machine ask")
+
+    check(Links.alertTitle(.reindexFailed) == "A Dewey reindex failed" && Links.paneForAlert(.reindexFailed) == "workspaces",
+          "reindex-failed alert opens Workspaces")
+    var alert = Ghhud_V1_Alert()
+    alert.type = .reindexFailed
+    alert.ref = "lap2:r@hoopoe"
+    check(Links.forAlert(alert) == nil, "a reindex alert has no GitHub link")
+    check(Links.paneForAlert(.toolRelease) == "toolkit" && Links.paneForAlert(.ready) == nil, "other alerts' panes")
 }
 
 // MARK: summary and links

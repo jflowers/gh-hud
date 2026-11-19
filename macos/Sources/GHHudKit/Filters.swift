@@ -192,7 +192,7 @@ extension AgentRow: ColumnFilterable {
 }
 
 extension WorkspaceRow: ColumnFilterable {
-    public static let filterColumns = ["where", "workspace", "repo", "branch", "state"]
+    public static let filterColumns = ["where", "workspace", "repo", "branch", "state", "index"]
 
     public func filterValues(_ column: String) -> [String] {
         switch column {
@@ -201,19 +201,23 @@ extension WorkspaceRow: ColumnFilterable {
         case "repo": return [repo]
         case "branch": return branch.isEmpty ? [] : [branch]
         case "state": return [state]
+        case "index":
+            let st = DeweyIndex.state(health).0.replacingOccurrences(of: "…", with: "")
+            return st.isEmpty ? [] : [st]
         default: return []
         }
     }
 }
 
 extension FleetRow: ColumnFilterable {
-    public static let filterColumns = ["machine", "reached", "state"]
+    public static let filterColumns = ["machine", "reached", "state", "dewey"]
 
     public func filterValues(_ column: String) -> [String] {
         switch column {
         case "machine": return [name]
         case "reached": return [reach]
         case "state": return [state]
+        case "dewey": return dewey.isEmpty ? [] : [dewey]
         default: return []
         }
     }

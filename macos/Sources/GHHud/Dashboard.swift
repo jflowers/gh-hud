@@ -38,6 +38,9 @@ final class DashboardState: ObservableObject {
     @Published var releaseBusy = false
     @Published var releaseError: String?
     @Published var confirmRollOut: ToolRow?
+    @Published var fleetSelection: FleetRow.ID?
+    /// The Dewey reindex pass waiting for you to confirm it.
+    @Published var confirmDewey: DeweyFleet.Ask?
     /// Each table's sort, from its clicked headers; empty is the hub's order.
     @Published var itemSort: [KeyPathComparator<ItemRow>] = []
     @Published var agentSort: [KeyPathComparator<AgentRow>] = []
