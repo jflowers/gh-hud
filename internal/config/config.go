@@ -188,7 +188,7 @@ func Default() *Config {
 		DispatchMode:   "run",
 		Dispatch:       DefaultDispatch(),
 		DeweyReindex:   DeweyReindexReport,
-		Upkeep:         UpkeepConfig{Mode: UpkeepReport},
+		Upkeep:         UpkeepConfig{Mode: UpkeepReport, KeepBackups: 14},
 		Fleet:          DefaultFleet(),
 		Hub:            HubConfig{Listen: "127.0.0.1:0"},
 
@@ -260,6 +260,10 @@ type UpkeepConfig struct {
 	// Mode: "off", "report" (the default: record what upkeep would do)
 	// or "auto" (do it).
 	Mode string `toml:"mode"`
+	// KeepBackups is how many days branch pruning keeps the wip/ and
+	// backup/ branches upkeep pushes to the forks (default 14; a wip
+	// branch goes sooner once its item is closed or merged).
+	KeepBackups int `toml:"keep_backups"`
 }
 
 // [upkeep] mode values.
@@ -578,6 +582,9 @@ func Load(path string) (*Config, error) {
 	case DeweyReindexOff, DeweyReindexReport, DeweyReindexAuto:
 	default:
 		return nil, fmt.Errorf("%s: dispatch dewey_reindex %q: want off, report or auto", path, cfg.DeweyReindex)
+	}
+	if cfg.Upkeep.KeepBackups < 1 {
+		cfg.Upkeep.KeepBackups = 14
 	}
 	switch cfg.Upkeep.Mode {
 	case "":

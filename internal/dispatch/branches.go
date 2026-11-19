@@ -657,8 +657,16 @@ func (d *Dispatcher) sweepForks(ctx context.Context, repos []string, checkedOut 
 		}
 		var names []string
 		byName := map[string]forkRef{}
+		now := time.Now()
 		for _, r := range fi.refs {
 			if r.name == fi.def || checkedOut[repo+"\x00"+r.name] {
+				continue
+			}
+			if isUpkeepBranch(r.name) {
+				// Upkeep's backups have no PR (upkeep_prune.go).
+				if p, ok := d.pruneUpkeepBranch(ctx, fi, r, apply, now); ok {
+					remote = append(remote, p)
+				}
 				continue
 			}
 			names = append(names, r.name)
@@ -806,20 +814,27 @@ func (d *Dispatcher) AutoPruneBranches(ctx context.Context) []string {
 // Forks kept for a settled reason are left out: they come up on every
 // sweep, and `gh-hud branches` still lists them.
 func (s BranchSweep) notice() []string {
-	local, remote := 0, 0
+	local, remote, backups := 0, 0, 0
 	for _, p := range s.Local {
 		if p.Action == actPruned {
 			local++
 		}
 	}
 	for _, p := range s.Remote {
-		if p.Action == actPruned {
+		switch {
+		case p.Action != actPruned:
+		case isUpkeepBranch(p.Branch):
+			backups++
+		default:
 			remote++
 		}
 	}
 	var msgs []string
 	if local+remote > 0 {
 		msgs = append(msgs, fmt.Sprintf("pruned %d local branch(es) and %d fork branch(es) whose PR is done", local, remote))
+	}
+	if backups > 0 {
+		msgs = append(msgs, fmt.Sprintf("pruned %d upkeep backup branch(es) no longer needed", backups))
 	}
 	if n := len(s.Worktrees); n > 0 {
 		msgs = append(msgs, fmt.Sprintf("dropped %d worktree record(s) whose folder was gone", n))

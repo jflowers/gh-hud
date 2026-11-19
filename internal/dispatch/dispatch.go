@@ -269,6 +269,9 @@ type Options struct {
 	// "report" (default) records what it would do, "auto" does it,
 	// "off" skips it.
 	Upkeep string
+	// KeepBackups is how long branch pruning keeps upkeep's wip/ and
+	// backup/ branches on the forks (upkeep_prune.go); 0 is 14 days.
+	KeepBackups time.Duration
 }
 
 // Dispatcher launches and tracks agent sessions.

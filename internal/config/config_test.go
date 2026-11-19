@@ -550,8 +550,14 @@ func TestUpkeepMode(t *testing.T) {
 		}
 		return Load(p)
 	}
-	if cfg, err := load(""); err != nil || cfg.Upkeep.Mode != UpkeepReport {
-		t.Errorf("default = %+v, %v; want report", cfg, err)
+	if cfg, err := load(""); err != nil || cfg.Upkeep.Mode != UpkeepReport || cfg.Upkeep.KeepBackups != 14 {
+		t.Errorf("default = %+v, %v; want report, keeping backups 14 days", cfg.Upkeep, err)
+	}
+	if cfg, err := load("[upkeep]\nkeep_backups = 3\n"); err != nil || cfg.Upkeep.KeepBackups != 3 {
+		t.Errorf("keep_backups 3 = %+v, %v", cfg.Upkeep, err)
+	}
+	if cfg, err := load("[upkeep]\nkeep_backups = 0\n"); err != nil || cfg.Upkeep.KeepBackups != 14 {
+		t.Errorf("keep_backups 0 = %+v, %v; want the default", cfg.Upkeep, err)
 	}
 	if cfg, err := load("[upkeep]\nmode = \"auto\"\n"); err != nil || cfg.Upkeep.Mode != UpkeepAuto {
 		t.Errorf("auto = %v, %v", cfg.Upkeep, err)
