@@ -24,17 +24,28 @@ func setupLearnings(t *testing.T, work string) (origin, argv string) {
 }
 
 // fakeGH puts a gh on PATH that records its argv in the returned file and
-// prints a PR URL.
+// prints a PR URL. `gh pr list` prints the state setPRState gave it
+// (OPEN until then), for every branch.
 func fakeGH(t *testing.T) (argv string) {
 	t.Helper()
 	bin := t.TempDir()
 	argv = filepath.Join(bin, "argv")
-	writeFile(t, filepath.Join(bin, "gh"), "#!/bin/sh\necho \"$@\" >>"+argv+"\necho https://github.com/acme/r/pull/7\n")
+	state := filepath.Join(bin, "state")
+	writeFile(t, filepath.Join(bin, "gh"), "#!/bin/sh\necho \"$@\" >>"+argv+"\n"+
+		"if [ \"$1 $2\" = 'pr list' ]; then cat "+state+" 2>/dev/null || echo OPEN; exit 0; fi\n"+
+		"echo https://github.com/acme/r/pull/7\n")
 	if err := os.Chmod(filepath.Join(bin, "gh"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	return argv
+}
+
+// setPRState sets what fakeGH's `gh pr list` reports for a learnings
+// branch's PR: OPEN, MERGED, CLOSED, or "" for no PR.
+func setPRState(t *testing.T, argv, state string) {
+	t.Helper()
+	writeFile(t, filepath.Join(filepath.Dir(argv), "state"), state+"\n")
 }
 
 // writeLearning writes an untracked learning (its directory is untracked
@@ -95,7 +106,7 @@ func TestInspectOpensLearningsPR(t *testing.T) {
 		t.Errorf("gh argv = %q", data)
 	}
 
-	// More learnings the same day wait for tomorrow's branch.
+	// More learnings wait while the day's PR is open (fakeGH: OPEN).
 	writeLearning(t, work, "git-3.md")
 	in = d.inspect(ctx, d.localMachine(), r)
 	if in.err != "" || len(in.pushed) != 0 {
@@ -168,7 +179,7 @@ func TestInspectOpensOverlayLearningsPR(t *testing.T) {
 		t.Errorf("gh argv = %q", data)
 	}
 
-	// More overlay learnings the same day wait for tomorrow's branch.
+	// More overlay learnings wait while the day's PR is open.
 	writeLearning(t, overlay, "o-3.md")
 	in = d.inspect(ctx, d.localMachine(), r)
 	if in.err != "" || len(in.pushed) != 0 {
@@ -245,4 +256,100 @@ func mustRead(t *testing.T, path string) []byte {
 		t.Fatal(err)
 	}
 	return data
+}
+
+// Learnings written after the day's PR merged or closed go on a new PR
+// the same day, on the day's branch with a suffix (#15), and only the new
+// files are on it.
+func TestLearningsAfterDonePRGoOnNextBranch(t *testing.T) {
+	for _, done := range []string{"MERGED", "CLOSED"} {
+		t.Run(done, func(t *testing.T) {
+			_, work := setupClone(t)
+			origin, argv := setupLearnings(t, work)
+			d := newTestDispatcher(t, "refuse")
+			d.opts.LearningsPR = true
+			r := Record{Dir: work, Repo: "acme/r", Workspace: "r@chai"}
+			ctx := context.Background()
+			branch := learningsBranch(r, time.Now())
+
+			if in := d.inspect(ctx, d.localMachine(), r); len(in.pushed) != 1 {
+				t.Fatalf("first inspection = %+v", in)
+			}
+			setPRState(t, argv, done)
+			writeLearning(t, work, "git-3.md")
+			in := d.inspect(ctx, d.localMachine(), r)
+			if in.err != "" || len(in.pushed) != 1 || !strings.Contains(in.pushed[0], "(1 file(s))") {
+				t.Fatalf("after the PR %s: %+v, want a new PR of 1 file", done, in)
+			}
+			got := gitRun(t, origin, "ls-tree", "-r", "--name-only", branch+"-2")
+			if !strings.Contains(got, "learnings/git-3.md") || strings.Contains(got, "learnings/git-1.md") {
+				t.Errorf("origin %s-2 files:\n%s", branch, got)
+			}
+			if data := string(mustRead(t, argv)); !strings.Contains(data, ":"+branch+"-2 ") {
+				t.Errorf("gh argv = %q, want a PR from %s-2", data, branch)
+			}
+
+			// The -2 PR is open now: the next learnings wait for it.
+			setPRState(t, argv, "OPEN")
+			writeLearning(t, work, "git-4.md")
+			if in := d.inspect(ctx, d.localMachine(), r); in.err != "" || len(in.pushed) != 0 {
+				t.Errorf("with -2 open: %+v, want no PR", in)
+			}
+			if n := strings.Count(string(mustRead(t, argv)), "pr create"); n != 2 {
+				t.Errorf("gh pr create ran %d times, want 2", n)
+			}
+		})
+	}
+}
+
+// A day's branch with no PR (an earlier gh pr create failed, and its
+// learnings sit on the branch) waits rather than opening a second one.
+func TestLearningsBranchWithoutPRWaits(t *testing.T) {
+	_, work := setupClone(t)
+	origin, argv := setupLearnings(t, work)
+	d := newTestDispatcher(t, "refuse")
+	d.opts.LearningsPR = true
+	r := Record{Dir: work, Repo: "acme/r", Workspace: "r@chai"}
+	ctx := context.Background()
+	if in := d.inspect(ctx, d.localMachine(), r); len(in.pushed) != 1 {
+		t.Fatalf("first inspection = %+v", in)
+	}
+	setPRState(t, argv, "")
+	writeLearning(t, work, "git-3.md")
+	if in := d.inspect(ctx, d.localMachine(), r); in.err != "" || len(in.pushed) != 0 {
+		t.Errorf("inspection = %+v, want no PR", in)
+	}
+	if got := gitRun(t, origin, "branch", "--list", learningsBranch(r, time.Now())+"-2"); strings.TrimSpace(got) != "" {
+		t.Errorf("origin has a -2 branch: %q", got)
+	}
+}
+
+// Overlay learnings get the same: a new suffixed branch once the day's
+// overlay PR is done.
+func TestOverlayLearningsAfterDonePRGoOnNextBranch(t *testing.T) {
+	_, work := setupClone(t)
+	overlayUp, overlay := setupOverlay(t, work)
+	argv := fakeGH(t)
+	writeLearning(t, overlay, "o-1.md")
+	d := newTestDispatcher(t, "refuse")
+	d.opts.LearningsPR = true
+	r := Record{Dir: work, Workspace: "r@chai"}
+	ctx := context.Background()
+	branch := learningsBranch(r, time.Now())
+
+	if in := d.inspect(ctx, d.localMachine(), r); len(in.pushed) != 1 {
+		t.Fatalf("first inspection = %+v", in)
+	}
+	setPRState(t, argv, "MERGED")
+	writeLearning(t, overlay, "o-2.md")
+	in := d.inspect(ctx, d.localMachine(), r)
+	if in.err != "" || len(in.pushed) != 1 || !strings.Contains(in.pushed[0], "(1 file(s))") {
+		t.Fatalf("after the overlay PR merged: %+v", in)
+	}
+	if got := gitRun(t, overlayUp, "diff", "--name-only", "main", branch+"-2"); got != ".uf/dewey/learnings/o-2.md\n" {
+		t.Errorf("origin %s-2 adds:\n%s", branch, got)
+	}
+	if got := strings.TrimSpace(gitRun(t, overlay, "status", "--porcelain", "--untracked-files=all")); got != "" {
+		t.Errorf("overlay not clean:\n%s", got)
+	}
 }
