@@ -746,18 +746,11 @@ func (d *Dispatcher) Reinspect(ctx context.Context, id string) (Run, error) {
 // leftBy names the most recent finished run in dir on m that left work
 // behind ("feedback acme/r#5 2h ago"), or "".
 func (d *Dispatcher) leftBy(m Machine, dir string) string {
-	recs := d.snapshot()
-	for i := len(recs) - 1; i >= 0; i-- {
-		r := recs[i]
-		if r.Machine != m.key() || !samePath(r.Dir, dir) || !finished(r) {
-			continue
-		}
-		if len(r.Left) == 0 {
-			return ""
-		}
-		return fmt.Sprintf("%s %s %s ago", r.Task, r.Ref, time.Since(r.StartedAt).Round(time.Minute))
+	r, ok := d.lastFinished(m, dir)
+	if !ok || len(r.Left) == 0 {
+		return ""
 	}
-	return ""
+	return fmt.Sprintf("%s %s %s ago", r.Task, r.Ref, time.Since(r.StartedAt).Round(time.Minute))
 }
 
 // leftNote appends the run that left work to a refusal message.

@@ -88,7 +88,7 @@ func TestEpicPieceReports(t *testing.T) {
 	if r := rowsByRef(d.Plan(nil, runs))["acme/app#2"]; r.Stage.Kind != StageNext {
 		t.Errorf("after retry: %+v", r)
 	}
-	plan := piecePlan(d.Epics()[0], d.Epics()[0].Plan.Nodes[0])
+	plan := piecePlan(d.Epics()[0], d.Epics()[0].Plan.Nodes[0], "")
 	if !strings.Contains(plan, "A previous run (on lap1:app@oak) ended without a PR; the supervisor's read: The tests timed out once. Next time: Run the slow suite with -timeout 20m.") {
 		t.Errorf("plan file = %s", plan)
 	}

@@ -123,7 +123,7 @@ func TestEpicRowsSkipItemsShown(t *testing.T) {
 func TestPiecePlan(t *testing.T) {
 	e := epic.Epic{Ref: "acme/app#100", Title: "The   epic", Plan: &epic.Plan{ID: "p1",
 		Rules: []string{"Never weaken a guard.", "Keep promotion human"}}}
-	got := piecePlan(e, epic.Node{Ref: "acme/lib#7", Title: "feat: Git is the source of record!", Phase: "Phase 5"})
+	got := piecePlan(e, epic.Node{Ref: "acme/lib#7", Title: "feat: Git is the source of record!", Phase: "Phase 5"}, "")
 	want := "<!-- gh-hud: piece of epic acme/app#100, plan p1; repo acme/lib -->\n" +
 		"1. #7 Change: git-is-the-source-of-record — feat: Git is the source of record!. Part of epic acme/app#100 (The epic), Phase 5. " +
 		"Do only this issue; the epic's other pieces are separate runs. " +

@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/jflowers/gh-hud/internal/epic"
+	"github.com/jflowers/gh-hud/internal/ghws"
 	"github.com/jflowers/gh-hud/internal/model"
 )
 
@@ -211,9 +212,11 @@ func (d *Dispatcher) startEpicPiece(ctx context.Context, row PlanRow) (Record, e
 	if name != pipelinePlanCmd {
 		return d.Dispatch(ctx, TaskIssue, row.Item, true)
 	}
-	content := piecePlan(*e, node)
 	path := fmt.Sprintf("%s/%s-%d-%s.md", epicPlanDir, sanitize(row.Item.Repo), row.Item.Num, e.Plan.ID)
-	return d.dispatchWith(ctx, TaskIssue, row.Item, true, func(ctx context.Context, m Machine) ([]string, error) {
+	return d.dispatchWith(ctx, TaskIssue, row.Item, true, func(ctx context.Context, m Machine, co ghws.Checkout) ([]string, error) {
+		// A retry placed where the piece's earlier run left work is told
+		// so (#61).
+		content := piecePlan(*e, node, d.resumeNote(m, co.Dir, row.Item.Ref()))
 		if err := writeOn(ctx, m, path, content); err != nil {
 			return nil, fmt.Errorf("can't write the piece's plan file: %w", err)
 		}
@@ -270,7 +273,9 @@ func changeName(title string, num int) string {
 // piecePlan is a one-item plan file for /uf.run-pipeline-plan (its Plan
 // File Contract): the piece's ref, a change name, and a description that
 // carries the epic's goal and rules.
-func piecePlan(e epic.Epic, n epic.Node) string {
+// resume, when set, is resumeNote's account of the work an earlier run of
+// the piece left in the checkout the plan file is for.
+func piecePlan(e epic.Epic, n epic.Node, resume string) string {
 	repo, num, _ := epic.ParseRef(n.Ref)
 	desc := fmt.Sprintf("%s. Part of epic %s (%s)", oneLine(n.Title), e.Ref, oneLine(e.Title))
 	if n.Phase != "" {
@@ -288,6 +293,7 @@ func piecePlan(e epic.Epic, n epic.Node) string {
 		}
 		desc += "."
 	}
+	desc += resume
 	if len(e.Plan.Rules) > 0 {
 		var rules []string
 		for _, r := range e.Plan.Rules {

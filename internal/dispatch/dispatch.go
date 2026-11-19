@@ -503,10 +503,10 @@ func (d *Dispatcher) Dispatch(ctx context.Context, task Task, it model.Item, aut
 	return d.dispatchWith(ctx, task, it, auto, nil)
 }
 
-// dispatchWith is Dispatch with prep, when set, run on each candidate
-// machine before it's tried: it returns the command's arguments there
+// dispatchWith is Dispatch with prep, when set, run for each candidate
+// placement before it's tried: it returns the command's arguments there
 // (epic pieces write their plan file this way).
-func (d *Dispatcher) dispatchWith(ctx context.Context, task Task, it model.Item, auto bool, prep func(context.Context, Machine) ([]string, error)) (Record, error) {
+func (d *Dispatcher) dispatchWith(ctx context.Context, task Task, it model.Item, auto bool, prep func(context.Context, Machine, ghws.Checkout) ([]string, error)) (Record, error) {
 	if !d.owns() {
 		return Record{}, d.followerErr()
 	}
@@ -522,12 +522,14 @@ func (d *Dispatcher) dispatchWith(ctx context.Context, task Task, it model.Item,
 	if len(cands) == 0 {
 		return Record{}, fmt.Errorf("no dispatch target for %s: %s", it.Ref(), noPlacement(v, task, it, d.o().InstancesOnly))
 	}
+	// An issue run resumes where its earlier run left work (#61).
+	cands = d.preferOwnLeftovers(cands, task, it.Ref())
 	var refusals []string
 	noToken := false
 	for _, c := range cands {
 		cargs := args
 		if prep != nil {
-			a, err := prep(ctx, c.machine)
+			a, err := prep(ctx, c.machine, c.checkout)
 			if err != nil {
 				if len(cands) == 1 {
 					return Record{}, err
@@ -695,17 +697,22 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 		}
 	}
 
+	// An issue run of the ref whose earlier run left work here resumes it
+	// as it is (resume.go, #61): no dirty refusal, preflight or overlay
+	// sync, which would refuse, stash or move that work.
+	resume := d.resumes(ctx, m, co.Dir, task, ref)
+
 	// Refuse a dirty checkout before anything starts opencode in it: the
 	// session scan below bootstraps opencode in the checkout, and a first
 	// bootstrap installs .opencode plugin deps, which can rewrite tracked
 	// files (package-lock.json) and make the checkout look dirty.
-	if d.o().Dirty == "refuse" {
+	if d.o().Dirty == "refuse" && !resume {
 		if err := d.refuseDirty(ctx, m, co.Dir); err != nil {
 			return Record{}, err
 		}
 	}
 
-	if rs, err := listSessions(ctx, m, co.Dir); err == nil {
+	if rs, err := d.listSessions(ctx, m, co.Dir); err == nil {
 		ours := map[string]bool{}
 		for _, r := range recs {
 			if r.Machine == m.key() {
@@ -719,12 +726,14 @@ func (d *Dispatcher) dispatchCore(ctx context.Context, task Task, it model.Item,
 		}
 	}
 
-	stash, err := d.preflight(ctx, m, co.Dir, task, ref)
-	if err != nil {
-		return Record{}, err
-	}
-	if err := d.syncOverlays(ctx, m, co.Dir); err != nil {
-		return Record{}, err
+	stash := ""
+	if !resume {
+		if stash, err = d.preflight(ctx, m, co.Dir, task, ref); err != nil {
+			return Record{}, err
+		}
+		if err := d.syncOverlays(ctx, m, co.Dir); err != nil {
+			return Record{}, err
+		}
 	}
 	if task.onPRHead() && it.Kind == model.KindPR {
 		if err := d.checkoutPR(ctx, m, co.Dir, it); err != nil {
