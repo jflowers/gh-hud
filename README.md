@@ -1123,8 +1123,25 @@ Each upkeep:
    shown in the Workspaces tab's detail pane (`upkeep failed` in the row
    when it failed).
 
-It leaves alone a diverged default branch, local commits on it, and a
-branch with work on it: those show as "left" in the last upkeep. Like a
+It also clears what keeps a checkout from current, never losing
+anything (#158):
+
+- **A finished run's leftovers** (uncommitted files, commits no remote
+  has) wait a day for a retry of the same item, which resumes there.
+  After that, or as soon as the item is closed or merged, upkeep commits
+  everything on `wip/<label>/<task>-<num>-<started>`, pushes it to
+  `origin` (your fork), and puts the checkout back on its default branch.
+  The run's record keeps where the work went, and a later dispatch of the
+  item is told.
+- **A default branch with commits upstream doesn't have** is pushed to
+  `backup/<label>/<default>-<time>` on `origin` and reset to upstream's.
+
+Untracked learnings and Dewey's cache stay. Work no gh-hud run recorded
+(someone working by hand) is left as it is. Backups only ever go to a
+fork: a checkout without an `upstream` remote, or whose `origin` is the
+upstream repo, is left as it is. A push that fails changes nothing, and
+the failed upkeep raises an alert (once per checkout and error).
+Everything else upkeep leaves shows as "left" in the last upkeep. Like a
 reindex, an upkeep holds its machine's one maintenance slot (so upkeeps
 and Dewey reindexes never overlap on a machine) and marks the checkout
 busy, so nothing is dispatched there meanwhile, and it never touches a
@@ -1132,7 +1149,7 @@ checkout with a live agent or a held `dewey.lock`.
 
 ```toml
 [upkeep]
-mode = "auto"   # "report" (default): fetch and record what it would do; "off": nothing
+mode = "auto"   # "report" (default): fetch and record what it would do (backups too); "off": nothing
 ```
 
 ## Configuring dispatch

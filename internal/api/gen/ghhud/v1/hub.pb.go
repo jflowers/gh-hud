@@ -373,6 +373,7 @@ const (
 	AlertType_ALERT_TYPE_TOOL_RELEASE   AlertType = 4 // a tool released; its rollout waits for you (ref is tool@version)
 	AlertType_ALERT_TYPE_TOOLKIT_TARGET AlertType = 5 // a repo in a tool rollout waits for you: held, refused, failed or CI failing (ref is its PR's owner/repo#N, else tool@version)
 	AlertType_ALERT_TYPE_REINDEX_FAILED AlertType = 6 // an automatic Dewey reindex of a checkout failed (ref is [machine:]workspace)
+	AlertType_ALERT_TYPE_UPKEEP_FAILED  AlertType = 7 // a fleet checkout's upkeep failed, e.g. backing up to the fork (ref is [machine:]workspace/repo)
 )
 
 // Enum value maps for AlertType.
@@ -385,6 +386,7 @@ var (
 		4: "ALERT_TYPE_TOOL_RELEASE",
 		5: "ALERT_TYPE_TOOLKIT_TARGET",
 		6: "ALERT_TYPE_REINDEX_FAILED",
+		7: "ALERT_TYPE_UPKEEP_FAILED",
 	}
 	AlertType_value = map[string]int32{
 		"ALERT_TYPE_UNSPECIFIED":    0,
@@ -394,6 +396,7 @@ var (
 		"ALERT_TYPE_TOOL_RELEASE":   4,
 		"ALERT_TYPE_TOOLKIT_TARGET": 5,
 		"ALERT_TYPE_REINDEX_FAILED": 6,
+		"ALERT_TYPE_UPKEEP_FAILED":  7,
 	}
 )
 
@@ -7907,7 +7910,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\tEventKind\x12\x1a\n" +
 	"\x16EVENT_KIND_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11EVENT_KIND_NOTICE\x10\x01\x12\x14\n" +
-	"\x10EVENT_KIND_ALERT\x10\x02*\xcd\x01\n" +
+	"\x10EVENT_KIND_ALERT\x10\x02*\xeb\x01\n" +
 	"\tAlertType\x12\x1a\n" +
 	"\x16ALERT_TYPE_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10ALERT_TYPE_READY\x10\x01\x12\x16\n" +
@@ -7915,7 +7918,8 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x17ALERT_TYPE_RUN_FINISHED\x10\x03\x12\x1b\n" +
 	"\x17ALERT_TYPE_TOOL_RELEASE\x10\x04\x12\x1d\n" +
 	"\x19ALERT_TYPE_TOOLKIT_TARGET\x10\x05\x12\x1d\n" +
-	"\x19ALERT_TYPE_REINDEX_FAILED\x10\x062\xb1\x10\n" +
+	"\x19ALERT_TYPE_REINDEX_FAILED\x10\x06\x12\x1c\n" +
+	"\x18ALERT_TYPE_UPKEEP_FAILED\x10\a2\xb1\x10\n" +
 	"\n" +
 	"HubService\x12J\n" +
 	"\vGetSnapshot\x12\x1c.ghhud.v1.GetSnapshotRequest\x1a\x1d.ghhud.v1.GetSnapshotResponse\x12F\n" +

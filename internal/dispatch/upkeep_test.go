@@ -113,7 +113,7 @@ func TestUpkeepBranches(t *testing.T) {
 		if gitRun(t, work, "rev-parse", "main") != gitRun(t, upstream, "rev-parse", "main") {
 			t.Error("main's ref didn't move")
 		}
-		if !slices.Equal(u.Did, []string{"move main by 1"}) || len(u.Left) != 1 || !strings.Contains(u.Left[0], "on wip with 1 uncommitted, 0 unpushed") {
+		if !slices.Equal(u.Did, []string{"move main by 1"}) || !slices.Equal(u.Left, []string{"on wip with 1 uncommitted, 0 unpushed", "work no gh-hud run left: not backed up"}) {
 			t.Errorf("upkeep = %q", u)
 		}
 	})
@@ -142,7 +142,7 @@ func TestUpkeepDivergedAndCache(t *testing.T) {
 	if gitRun(t, work, "rev-parse", "HEAD") != head {
 		t.Error("a diverged main moved")
 	}
-	if !slices.Equal(u.Left, []string{"main diverged (+1 -1)"}) || !slices.Equal(u.Did, []string{"restore Dewey's cache"}) {
+	if !slices.Equal(u.Left, []string{"main diverged (+1 -1)", "no fork to back up to: no origin remote"}) || !slices.Equal(u.Did, []string{"restore Dewey's cache"}) {
 		t.Errorf("upkeep = %+v", u)
 	}
 	if b, _ := os.ReadFile(page); string(b) != "cached v1\n" {
@@ -254,9 +254,12 @@ func TestRequestedReindexKeepsUpFirst(t *testing.T) {
 }
 
 func TestParseUpkeep(t *testing.T) {
-	u, before := parseUpkeep("noise\nUK state\tmain\t3\t0\nUK did fast-forward main by 3\nUK ff\tabc123\nUK left submodule x\n")
-	if u.Default != "main" || u.Behind != 3 || before != "abc123" || !slices.Equal(u.Did, []string{"fast-forward main by 3"}) || !slices.Equal(u.Left, []string{"submodule x"}) {
-		t.Errorf("parsed %+v %q", u, before)
+	u, f := parseUpkeep("noise\nUK state\tmain\t3\t0\nUK work\tfeat/x\t2\t1\nUK did fast-forward main by 3\nUK ff\tabc123\nUK left submodule x\n")
+	if f.branch != "feat/x" || f.dirty != 2 || f.unpushed != 1 {
+		t.Errorf("work facts = %+v", f)
+	}
+	if u.Default != "main" || u.Behind != 3 || f.before != "abc123" || !slices.Equal(u.Did, []string{"fast-forward main by 3"}) || !slices.Equal(u.Left, []string{"submodule x"}) {
+		t.Errorf("parsed %+v %+v", u, f)
 	}
 	if u, _ := parseUpkeep("UK err fetch upstream: no route"); !u.Failed() || u.String() != "failed: fetch upstream: no route" {
 		t.Errorf("err = %+v", u)

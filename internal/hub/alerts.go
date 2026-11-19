@@ -5,6 +5,7 @@ package hub
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/mattn/go-runewidth"
@@ -36,6 +37,9 @@ const (
 	AlertToolkitTarget
 	// AlertReindexFailed: an automatic Dewey reindex of a checkout failed.
 	AlertReindexFailed
+	// AlertUpkeepFailed: a fleet checkout's upkeep failed, e.g. pushing
+	// leftovers to the fork; the checkout is as it was.
+	AlertUpkeepFailed
 )
 
 // Alert is one thing worth interrupting the operator for. It stays
@@ -69,6 +73,8 @@ type Alerter struct {
 	targets map[string]bool
 	// reindexFails: failed reindexes already alerted, by checkout and time.
 	reindexFails map[string]bool
+	// upkeepFails: failed upkeeps already alerted, by checkout and error.
+	upkeepFails map[string]bool
 }
 
 // NewAlerter builds an Alerter from the notify settings in cfg.
@@ -253,7 +259,53 @@ func (a *Alerter) Workspaces(ws []dispatch.CheckoutHealth, since time.Time) []Al
 		out = append(out, Alert{Type: AlertReindexFailed, Ref: where,
 			Text: "Dewey reindex failed in " + where + ": " + truncate(r.Err, 120)})
 	}
+	return append(out, a.upkeepAlerts(ws, since)...)
+}
+
+// upkeepAlerts alerts once per checkout and error when its upkeep fails
+// (ended after since). Upkeep retries every hour, so the same failure
+// again isn't news; a different one, or one after a success, is.
+func (a *Alerter) upkeepAlerts(ws []dispatch.CheckoutHealth, since time.Time) []Alert {
+	if a.upkeepFails == nil {
+		a.upkeepFails = map[string]bool{}
+	}
+	var out []Alert
+	for _, h := range ws {
+		u := h.LastUpkeep
+		where := h.Workspace + "/" + repoName(h.Repo)
+		if h.Machine != "" {
+			where = h.Machine + ":" + where
+		}
+		if u == nil || !u.Failed() {
+			if u != nil {
+				for k := range a.upkeepFails {
+					if strings.HasPrefix(k, h.Machine+"|"+h.Dir+"|") {
+						delete(a.upkeepFails, k)
+					}
+				}
+			}
+			continue
+		}
+		key := h.Machine + "|" + h.Dir + "|" + u.Err
+		if u.At.Before(since) || a.upkeepFails[key] {
+			continue
+		}
+		a.upkeepFails[key] = true
+		if !a.notify {
+			continue
+		}
+		out = append(out, Alert{Type: AlertUpkeepFailed, Ref: where,
+			Text: "Upkeep failed in " + where + ": " + truncate(u.Err, 120)})
+	}
 	return out
+}
+
+// repoName is the name part of an owner/name repo.
+func repoName(repo string) string {
+	if _, name, ok := strings.Cut(repo, "/"); ok {
+		return name
+	}
+	return repo
 }
 
 // ToolkitWaiting is a rollout's repos that wait on you. A cancelled

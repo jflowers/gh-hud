@@ -45,11 +45,11 @@ func (d *Dispatcher) lastFinished(m Machine, dir string) (Record, bool) {
 
 // ownLeftovers is the run whose leftovers an issue run of ref may resume
 // in dir on m: the newest finished run there, when it was an issue run of
-// ref that left work. It reads only records; checkoutHasWork confirms the
-// work is still there.
+// ref that left work and upkeep hasn't backed it up since (Backup). It
+// reads only records; checkoutHasWork confirms the work is still there.
 func (d *Dispatcher) ownLeftovers(m Machine, dir, ref string) (Record, bool) {
 	r, ok := d.lastFinished(m, dir)
-	if !ok || r.Task != TaskIssue || r.Ref != ref || len(r.Left) == 0 {
+	if !ok || r.Task != TaskIssue || r.Ref != ref || len(r.Left) == 0 || r.Backup != "" {
 		return Record{}, false
 	}
 	return r, true
@@ -117,6 +117,9 @@ func (d *Dispatcher) preferOwnLeftovers(cands []placement, task Task, ref string
 func (d *Dispatcher) resumeNote(m Machine, dir, ref string) string {
 	r, ok := d.ownLeftovers(m, dir, ref)
 	if !ok {
+		if b, ok := d.backedUp(ref); ok {
+			return fmt.Sprintf(" A previous run of this issue (%s ago) left unfinished work, which gh-hud's upkeep saved on branch %s of your fork: fetch it if it helps rather than starting over.", time.Since(b.StartedAt).Round(time.Minute), strings.TrimPrefix(b.Backup, "origin/"))
+		}
 		return ""
 	}
 	var left []string

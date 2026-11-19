@@ -243,3 +243,35 @@ func TestWorkspacesAlertsReindexFailureOnce(t *testing.T) {
 		t.Errorf("notify off: %+v", got)
 	}
 }
+
+// A failed upkeep alerts once per checkout and error: the hourly retry
+// failing the same way isn't news, a success re-arms it, and a different
+// error is news.
+func TestWorkspacesAlertUpkeepFailures(t *testing.T) {
+	start := time.Now()
+	row := func(u *dispatch.UpkeepResult) dispatch.CheckoutHealth {
+		return dispatch.CheckoutHealth{Machine: "lap2", Workspace: "uf@hoopoe", Repo: "unbound-force/dewey", Dir: "/w/uf@hoopoe/dewey", LastUpkeep: u}
+	}
+	fail := func(after time.Duration, err string) *dispatch.UpkeepResult {
+		return &dispatch.UpkeepResult{At: start.Add(after), Err: err}
+	}
+	a := NewAlerter(&config.Config{Notify: true})
+	got := a.Workspaces([]dispatch.CheckoutHealth{row(fail(time.Minute, "back up: push wip/hoopoe/x to origin: denied"))}, start)
+	if len(got) != 1 || got[0].Type != AlertUpkeepFailed || got[0].Ref != "lap2:uf@hoopoe/dewey" ||
+		got[0].Text != "Upkeep failed in lap2:uf@hoopoe/dewey: back up: push wip/hoopoe/x to origin: denied" {
+		t.Fatalf("alerts = %+v", got)
+	}
+	if got := a.Workspaces([]dispatch.CheckoutHealth{row(fail(time.Hour, "back up: push wip/hoopoe/x to origin: denied"))}, start); len(got) != 0 {
+		t.Errorf("the hourly retry failing the same way: %+v", got)
+	}
+	if got := a.Workspaces([]dispatch.CheckoutHealth{row(fail(2*time.Hour, "fetch upstream: no route"))}, start); len(got) != 1 {
+		t.Errorf("a different failure: %+v", got)
+	}
+	_ = a.Workspaces([]dispatch.CheckoutHealth{row(&dispatch.UpkeepResult{At: start.Add(3 * time.Hour)})}, start)
+	if got := a.Workspaces([]dispatch.CheckoutHealth{row(fail(4*time.Hour, "fetch upstream: no route"))}, start); len(got) != 1 {
+		t.Errorf("failing again after a success: %+v", got)
+	}
+	if got := a.Workspaces([]dispatch.CheckoutHealth{row(fail(-time.Minute, "before the hub started"))}, start); len(got) != 0 {
+		t.Errorf("a failure from before the hub started: %+v", got)
+	}
+}

@@ -149,12 +149,15 @@ type Record struct {
 	// (ExitCode stays nil).
 	FinishError string `json:"finish_error,omitempty"`
 	// Outcome detail and after-run inspection (see finish.go).
-	FailReason   string     `json:"fail_reason,omitempty"`   // why the run failed
-	HumanNeeded  bool       `json:"human_needed,omitempty"`  // the agent handed a decision to a person
-	Summary      string     `json:"summary,omitempty"`       // the agent's final message
-	StartHead    string     `json:"start_head,omitempty"`    // HEAD when the agent started
-	Branch       string     `json:"branch,omitempty"`        // branch left checked out
-	Left         []string   `json:"left,omitempty"`          // leftovers: uncommitted/unpushed work
+	FailReason  string   `json:"fail_reason,omitempty"`  // why the run failed
+	HumanNeeded bool     `json:"human_needed,omitempty"` // the agent handed a decision to a person
+	Summary     string   `json:"summary,omitempty"`      // the agent's final message
+	StartHead   string   `json:"start_head,omitempty"`   // HEAD when the agent started
+	Branch      string   `json:"branch,omitempty"`       // branch left checked out
+	Left        []string `json:"left,omitempty"`         // leftovers: uncommitted/unpushed work
+	// Backup is where upkeep saved the leftovers when it cleaned the
+	// checkout ("origin/wip/<label>/...", upkeep_backup.go).
+	Backup       string     `json:"backup,omitempty"`
 	Pushed       []string   `json:"pushed,omitempty"`        // commits pushed during the run
 	Cleaned      bool       `json:"cleaned,omitempty"`       // returned to the default branch
 	InspectError string     `json:"inspect_error,omitempty"` // inspection could not run
