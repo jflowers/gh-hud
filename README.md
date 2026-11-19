@@ -1140,6 +1140,12 @@ anything (#158):
 - **A default branch with commits upstream doesn't have** is pushed to
   `backup/<label>/<default>-<time>` on `origin` and reset to upstream's.
 
+Branch pruning (`[branches] prune`, `gh-hud branches`) deletes these
+branches from the fork again once they're no longer needed: a `wip/`
+branch as soon as its item is closed or merged, and either kind after
+`keep_backups` days, counted from the time in its name. One a checkout has
+checked out stays.
+
 Untracked learnings and Dewey's cache stay. Work no gh-hud run recorded
 (someone working by hand) is left as it is. Backups only ever go to a
 fork: a checkout without an `upstream` remote, or whose `origin` is the
@@ -1153,7 +1159,8 @@ checkout with a live agent or a held `dewey.lock`.
 
 ```toml
 [upkeep]
-mode = "auto"   # "report" (default): fetch and record what it would do (backups too); "off": nothing
+mode = "auto"      # "report" (default): fetch and record what it would do (backups too); "off": nothing
+keep_backups = 14  # days branch pruning keeps upkeep's wip/ and backup/ branches on the forks
 ```
 
 ## Configuring dispatch
@@ -1815,6 +1822,7 @@ update_method = "merge"    # merge train's branch update: merge or rebase
 # Keep idle fleet checkouts current, fast-forward only (see "Upkeep" above).
 [upkeep]
 mode = "report"            # off, report (record what it would do) or auto
+keep_backups = 14          # days before branch pruning deletes upkeep's wip/ and backup/ fork branches
 
 # How apps other than the TUI reach the hub (see "The hub" above).
 [hub]

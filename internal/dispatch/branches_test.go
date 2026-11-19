@@ -179,6 +179,7 @@ type fakePruneGitHub struct {
 	deleted   []string                    // ref ids
 	synced    []string                    // ref id → oid
 	queries   []string
+	items     map[int]string // issue/PR number → state for itemDone (default OPEN)
 }
 
 func (f *fakePruneGitHub) query(_ context.Context, q string, out any) error {
@@ -197,6 +198,13 @@ func (f *fakePruneGitHub) query(_ context.Context, q string, out any) error {
 			"defaultBranchRef": map[string]any{"name": "main", "id": "ref:main", "target": map[string]any{"oid": f.forkMain}},
 			"refs":             map[string]any{"pageInfo": map[string]any{"hasNextPage": false}, "nodes": nodes},
 		}}
+	} else if m := regexp.MustCompile(`issueOrPullRequest\(number: (\d+)\)`).FindStringSubmatch(q); m != nil {
+		n, _ := strconv.Atoi(m[1])
+		state := f.items[n]
+		if state == "" {
+			state = "OPEN"
+		}
+		data = map[string]any{"repository": map[string]any{"issueOrPullRequest": map[string]any{"state": state}}}
 	} else {
 		alias := regexp.MustCompile(`(b\d+): pullRequests\(headRefName: "([^"]+)"`)
 		repo := map[string]any{}
