@@ -112,6 +112,7 @@ func (u UpkeepResult) String() string {
 //
 //	UK state <default> <behind> <ahead>   after the fetch
 //	UK work <branch> <dirty> <unpushed>   the checkout's own work
+//	UK learnings <checkout> <overlays>    untracked learnings
 //	UK did <what>                         a change it made (would make)
 //	UK ff <before>                        it fast-forwarded from <before>
 //	UK left <what>                        something it left as it is
@@ -154,6 +155,13 @@ dirty=$(git status --porcelain --untracked-files=all | ` + churnGrep + ` | grep 
 cur=$(git branch --show-current)
 unp=$(git rev-list --count HEAD --not --remotes)
 printf 'UK work\t%s\t%s\t%s\n' "$cur" "$dirty" "$unp"
+lc=$(git status --porcelain --untracked-files=all -- ` + learningsDir + ` | grep -c '^?? ')
+ol=0
+for o in $(` + overlayScan + `); do
+  n=$(git -C "$o" ls-files --others --exclude-standard -- ` + learningsDir + ` | grep -c .)
+  ol=$((ol + n))
+done
+printf 'UK learnings\t%s\t%s\n' "$lc" "$ol"
 if [ -n "$cur" ] && [ "$cur" != "$def" ]; then
   if [ "$dirty" -gt 0 ] || [ "$unp" -gt 0 ]; then
     printf 'UK left on %s with %s uncommitted, %s unpushed\n' "$cur" "$dirty" "$unp"
@@ -198,6 +206,8 @@ type upkeepFacts struct {
 	branch   string
 	dirty    int
 	unpushed int
+	// untracked learnings in the checkout and in its overlays
+	learnings, overlayLearnings int
 }
 
 // parseUpkeep reads upkeepScript's output.
@@ -225,6 +235,12 @@ func parseUpkeep(out string) (UpkeepResult, upkeepFacts) {
 			u.Did = append(u.Did, val)
 		case "ff":
 			f.before = strings.TrimSpace(val)
+		case "learnings":
+			w := strings.Split(val, "\t")
+			if len(w) == 2 {
+				f.learnings, _ = strconv.Atoi(w[0])
+				f.overlayLearnings, _ = strconv.Atoi(w[1])
+			}
 		case "work":
 			w := strings.Split(val, "\t")
 			if len(w) == 3 {
@@ -284,7 +300,7 @@ func (d *Dispatcher) upkeepCheckout(ctx context.Context, m Machine, dir string) 
 			}
 			u.Did = append(append(u.Did, did...), u2.Did...)
 			u.Left = slices.Concat(left, u2.Left)
-			u.Err, f.before = u2.Err, f2.before
+			u.Err, f = u2.Err, f2
 		default:
 			u.Did = append(u.Did, did...)
 			u.Left = append(u.Left, left...)
@@ -303,6 +319,9 @@ func (d *Dispatcher) upkeepCheckout(ctx context.Context, m Machine, dir string) 
 		for _, l := range s.kept {
 			u.Left = append(u.Left, "submodule "+l)
 		}
+	}
+	if u.Err == "" {
+		d.upkeepLearnings(ctx, m, dir, &u, f)
 	}
 	d.recordUpkeep(key, dir, u)
 	if u.Err != "" {
@@ -494,4 +513,59 @@ func (d *Dispatcher) loadUpkeepsLocked() {
 	if json.Unmarshal(data, &us) == nil {
 		d.upkeeps, d.upkeepsMod = us, st.ModTime()
 	}
+}
+
+// upkeepLearnings sends a kept-up checkout's untracked learnings, and its
+// overlays', upstream (#15): the learnings PRs a clean run opens, for
+// checkouts no run has used since. It runs only on a checkout that ended
+// clean on its default branch (what the learnings scripts need), with
+// learnings_pr on; report says it would. The day's branch rules are the
+// scripts' own (learningsBranchPick): an open PR waits.
+func (d *Dispatcher) upkeepLearnings(ctx context.Context, m Machine, dir string, u *UpkeepResult, f upkeepFacts) {
+	n := f.learnings + f.overlayLearnings
+	switched := slices.ContainsFunc(u.Did, func(s string) bool { return strings.HasPrefix(s, "switch from ") })
+	if n == 0 || !d.o().LearningsPR || f.dirty > 0 || (f.branch != u.Default && !switched) {
+		return
+	}
+	if u.Report {
+		u.Did = append(u.Did, fmt.Sprintf("open learnings PRs (%d file(s))", n))
+		return
+	}
+	r := d.upkeepRecord(ctx, m, dir)
+	var errs []string
+	if f.learnings > 0 {
+		line, err := d.learningsPR(ctx, m, r, u.Default)
+		if err != nil {
+			errs = append(errs, "learnings PR: "+err.Error())
+		} else if line != "" {
+			u.Did = append(u.Did, line)
+		}
+	}
+	if f.overlayLearnings > 0 {
+		lines, err := d.overlayLearningsPRs(ctx, m, r)
+		u.Did = append(u.Did, lines...)
+		if err != nil {
+			errs = append(errs, "overlay learnings PR: "+err.Error())
+		}
+	}
+	if len(errs) > 0 {
+		u.Err = strings.Join(errs, "; ")
+	}
+}
+
+// upkeepRecord is the run-shaped description of a checkout the learnings
+// PR functions take: its machine, dir, workspace and repo (from the
+// machine's ghws index, else from the path, the way ghws names them).
+func (d *Dispatcher) upkeepRecord(ctx context.Context, m Machine, dir string) Record {
+	ws := filepath.Base(filepath.Dir(dir))
+	ix := d.o().LocalIndex
+	if !m.Local {
+		ix = d.remoteIndex(ctx, m)
+	}
+	repo := ix.RepoFor(dir)
+	if repo == "" {
+		owner, _, _ := strings.Cut(ws, "@")
+		repo = owner + "/" + filepath.Base(dir)
+	}
+	return Record{Machine: m.key(), Dir: dir, Workspace: ws, Repo: repo}
 }

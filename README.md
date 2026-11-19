@@ -1119,7 +1119,11 @@ Each upkeep:
 4. on the default branch, fast-forwards it and brings submodules along
    (the same rule as preflight); on a branch with work, moves only the
    local default-branch ref;
-5. records what it did and what it left as the checkout's last upkeep,
+5. with `learnings_pr` on and the checkout clean on its default branch,
+   opens the learnings PRs a clean run would (the checkout's and its
+   overlays'), so learnings in a checkout no run uses again still go
+   upstream; the day's-branch rules are the same, and an open PR waits;
+6. records what it did and what it left as the checkout's last upkeep,
    shown in the Workspaces tab's detail pane (`upkeep failed` in the row
    when it failed).
 
