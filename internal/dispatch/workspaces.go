@@ -63,12 +63,18 @@ type CheckoutHealth struct {
 	// takes no dispatch. LastUpkeep is its last upkeep (nil: none yet).
 	Upkeeping  bool
 	LastUpkeep *UpkeepResult
+	// Unmanaged: the row isn't a checkout but a worker's ghws root (Dir),
+	// carrying its last removal of what isn't the fleet's
+	// (upkeep_unmanaged.go) as LastUpkeep.
+	Unmanaged bool
 }
 
 // Problem is why a dispatch would not use or would refuse the checkout
 // ("" = ready).
 func (h CheckoutHealth) Problem() string {
 	switch {
+	case h.Unmanaged:
+		return "not a checkout"
 	case h.Err != "":
 		return h.Err
 	case h.Busy != "":
@@ -156,7 +162,7 @@ func (d *Dispatcher) Workspaces(ctx context.Context) []CheckoutHealth {
 			out = append(out, h)
 		}
 	}
-	return out
+	return append(out, d.unmanagedRows(upkeeping, upkeeps)...)
 }
 
 // machineWorkspaces checks one machine's checkouts. busy maps machine key

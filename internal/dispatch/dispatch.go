@@ -404,6 +404,9 @@ type Dispatcher struct {
 	upkeeps    map[string]UpkeepResult
 	upkeepsMod time.Time
 	upkeepWork sync.WaitGroup
+	// unmanagedShell runs removeUnmanaged's script in place of the
+	// machine's shell (tests).
+	unmanagedShell func(ctx context.Context, script string) (string, error)
 	// reindexWork tracks reindex goroutines, so a test can wait for them.
 	reindexWork sync.WaitGroup
 }

@@ -5887,7 +5887,10 @@ type CheckoutHealth struct {
 	IndexDeweyVersion string `protobuf:"bytes,26,opt,name=index_dewey_version,json=indexDeweyVersion,proto3" json:"index_dewey_version,omitempty"`
 	IndexFormat       int64  `protobuf:"varint,27,opt,name=index_format,json=indexFormat,proto3" json:"index_format,omitempty"`
 	// index's reindex reasons as a list (Dewey's contain commas).
-	IndexReasons  []string `protobuf:"bytes,28,rep,name=index_reasons,json=indexReasons,proto3" json:"index_reasons,omitempty"`
+	IndexReasons []string `protobuf:"bytes,28,rep,name=index_reasons,json=indexReasons,proto3" json:"index_reasons,omitempty"`
+	// Not a checkout: a worker's ghws root (dir) whose last_upkeep is its
+	// last removal of what isn't the fleet's ([[machines]] remove_unmanaged).
+	Unmanaged     bool `protobuf:"varint,29,opt,name=unmanaged,proto3" json:"unmanaged,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6116,6 +6119,13 @@ func (x *CheckoutHealth) GetIndexReasons() []string {
 		return x.IndexReasons
 	}
 	return nil
+}
+
+func (x *CheckoutHealth) GetUnmanaged() bool {
+	if x != nil {
+		return x.Unmanaged
+	}
+	return false
 }
 
 // UpkeepResult is the last upkeep of an idle fleet checkout: fetched,
@@ -7810,7 +7820,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\acleared\x18\n" +
 	" \x01(\bR\acleared\x12\x16\n" +
 	"\x06labels\x18\v \x03(\tR\x06labels\x12!\n" +
-	"\flabels_known\x18\f \x01(\bR\vlabelsKnown\"\xc4\a\n" +
+	"\flabels_known\x18\f \x01(\bR\vlabelsKnown\"\xe2\a\n" +
 	"\x0eCheckoutHealth\x12\x18\n" +
 	"\amachine\x18\x01 \x01(\tR\amachine\x12\x1c\n" +
 	"\tworkspace\x18\x02 \x01(\tR\tworkspace\x12\x12\n" +
@@ -7847,7 +7857,8 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"lastUpkeep\x12.\n" +
 	"\x13index_dewey_version\x18\x1a \x01(\tR\x11indexDeweyVersion\x12!\n" +
 	"\findex_format\x18\x1b \x01(\x03R\vindexFormat\x12#\n" +
-	"\rindex_reasons\x18\x1c \x03(\tR\findexReasons\"\xfd\x01\n" +
+	"\rindex_reasons\x18\x1c \x03(\tR\findexReasons\x12\x1c\n" +
+	"\tunmanaged\x18\x1d \x01(\bR\tunmanaged\"\xfd\x01\n" +
 	"\fUpkeepResult\x12*\n" +
 	"\x02at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x12\x16\n" +
 	"\x06report\x18\x02 \x01(\bR\x06report\x12%\n" +

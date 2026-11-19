@@ -28,6 +28,10 @@ type Machine struct {
 	// ExcludeLabels: never an item with any of them. Case is ignored.
 	Labels        []string
 	ExcludeLabels []string
+	// RemoveUnmanaged and Keep: upkeep removes what isn't the fleet's
+	// from GhwsRoot, except Keep (upkeep_unmanaged.go). Never for Local.
+	RemoveUnmanaged bool
+	Keep            []string
 }
 
 // labelBlock says why the machine's label rules refuse an item with
