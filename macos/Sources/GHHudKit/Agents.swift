@@ -162,8 +162,11 @@ public struct WorkspaceRow: Identifiable, Equatable, Sendable {
     public let notes: String
     /// What the state means for the next run, when there's more to say.
     public let explanation: String?
+    /// The Dewey index column: "ok 2d 100%", "old format", "—"…
+    public let index: String
+    public let indexTone: Tone
 
-    public init(_ h: Ghhud_V1_CheckoutHealth) {
+    public init(_ h: Ghhud_V1_CheckoutHealth, now: Date = Date()) {
         id = h.machine + "\u{0}" + h.dir
         health = h
         place = h.machine.isEmpty ? h.workspace : "\(h.machine):\(h.workspace)"
@@ -182,6 +185,8 @@ public struct WorkspaceRow: Identifiable, Equatable, Sendable {
         case !h.busy.isEmpty:
             let ref = h.busy.lastIndex(of: "#").map { String(h.busy[$0...]) } ?? h.busy
             (state, tone) = ("running \(ref)", .pending)
+        case h.reindexing:
+            (state, tone) = (problem, .pending)
         case h.noUpstream:
             (state, tone) = (problem, .warn)
         case !problem.isEmpty:
@@ -194,6 +199,7 @@ public struct WorkspaceRow: Identifiable, Equatable, Sendable {
         if local > 0 { n.append("\(local) local-only") }
         if h.stashes > 0 { n.append("\(h.stashes) stash") }
         if h.learnings > 0 { n.append("\(h.learnings) learnings") }
+        if h.hasLastReindex, DeweyIndex.failed(h.lastReindex), !h.reindexing { n.append("reindex failed") }
         notes = n.joined(separator: " · ")
         let ready = problem.isEmpty
         if ready, !h.defaultBranch.isEmpty, h.branch != h.defaultBranch {
@@ -207,12 +213,14 @@ public struct WorkspaceRow: Identifiable, Equatable, Sendable {
         } else {
             explanation = nil
         }
+        (index, indexTone) = DeweyIndex.column(h, now: now)
     }
 
     /// Why the next run can't start here; "" when it can.
     static func problem(_ h: Ghhud_V1_CheckoutHealth) -> String {
         if !h.error.isEmpty { return h.error }
         if !h.busy.isEmpty { return "running " + h.busy }
+        if h.reindexing { return "reindexing" }
         if h.noUpstream { return "no upstream remote" }
         if !h.dirty.isEmpty { return "\(h.dirty.count) uncommitted" }
         if h.ahead > 0, h.behind > 0 { return h.defaultBranch + " diverged" }
@@ -230,8 +238,8 @@ public struct WorkspaceRow: Identifiable, Equatable, Sendable {
 }
 
 public enum WorkspaceList {
-    public static func rows(_ s: Ghhud_V1_Snapshot) -> [WorkspaceRow] {
-        s.workspaces.map(WorkspaceRow.init)
+    public static func rows(_ s: Ghhud_V1_Snapshot, now: Date = Date()) -> [WorkspaceRow] {
+        s.workspaces.map { WorkspaceRow($0, now: now) }
     }
 
     /// Checkouts the next run could use: the sidebar's count.

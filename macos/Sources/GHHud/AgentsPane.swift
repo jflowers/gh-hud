@@ -215,6 +215,10 @@ struct AgentDetail: View {
         if !r.pushed.isEmpty {
             section("Pushed", note: nil, lines: r.pushed, color: .primary)
         }
+        if let (lines, tone) = DeweyIndex.run(r.indexHealth) {
+            section("Dewey index", note: tone == .good ? nil : "still dispatchable; Workspaces has the detail",
+                    lines: lines, color: tone == .good ? .primary : tone.color)
+        }
         if !r.summary.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Final message").font(.subheadline.weight(.semibold))
@@ -286,6 +290,15 @@ struct WorkspacesPane: View {
                     .width(min: 36, ideal: 56, max: 80)
                 TableColumn("State", value: \.stateRank) { r in Text(r.state).foregroundStyle(r.tone.color).lineLimit(1) }
                     .width(min: 60, ideal: 140, max: 260)
+                TableColumn("Index", value: \.indexRank) { r in
+                    Text(r.index)
+                        .foregroundStyle(r.indexTone == .good ? .secondary : r.indexTone.color)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .help(r.health.index.isEmpty ? "Dewey index not read" : r.health.index == DeweyIndex.none
+                            ? "Not a Dewey vault" : "Dewey index: " + r.health.index)
+                }
+                .width(min: 50, ideal: 110, max: 180)
                 TableColumn("Notes", value: \.notes) { r in Text(r.notes).foregroundStyle(.secondary).lineLimit(1) }
                     .width(min: 60, ideal: 160)
             }
@@ -362,6 +375,9 @@ struct WorkspaceDetail: View {
                 list("Local-only commits: cleaning up loses them",
                      h.localOnly.map(Self.localOnly), color: .orange)
             }
+            if let d = DeweyIndex.detail(h) {
+                DeweyDetail(detail: d)
+            }
         }
     }
 
@@ -394,6 +410,34 @@ struct WorkspaceDetail: View {
             Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(color)
             ForEach(lines, id: \.self) { l in
                 Text(l).font(.callout.monospaced()).textSelection(.enabled)
+            }
+        }
+    }
+}
+
+/// A checkout's Dewey index: the verdict, each reindex reason on its own
+/// line, what built it, what it holds and the last reindex.
+struct DeweyDetail: View {
+    let detail: DeweyIndex.Detail
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("Dewey index").font(.subheadline.weight(.semibold))
+                Text(detail.verdict)
+                    .foregroundStyle(detail.tone == .good || detail.tone == .muted ? .secondary : detail.tone.color)
+            }
+            ForEach(Array(detail.reasons.enumerated()), id: \.offset) { _, r in
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(r.reason).font(.callout.monospaced()).foregroundStyle(Tone.pending.color).textSelection(.enabled)
+                    Text(r.means).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            ForEach(detail.problems, id: \.self) { p in
+                Text(p).font(.callout.monospaced()).foregroundStyle(detail.tone.color).textSelection(.enabled)
+            }
+            if !detail.facts.isEmpty {
+                Facts(rows: detail.facts.map { ($0.key, $0.value) }).padding(.top, 2)
             }
         }
     }

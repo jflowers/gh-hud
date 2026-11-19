@@ -246,6 +246,20 @@ public final class HubConnection {
         return Self.why(await client.fleetControl(request: req, headers: hub.authHeaders))
     }
 
+    /// Starts (or with cancel, cancels) a pass that reindexes the Dewey
+    /// vaults on a fleet machine, or with machine nil on every one; force
+    /// reindexes every vault, not just the ones that need it. The hub's
+    /// refusal comes back as it said it.
+    public func deweyReindex(machine: String?, cancel: Bool = false, force: Bool = false)
+        async -> Result<Ghhud_V1_DeweyReindexResponse, CommandError> {
+        guard let hub, let client = commands else { return .failure(.notConnected) }
+        var req = Ghhud_V1_DeweyReindexRequest()
+        if let machine { req.machine = machine } else { req.all = true }
+        req.cancel = cancel
+        req.force = force
+        return Self.result(await client.deweyReindex(request: req, headers: hub.authHeaders))
+    }
+
     /// Starts rolling a tool out at version ("" for its latest release).
     /// Returns why it failed, if it did.
     public func rollOut(tool: String, version: String = "") async -> String? {
