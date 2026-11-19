@@ -3,3 +3,4 @@
 /build/
 /macos/.build/
 /macos/.swiftpm/
+/.claude/worktrees/
