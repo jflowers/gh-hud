@@ -13,6 +13,8 @@ import io.github.jflowers.ghhud.api.v1.Snapshot
 public data class FleetRow(
     val name: String,
     val state: String,
+    /** The state as shown: "reindexing 7/15" while a rollout reindexes Dewey. */
+    val stateText: String,
     val tone: Tone,
     /** "yes", "no" or "unknown": whether the last probe reached it. */
     val reach: String,
@@ -55,6 +57,7 @@ public data class FleetRow(
             return FleetRow(
                 name = m.name,
                 state = m.state,
+                stateText = DeweyFleet.stateText(m),
                 tone = FleetList.tone(m.state),
                 reach = reach,
                 slots = if (u != null && u.ok) "${u.used}/${u.max}" else "—",
@@ -75,7 +78,7 @@ public object FleetList {
     public fun tone(state: String): Tone = when (state) {
         "current" -> Tone.GOOD
         "pending" -> Tone.MUTED
-        "draining", "applying", "verifying" -> Tone.PENDING
+        "draining", "applying", "reindexing", "verifying" -> Tone.PENDING
         "failed" -> Tone.BAD
         else -> Tone.WARN // unreachable, skipped
     }

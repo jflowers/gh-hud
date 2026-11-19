@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import io.github.jflowers.ghhud.core.AgentDetail
 import io.github.jflowers.ghhud.core.AgentRow
 import io.github.jflowers.ghhud.core.Answer
+import io.github.jflowers.ghhud.core.DeweyIndex
 import io.github.jflowers.ghhud.core.Links
 import io.github.jflowers.ghhud.core.Tone
 import io.github.jflowers.ghhud.core.WatchTarget
@@ -151,7 +152,7 @@ fun AgentScreen(
 
 /** A checkout: why it is or isn't ready for the next run. */
 @Composable
-fun WorkspaceScreen(row: WorkspaceRow?, items: ItemActions, onBack: () -> Unit) {
+fun WorkspaceScreen(row: WorkspaceRow?, items: ItemActions, onBack: () -> Unit, now: Instant = Instant.now()) {
     Detail(row?.place ?: "Workspace", onBack) {
         if (row == null) {
             Text("This checkout is no longer in the hub's list.", modifier = Modifier.testTag("workspace-gone"))
@@ -164,6 +165,18 @@ fun WorkspaceScreen(row: WorkspaceRow?, items: ItemActions, onBack: () -> Unit) 
             for (f in WorkspaceDetail.facts(row)) FactRow(f.label, f.value)
         }
         for (l in WorkspaceDetail.lists(row)) FactLines(l)
+        val facts = DeweyIndex.facts(row.health, now)
+        if (facts.isNotEmpty()) {
+            Text("Dewey index", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 12.dp).testTag("dewey"))
+            DeweyIndex.state(row.health, now).let { (text, tone) ->
+                Text(text, style = MaterialTheme.typography.bodyMedium, color = indexColor(tone, DeweyIndex.machineProblem(row.health)),
+                    modifier = Modifier.testTag("index-state"))
+            }
+            Column(Modifier.padding(vertical = 4.dp)) {
+                for (f in facts) FactRow(f.label, f.value)
+            }
+            for (l in DeweyIndex.lists(row.health)) FactLines(l)
+        }
         OutlinedButton(onClick = { items.copy(row.health.dir) }, modifier = Modifier.padding(top = 12.dp)) { Text("Copy directory") }
     }
 }

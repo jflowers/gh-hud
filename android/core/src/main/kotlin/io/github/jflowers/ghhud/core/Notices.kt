@@ -15,7 +15,19 @@ public object Notices {
         AlertType.ALERT_TYPE_RUN_FINISHED -> "Agent run finished"
         AlertType.ALERT_TYPE_TOOL_RELEASE -> "A tool released"
         AlertType.ALERT_TYPE_TOOLKIT_TARGET -> "A tool rollout needs you"
+        AlertType.ALERT_TYPE_REINDEX_FAILED -> "A Dewey reindex failed"
+        AlertType.ALERT_TYPE_UPKEEP_FAILED -> "A checkout's upkeep failed"
         else -> "gh-hud"
+    }
+
+    /**
+     * The checkout an alert is about ("[machine:]workspace", for upkeep
+     * "[machine:]workspace/repo"): a failed reindex or upkeep opens its
+     * screen.
+     */
+    public fun checkout(a: Alert): String? = when (a.type) {
+        AlertType.ALERT_TYPE_REINDEX_FAILED, AlertType.ALERT_TYPE_UPKEEP_FAILED -> a.ref.ifEmpty { null }
+        else -> null
     }
 
     /** The PR or issue an alert is about, if it names one. */

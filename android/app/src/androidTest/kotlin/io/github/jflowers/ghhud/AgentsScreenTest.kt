@@ -16,6 +16,8 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.jflowers.ghhud.api.v1.Snapshot
+import io.github.jflowers.ghhud.api.v1.CheckoutHealth
+import com.google.protobuf.Timestamp
 import io.github.jflowers.ghhud.core.AgentChoice
 import io.github.jflowers.ghhud.core.AgentList
 import io.github.jflowers.ghhud.core.AgentRow
@@ -97,6 +99,42 @@ class AgentsScreenTest {
         assertEquals(emptyList<String>(), asked)
         compose.onNodeWithTag("workspace:api-2").performClick()
         assertEquals(listOf("open workspace api-2"), asked)
+    }
+
+    /** A checkout whose index Dewey says to rebuild (#139). */
+    private fun oldIndex(): Snapshot {
+        val b = snap.toBuilder()
+        val i = b.workspacesList.indexOfFirst { it.workspace == "api" }
+        b.setWorkspaces(
+            i,
+            b.getWorkspaces(i).toBuilder()
+                .setIndex("reindex needed: index format 0, this Dewey writes 1, no embeddings")
+                .addAllIndexReasons(listOf("index format 0, this Dewey writes 1", "no embeddings"))
+                .setIndexBuilt(Timestamp.newBuilder().setSeconds(now.epochSecond - 3 * 86400))
+                .build(),
+        )
+        return b.build()
+    }
+
+    @Test
+    fun aCheckoutsDeweyIndexInTheList() {
+        val s = oldIndex()
+        compose.setContent {
+            MaterialTheme {
+                AgentsScreen(Ui(HubAddress("https://hub"), HubState(HubStatus.Connected, s, Attention.of(s))),
+                    AgentsView(tab = AgentsTab.WORKSPACES), ctl, onOpenAgent = {}, onOpenWorkspace = {}, now = now)
+            }
+        }
+        compose.onNodeWithTag("index:api", useUnmergedTree = true).assertTextEquals("dewey old format +1 3d")
+    }
+
+    @Test
+    fun aCheckoutsDeweyIndexOnItsScreen() {
+        val row = WorkspaceList.rows(oldIndex()).first { it.place == "api" }
+        compose.setContent { MaterialTheme { WorkspaceScreen(row, items, onBack = {}, now = now) } }
+        compose.onNodeWithTag("fact:index").assertTextEquals("reindex needed (still dispatchable)")
+        compose.onNodeWithText("index format 0, this Dewey writes 1").assertExists()
+        compose.onNodeWithText("no embeddings").assertExists()
     }
 
     private val items = object : ItemActions {
