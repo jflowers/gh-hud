@@ -59,7 +59,7 @@ func (d *Dispatcher) ownLeftovers(m Machine, dir, ref string) (Record, bool) {
 // as dirtyLines counts them) and its commits no remote has.
 func workScript(dir string) string {
 	return "cd -- " + shellQuoteTilde(dir) + " || exit 1\n" +
-		"printf 'dirty\\t%s\\n' \"$(git status --porcelain --untracked-files=all | " + learningsGrep + " | grep -c .)\"\n" +
+		"printf 'dirty\\t%s\\n' \"$(git status --porcelain --untracked-files=all | " + churnGrep + " | grep -c .)\"\n" +
 		"printf 'unpushed\\t%s\\n' \"$(git rev-list --count HEAD --not --remotes)\"\n"
 }
 

@@ -19,16 +19,38 @@ import (
 
 const learningsDir = ".uf/dewey/learnings/"
 
-// learningsGrep drops untracked learnings from `git status --porcelain`
-// output in scripts.
-const learningsGrep = `grep -v '^?? \.uf/dewey/learnings/'`
+// deweyCacheDir is Dewey's web-source cache. Some repos track it (the
+// fullsend-ai overlays do), and Dewey rewrites a cached file whenever it
+// re-fetches a source that changed upstream: churn nobody made (#156).
+const deweyCacheDir = ".uf/dewey/cache/"
 
-// dirtyLines is `git status --porcelain` output without untracked
-// learnings.
+// churnGrep drops what isn't anyone's work from `git status --porcelain`
+// output in scripts: untracked learnings (the learnings PR takes them)
+// and any change under Dewey's cache (restoreCacheScript puts that back).
+const churnGrep = `grep -v -e '^?? \.uf/dewey/learnings/' -e '^.. \.uf/dewey/cache/'`
+
+// restoreCacheScript puts Dewey's cache in the current repo (or, with
+// git -C "$o", an overlay) back to what's committed: modified or deleted
+// files restored, new untracked ones removed. Ignored files and repos
+// that don't track the cache are untouched.
+func restoreCacheScript(gitC string) string {
+	return "git " + gitC + "checkout -q -- " + deweyCacheDir + " 2>/dev/null; git " + gitC + "clean -fdq -- " + deweyCacheDir + " 2>/dev/null"
+}
+
+// cacheChurn reports a `git status --porcelain` line for a path under
+// Dewey's cache. The line may come trimmed (nonEmptyLines), so the path
+// is what follows the status code.
+func cacheChurn(line string) bool {
+	_, path, ok := strings.Cut(strings.TrimSpace(line), " ")
+	return ok && strings.HasPrefix(strings.TrimLeft(path, " "), deweyCacheDir)
+}
+
+// dirtyLines is `git status --porcelain` output without what churnGrep
+// drops: untracked learnings and Dewey's cache.
 func dirtyLines(out string) []string {
 	var lines []string
 	for _, l := range nonEmptyLines(out) {
-		if !strings.HasPrefix(l, "?? "+learningsDir) {
+		if !strings.HasPrefix(l, "?? "+learningsDir) && !cacheChurn(l) {
 			lines = append(lines, l)
 		}
 	}

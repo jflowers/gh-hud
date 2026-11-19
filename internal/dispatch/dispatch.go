@@ -1741,6 +1741,13 @@ func (d *Dispatcher) preflight(ctx context.Context, m Machine, dir string, task 
 		}
 		return "", err
 	}
+	if slices.ContainsFunc(nonEmptyLines(out), cacheChurn) {
+		// Dewey's cache churn isn't work, but it would stop the
+		// fast-forward below: put it back (#156).
+		if _, err := m.shell(ctx, "cd -- "+shellQuoteTilde(dir)+" || exit 1\n"+restoreCacheScript("")); err != nil {
+			return "", fmt.Errorf("restore Dewey's cache: %w", err)
+		}
+	}
 	stash := ""
 	if n := len(dirtyLines(out)); n > 0 {
 		// With dirty = refuse, dispatchCore already checked before the

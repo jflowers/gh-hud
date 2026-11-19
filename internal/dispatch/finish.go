@@ -554,13 +554,13 @@ done | sort -u`
 func inspectScript(dir, start string) string {
 	s := "cd -- " + shellQuoteTilde(dir) + " || exit 1\n" +
 		"printf 'branch\\t%s\\n' \"$(git rev-parse --abbrev-ref HEAD)\"\n" +
-		"git status --porcelain --untracked-files=all | " + learningsGrep + " | sed 's/^/dirty\\t/'\n" +
+		"git status --porcelain --untracked-files=all | " + churnGrep + " | sed 's/^/dirty\\t/'\n" +
 		"git log HEAD --not --remotes --format='unpushed%x09%h %s' | head -20\n"
 	if start != "" {
 		s += "git rev-parse -q --verify '@{u}' >/dev/null && git log --format='pushed%x09%h %s' " + shellQuote(start) + "..'@{u}' | head -20\n"
 	}
 	s += "for o in $(" + overlayScan + "); do\n" +
-		"  git -C \"$o\" status --porcelain --untracked-files=all | " + learningsGrep + " | sed \"s|^|odirty\\t$o\\t|\"\n" +
+		"  git -C \"$o\" status --porcelain --untracked-files=all | " + churnGrep + " | sed \"s|^|odirty\\t$o\\t|\"\n" +
 		"  git -C \"$o\" log HEAD --not --remotes --format=\"ounpushed%x09$o%x09%h %s\" | head -10\n" +
 		"done\n"
 	return s
@@ -765,14 +765,16 @@ func (d *Dispatcher) leftNote(m Machine, dir, msg string) string {
 // overlays before a run
 
 // overlaySyncScript fast-forwards every clean overlay the checkout links
-// to onto its upstream. It never pushes or discards (overlays are pushed
-// only by the learnings PR after a clean run, overlayLearningsPRScript):
-// an overlay with
-// uncommitted changes or unpushed commits is reported for refusal.
+// to onto its upstream. It never pushes (overlays are pushed only by the
+// learnings PR after a clean run, overlayLearningsPRScript) and discards
+// nothing but Dewey's cache churn, which it restores first (#156): an
+// overlay with other uncommitted changes or unpushed commits is reported
+// for refusal.
 func overlaySyncScript(dir string) string {
 	return "cd -- " + shellQuoteTilde(dir) + " || exit 1\n" +
 		"for o in $(" + overlayScan + "); do\n" +
-		"  if [ -n \"$(git -C \"$o\" status --porcelain --untracked-files=all | " + learningsGrep + ")\" ]; then printf 'refuse\\t%s\\tuncommitted changes\\n' \"$o\"; continue; fi\n" +
+		"  " + restoreCacheScript(`-C "$o" `) + "\n" +
+		"  if [ -n \"$(git -C \"$o\" status --porcelain --untracked-files=all | " + churnGrep + ")\" ]; then printf 'refuse\\t%s\\tuncommitted changes\\n' \"$o\"; continue; fi\n" +
 		"  u=$(git -C \"$o\" rev-parse --abbrev-ref '@{u}' 2>/dev/null) || { printf 'skip\\t%s\\tno upstream\\n' \"$o\"; continue; }\n" +
 		"  git -C \"$o\" fetch -q \"${u%%/*}\" 2>/dev/null || { printf 'refuse\\t%s\\tfetch %s failed\\n' \"$o\" \"${u%%/*}\"; continue; }\n" +
 		"  n=$(git -C \"$o\" rev-list --count '@{u}..HEAD')\n" +
