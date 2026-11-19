@@ -168,12 +168,15 @@ func (d *Dispatcher) scanWithVersion(ctx context.Context, m Machine) *ghws.Index
 	return ix
 }
 
-// scan runs scanRemote, or the test hook in its place.
+// scan runs scanRemote, or the test hook in its place, and keeps only
+// the machine's fleet checkouts (Options.Orgs).
 func (d *Dispatcher) scan(ctx context.Context, m Machine, version bool) (*ghws.Index, string, bool, error) {
+	scan := scanRemote
 	if d.scanHook != nil {
-		return d.scanHook(ctx, m, version)
+		scan = d.scanHook
 	}
-	return scanRemote(ctx, m, version)
+	ix, v, gotV, err := scan(ctx, m, version)
+	return ix.Fleet(d.o().Orgs), v, gotV, err
 }
 
 // storeIndex records a scan result and clears the in-flight marker.

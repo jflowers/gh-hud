@@ -230,9 +230,17 @@ type Options struct {
 	LocalLabels        []string
 	LocalExcludeLabels []string
 	// LocalIndex is the hub's ghws workspace index, used for placement.
+	// New keeps only its fleet checkouts (Orgs).
 	LocalIndex *ghws.Index
+	// Orgs are the fleet's orgs (the top-level orgs). gh-hud reads and
+	// changes only fleet checkouts, their org@label instances
+	// (ghws.InFleet), on every machine: the hub's index, every remote
+	// scan and the Dewey vault list are cut down to them (#157). Empty:
+	// any instance.
+	Orgs []string
 	// InstancesOnly restricts dispatch targets to @ instance workspaces
-	// (base workspaces are human-only).
+	// (base workspaces are human-only). The fleet scope (Orgs) already
+	// holds only instances, so it no longer changes anything.
 	InstancesOnly bool
 	// LearningsPR opens a chore PR with a checkout's untracked dewey
 	// learnings after a clean run, and one per stealth overlay with the
@@ -458,11 +466,15 @@ func New(opts Options) (*Dispatcher, error) {
 	if err := os.MkdirAll(filepath.Join(opts.StateDir, "logs"), 0o700); err != nil {
 		return nil, fmt.Errorf("state dir: %w", err)
 	}
+	opts.LocalIndex = opts.LocalIndex.Fleet(opts.Orgs)
 	dirs := make([]string, 0, len(opts.Dirs))
 	seenDir := map[string]bool{}
 	for _, dir := range opts.Dirs {
 		if dir == "" || seenDir[dir] {
 			continue
+		}
+		if opts.LocalIndex != nil && opts.LocalIndex.RepoFor(dir) == "" {
+			continue // not a fleet checkout
 		}
 		seenDir[dir] = true
 		dirs = append(dirs, dir)

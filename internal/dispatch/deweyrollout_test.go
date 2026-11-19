@@ -44,11 +44,13 @@ func TestDeweyBinary(t *testing.T) {
 	}
 }
 
-// Every vault in an @ instance counts, indexed or not; a base checkout
-// counts only with a graph.db; a checkout that isn't a vault doesn't.
+// Every vault in a fleet instance counts, indexed or not. A canonical
+// clone never does, even with a graph.db, and neither does another org's
+// instance (#157); a checkout that isn't a vault doesn't either.
 func TestDeweyVaults(t *testing.T) {
 	fakeReindexDewey(t)
 	d := newTestDispatcher(t, "refuse")
+	d.opts.Orgs = []string{"acme"}
 	root := d.o().Root
 	upstream, _ := setupClone(t)
 	instNoDB := ghwsCheckout(t, root, "acme@a", upstream, "r")
@@ -62,13 +64,16 @@ func TestDeweyVaults(t *testing.T) {
 	baseDB := ghwsCheckout(t, root, "acme", upstream, "s")
 	writeLearning(t, baseDB, "x.md")
 	writeFile(t, filepath.Join(baseDB, ".uf", "dewey", "graph.db"), "")
+	other := ghwsCheckout(t, root, "other@a", upstream, "r") // not a fleet org
+	writeLearning(t, other, "x.md")
+	writeFile(t, filepath.Join(other, ".uf", "dewey", "graph.db"), "")
 
 	got, err := d.DeweyVaults(context.Background(), "local")
 	if err != nil {
 		t.Fatal(err)
 	}
 	slices.Sort(got)
-	want := []string{baseDB, instNoDB, instDB}
+	want := []string{instNoDB, instDB}
 	slices.Sort(want)
 	if !slices.Equal(got, want) {
 		t.Errorf("vaults = %v, want %v", got, want)

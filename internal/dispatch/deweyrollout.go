@@ -98,7 +98,7 @@ func (d *Dispatcher) DeweyVaults(ctx context.Context, machine string) ([]string,
 	if err != nil {
 		return nil, fmt.Errorf("scan workspaces: %w", err)
 	}
-	cos := ix.Checkouts()
+	cos := ix.Fleet(d.o().Orgs).Checkouts() // never a clone outside the fleet (#157)
 	if len(cos) == 0 {
 		return nil, nil
 	}

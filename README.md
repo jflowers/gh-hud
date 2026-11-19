@@ -633,9 +633,16 @@ started through the `task` tool (and theirs, up to 12): a person needed
 there makes the run need you too, even if the parent carried on. Older
 plugin versions ignore both variables.
 
-Dispatch only targets ghws `@` instance workspaces (never the base
-human-owned clones); set `dispatch_instances_only = false` to also allow
-base workspaces. With `[[machines]]` configured, placement spreads across
+gh-hud only reads and changes **fleet checkouts**: the ghws `org@label`
+instances of the top-level `orgs`, on every machine (any instance when
+`orgs` is empty). Canonical org clones (`unbound-force/`) and other orgs
+(`jflowers/`) belong to whoever uses the machine. Dispatch, the
+Workspaces tab, session scans, Dewey reindexes and passes, branch
+pruning and learnings PRs never see them, the hub's included. Changing
+`orgs` takes a hub restart. The toolkit is the one exception: on the hub
+it uses a repo's canonical clone as the git source for its scratch
+worktrees and never changes that clone's working tree
+(`dispatch_instances_only` no longer does anything). With `[[machines]]` configured, placement spreads across
 the hub and the workers: a machine qualifies when it is enabled and
 reachable (`herdr machine status`), allows the task (per-machine `tasks`
 allowlist), takes the item's labels (`labels` / `exclude_labels`), has a
@@ -684,8 +691,7 @@ version its machine had when it started; the run view shows it, and
 `gh-hud status` / `gh-hud runs --json` and the hub API carry both.
 
 `9` opens the Workspaces tab (its count is the number of ready
-checkouts): every checkout a dispatch could use (`@` instances only with
-`dispatch_instances_only`) on the hub and each worker, with what the
+checkouts): every fleet checkout on the hub and each worker, with what the
 next run there would hit. A checkout is ready unless an agent is running
 in it, it has uncommitted files (untracked dewey learnings don't count),
 it has no `upstream` remote, or its default branch has diverged from
@@ -1650,7 +1656,7 @@ change without a restart, saying what changed:
   the like) are read when it starts.
 
 ```toml
-orgs = ["my-org", "another-org"]  # limit PR/issue searches to these orgs
+orgs = ["my-org", "another-org"]  # limit PR/issue searches to these orgs; also the fleet: gh-hud only manages their org@label checkouts
 refresh_secs = 120         # auto-refresh interval
 limit = 30                 # max items per search
 my_prs_everywhere = false  # "Mine" ignores `orgs` and covers all of GitHub
@@ -1673,7 +1679,6 @@ max_concurrent = 2         # max simultaneously dispatched agents (hub)
 # exclude_labels = ["opencode-v2-migration"] # hub: never items with any of these
 busy_window_secs = 900     # foreign session newer than this blocks dispatch
 dirty = "refuse"           # dirty checkout policy: refuse | stash | stash-tracked
-dispatch_instances_only = true  # only @ instance workspaces are targets
 learnings_pr = true        # chore PR of untracked dewey learnings after a clean run (one open at a time per checkout and overlay)
 agent_watch_cmd = "/Applications/Ghostty.app/Contents/MacOS/ghostty -e tail -n 200 -f {log}"
 herdr_watch_cmd = "/Applications/Ghostty.app/Contents/MacOS/ghostty -e herdr"  # {workspace} {pane} {machine}

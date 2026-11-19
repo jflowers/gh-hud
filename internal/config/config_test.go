@@ -494,6 +494,7 @@ func TestLoadWarnsUnknownKeys(t *testing.T) {
 		{"dispatch task typo", "[dispatch]\ndewey_reindex = \"auto\"\n[dispatch.review]\nato = true\n", "config: unknown key dispatch.review.ato"},
 		{"agent token with lan", "[hub]\nlan = \"0.0.0.0:7377\"\nagent_token = true\n", ""},
 		{"agent token alone", "[hub]\nagent_token = true\n", "config: [hub] agent_token does nothing without [hub] lan"},
+		{"instances only off", "dispatch_instances_only = false\n", "config: dispatch_instances_only = false does nothing: gh-hud only uses the fleet's org@label instances (#157)"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
