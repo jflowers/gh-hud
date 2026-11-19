@@ -456,7 +456,12 @@ const deweyHeldFn = `held() {
 // later, removes the pid file once the group is gone and says "timed
 // out". A SIGTERM, SIGHUP or SIGINT to the script itself (gh-hud's cancel
 // of a local command, remoteWrapper's when ssh drops) stops the group the
-// same way, faster, before the script exits.
+// same way, faster, before the script exits. So does SIGPIPE: when ssh
+// drops, the script's first signal is usually SIGPIPE, not the wrapper's
+// SIGTERM (bash writes to the closed pipe, a job-status notice once job
+// control has been on), and untrapped it kills bash outright and orphans
+// dewey's group (seen on lap1). The handler ignores further SIGPIPEs, so
+// its own writes can't cut it short.
 //
 // The group comes from `set -m` (job control) around the `&`: POSIX has
 // every job run in a process group of its own, and it works the same in
@@ -503,7 +508,7 @@ pf="$v/` + reindexPidName + `"
 end=$(( $(date +%s) + ` + strconv.Itoa(secs) + ` ))
 t=$(mktemp -d 2>/dev/null || mktemp -d -t ghhud) || { echo 'RX err no temp dir'; exit 0; }
 pg=
-trap 'if [ -z "$pg" ] || stop "$pg" 2; then rm -f "$pf"; fi; rm -rf "$t"; exit 143' HUP INT TERM
+trap 'trap "" PIPE; if [ -z "$pg" ] || stop "$pg" 2; then rm -f "$pf"; fi; rm -rf "$t"; exit 143' HUP INT TERM PIPE
 # ended PGID: stop the group of a dewey that ran out of time; RX alive
 # when it won't die, and the pid file stays for reindexCleanup.
 ended() {

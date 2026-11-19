@@ -438,3 +438,57 @@ func TestReindexPidFileIsNotLeftWork(t *testing.T) {
 		t.Errorf("churnGrep = %q, %v", out, err)
 	}
 }
+
+// A SIGPIPE to the script (its first signal when ssh drops: bash writes to
+// the closed pipe) stops what it started, like a SIGTERM: untrapped it
+// killed bash outright and left dewey's own process group running (seen
+// on lap1). Both the reindex (ignoring SIGTERM) and the warm-up serve.
+func TestReindexScriptSurvivesSIGPIPE(t *testing.T) {
+	for _, stage := range []string{"reindex", "serve"} {
+		t.Run(stage, func(t *testing.T) {
+			f := fakeReindexDewey(t)
+			work := vaultCheckout(t)
+			if stage == "reindex" {
+				hangVault(t, work, true)
+			} else {
+				t.Setenv("FAKE_DEWEY_GATE", f.gate) // never created: serve never finishes
+			}
+			cmd := exec.Command("bash", "-c", reindexScript(work, time.Hour))
+			cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+			r, w, err := os.Pipe() // stdout stays open: only the signal ends it
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = r.Close() }()
+			cmd.Stdout, cmd.Stderr = w, w
+			if err := cmd.Start(); err != nil {
+				t.Fatal(err)
+			}
+			_ = w.Close()
+			defer func() { _ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }()
+			waited := make(chan struct{})
+			go func() { _ = cmd.Wait(); close(waited) }()
+			f.waitAlive(t, stage)
+			deadline := time.Now().Add(10 * time.Second)
+			for {
+				if _, err := os.Stat(pidFile(work)); err == nil {
+					break
+				}
+				if time.Now().After(deadline) {
+					t.Fatal("no pid file")
+				}
+				time.Sleep(20 * time.Millisecond)
+			}
+			if err := syscall.Kill(cmd.Process.Pid, syscall.SIGPIPE); err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case <-waited:
+			case <-time.After(20 * time.Second):
+				t.Fatal("the script didn't exit after SIGPIPE")
+			}
+			f.assertNoneAlive(t, stage)
+			assertNoPidFile(t, work)
+		})
+	}
+}
