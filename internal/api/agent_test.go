@@ -27,11 +27,6 @@ var agentDenied = map[string]bool{
 	ghhudv1connect.HubServiceRejectProposalProcedure:  true,
 	ghhudv1connect.HubServiceApproveEpicProcedure:     true,
 	ghhudv1connect.HubServiceClearEpicGateProcedure:   true,
-	ghhudv1connect.HubServiceFleetControlProcedure:    true,
-	ghhudv1connect.HubServiceDeweyReindexProcedure:    true, // changing indexes stays with you (#139)
-	ghhudv1connect.HubServiceToolkitRolloutProcedure:  true,
-	ghhudv1connect.HubServiceToolkitControlProcedure:  true,
-	ghhudv1connect.HubServicePruneBranchesProcedure:   true,
 	ghhudv1connect.HubServiceWatchProcedure:           true,
 	ghhudv1connect.HubServiceWatchRunProcedure:        true,
 	ghhudv1connect.HubServiceOpenTranscriptProcedure:  true,
@@ -134,10 +129,20 @@ func TestServeLANWithAgentToken(t *testing.T) {
 	if err := c.ApproveEpic(t.Context(), "acme/app#100", ""); err == nil || !strings.Contains(err.Error(), "can't call ApproveEpic") {
 		t.Errorf("agent ApproveEpic: %v", err)
 	}
-	if err := c.FleetApplyNow(t.Context()); err == nil {
-		t.Error("agent FleetApplyNow went through")
+	if err := c.ClearEpicGate(t.Context(), "acme/app#100", "acme/app#7"); err == nil || !strings.Contains(err.Error(), "can't call ClearEpicGate") {
+		t.Errorf("agent ClearEpicGate: %v", err)
 	}
-	if fake.Called("ApproveEpic acme/app#100 ") != 0 || fake.Called("FleetApplyNow") != 0 {
+	// Operating the fleet is the agent's too.
+	if err := c.FleetApplyNow(t.Context()); err != nil {
+		t.Errorf("agent FleetApplyNow: %v", err)
+	}
+	if _, err := c.DeweyReindex(t.Context(), "lap1"); err != nil {
+		t.Errorf("agent DeweyReindex: %v", err)
+	}
+	if fake.Called("FleetApplyNow") != 1 || fake.Called("DeweyReindex lap1") != 1 {
+		t.Errorf("allowed calls didn't reach the hub: %v", fake.Calls)
+	}
+	if fake.Called("ApproveEpic acme/app#100 ") != 0 || fake.Called("ClearEpicGate acme/app#100 acme/app#7") != 0 {
 		t.Errorf("refused calls reached the hub: %v", fake.Calls)
 	}
 	// A subscription works too (streams go through the same check).

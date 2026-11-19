@@ -136,9 +136,10 @@ type HubConfig struct {
 	LAN string `toml:"lan"`
 	// AgentToken has the LAN listener also take the agent token
 	// (agent-token in the state directory): it reads the hub, dispatches,
-	// queues and enrolls epics, but can't approve plans or proposals, clear
-	// gates, or start fleet or toolkit rollouts. Each call it makes that
-	// changes something is logged. Needs lan.
+	// queues, enrolls epics and operates the fleet (rollouts, Dewey
+	// reindex passes, branch pruning), but can't approve plans or
+	// proposals or clear gates. Each call it makes that changes something
+	// is logged. Needs lan.
 	AgentToken bool `toml:"agent_token"`
 	// SelfRestart has gh-hud serve restart itself, in place, when its
 	// binary is replaced (go install, a fleet apply): once the new binary

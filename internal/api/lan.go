@@ -77,10 +77,10 @@ func privatePeer(addr string) bool {
 }
 
 // agentCalls are what the agent token may call: reading the hub, starting
-// and queueing work, and enrolling, rereading or dropping epics. Everything
-// else is yours: approving plans and proposals, clearing gates, fleet and
-// toolkit rollouts, Dewey reindex passes, pruning branches, and opening
-// windows on the hub.
+// and queueing work, enrolling, rereading or dropping epics, driving the
+// fleet and toolkit rollouts, starting or cancelling Dewey reindex passes,
+// and pruning branches. Everything else is yours: approving epic plans and
+// supervisor proposals, clearing gates, and opening windows on the hub.
 // A procedure added to the API is refused until it is listed here.
 var agentCalls = map[string]bool{
 	ghhudv1connect.HubServiceGetSnapshotProcedure:  false,
@@ -100,6 +100,15 @@ var agentCalls = map[string]bool{
 	ghhudv1connect.HubServiceEnrollEpicProcedure: true,
 	ghhudv1connect.HubServiceRereadEpicProcedure: true,
 	ghhudv1connect.HubServiceDropEpicProcedure:   true,
+	// Operating the fleet: each still goes through its own gates (the
+	// rollout drains a machine first, a pass skips busy vaults, pruning
+	// deletes only branches whose PR is merged or closed), and a toolkit
+	// rollout ends in pin PRs that you merge.
+	ghhudv1connect.HubServiceFleetControlProcedure:   true,
+	ghhudv1connect.HubServiceToolkitRolloutProcedure: true,
+	ghhudv1connect.HubServiceToolkitControlProcedure: true,
+	ghhudv1connect.HubServiceDeweyReindexProcedure:   true,
+	ghhudv1connect.HubServicePruneBranchesProcedure:  true,
 }
 
 // callName is a procedure's method name ("Dispatch").
