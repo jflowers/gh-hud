@@ -807,6 +807,7 @@ func (m Machine) shell(ctx context.Context, script string) (string, error) {
 		return m.runScript(ctx, script)
 	}
 	cmd := exec.CommandContext(ctx, "bash", "-c", script)
+	inGroup(cmd)
 	var out, errb strings.Builder
 	cmd.Stdout = &out
 	cmd.Stderr = &errb

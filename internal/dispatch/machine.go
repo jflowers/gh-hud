@@ -101,6 +101,7 @@ func (m Machine) RunFull(ctx context.Context, dir string, argv ...string) (strin
 		if dir != "" {
 			cmd.Dir = dir
 		}
+		inGroup(cmd)
 		var out, errb strings.Builder
 		cmd.Stdout = &out
 		cmd.Stderr = &errb
@@ -110,11 +111,8 @@ func (m Machine) RunFull(ctx context.Context, dir string, argv ...string) (strin
 	if len(argv) == 0 {
 		return "", "", fmt.Errorf("machine %s: empty command", m.Name)
 	}
-	cmd := exec.CommandContext(ctx, "ssh", "-o", "BatchMode=yes", m.SSH, "bash -lc "+shellQuote(machineScript(dir, argv)))
 	var out, errb strings.Builder
-	cmd.Stdout = &out
-	cmd.Stderr = &errb
-	err := cmd.Run()
+	err := sshCommand(ctx, m, machineScript(dir, argv), &out, &errb)
 	return out.String(), errb.String(), err
 }
 
@@ -133,16 +131,12 @@ func machineScript(dir string, argv []string) string {
 }
 
 // runScript runs a POSIX shell script on the machine through a login
-// shell. The script travels as one ssh command argument (bash -lc
-// '<script>') so the remote shell cannot mis-split it.
+// shell, under remoteWrapper (procgroup.go): the script travels as one
+// quoted ssh command argument so the remote shell cannot mis-split it,
+// and everything it starts ends when gh-hud stops waiting.
 func (m Machine) runScript(ctx context.Context, script string) (string, error) {
-	// The script is single-quoted for the remote shell; ssh joins its
-	// arguments into one command line, so it must travel quoted.
-	cmd := exec.CommandContext(ctx, "ssh", "-o", "BatchMode=yes", m.SSH, "bash -lc "+shellQuote(script)) //nolint:gosec // G702: quoted above
 	var out, errb strings.Builder
-	cmd.Stdout = &out
-	cmd.Stderr = &errb
-	if err := cmd.Run(); err != nil {
+	if err := sshCommand(ctx, m, script, &out, &errb); err != nil {
 		msg := strings.TrimSpace(errb.String())
 		if msg == "" {
 			msg = err.Error()
