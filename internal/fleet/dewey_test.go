@@ -30,6 +30,7 @@ type fakeDewey struct {
 	vaults map[string][]string
 	fail   map[string]bool   // dir → reindex fails
 	skip   map[string]string // dir → why its reindex is skipped
+	stuck  map[string]string // dir → why its machine is stuck after it
 	block  chan struct{}     // when set, a reindex waits for it (or ctx)
 	events []string
 	active int // reindexes running now
@@ -80,6 +81,11 @@ func (f *fakeDewey) reindex(ctx context.Context, kind, machine, dir string) (dis
 	if why, ok := f.skip[dir]; ok {
 		f.mu.Unlock()
 		return dispatch.ReindexResult{}, dispatch.ReindexSkipError(why)
+	}
+	if why, ok := f.stuck[dir]; ok {
+		f.mu.Unlock()
+		err := dispatch.ReindexStuckError(why)
+		return dispatch.ReindexResult{Duration: time.Second, Err: "timed out: " + why}, err
 	}
 	f.active++
 	f.maxRun = max(f.maxRun, f.active)
@@ -278,6 +284,27 @@ func TestRolloutReindexFailureDoesNotFailRollout(t *testing.T) {
 	}
 	if h.notes.count() != 1 || !strings.Contains(h.notes.notes[0], "Dewey reindex incomplete on lap1") {
 		t.Errorf("notes = %v, want one about lap1", h.notes.notes)
+	}
+}
+
+// A vault whose dewey can't be confirmed gone stops the machine's
+// rollout reindex there: the vaults after it aren't started beside it
+// (#139). The rollout itself goes on.
+func TestRolloutReindexStopsOnStuckMachine(t *testing.T) {
+	h, fd := newDeweyHarness(t, config.DeweyReindexAuto)
+	fd.stuck = map[string]string{"/w/acme@a/r": "pid 7 survived SIGKILL"}
+	h.coord.poll(context.Background())
+
+	if got := filterEvents(fd.eventLog(), "reindex lap1"); !slices.Equal(got, []string{"reindex lap1 /w/acme@a/r"}) {
+		t.Errorf("lap1 reindexes = %v, want only the stuck one", got)
+	}
+	lap1 := stateOf(t, h.coord.Snapshot(), "lap1").Reindex
+	if lap1.Done != 1 || len(lap1.Failed) != 1 || !strings.Contains(lap1.Failed[0], "pid 7 survived SIGKILL") ||
+		!strings.Contains(lap1.Note, "reindexed 0/3 (stopped: dewey reindex stuck on the machine: pid 7 survived SIGKILL)") {
+		t.Errorf("lap1 reindex = %+v", lap1)
+	}
+	if got := filterEvents(fd.eventLog(), "reindex lap2"); len(got) != 1 {
+		t.Errorf("lap2 reindexes = %v, want its own vault", got)
 	}
 }
 

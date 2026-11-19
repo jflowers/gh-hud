@@ -24,10 +24,15 @@ const learningsDir = ".uf/dewey/learnings/"
 // re-fetches a source that changed upstream: churn nobody made (#156).
 const deweyCacheDir = ".uf/dewey/cache/"
 
+// reindexPidPath is the pid file a running reindex keeps in the vault
+// (reindexPidName), as git status names it.
+const reindexPidPath = ".uf/dewey/" + reindexPidName
+
 // churnGrep drops what isn't anyone's work from `git status --porcelain`
-// output in scripts: untracked learnings (the learnings PR takes them)
-// and any change under Dewey's cache (restoreCacheScript puts that back).
-const churnGrep = `grep -v -e '^?? \.uf/dewey/learnings/' -e '^.. \.uf/dewey/cache/'`
+// output in scripts: untracked learnings (the learnings PR takes them),
+// any change under Dewey's cache (restoreCacheScript puts that back) and
+// the pid file of a reindex running in the vault.
+const churnGrep = `grep -v -e '^?? \.uf/dewey/learnings/' -e '^.. \.uf/dewey/cache/' -e '^?? \.uf/dewey/gh-hud-reindex\.pid$'`
 
 // restoreCacheScript puts Dewey's cache in the current repo (or, with
 // git -C "$o", an overlay) back to what's committed: modified or deleted
@@ -46,11 +51,11 @@ func cacheChurn(line string) bool {
 }
 
 // dirtyLines is `git status --porcelain` output without what churnGrep
-// drops: untracked learnings and Dewey's cache.
+// drops: untracked learnings, Dewey's cache and a reindex's pid file.
 func dirtyLines(out string) []string {
 	var lines []string
 	for _, l := range nonEmptyLines(out) {
-		if !strings.HasPrefix(l, "?? "+learningsDir) && !cacheChurn(l) {
+		if !strings.HasPrefix(l, "?? "+learningsDir) && !cacheChurn(l) && l != "?? "+reindexPidPath {
 			lines = append(lines, l)
 		}
 	}

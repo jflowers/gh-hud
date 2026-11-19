@@ -175,7 +175,8 @@ func parseDeweyVaults(out string) []deweyVaultLine {
 // leftovers or its dewey.lock is held, its last reindex recorded and, on
 // success, its baseline set to the binary it ran. A machine reindexing
 // another vault (an automatic reindex begun before the drain) is waited
-// for, within ctx; each attempt has reindexTimeout. Only the dispatch
+// for, within ctx and a bound (then the error is IsMachineStuck); each
+// attempt has the configured dewey_reindex_timeout. Only the dispatch
 // owner reindexes.
 func (d *Dispatcher) RolloutReindex(ctx context.Context, machine, dir string) (ReindexResult, error) {
 	return d.gatedReindex(ctx, machine, dir, []string{reasonDeweyUpgraded})
@@ -196,7 +197,10 @@ func (d *Dispatcher) RequestedReindex(ctx context.Context, machine, dir string) 
 }
 
 // gatedReindex is RolloutReindex and RequestedReindex: reindexCheckout on
-// the named machine, waiting out another reindex on it within ctx.
+// the named machine, waiting out another reindex on it (gh-hud's own, or
+// a dewey reindex running there that gh-hud isn't tracking) within ctx
+// and machineBusyWait. Once that wait runs out the machine is stuck: the
+// error wraps errMachineStuck, and the caller's pass stops there.
 func (d *Dispatcher) gatedReindex(ctx context.Context, machine, dir string, reasons []string) (ReindexResult, error) {
 	m, ok := d.rolloutMachine(machine)
 	if !ok {
@@ -205,6 +209,13 @@ func (d *Dispatcher) gatedReindex(ctx context.Context, machine, dir string, reas
 	if !d.owns() {
 		return ReindexResult{}, fmt.Errorf("%w: this gh-hud doesn't own dispatch", errReindexSkipped)
 	}
+	bound := machineBusyWait
+	if bound <= 0 {
+		// Long enough for any reindex gh-hud started to end on its own
+		// deadline and be cleaned up.
+		bound = d.reindexAttemptTimeout() + reindexCleanupTimeout
+	}
+	giveUp := time.Now().Add(bound)
 	for {
 		// Bring the checkout up to date first, so the index describes
 		// the current tree (#159). A skip (the slot is busy, upkeep is
@@ -212,11 +223,14 @@ func (d *Dispatcher) gatedReindex(ctx context.Context, machine, dir string, reas
 		uctx, ucancel := context.WithTimeout(ctx, upkeepTimeout)
 		_, _ = d.upkeepCheckout(uctx, m, dir)
 		ucancel()
-		actx, cancel := context.WithTimeout(ctx, reindexTimeout)
+		actx, cancel := context.WithTimeout(ctx, d.reindexAttemptTimeout())
 		res, err := d.reindexCheckout(actx, m, Record{Machine: m.key(), Dir: dir}, reasons)
 		cancel()
 		if !errors.Is(err, errMachineReindexing) {
 			return res, err
+		}
+		if !time.Now().Before(giveUp) {
+			return res, fmt.Errorf("%w: still busy after waiting %s: %w", errMachineStuck, bound.Round(time.Second), err)
 		}
 		select {
 		case <-ctx.Done():
@@ -226,9 +240,24 @@ func (d *Dispatcher) gatedReindex(ctx context.Context, machine, dir string, reas
 	}
 }
 
+// machineBusyWait, when set, replaces gatedReindex's wait for a busy
+// machine (for tests).
+var machineBusyWait time.Duration
+
 // IsReindexSkip reports whether a RolloutReindex (or RequestedReindex) error means the reindex
 // didn't start (rather than failed).
 func IsReindexSkip(err error) bool { return errors.Is(err, errReindexSkipped) }
+
+// IsMachineStuck reports whether a RolloutReindex (or RequestedReindex)
+// error means the machine can't take another reindex now: a dewey gh-hud
+// started there couldn't be confirmed gone, or another dewey reindex
+// there outlasted the wait. A pass stops on that machine instead of
+// starting the next vault beside it.
+func IsMachineStuck(err error) bool { return errors.Is(err, errMachineStuck) }
+
+// ReindexStuckError is a stuck machine as RolloutReindex and
+// RequestedReindex return one, for fakes of the fleet's Dewey surface.
+func ReindexStuckError(why string) error { return fmt.Errorf("%w: %s", errMachineStuck, why) }
 
 // ReindexSkipError is a skip as RolloutReindex and RequestedReindex
 // return one ("reindex skipped: <why>"), for fakes of the fleet's Dewey

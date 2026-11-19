@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jflowers/gh-hud/internal/ghws"
 )
@@ -165,6 +166,33 @@ func TestLoadDeweyReindex(t *testing.T) {
 	}
 	if _, err := load("[dispatch]\ndewey_reindex = true\n"); err == nil {
 		t.Error("a bool dewey_reindex loaded")
+	}
+}
+
+func TestLoadDeweyReindexTimeout(t *testing.T) {
+	load := func(body string) (*Config, error) {
+		path := filepath.Join(t.TempDir(), "config.toml")
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return Load(path)
+	}
+	if d := Default(); d.DeweyReindexTimeout != 2*time.Hour || DefaultDeweyReindexTimeout != 2*time.Hour {
+		t.Errorf("default dewey_reindex_timeout = %s, want 2h", d.DeweyReindexTimeout)
+	}
+	if c, err := load("max_concurrent = 3\n"); err != nil || c.DeweyReindexTimeout != DefaultDeweyReindexTimeout {
+		t.Errorf("unset: %+v %v", c, err)
+	}
+	c, err := load("[dispatch]\ndewey_reindex = \"auto\"\ndewey_reindex_timeout = \"3h30m\"\n\n[dispatch.review]\nauto = true\n")
+	if err != nil || c.DeweyReindexTimeout != 3*time.Hour+30*time.Minute || c.DeweyReindex != "auto" ||
+		!c.Dispatch["review"].Auto || len(c.Dispatch) != 5 || len(c.Warnings) > 0 {
+		t.Errorf("set: %+v %v", c, err)
+	}
+	for _, bad := range []string{`"forever"`, `"0s"`, `"-1h"`, `"500ms"`, `7200`} {
+		if _, err := load("[dispatch]\ndewey_reindex_timeout = " + bad + "\n"); err == nil ||
+			!strings.Contains(err.Error(), "dewey_reindex_timeout") {
+			t.Errorf("%s: %v, want an error", bad, err)
+		}
 	}
 }
 

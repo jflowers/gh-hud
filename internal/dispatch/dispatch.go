@@ -265,6 +265,10 @@ type Options struct {
 	// "auto" also reindexes and warms it (deweyreindex.go), "off" skips
 	// the check.
 	DeweyReindex string
+	// DeweyReindexTimeout is [dispatch] dewey_reindex_timeout: how long
+	// one vault's reindex and warm may run on its machine (0 = the
+	// default, config.DefaultDeweyReindexTimeout).
+	DeweyReindexTimeout time.Duration
 	// Upkeep is what the idle fleet checkouts' upkeep does (upkeep.go):
 	// "report" (default) records what it would do, "auto" does it,
 	// "off" skips it.
@@ -445,6 +449,9 @@ func normalizeOptions(opts *Options) error {
 	case config.DeweyReindexOff, config.DeweyReindexAuto:
 	default:
 		opts.DeweyReindex = config.DeweyReindexReport
+	}
+	if opts.DeweyReindexTimeout <= 0 {
+		opts.DeweyReindexTimeout = config.DefaultDeweyReindexTimeout
 	}
 	if opts.StateDir == "" {
 		home, err := os.UserHomeDir()

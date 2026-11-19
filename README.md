@@ -501,6 +501,33 @@ and why it ran. A failure is also a notification and isn't retried. A
 machine problem, such as no embedder or no `dewey` binary, is never
 reindexed, because a reindex wouldn't fix it.
 
+One reindex per machine holds on the machine itself, not only in
+gh-hud's bookkeeping. Before a vault starts, gh-hud looks for a running
+`dewey reindex` for any vault on that machine (`pgrep -f`, else `ps`),
+whoever started it. If it finds one, the automatic reindex skips with
+`another dewey reindex is already running on lap1 (pid N, vault …)`, and
+a pass or rollout waits for it. That wait is bounded by the time limit
+plus a few minutes. Past that, the machine's pass stops.
+
+Each vault's reindex and warm-up has a time limit, `[dispatch]
+dewey_reindex_timeout` (default `"2h"`). The script on the machine
+enforces the limit itself, without relying on the ssh session to carry a
+cancel. It runs `dewey reindex`, and then the warm-up `dewey serve`, in
+the background as a process group of its own (`set -m` job control,
+which works the same in macOS and Linux shells, with no `setsid` or
+GNU `timeout` needed). It records the group in
+`.uf/dewey/gh-hud-reindex.pid`. At the deadline it sends the group
+SIGTERM, then SIGKILL 10 seconds later, removes the pid file, and records
+`timed out after 2h0m0s`. The warm-up gets at most a third of the limit.
+gh-hud waits two minutes longer than the script. If gh-hud stops waiting
+first (a cancelled pass, an ssh drop, the hub shutting down), the script
+stops its dewey on the way out. gh-hud then runs a short cleanup on the
+machine that kills the group in the pid file, but only when that pid is
+still the vault's `dewey reindex` or `serve`. The result is recorded as
+`cancelled: …` or `timed out: …`. If a dewey can't be confirmed gone,
+the machine's pass stops with that failure, so no second dewey starts
+beside it. The pid file isn't counted as leftover work.
+
 #### Reindex every vault now
 
 Some Dewey releases change what an index stores, and only a reindex
@@ -526,7 +553,9 @@ time with the automatic reindex's routine: busy `reindexing`, the
 machine's one reindex at a time, the new binary recorded as the baseline
 on success. It doesn't drain the machine, so a vault with a live agent,
 leftovers or a held `dewey.lock` is skipped and listed with why, not
-waited for. The fleet view shows `dewey pass: reindexing 3/12` under the
+waited for. A `dewey reindex` already running on the machine is waited
+for, and a dewey that can't be stopped stops the pass on that machine
+(see the time limit above). The fleet view shows `dewey pass: reindexing 3/12` under the
 machine and then the summary with every vault skipped or failed; each
 vault's outcome is also its last reindex in the Workspaces tab. The end
 of a pass is notified, and a failed vault raises the same alert as a
@@ -1774,6 +1803,7 @@ max_concurrent = 2
 
 [dispatch]
 dewey_reindex = "report"   # after a clean run, a Dewey index that needs a reindex: report | auto (reindex when idle) | off (also refuses `gh-hud dewey reindex`)
+dewey_reindex_timeout = "2h"  # one vault's reindex + warm-up; the machine kills dewey past it (CPU-only embedding is slow)
 
 # dispatchable tasks, one table each (see "Configuring dispatch" above).
 # All five are built in with these commands; a table only needs the keys
