@@ -196,7 +196,7 @@ func serveHub(ctx context.Context, cfg *config.Config, h *hub.Hub, dir string, l
 			ready := func(i api.LANInfo) {
 				log.Printf("other Macs reach the hub at %s with the token in %s (private networks only)", strings.Join(i.URLs, " or "), i.TokenFile)
 				if i.AgentTokenFile != "" {
-					log.Printf("agents reach it there with the agent token in %s (no approvals, gates or rollouts)", i.AgentTokenFile)
+					log.Printf("agents reach it there with the agent token in %s (no approvals or gates)", i.AgentTokenFile)
 				}
 			}
 			var opts []api.LANOption

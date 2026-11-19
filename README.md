@@ -129,11 +129,11 @@ can open it).
 - `[hub] agent_token = true` has the LAN listener also take a second,
   limited token for agents and scripts (`agent-token` in the state
   directory, made once, readable only by you). With it a caller can read
-  the hub, dispatch, queue, and enroll, reread or drop epics, but can't
-  approve epic plans or supervisor proposals, clear gates, start fleet or
-  toolkit rollouts or Dewey reindex passes, prune branches, or open
-  windows on the hub: those stay
-  with you. The hub logs each agent call that changes something, and each
+  the hub, dispatch, queue, enroll, reread or drop epics, drive the fleet
+  and toolkit rollouts, start or cancel Dewey reindex passes, and prune
+  branches, but can't approve epic plans or supervisor proposals, clear
+  gates, or open windows on the hub: those stay with you. A toolkit
+  rollout still ends in pin PRs that you merge. The hub logs each agent call that changes something, and each
   one it refuses. Copy the file to `~/.config/gh-hud/hub-token` on the
   agent's machine and use `gh-hud … -hub <address>`.
 - A client that shows alerts as native notifications says so when it
@@ -531,8 +531,8 @@ owns dispatch, detached from the command that asked; a hub restart ends
 it. Running it again is safe: a vault already reindexed is just
 reindexed again, and a skipped one gets another try. `dewey_reindex =
 "off"` refuses a pass; `"report"` and `"auto"` allow it, since a person
-asking is the switch `"report"` leaves to a person. The agent token can't
-start or cancel one.
+asking is the switch `"report"` leaves to a person. The agent token can
+start or cancel one too, so an agent you ask counts as that person.
 
 By default (`runner = "herdr"`) dispatch goes through a local herdr
 server: one herdr workspace per ghws workspace (created lazily, reused,
@@ -1747,7 +1747,7 @@ update_method = "merge"    # merge train's branch update: merge or rebase
 listen = "127.0.0.1:0"     # loopback only; "" turns TCP off
 tailnet = ""               # join your tailnet as this device name, for the phone
 lan = ""                   # e.g. "0.0.0.0:7377": the Mac app on other Macs on your network
-agent_token = false        # with lan: also take a limited agent-token (no approvals, gates or rollouts)
+agent_token = false        # with lan: also take a limited agent-token (no approvals or gates)
 
 # GitOps fleet rollout (see "Fleet rollout (GitOps)" above). Machines need
 # a fleet-apply script on PATH (chezmoi dotfiles checkout).
