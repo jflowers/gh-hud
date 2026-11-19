@@ -540,3 +540,23 @@ func TestSupervisorSecondOpinion(t *testing.T) {
 		t.Errorf("blank model: %v", err)
 	}
 }
+
+// [upkeep] mode defaults to report and takes only off, report or auto.
+func TestUpkeepMode(t *testing.T) {
+	load := func(body string) (*Config, error) {
+		p := filepath.Join(t.TempDir(), "config.toml")
+		if err := os.WriteFile(p, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return Load(p)
+	}
+	if cfg, err := load(""); err != nil || cfg.Upkeep.Mode != UpkeepReport {
+		t.Errorf("default = %+v, %v; want report", cfg, err)
+	}
+	if cfg, err := load("[upkeep]\nmode = \"auto\"\n"); err != nil || cfg.Upkeep.Mode != UpkeepAuto {
+		t.Errorf("auto = %v, %v", cfg.Upkeep, err)
+	}
+	if _, err := load("[upkeep]\nmode = \"sometimes\"\n"); err == nil || !strings.Contains(err.Error(), "upkeep mode") {
+		t.Errorf("bad mode: %v", err)
+	}
+}

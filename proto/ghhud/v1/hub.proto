@@ -788,6 +788,24 @@ message CheckoutHealth {
   // gh-hud is reindexing the checkout's Dewey index: it takes no dispatch.
   bool reindexing = 22;
   ReindexResult last_reindex = 23; // unset: none recorded
+  // gh-hud is keeping the checkout up (fetch, fast-forward): it takes no
+  // dispatch.
+  bool upkeeping = 24;
+  UpkeepResult last_upkeep = 25; // unset: none yet
+}
+
+// UpkeepResult is the last upkeep of an idle fleet checkout: fetched,
+// then fast-forwarded only.
+message UpkeepResult {
+  google.protobuf.Timestamp at = 1;
+  bool report = 2; // [upkeep] mode report: did is what it would do
+  string default_branch = 3;
+  int64 behind = 4; // the default branch vs the remote's, after the fetch
+  int64 ahead = 5;
+  repeated string did = 6; // what it changed (or would change)
+  repeated string left = 7; // what keeps it from current, left alone
+  string skipped = 8; // why it didn't run
+  string error = 9; // why it failed
 }
 
 // ReindexResult is the outcome of an automatic Dewey reindex of a checkout.

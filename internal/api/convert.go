@@ -632,6 +632,30 @@ func checkoutToPB(h dispatch.CheckoutHealth) *pb.CheckoutHealth {
 		IndexStatusAt:   ts(h.IndexStatusAt),
 		Reindexing:      h.Reindexing,
 		LastReindex:     reindexToPB(h.LastReindex),
+		Upkeeping:       h.Upkeeping,
+		LastUpkeep:      upkeepToPB(h.LastUpkeep),
+	}
+}
+
+func upkeepToPB(u *dispatch.UpkeepResult) *pb.UpkeepResult {
+	if u == nil {
+		return nil
+	}
+	return &pb.UpkeepResult{
+		At: ts(u.At), Report: u.Report, DefaultBranch: u.Default,
+		Behind: int64(u.Behind), Ahead: int64(u.Ahead),
+		Did: strs(u.Did), Left: strs(u.Left), Skipped: u.Skipped, Error: u.Err,
+	}
+}
+
+func upkeepFromPB(p *pb.UpkeepResult) *dispatch.UpkeepResult {
+	if p == nil {
+		return nil
+	}
+	return &dispatch.UpkeepResult{
+		At: fromTS(p.GetAt()), Report: p.GetReport(), Default: p.GetDefaultBranch(),
+		Behind: int(p.GetBehind()), Ahead: int(p.GetAhead()),
+		Did: strs(p.GetDid()), Left: strs(p.GetLeft()), Skipped: p.GetSkipped(), Err: p.GetError(),
 	}
 }
 
@@ -674,6 +698,8 @@ func checkoutFromPB(p *pb.CheckoutHealth) dispatch.CheckoutHealth {
 		Err:             p.GetError(),
 		Reindexing:      p.GetReindexing(),
 		LastReindex:     reindexFromPB(p.GetLastReindex()),
+		Upkeeping:       p.GetUpkeeping(),
+		LastUpkeep:      upkeepFromPB(p.GetLastUpkeep()),
 		Index:           p.GetIndex(),
 		IndexBuilt:      fromTS(p.GetIndexBuilt()),
 		IndexPages:      int(p.GetIndexPages()),

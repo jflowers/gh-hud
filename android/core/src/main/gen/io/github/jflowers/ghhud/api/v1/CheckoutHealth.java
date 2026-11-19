@@ -1134,6 +1134,114 @@ public  final class CheckoutHealth extends
     bitField0_ = (bitField0_ & ~0x00000004);
   }
 
+  public static final int UPKEEPING_FIELD_NUMBER = 24;
+  private boolean upkeeping_;
+  /**
+   * <pre>
+   * gh-hud is keeping the checkout up (fetch, fast-forward): it takes no
+   * dispatch.
+   * </pre>
+   *
+   * <code>bool upkeeping = 24 [json_name = "upkeeping"];</code>
+   * @return The upkeeping.
+   */
+  @java.lang.Override
+  public boolean getUpkeeping() {
+    return upkeeping_;
+  }
+  /**
+   * <pre>
+   * gh-hud is keeping the checkout up (fetch, fast-forward): it takes no
+   * dispatch.
+   * </pre>
+   *
+   * <code>bool upkeeping = 24 [json_name = "upkeeping"];</code>
+   * @param value The upkeeping to set.
+   */
+  private void setUpkeeping(boolean value) {
+    
+    upkeeping_ = value;
+  }
+  /**
+   * <pre>
+   * gh-hud is keeping the checkout up (fetch, fast-forward): it takes no
+   * dispatch.
+   * </pre>
+   *
+   * <code>bool upkeeping = 24 [json_name = "upkeeping"];</code>
+   */
+  private void clearUpkeeping() {
+
+    upkeeping_ = false;
+  }
+
+  public static final int LAST_UPKEEP_FIELD_NUMBER = 25;
+  private io.github.jflowers.ghhud.api.v1.UpkeepResult lastUpkeep_;
+  /**
+   * <pre>
+   * unset: none yet
+   * </pre>
+   *
+   * <code>.ghhud.v1.UpkeepResult last_upkeep = 25 [json_name = "lastUpkeep"];</code>
+   */
+  @java.lang.Override
+  public boolean hasLastUpkeep() {
+    return ((bitField0_ & 0x00000008) != 0);
+  }
+  /**
+   * <pre>
+   * unset: none yet
+   * </pre>
+   *
+   * <code>.ghhud.v1.UpkeepResult last_upkeep = 25 [json_name = "lastUpkeep"];</code>
+   */
+  @java.lang.Override
+  public io.github.jflowers.ghhud.api.v1.UpkeepResult getLastUpkeep() {
+    return lastUpkeep_ == null ? io.github.jflowers.ghhud.api.v1.UpkeepResult.getDefaultInstance() : lastUpkeep_;
+  }
+  /**
+   * <pre>
+   * unset: none yet
+   * </pre>
+   *
+   * <code>.ghhud.v1.UpkeepResult last_upkeep = 25 [json_name = "lastUpkeep"];</code>
+   */
+  private void setLastUpkeep(io.github.jflowers.ghhud.api.v1.UpkeepResult value) {
+    java.util.Objects.requireNonNull(value);
+    lastUpkeep_ = value;
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <pre>
+   * unset: none yet
+   * </pre>
+   *
+   * <code>.ghhud.v1.UpkeepResult last_upkeep = 25 [json_name = "lastUpkeep"];</code>
+   */
+  @java.lang.SuppressWarnings("ReferenceEquality")
+  private void mergeLastUpkeep(io.github.jflowers.ghhud.api.v1.UpkeepResult value) {
+    java.util.Objects.requireNonNull(value);
+    if (lastUpkeep_ != null &&
+        lastUpkeep_ != io.github.jflowers.ghhud.api.v1.UpkeepResult.getDefaultInstance()) {
+      lastUpkeep_ =
+        io.github.jflowers.ghhud.api.v1.UpkeepResult.newBuilder(lastUpkeep_).mergeFrom(value).buildPartial();
+    } else {
+      lastUpkeep_ = value;
+    }
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <pre>
+   * unset: none yet
+   * </pre>
+   *
+   * <code>.ghhud.v1.UpkeepResult last_upkeep = 25 [json_name = "lastUpkeep"];</code>
+   */
+  private void clearLastUpkeep() {
+    lastUpkeep_ = null;
+    bitField0_ = (bitField0_ & ~0x00000008);
+  }
+
   public static io.github.jflowers.ghhud.api.v1.CheckoutHealth parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2379,6 +2487,120 @@ public  final class CheckoutHealth extends
       return this;
     }
 
+    /**
+     * <pre>
+     * gh-hud is keeping the checkout up (fetch, fast-forward): it takes no
+     * dispatch.
+     * </pre>
+     *
+     * <code>bool upkeeping = 24 [json_name = "upkeeping"];</code>
+     * @return The upkeeping.
+     */
+    @java.lang.Override
+    public boolean getUpkeeping() {
+      return instance.getUpkeeping();
+    }
+    /**
+     * <pre>
+     * gh-hud is keeping the checkout up (fetch, fast-forward): it takes no
+     * dispatch.
+     * </pre>
+     *
+     * <code>bool upkeeping = 24 [json_name = "upkeeping"];</code>
+     * @param value The upkeeping to set.
+     * @return This builder for chaining.
+     */
+    public Builder setUpkeeping(boolean value) {
+      copyOnWrite();
+      instance.setUpkeeping(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * gh-hud is keeping the checkout up (fetch, fast-forward): it takes no
+     * dispatch.
+     * </pre>
+     *
+     * <code>bool upkeeping = 24 [json_name = "upkeeping"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearUpkeeping() {
+      copyOnWrite();
+      instance.clearUpkeeping();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * unset: none yet
+     * </pre>
+     *
+     * <code>.ghhud.v1.UpkeepResult last_upkeep = 25 [json_name = "lastUpkeep"];</code>
+     */
+    @java.lang.Override
+    public boolean hasLastUpkeep() {
+      return instance.hasLastUpkeep();
+    }
+    /**
+     * <pre>
+     * unset: none yet
+     * </pre>
+     *
+     * <code>.ghhud.v1.UpkeepResult last_upkeep = 25 [json_name = "lastUpkeep"];</code>
+     */
+    @java.lang.Override
+    public io.github.jflowers.ghhud.api.v1.UpkeepResult getLastUpkeep() {
+      return instance.getLastUpkeep();
+    }
+    /**
+     * <pre>
+     * unset: none yet
+     * </pre>
+     *
+     * <code>.ghhud.v1.UpkeepResult last_upkeep = 25 [json_name = "lastUpkeep"];</code>
+     */
+    public Builder setLastUpkeep(io.github.jflowers.ghhud.api.v1.UpkeepResult value) {
+      copyOnWrite();
+      instance.setLastUpkeep(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * unset: none yet
+     * </pre>
+     *
+     * <code>.ghhud.v1.UpkeepResult last_upkeep = 25 [json_name = "lastUpkeep"];</code>
+     */
+    public Builder setLastUpkeep(
+        io.github.jflowers.ghhud.api.v1.UpkeepResult.Builder builderForValue) {
+      copyOnWrite();
+      instance.setLastUpkeep(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * unset: none yet
+     * </pre>
+     *
+     * <code>.ghhud.v1.UpkeepResult last_upkeep = 25 [json_name = "lastUpkeep"];</code>
+     */
+    public Builder mergeLastUpkeep(io.github.jflowers.ghhud.api.v1.UpkeepResult value) {
+      copyOnWrite();
+      instance.mergeLastUpkeep(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * unset: none yet
+     * </pre>
+     *
+     * <code>.ghhud.v1.UpkeepResult last_upkeep = 25 [json_name = "lastUpkeep"];</code>
+     */
+    public Builder clearLastUpkeep() {  copyOnWrite();
+      instance.clearLastUpkeep();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.CheckoutHealth)
   }
   @java.lang.Override
@@ -2419,13 +2641,15 @@ public  final class CheckoutHealth extends
             "indexStatusAt_",
             "reindexing_",
             "lastReindex_",
+            "upkeeping_",
+            "lastUpkeep_",
           };
           java.lang.String info =
-              "\u0000\u0017\u0000\u0001\u0001\u0017\u0017\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0019\u0000\u0001\u0001\u0019\u0019\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u0208\u0007\u0002\b\u0002\t\u021a\n\u0002" +
               "\u000b\u021a\f\u0002\r\u0208\u000e\u0007\u000f\u0208\u0010\u0208\u0011\u1009\u0000" +
               "\u0012\u0002\u0013\u0002\u0014\u0002\u0015\u1009\u0001\u0016\u0007\u0017\u1009\u0002" +
-              "";
+              "\u0018\u0007\u0019\u1009\u0003";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

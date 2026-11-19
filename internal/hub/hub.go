@@ -23,6 +23,7 @@ type Dispatcher interface {
 	MachineUsage(ctx context.Context) []dispatch.MachineUsage
 	Owner() (bool, string)
 	Workspaces(ctx context.Context) []dispatch.CheckoutHealth
+	StartUpkeep(ws []dispatch.CheckoutHealth)
 	AutoMerge(ctx context.Context, items []model.Item) []string
 	AutoDispatch(ctx context.Context, items []model.Item) []string
 	Stage(it model.Item, runs []dispatch.Run) dispatch.Stage
@@ -596,8 +597,10 @@ func (h *Hub) refreshWorkspaces(ctx context.Context) {
 		s.WorkspacesAt = h.opts.Now()
 	})
 	if own, _ := h.opts.Dispatcher.Owner(); !own || ctx.Err() != nil {
-		return // the owner runs the reindexes and alerts on them
+		return // the owner runs the reindexes and upkeep, and alerts on them
 	}
+	// Keep the idle fleet checkouts up (#159), in the background.
+	h.opts.Dispatcher.StartUpkeep(ws)
 	h.alertMu.Lock()
 	alerts := h.alerter.Workspaces(ws, h.started)
 	h.alertMu.Unlock()

@@ -206,6 +206,12 @@ func (d *Dispatcher) gatedReindex(ctx context.Context, machine, dir string, reas
 		return ReindexResult{}, fmt.Errorf("%w: this gh-hud doesn't own dispatch", errReindexSkipped)
 	}
 	for {
+		// Bring the checkout up to date first, so the index describes
+		// the current tree (#159). A skip (the slot is busy, upkeep is
+		// off) doesn't stop the reindex.
+		uctx, ucancel := context.WithTimeout(ctx, upkeepTimeout)
+		_, _ = d.upkeepCheckout(uctx, m, dir)
+		ucancel()
 		actx, cancel := context.WithTimeout(ctx, reindexTimeout)
 		res, err := d.reindexCheckout(actx, m, Record{Machine: m.key(), Dir: dir}, reasons)
 		cancel()

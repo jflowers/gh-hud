@@ -65,6 +65,7 @@ type fakeDisp struct {
 	autoGate    chan struct{}
 	autoMsgs    []string
 	wsReads     int
+	upkeeps     int
 	calls       []string // commands, as "Dispatch ci acme/r#1"
 	queue       []dispatch.QueueEntry
 	opts        []dispatch.Options // SetOptions calls
@@ -103,6 +104,12 @@ func (d *fakeDisp) Workspaces(context.Context) []dispatch.CheckoutHealth {
 	defer d.mu.Unlock()
 	d.wsReads++
 	return []dispatch.CheckoutHealth{{}}
+}
+
+func (d *fakeDisp) StartUpkeep([]dispatch.CheckoutHealth) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.upkeeps++
 }
 
 func (d *fakeDisp) AutoMerge(context.Context, []model.Item) []string {
@@ -343,6 +350,21 @@ func TestWorkspacesLoadingThenLoaded(t *testing.T) {
 	waitFor(t, "workspaces", func() bool { s := h.Snapshot(); return len(s.Workspaces) == 1 && !s.WorkspacesLoading })
 	_ = h.RefreshWorkspaces(context.Background())
 	waitFor(t, "second read", func() bool { return d.get(func(d *fakeDisp) int { return d.wsReads }) == 2 })
+}
+
+// The owner starts the upkeep of idle checkouts after each Workspaces
+// read; a follower never does (#159).
+func TestWorkspacesStartUpkeepOnlyForOwner(t *testing.T) {
+	d := &fakeDisp{owner: true}
+	start(t, Options{Fetch: (&fakeFetcher{}).fetch, Dispatcher: d})
+	waitFor(t, "upkeep", func() bool { return d.get(func(d *fakeDisp) int { return d.upkeeps }) >= 1 })
+
+	f := &fakeDisp{}
+	h, _ := start(t, Options{Fetch: (&fakeFetcher{}).fetch, Dispatcher: f})
+	waitFor(t, "workspaces", func() bool { return len(h.Snapshot().Workspaces) == 1 })
+	if n := f.get(func(d *fakeDisp) int { return d.upkeeps }); n != 0 {
+		t.Errorf("a follower started upkeep %d time(s)", n)
+	}
 }
 
 func TestFleetRunsOnlyForOwner(t *testing.T) {

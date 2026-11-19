@@ -110,6 +110,8 @@ type Config struct {
 	Epics EpicsConfig `toml:"epics"`
 	// Branches turns on pruning branches whose PR is done ([branches]).
 	Branches BranchesConfig `toml:"branches"`
+	// Upkeep keeps idle fleet checkouts current with upstream ([upkeep]).
+	Upkeep UpkeepConfig `toml:"upkeep"`
 	// Fleet is the GitOps rollout coordinator ([fleet]).
 	Fleet FleetConfig `toml:"fleet"`
 	// Toolkit rolls tool releases out ([toolkit], issue #75).
@@ -186,6 +188,7 @@ func Default() *Config {
 		DispatchMode:   "run",
 		Dispatch:       DefaultDispatch(),
 		DeweyReindex:   DeweyReindexReport,
+		Upkeep:         UpkeepConfig{Mode: UpkeepReport},
 		Fleet:          DefaultFleet(),
 		Hub:            HubConfig{Listen: "127.0.0.1:0"},
 
@@ -250,6 +253,21 @@ type BranchesConfig struct {
 	// commits of its own there.
 	SyncForks bool `toml:"sync_forks"`
 }
+
+// UpkeepConfig is the idle fleet checkouts' upkeep (#159): fetch, then
+// fast-forward the default branch, fast-forward only.
+type UpkeepConfig struct {
+	// Mode: "off", "report" (the default: record what upkeep would do)
+	// or "auto" (do it).
+	Mode string `toml:"mode"`
+}
+
+// [upkeep] mode values.
+const (
+	UpkeepOff    = "off"
+	UpkeepReport = "report"
+	UpkeepAuto   = "auto"
+)
 
 // AutoMergeConfig says where gh-hud turns on GitHub auto-merge for your own
 // PRs. Off by default, and with orgs and repos both empty it covers nothing.
@@ -560,6 +578,13 @@ func Load(path string) (*Config, error) {
 	case DeweyReindexOff, DeweyReindexReport, DeweyReindexAuto:
 	default:
 		return nil, fmt.Errorf("%s: dispatch dewey_reindex %q: want off, report or auto", path, cfg.DeweyReindex)
+	}
+	switch cfg.Upkeep.Mode {
+	case "":
+		cfg.Upkeep.Mode = UpkeepReport
+	case UpkeepOff, UpkeepReport, UpkeepAuto:
+	default:
+		return nil, fmt.Errorf("%s: upkeep mode %q: want off, report or auto", path, cfg.Upkeep.Mode)
 	}
 	if cfg.Hub.AgentToken && cfg.Hub.LAN == "" {
 		cfg.Warnings = append(cfg.Warnings, "config: [hub] agent_token does nothing without [hub] lan")

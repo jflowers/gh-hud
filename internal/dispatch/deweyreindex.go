@@ -160,6 +160,10 @@ func (d *Dispatcher) takeReindexSlot(machine, dir string) error {
 	if other, ok := d.reindexing[machine]; ok {
 		return fmt.Errorf("%w (%s)", errMachineReindexing, filepath.Base(other))
 	}
+	if other, ok := d.upkeeping[machine]; ok {
+		// Upkeep shares the machine's slot (upkeep.go): wait it out too.
+		return fmt.Errorf("%w (upkeep of %s)", errMachineReindexing, filepath.Base(other))
+	}
 	dirKey := "dir|" + machine + "|" + dir
 	if by, ok := d.claims[dirKey]; ok {
 		return fmt.Errorf("the checkout is being dispatched (%s)", by)
@@ -223,6 +227,25 @@ func reindexVault(ctx context.Context, m Machine, dir string) (ReindexResult, er
 	return res, nil
 }
 
+// deweyHeldFn defines held(): whether another process holds the Dewey
+// lock at $lk (see reindexScript for how it tests).
+const deweyHeldFn = `held() {
+  [ -e "$lk" ] || return 1
+  if command -v flock >/dev/null 2>&1; then
+    flock -n "$lk" true 2>/dev/null && return 1
+    return 0
+  fi
+  if command -v perl >/dev/null 2>&1; then
+    perl -MFcntl=:flock -e 'open(my $f, "<", $ARGV[0]) or exit 2; exit(flock($f, LOCK_EX|LOCK_NB) ? 0 : 1)' "$lk" 2>/dev/null && return 1
+    return 0
+  fi
+  if command -v lsof >/dev/null 2>&1; then
+    [ -n "$(lsof -t -- "$lk" 2>/dev/null)" ]
+    return $?
+  fi
+  return 0
+}`
+
 // reindexScript reindexes and warms the vault in dir, printing:
 //
 //	RX bin <path>        the dewey binary (mise which, else command -v)
@@ -259,22 +282,7 @@ bin=$(mise which dewey 2>/dev/null) || bin=
 printf 'RX bin %s\n' "$bin"
 [ -n "$bin" ] || { echo 'RX err no dewey binary found'; exit 0; }
 lk="$v/dewey.lock"
-held() {
-  [ -e "$lk" ] || return 1
-  if command -v flock >/dev/null 2>&1; then
-    flock -n "$lk" true 2>/dev/null && return 1
-    return 0
-  fi
-  if command -v perl >/dev/null 2>&1; then
-    perl -MFcntl=:flock -e 'open(my $f, "<", $ARGV[0]) or exit 2; exit(flock($f, LOCK_EX|LOCK_NB) ? 0 : 1)' "$lk" 2>/dev/null && return 1
-    return 0
-  fi
-  if command -v lsof >/dev/null 2>&1; then
-    [ -n "$(lsof -t -- "$lk" 2>/dev/null)" ]
-    return $?
-  fi
-  return 0
-}
+` + deweyHeldFn + `
 if held; then echo 'RX held'; exit 0; fi
 if ! out=$("$bin" reindex --vault "$PWD" 2>&1); then
   printf 'RX err dewey reindex: %s\n' "$(printf '%s' "$out" | sed '/^[[:space:]]*$/d' | tail -n 1)"

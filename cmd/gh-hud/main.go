@@ -484,6 +484,7 @@ func dispatchOptions(cfg *config.Config, stateDir string, wsDirs []string, idx *
 		Supervisor:         cfg.Supervisor,
 		Epics:              cfg.Epics,
 		Branches:           cfg.Branches,
+		Upkeep:             cfg.Upkeep.Mode,
 		WatchCmd:           cfg.AgentWatchCmd,
 		Runner:             cfg.Runner,
 		Mode:               cfg.DispatchMode,

@@ -51,6 +51,10 @@ type CheckoutHealth struct {
 	// LastReindex is the checkout's last automatic Dewey reindex (nil:
 	// none recorded).
 	LastReindex *ReindexResult
+	// Upkeeping: gh-hud is keeping the checkout up (upkeep.go), so it
+	// takes no dispatch. LastUpkeep is its last upkeep (nil: none yet).
+	Upkeeping  bool
+	LastUpkeep *UpkeepResult
 }
 
 // Problem is why a dispatch would not use or would refuse the checkout
@@ -63,6 +67,8 @@ func (h CheckoutHealth) Problem() string {
 		return "running " + h.Busy
 	case h.Reindexing:
 		return busyReindexing
+	case h.Upkeeping:
+		return busyUpkeep
 	case h.NoUpstream:
 		return "no upstream remote"
 	case len(h.Dirty) > 0:
@@ -120,6 +126,7 @@ func (d *Dispatcher) Workspaces(ctx context.Context) []CheckoutHealth {
 	wg.Wait()
 
 	reindexing, reindexes := d.reindexingDirs(), d.lastReindexes()
+	upkeeping, upkeeps := d.upkeepingDirs(), d.lastUpkeeps()
 	var out []CheckoutHealth
 	for _, rows := range results {
 		for _, h := range rows {
@@ -131,6 +138,12 @@ func (d *Dispatcher) Workspaces(ctx context.Context) []CheckoutHealth {
 			}
 			if r, ok := reindexes[deweyBaseKey(h.Machine, h.Dir)]; ok {
 				h.LastReindex = &r
+			}
+			if dir, ok := upkeeping[h.Machine]; ok && samePath(dir, h.Dir) {
+				h.Upkeeping = true
+			}
+			if u, ok := upkeeps[deweyBaseKey(h.Machine, h.Dir)]; ok {
+				h.LastUpkeep = &u
 			}
 			out = append(out, h)
 		}

@@ -627,6 +627,72 @@ public object CheckoutHealthKt {
 
     public val CheckoutHealthKt.Dsl.lastReindexOrNull: io.github.jflowers.ghhud.api.v1.ReindexResult?
       get() = _builder.lastReindexOrNull
+
+    /**
+     * ```
+     * gh-hud is keeping the checkout up (fetch, fast-forward): it takes no
+     * dispatch.
+     * ```
+     *
+     * `bool upkeeping = 24 [json_name = "upkeeping"];`
+     */
+    public var upkeeping: kotlin.Boolean
+      @kotlin.jvm.JvmName("getUpkeeping")
+        get() = _builder.upkeeping
+      @kotlin.jvm.JvmName("setUpkeeping")
+        set(value) {
+        _builder.upkeeping = value
+      }
+    /**
+     * ```
+     * gh-hud is keeping the checkout up (fetch, fast-forward): it takes no
+     * dispatch.
+     * ```
+     *
+     * `bool upkeeping = 24 [json_name = "upkeeping"];`
+     */
+    public fun clearUpkeeping() {
+      _builder.clearUpkeeping()
+    }
+
+    /**
+     * ```
+     * unset: none yet
+     * ```
+     *
+     * `.ghhud.v1.UpkeepResult last_upkeep = 25 [json_name = "lastUpkeep"];`
+     */
+    public var lastUpkeep: io.github.jflowers.ghhud.api.v1.UpkeepResult
+      @kotlin.jvm.JvmName("getLastUpkeep")
+        get() = _builder.lastUpkeep
+      @kotlin.jvm.JvmName("setLastUpkeep")
+        set(value) {
+        _builder.lastUpkeep = value
+      }
+    /**
+     * ```
+     * unset: none yet
+     * ```
+     *
+     * `.ghhud.v1.UpkeepResult last_upkeep = 25 [json_name = "lastUpkeep"];`
+     */
+    public fun clearLastUpkeep() {
+      _builder.clearLastUpkeep()
+    }
+    /**
+     * ```
+     * unset: none yet
+     * ```
+     *
+     * `.ghhud.v1.UpkeepResult last_upkeep = 25 [json_name = "lastUpkeep"];`
+     * @return Whether the lastUpkeep field is set.
+     */
+    public fun hasLastUpkeep(): kotlin.Boolean {
+      return _builder.hasLastUpkeep()
+    }
+
+    public val CheckoutHealthKt.Dsl.lastUpkeepOrNull: io.github.jflowers.ghhud.api.v1.UpkeepResult?
+      get() = _builder.lastUpkeepOrNull
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.CheckoutHealth.copy(block: `io.github.jflowers.ghhud.api.v1`.CheckoutHealthKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.CheckoutHealth =
@@ -640,4 +706,7 @@ public val io.github.jflowers.ghhud.api.v1.CheckoutHealthOrBuilder.indexStatusAt
 
 public val io.github.jflowers.ghhud.api.v1.CheckoutHealthOrBuilder.lastReindexOrNull: io.github.jflowers.ghhud.api.v1.ReindexResult?
   get() = if (hasLastReindex()) getLastReindex() else null
+
+public val io.github.jflowers.ghhud.api.v1.CheckoutHealthOrBuilder.lastUpkeepOrNull: io.github.jflowers.ghhud.api.v1.UpkeepResult?
+  get() = if (hasLastUpkeep()) getLastUpkeep() else null
 
