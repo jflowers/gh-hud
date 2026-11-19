@@ -95,6 +95,31 @@ func TestDeweyPassSkipsAndFailures(t *testing.T) {
 	}
 }
 
+// A vault whose dewey can't be confirmed gone, or a dewey reindex on
+// the machine that outlasted the wait, stops the machine's pass: no
+// next vault beside it (#139). It's listed failed, and the pass says why
+// it stopped.
+func TestDeweyPassStopsOnStuckMachine(t *testing.T) {
+	h, fd := newDeweyHarness(t, config.DeweyReindexAuto)
+	fd.stuck = map[string]string{"/w/acme@b/r": "pid 7 survived SIGKILL"}
+	if _, err := h.coord.StartDeweyReindex("lap1"); err != nil {
+		t.Fatal(err)
+	}
+	h.coord.passWork.Wait()
+	if got := filterEvents(fd.eventLog(), "requested"); !slices.Equal(got, []string{"requested lap1 /w/acme@a/r", "requested lap1 /w/acme@b/r"}) {
+		t.Errorf("tried %v, want it to stop after the stuck vault", got)
+	}
+	p := stateOf(t, h.coord.Snapshot(), "lap1").Pass
+	if p.Running || p.Reindexed != 1 || p.Done != 2 || p.Total != 3 || len(p.Skipped) != 0 ||
+		!slices.Equal(p.Failed, []string{"/w/acme@b/r: dewey reindex stuck on the machine: pid 7 survived SIGKILL"}) ||
+		p.Note != "stopped after 2/3: dewey reindex stuck on the machine: pid 7 survived SIGKILL" {
+		t.Errorf("pass = %+v", p)
+	}
+	if h.notes.count() != 1 || !strings.HasPrefix(h.notes.notes[0], "fleet: Dewey reindex incomplete on lap1 | stopped after 2/3") {
+		t.Errorf("notes = %v", h.notes.notes)
+	}
+}
+
 // One pass per machine: asking again is refused while it runs, and
 // asking for every machine starts the others and lists the refusal.
 // dewey_reindex = off, an unknown machine, a machine mid-apply and no

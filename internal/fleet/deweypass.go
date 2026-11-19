@@ -16,7 +16,10 @@ package fleet
 // doesn't drain the machine: a vault that's busy is skipped and listed
 // with why, not waited for. Passes on different machines run at the same
 // time; on one machine there is one pass, and the dispatcher's slot keeps
-// it to one vault at a time even against automatic and rollout reindexes.
+// it to one vault at a time even against automatic and rollout reindexes
+// and a dewey reindex gh-hud didn't start. A vault whose dewey can't be
+// confirmed gone after a timeout or cancel stops the machine's pass
+// (dispatch.IsMachineStuck) rather than starting the next one beside it.
 //
 // A pass runs detached from whoever asked, under its own passTimeout, and
 // can be cancelled. Its progress and outcome are the machine's Pass in
@@ -47,7 +50,8 @@ import (
 )
 
 // passTimeout bounds a whole pass: dozens of vaults, each up to the
-// dispatcher's 30 minutes, plus waits for the machine's reindex slot.
+// dispatcher's dewey_reindex_timeout (most take far less), plus waits
+// for the machine's reindex slot.
 const passTimeout = 24 * time.Hour
 
 // DeweyPass is a machine's latest "reindex every vault now" pass. Its
@@ -216,19 +220,32 @@ func (c *Coordinator) runPass(ctx context.Context, cancel context.CancelFunc, na
 			switch {
 			case err == nil:
 				p.Reindexed++
-			case dispatch.IsReindexSkip(err):
+			case dispatch.IsReindexSkip(err) && !dispatch.IsMachineStuck(err):
 				p.Skipped = append(p.Skipped, dir+": "+strings.TrimPrefix(err.Error(), "reindex skipped: "))
 			default:
 				p.Failed = append(p.Failed, dir+": "+vaultFailure(res, err))
 			}
 		})
+		if dispatch.IsMachineStuck(err) {
+			// A dewey still running there (ours, unconfirmed dead, or
+			// someone's that outlasted the wait): another vault would
+			// only pile on (#139).
+			c.mu.Lock()
+			done, total := 0, 0
+			if ms := c.machineLocked(name); ms != nil {
+				done, total = ms.Pass.Done, ms.Pass.Total
+			}
+			c.mu.Unlock()
+			c.endPass(ctx, name, fmt.Sprintf("stopped after %d/%d: %s", done, total, err))
+			return
+		}
 	}
 	c.endPass(ctx, name, "")
 }
 
 // vaultFailure is why a vault's reindex failed, for the list.
 func vaultFailure(res dispatch.ReindexResult, err error) string {
-	if res.Failed() {
+	if res.Failed() && !dispatch.IsMachineStuck(err) {
 		return res.String()
 	}
 	return err.Error()

@@ -101,6 +101,12 @@ type Config struct {
 	// (default) only records it on the run; "auto" reindexes and warms
 	// the index once the checkout is idle (#133); "off" skips the check.
 	DeweyReindex string `toml:"-"`
+	// DeweyReindexTimeout is [dispatch] dewey_reindex_timeout (a
+	// duration, default DefaultDeweyReindexTimeout): how long one
+	// vault's reindex and warm may run before the script on the machine
+	// stops it. Every reindex uses it: the automatic one, a rollout's, a
+	// requested pass.
+	DeweyReindexTimeout time.Duration `toml:"-"`
 	// AutoMerge turns on GitHub auto-merge for your PRs ([auto_merge]).
 	AutoMerge AutoMergeConfig `toml:"auto_merge"`
 	// Supervisor starts a read-only agent on cases the rules can't settle
@@ -177,20 +183,21 @@ func Default() *Config {
 		LearningsPR:           true,
 		Machines:              []Machine{},
 
-		GhwsRoot:       ghws.DefaultRoot(),
-		Agent:          "autonomy",
-		MaxConcurrent:  2,
-		BusyWindowSecs: 900,
-		Dirty:          "refuse",
-		AgentWatchCmd:  defaultWatchCmd,
-		Runner:         "herdr",
-		HerdrWatchCmd:  defaultHerdrWatchCmd,
-		DispatchMode:   "run",
-		Dispatch:       DefaultDispatch(),
-		DeweyReindex:   DeweyReindexReport,
-		Upkeep:         UpkeepConfig{Mode: UpkeepReport, KeepBackups: 14},
-		Fleet:          DefaultFleet(),
-		Hub:            HubConfig{Listen: "127.0.0.1:0"},
+		GhwsRoot:            ghws.DefaultRoot(),
+		Agent:               "autonomy",
+		MaxConcurrent:       2,
+		BusyWindowSecs:      900,
+		Dirty:               "refuse",
+		AgentWatchCmd:       defaultWatchCmd,
+		Runner:              "herdr",
+		HerdrWatchCmd:       defaultHerdrWatchCmd,
+		DispatchMode:        "run",
+		Dispatch:            DefaultDispatch(),
+		DeweyReindex:        DeweyReindexReport,
+		DeweyReindexTimeout: DefaultDeweyReindexTimeout,
+		Upkeep:              UpkeepConfig{Mode: UpkeepReport, KeepBackups: 14},
+		Fleet:               DefaultFleet(),
+		Hub:                 HubConfig{Listen: "127.0.0.1:0"},
 
 		BlockedNotifySecs: 180,
 	}
@@ -476,8 +483,16 @@ const (
 	DeweyReindexAuto   = "auto"
 )
 
+// DefaultDeweyReindexTimeout is the default [dispatch]
+// dewey_reindex_timeout. The old fixed 30 minutes was too short for a
+// worker embedding on CPU through a local Ollama (lap1, #139), and a
+// reindex cut short leaves the vault no better off, so the default is
+// four times that: long enough for those vaults, still short of the
+// hours four piled-up reindexes once ran.
+const DefaultDeweyReindexTimeout = 2 * time.Hour
+
 // dispatchScalars are the [dispatch] keys that are settings, not tasks.
-var dispatchScalars = map[string]bool{"dewey_reindex": true}
+var dispatchScalars = map[string]bool{"dewey_reindex": true, "dewey_reindex_timeout": true}
 
 // decodeDispatch reads the [dispatch] table: its task tables into
 // cfg.Dispatch and its scalar settings (dewey_reindex) into their fields.
@@ -497,7 +512,7 @@ func decodeDispatch(data string, cfg *Config) ([]toml.Key, error) {
 	tasks := map[string]TaskConfig{}
 	for name, prim := range raw.Dispatch {
 		if dispatchScalars[name] {
-			if err := md.PrimitiveDecode(prim, &cfg.DeweyReindex); err != nil {
+			if err := decodeDispatchScalar(md, name, prim, cfg); err != nil {
 				return nil, fmt.Errorf("dispatch %s: %w", name, err)
 			}
 			continue
@@ -516,6 +531,23 @@ func decodeDispatch(data string, cfg *Config) ([]toml.Key, error) {
 		}
 	}
 	return undecoded, nil
+}
+
+// decodeDispatchScalar reads one of dispatchScalars into cfg.
+func decodeDispatchScalar(md toml.MetaData, name string, prim toml.Primitive, cfg *Config) error {
+	if name == "dewey_reindex" {
+		return md.PrimitiveDecode(prim, &cfg.DeweyReindex)
+	}
+	var v string
+	if err := md.PrimitiveDecode(prim, &v); err != nil {
+		return err
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil || d < time.Second {
+		return fmt.Errorf("%q: want a duration of at least 1s, like \"2h\"", v)
+	}
+	cfg.DeweyReindexTimeout = d
+	return nil
 }
 
 // DefaultDispatch returns the built-in task → command map.

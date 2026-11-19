@@ -175,23 +175,26 @@ func (c *Coordinator) deweyAfterApply(ctx context.Context, name string) {
 		c.persistLocked()
 	}
 	c.mu.Unlock()
-	ok := 0
+	ok, stuck := 0, ""
 	for _, dir := range vaults {
-		if ctx.Err() != nil {
+		if ctx.Err() != nil || stuck != "" {
 			break
 		}
 		res, err := c.opts.Dewey.RolloutReindex(ctx, name, dir)
+		if dispatch.IsMachineStuck(err) {
+			stuck = err.Error() // nothing more on this machine (#139)
+		}
 		c.mu.Lock()
 		if ms := c.machineLocked(name); ms != nil {
 			ms.Reindex.Done++
 			switch {
 			case err == nil:
 				ok++
-			case dispatch.IsReindexSkip(err):
+			case dispatch.IsReindexSkip(err) && stuck == "":
 				ms.Reindex.Failed = append(ms.Reindex.Failed, dir+": "+err.Error())
 			default:
 				why := res.String()
-				if !res.Failed() {
+				if !res.Failed() || stuck != "" {
 					why = err.Error()
 				}
 				ms.Reindex.Failed = append(ms.Reindex.Failed, dir+": "+why)
@@ -207,9 +210,12 @@ func (c *Coordinator) deweyAfterApply(ctx context.Context, name string) {
 	}
 	p := &ms.Reindex
 	p.Note = fmt.Sprintf("%s: reindexed %d/%d", change, ok, p.Total)
-	if p.Done < p.Total {
+	switch {
+	case stuck != "":
+		p.Note += " (stopped: " + stuck + ")"
+	case p.Done < p.Total:
 		p.Note += " (interrupted)"
-	} else {
+	default:
 		// Done with this binary: a retry of the verify re-applies without
 		// reindexing again. Vaults that failed keep their old baseline, so
 		// their teardown checks still flag them.

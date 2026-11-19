@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"testing"
@@ -17,34 +18,58 @@ import (
 
 // reindexFake is a fake dewey (and mise) on PATH for the reindex: status
 // reports a healthy index, reindex creates graph.db (or fails with
-// $FAKE_DEWEY_FAIL, or the vault's fail-reindex file), and serve logs
-// "background indexing complete" (once gate exists, when gate is set)
-// and runs until its stdin closes. Every invocation is appended to calls.
+// $FAKE_DEWEY_FAIL, or the vault's fail-reindex file, or hangs while the
+// vault has a hang-reindex file, ignoring SIGTERM when it says
+// "ignore-term"), and serve logs "background indexing complete" (once
+// gate exists, when gate is set) and runs until its stdin closes. Every
+// invocation is appended to calls. A running reindex or serve keeps a
+// marker, marks/<reindex|serve>.<pid>; a reindex that starts while
+// another one is alive appends to overlap.
 type reindexFake struct {
-	calls, which, gate, v1, v2 string
+	calls, which, gate, v1, v2, bin, marks, overlap string
 }
 
 func fakeReindexDewey(t *testing.T) *reindexFake {
 	t.Helper()
 	bin := t.TempDir()
-	f := &reindexFake{calls: filepath.Join(bin, "calls"), which: filepath.Join(bin, "which"), gate: filepath.Join(bin, "gate")}
+	f := &reindexFake{calls: filepath.Join(bin, "calls"), which: filepath.Join(bin, "which"), gate: filepath.Join(bin, "gate"),
+		bin: bin, marks: filepath.Join(bin, "marks"), overlap: filepath.Join(bin, "overlap")}
 	writeFile(t, f.calls, "")
+	if err := os.MkdirAll(f.marks, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	script := `#!/bin/sh
 echo "$*" >> ` + shellQuote(f.calls) + `
+marks=` + shellQuote(f.marks) + `
 case $1 in
 status) printf '{"pages": 1, "blocks": 10, "embeddings": 10}\n' ;;
 reindex)
+  : > "$marks/reindex.$$"
+  for m in "$marks"/reindex.*; do
+    p=${m##*.}
+    [ "$p" = "$$" ] && continue
+    if kill -0 "$p" 2>/dev/null && ! ps -o stat= -p "$p" 2>/dev/null | grep -q Z; then
+      echo "$$ started while $p ran" >> ` + shellQuote(f.overlap) + `
+    fi
+  done
+  if [ -e .uf/dewey/hang-reindex ]; then
+    grep -q ignore-term .uf/dewey/hang-reindex && trap '' TERM
+    while :; do sleep 0.1; done
+  fi
+  rm -f "$marks/reindex.$$"
   if [ -n "$FAKE_DEWEY_FAIL" ]; then echo "Error: $FAKE_DEWEY_FAIL" >&2; exit 1; fi
   if [ -e .uf/dewey/fail-reindex ]; then echo "Error: $(cat .uf/dewey/fail-reindex)" >&2; exit 1; fi
   mkdir -p .uf/dewey && : > .uf/dewey/graph.db ;;
 serve)
+  : > "$marks/serve.$$"
   log=
   while [ $# -gt 0 ]; do [ "$1" = --log-file ] && log=$2; shift; done
   echo 'INFO serve starting' >> "$log"
   echo 'INFO background indexing started' >> "$log"
   if [ -n "$FAKE_DEWEY_GATE" ]; then while [ ! -e "$FAKE_DEWEY_GATE" ]; do sleep 0.1; done; fi
   echo 'INFO background indexing complete elapsed=1ms' >> "$log"
-  cat >/dev/null ;;
+  cat >/dev/null
+  rm -f "$marks/serve.$$" ;;
 *) exit 2 ;;
 esac
 `
@@ -60,7 +85,7 @@ esac
 	}
 	f.v1, f.v2 = filepath.Join(bin, "v1", "dewey"), filepath.Join(bin, "v2", "dewey")
 	writeFile(t, f.which, f.v1+"\n")
-	writeFile(t, filepath.Join(bin, "mise"), "#!/bin/sh\n[ \"$1 $2\" = 'which dewey' ] || exit 1\ncat "+shellQuote(f.which)+"\n")
+	writeFile(t, filepath.Join(bin, "mise"), "#!/bin/sh\n[ \"$1 $2\" = 'which dewey' ] || exit 1\necho mise-which >> "+shellQuote(f.calls)+"\ncat "+shellQuote(f.which)+"\n")
 	if err := os.Chmod(filepath.Join(bin, "mise"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -68,6 +93,11 @@ esac
 	t.Setenv("DEWEY_EMBEDDING_ENDPOINT", "http://127.0.0.1:1")
 	t.Setenv("FAKE_DEWEY_FAIL", "")
 	t.Setenv("FAKE_DEWEY_GATE", "")
+	// Only this fake's reindexes count as running on the machine, not a
+	// real dewey on the one running the tests.
+	old := reindexProcPattern
+	reindexProcPattern = regexp.QuoteMeta(bin) + "/v[12]/[d]ewey reindex --vault"
+	t.Cleanup(func() { reindexProcPattern = old })
 	return f
 }
 
@@ -105,7 +135,7 @@ func TestReindexVault(t *testing.T) {
 	f := fakeReindexDewey(t)
 	work := vaultCheckout(t)
 	m := Machine{Name: "local", Local: true}
-	res, err := reindexVault(context.Background(), m, work)
+	res, err := reindexVault(context.Background(), m, work, time.Minute)
 	if err != nil {
 		t.Fatalf("reindexVault: %v (%+v)", err, res)
 	}
@@ -123,7 +153,7 @@ func TestReindexVault(t *testing.T) {
 	}
 
 	t.Setenv("FAKE_DEWEY_FAIL", "embedding model not found")
-	res, err = reindexVault(context.Background(), m, work)
+	res, err = reindexVault(context.Background(), m, work, time.Minute)
 	if err == nil || errors.Is(err, errReindexSkipped) || res.Err != "dewey reindex: Error: embedding model not found" {
 		t.Errorf("failed reindex = %+v, %v", res, err)
 	}
@@ -147,7 +177,7 @@ func TestReindexVaultLockHeld(t *testing.T) {
 	if err := syscall.Flock(int(lk.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		t.Fatal(err)
 	}
-	res, err := reindexVault(context.Background(), Machine{Name: "local", Local: true}, work)
+	res, err := reindexVault(context.Background(), Machine{Name: "local", Local: true}, work, time.Minute)
 	if !errors.Is(err, errReindexSkipped) || res.Skipped != "dewey.lock held" || res.Failed() {
 		t.Errorf("held lock = %+v, %v; want skipped", res, err)
 	}
@@ -158,7 +188,7 @@ func TestReindexVaultLockHeld(t *testing.T) {
 	if err := syscall.Flock(int(lk.Fd()), syscall.LOCK_UN); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := reindexVault(context.Background(), Machine{Name: "local", Local: true}, work); err != nil {
+	if _, err := reindexVault(context.Background(), Machine{Name: "local", Local: true}, work, time.Minute); err != nil {
 		t.Errorf("released lock: %v", err)
 	}
 }
@@ -402,5 +432,13 @@ func TestParseReindex(t *testing.T) {
 		if got := parseReindex(tc.out).String(); got != tc.want {
 			t.Errorf("%q: %q, want %q", tc.out, got, tc.want)
 		}
+	}
+	r := parseReindex("RX bin /d\nRX busy 42 /usr/bin/dewey reindex --vault /w/a b\n")
+	if r.busy != "pid 42, vault /w/a b" || r.Err != "" {
+		t.Errorf("busy = %+v", r)
+	}
+	r = parseReindex("RX bin /d\nRX alive 42\nRX err timed out after 2h0m0s (dewey reindex)\n")
+	if r.alive != "pid 42 survived SIGKILL" || r.Err != "timed out after 2h0m0s (dewey reindex)" {
+		t.Errorf("alive = %+v", r)
 	}
 }
