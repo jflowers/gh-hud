@@ -38,6 +38,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -110,6 +111,7 @@ func (u UpkeepResult) String() string {
 // nothing but the fetch), printing tab-separated lines:
 //
 //	UK state <default> <behind> <ahead>   after the fetch
+//	UK work <branch> <dirty> <unpushed>   the checkout's own work
 //	UK did <what>                         a change it made (would make)
 //	UK ff <before>                        it fast-forwarded from <before>
 //	UK left <what>                        something it left as it is
@@ -150,8 +152,9 @@ if [ -n "$(git status --porcelain --untracked-files=all -- ` + deweyCacheDir + `
 fi
 dirty=$(git status --porcelain --untracked-files=all | ` + churnGrep + ` | grep -c .)
 cur=$(git branch --show-current)
+unp=$(git rev-list --count HEAD --not --remotes)
+printf 'UK work\t%s\t%s\t%s\n' "$cur" "$dirty" "$unp"
 if [ -n "$cur" ] && [ "$cur" != "$def" ]; then
-  unp=$(git rev-list --count HEAD --not --remotes)
   if [ "$dirty" -gt 0 ] || [ "$unp" -gt 0 ]; then
     printf 'UK left on %s with %s uncommitted, %s unpushed\n' "$cur" "$dirty" "$unp"
   elif [ "$dry" = 1 ]; then
@@ -187,11 +190,20 @@ fi
 `
 }
 
-// parseUpkeep reads upkeepScript's output: the result, and the commit it
-// fast-forwarded from ("" when it didn't).
-func parseUpkeep(out string) (UpkeepResult, string) {
+// upkeepFacts is what upkeepScript saw beyond the result: the commit it
+// fast-forwarded from ("" when it didn't), and the checkout's own work
+// (branch, uncommitted files, commits on HEAD no remote has).
+type upkeepFacts struct {
+	before   string
+	branch   string
+	dirty    int
+	unpushed int
+}
+
+// parseUpkeep reads upkeepScript's output.
+func parseUpkeep(out string) (UpkeepResult, upkeepFacts) {
 	var u UpkeepResult
-	before := ""
+	var f upkeepFacts
 	for _, line := range nonEmptyLines(out) {
 		rest, ok := strings.CutPrefix(line, "UK ")
 		if !ok {
@@ -212,7 +224,14 @@ func parseUpkeep(out string) (UpkeepResult, string) {
 		case "did":
 			u.Did = append(u.Did, val)
 		case "ff":
-			before = strings.TrimSpace(val)
+			f.before = strings.TrimSpace(val)
+		case "work":
+			w := strings.Split(val, "\t")
+			if len(w) == 3 {
+				f.branch = w[0]
+				f.dirty, _ = strconv.Atoi(w[1])
+				f.unpushed, _ = strconv.Atoi(w[2])
+			}
 		case "left":
 			u.Left = append(u.Left, val)
 		case "held":
@@ -221,7 +240,7 @@ func parseUpkeep(out string) (UpkeepResult, string) {
 			u.Err = strings.TrimSpace(val)
 		}
 	}
-	return u, before
+	return u, f
 }
 
 // upkeepCheckout keeps the fleet checkout dir on m up, within the rules:
@@ -243,7 +262,7 @@ func (d *Dispatcher) upkeepCheckout(ctx context.Context, m Machine, dir string) 
 	}
 	report := mode != config.UpkeepAuto
 	out, err := m.shell(ctx, upkeepScript(dir, report))
-	u, before := parseUpkeep(out)
+	u, f := parseUpkeep(out)
 	u.At, u.Report = time.Now(), report
 	if err != nil && u.Err == "" {
 		u.Err = err.Error()
@@ -251,7 +270,27 @@ func (d *Dispatcher) upkeepCheckout(ctx context.Context, m Machine, dir string) 
 	if u.Skipped != "" {
 		return u, fmt.Errorf("%w: %s", errUpkeepSkipped, u.Skipped)
 	}
-	if before != "" {
+	if u.Err == "" {
+		did, left, errMsg, changed := d.backUp(ctx, m, dir, u, f, report)
+		switch {
+		case errMsg != "":
+			u.Err = errMsg
+		case changed:
+			// The checkout is clean now: switch back and fast-forward.
+			out, err = m.shell(ctx, upkeepScript(dir, false))
+			u2, f2 := parseUpkeep(out)
+			if err != nil && u2.Err == "" {
+				u2.Err = err.Error()
+			}
+			u.Did = append(append(u.Did, did...), u2.Did...)
+			u.Left = slices.Concat(left, u2.Left)
+			u.Err, f.before = u2.Err, f2.before
+		default:
+			u.Did = append(u.Did, did...)
+			u.Left = append(u.Left, left...)
+		}
+	}
+	if before := f.before; before != "" {
 		// The fast-forward moved gitlinks: bring the submodules gh-hud
 		// left behind along (#13).
 		s, serr := d.syncSubmodules(ctx, m, dir, before)

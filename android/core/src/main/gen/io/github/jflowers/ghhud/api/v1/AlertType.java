@@ -59,6 +59,14 @@ public enum AlertType
    * <code>ALERT_TYPE_REINDEX_FAILED = 6;</code>
    */
   ALERT_TYPE_REINDEX_FAILED(6),
+  /**
+   * <pre>
+   * a fleet checkout's upkeep failed, e.g. backing up to the fork (ref is [machine:]workspace/repo)
+   * </pre>
+   *
+   * <code>ALERT_TYPE_UPKEEP_FAILED = 7;</code>
+   */
+  ALERT_TYPE_UPKEEP_FAILED(7),
   UNRECOGNIZED(-1),
   ;
 
@@ -110,6 +118,14 @@ public enum AlertType
    * <code>ALERT_TYPE_REINDEX_FAILED = 6;</code>
    */
   public static final int ALERT_TYPE_REINDEX_FAILED_VALUE = 6;
+  /**
+   * <pre>
+   * a fleet checkout's upkeep failed, e.g. backing up to the fork (ref is [machine:]workspace/repo)
+   * </pre>
+   *
+   * <code>ALERT_TYPE_UPKEEP_FAILED = 7;</code>
+   */
+  public static final int ALERT_TYPE_UPKEEP_FAILED_VALUE = 7;
 
 
   @java.lang.Override
@@ -139,6 +155,7 @@ public enum AlertType
       case 4: return ALERT_TYPE_TOOL_RELEASE;
       case 5: return ALERT_TYPE_TOOLKIT_TARGET;
       case 6: return ALERT_TYPE_REINDEX_FAILED;
+      case 7: return ALERT_TYPE_UPKEEP_FAILED;
       default: return null;
     }
   }

@@ -343,6 +343,9 @@ public nonisolated enum Ghhud_V1_AlertType: SwiftProtobuf.Enum, Swift.CaseIterab
 
   /// an automatic Dewey reindex of a checkout failed (ref is [machine:]workspace)
   case reindexFailed // = 6
+
+  /// a fleet checkout's upkeep failed, e.g. backing up to the fork (ref is [machine:]workspace/repo)
+  case upkeepFailed // = 7
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -358,6 +361,7 @@ public nonisolated enum Ghhud_V1_AlertType: SwiftProtobuf.Enum, Swift.CaseIterab
     case 4: self = .toolRelease
     case 5: self = .toolkitTarget
     case 6: self = .reindexFailed
+    case 7: self = .upkeepFailed
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -371,6 +375,7 @@ public nonisolated enum Ghhud_V1_AlertType: SwiftProtobuf.Enum, Swift.CaseIterab
     case .toolRelease: return 4
     case .toolkitTarget: return 5
     case .reindexFailed: return 6
+    case .upkeepFailed: return 7
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -384,6 +389,7 @@ public nonisolated enum Ghhud_V1_AlertType: SwiftProtobuf.Enum, Swift.CaseIterab
     .toolRelease,
     .toolkitTarget,
     .reindexFailed,
+    .upkeepFailed,
   ]
 
 }
@@ -3347,7 +3353,7 @@ nonisolated extension Ghhud_V1_EventKind: SwiftProtobuf._ProtoNameProviding {
 }
 
 nonisolated extension Ghhud_V1_AlertType: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ALERT_TYPE_UNSPECIFIED\0\u{1}ALERT_TYPE_READY\0\u{1}ALERT_TYPE_BLOCKED\0\u{1}ALERT_TYPE_RUN_FINISHED\0\u{1}ALERT_TYPE_TOOL_RELEASE\0\u{1}ALERT_TYPE_TOOLKIT_TARGET\0\u{1}ALERT_TYPE_REINDEX_FAILED\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ALERT_TYPE_UNSPECIFIED\0\u{1}ALERT_TYPE_READY\0\u{1}ALERT_TYPE_BLOCKED\0\u{1}ALERT_TYPE_RUN_FINISHED\0\u{1}ALERT_TYPE_TOOL_RELEASE\0\u{1}ALERT_TYPE_TOOLKIT_TARGET\0\u{1}ALERT_TYPE_REINDEX_FAILED\0\u{1}ALERT_TYPE_UPKEEP_FAILED\0")
 }
 
 nonisolated extension Ghhud_V1_GetSnapshotRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {

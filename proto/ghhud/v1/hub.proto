@@ -884,6 +884,7 @@ enum AlertType {
   ALERT_TYPE_TOOL_RELEASE = 4; // a tool released; its rollout waits for you (ref is tool@version)
   ALERT_TYPE_TOOLKIT_TARGET = 5; // a repo in a tool rollout waits for you: held, refused, failed or CI failing (ref is its PR's owner/repo#N, else tool@version)
   ALERT_TYPE_REINDEX_FAILED = 6; // an automatic Dewey reindex of a checkout failed (ref is [machine:]workspace)
+  ALERT_TYPE_UPKEEP_FAILED = 7; // a fleet checkout's upkeep failed, e.g. backing up to the fork (ref is [machine:]workspace/repo)
 }
 
 message Alert {
