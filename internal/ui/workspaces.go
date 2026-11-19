@@ -54,7 +54,7 @@ func wsCells(h dispatch.CheckoutHealth) (glyph string, color lipgloss.Color, sta
 			ref = ref[i:]
 		}
 		return "●", cTeal, "running " + ref
-	case h.Reindexing:
+	case h.Reindexing, h.Upkeeping:
 		return "●", cTeal, h.Problem()
 	case h.NoUpstream:
 		return "◆", cYellow, h.Problem()
@@ -97,6 +97,9 @@ func wsNotes(h dispatch.CheckoutHealth) string {
 	}
 	if r := h.LastReindex; r != nil && r.Failed() && !h.Reindexing {
 		parts = append(parts, "reindex failed")
+	}
+	if u := h.LastUpkeep; u != nil && u.Failed() && !h.Upkeeping {
+		parts = append(parts, "upkeep failed")
 	}
 	return strings.Join(parts, " · ")
 }
@@ -193,7 +196,7 @@ func (m *Model) workspacesView() string {
 	}
 	busy := 0
 	for _, h := range list {
-		if h.Busy != "" || h.Reindexing {
+		if h.Busy != "" || h.Reindexing || h.Upkeeping {
 			busy++
 		}
 	}
@@ -305,7 +308,19 @@ func wsDetail(h dispatch.CheckoutHealth, w int) []string {
 	if r := h.LastReindex; r != nil {
 		lines = append(lines, field("last reindex", reindexLine(*r, time.Now())))
 	}
+	if h.Upkeeping {
+		lines = append(lines, field("upkeep", "fetching and fast-forwarding; no dispatch here until it ends"))
+	}
+	if u := h.LastUpkeep; u != nil {
+		lines = append(lines, field("last upkeep", truncatePlain(upkeepLine(*u, time.Now()), w-14)))
+	}
 	return lines
+}
+
+// upkeepLine renders a last upkeep for the detail pane: "fast-forwarded
+// main by 12, Nov 19 09:30 (5m ago)".
+func upkeepLine(u dispatch.UpkeepResult, now time.Time) string {
+	return u.String() + ", " + u.At.Local().Format("Jan 2 15:04") + " (" + model.RelativeTime(u.At, now) + " ago)"
 }
 
 // reindexLine renders a last reindex for the detail pane: "ok in 3m12s,

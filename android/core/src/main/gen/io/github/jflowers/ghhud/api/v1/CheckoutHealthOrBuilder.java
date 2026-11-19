@@ -298,4 +298,34 @@ public interface CheckoutHealthOrBuilder extends
    * @return The lastReindex.
    */
   io.github.jflowers.ghhud.api.v1.ReindexResult getLastReindex();
+
+  /**
+   * <pre>
+   * gh-hud is keeping the checkout up (fetch, fast-forward): it takes no
+   * dispatch.
+   * </pre>
+   *
+   * <code>bool upkeeping = 24 [json_name = "upkeeping"];</code>
+   * @return The upkeeping.
+   */
+  boolean getUpkeeping();
+
+  /**
+   * <pre>
+   * unset: none yet
+   * </pre>
+   *
+   * <code>.ghhud.v1.UpkeepResult last_upkeep = 25 [json_name = "lastUpkeep"];</code>
+   * @return Whether the lastUpkeep field is set.
+   */
+  boolean hasLastUpkeep();
+  /**
+   * <pre>
+   * unset: none yet
+   * </pre>
+   *
+   * <code>.ghhud.v1.UpkeepResult last_upkeep = 25 [json_name = "lastUpkeep"];</code>
+   * @return The lastUpkeep.
+   */
+  io.github.jflowers.ghhud.api.v1.UpkeepResult getLastUpkeep();
 }

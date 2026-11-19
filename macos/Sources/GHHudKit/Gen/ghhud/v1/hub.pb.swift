@@ -2759,11 +2759,73 @@ public nonisolated struct Ghhud_V1_CheckoutHealth: @unchecked Sendable {
   /// Clears the value of `lastReindex`. Subsequent reads from it will return its default value.
   public mutating func clearLastReindex() {_uniqueStorage()._lastReindex = nil}
 
+  /// gh-hud is keeping the checkout up (fetch, fast-forward): it takes no
+  /// dispatch.
+  public var upkeeping: Bool {
+    get {_storage._upkeeping}
+    set {_uniqueStorage()._upkeeping = newValue}
+  }
+
+  /// unset: none yet
+  public var lastUpkeep: Ghhud_V1_UpkeepResult {
+    get {_storage._lastUpkeep ?? Ghhud_V1_UpkeepResult()}
+    set {_uniqueStorage()._lastUpkeep = newValue}
+  }
+  /// Returns true if `lastUpkeep` has been explicitly set.
+  public var hasLastUpkeep: Bool {_storage._lastUpkeep != nil}
+  /// Clears the value of `lastUpkeep`. Subsequent reads from it will return its default value.
+  public mutating func clearLastUpkeep() {_uniqueStorage()._lastUpkeep = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+/// UpkeepResult is the last upkeep of an idle fleet checkout: fetched,
+/// then fast-forwarded only.
+public nonisolated struct Ghhud_V1_UpkeepResult: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var at: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_at ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_at = newValue}
+  }
+  /// Returns true if `at` has been explicitly set.
+  public var hasAt: Bool {self._at != nil}
+  /// Clears the value of `at`. Subsequent reads from it will return its default value.
+  public mutating func clearAt() {self._at = nil}
+
+  /// [upkeep] mode report: did is what it would do
+  public var report: Bool = false
+
+  public var defaultBranch: String = String()
+
+  /// the default branch vs the remote's, after the fetch
+  public var behind: Int64 = 0
+
+  public var ahead: Int64 = 0
+
+  /// what it changed (or would change)
+  public var did: [String] = []
+
+  /// what keeps it from current, left alone
+  public var left: [String] = []
+
+  /// why it didn't run
+  public var skipped: String = String()
+
+  /// why it failed
+  public var error: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _at: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
 }
 
 /// ReindexResult is the outcome of an automatic Dewey reindex of a checkout.
@@ -7340,7 +7402,7 @@ nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CheckoutHealth"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machine\0\u{1}workspace\0\u{1}repo\0\u{1}dir\0\u{1}branch\0\u{3}default_branch\0\u{1}ahead\0\u{1}behind\0\u{1}dirty\0\u{1}learnings\0\u{3}local_only\0\u{1}stashes\0\u{1}busy\0\u{3}no_upstream\0\u{1}error\0\u{1}index\0\u{3}index_built\0\u{3}index_pages\0\u{3}index_blocks\0\u{3}index_embeddings\0\u{3}index_status_at\0\u{1}reindexing\0\u{3}last_reindex\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machine\0\u{1}workspace\0\u{1}repo\0\u{1}dir\0\u{1}branch\0\u{3}default_branch\0\u{1}ahead\0\u{1}behind\0\u{1}dirty\0\u{1}learnings\0\u{3}local_only\0\u{1}stashes\0\u{1}busy\0\u{3}no_upstream\0\u{1}error\0\u{1}index\0\u{3}index_built\0\u{3}index_pages\0\u{3}index_blocks\0\u{3}index_embeddings\0\u{3}index_status_at\0\u{1}reindexing\0\u{3}last_reindex\0\u{1}upkeeping\0\u{3}last_upkeep\0")
 
   fileprivate class _StorageClass {
     var _machine: String = String()
@@ -7366,6 +7428,8 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
     var _indexStatusAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
     var _reindexing: Bool = false
     var _lastReindex: Ghhud_V1_ReindexResult? = nil
+    var _upkeeping: Bool = false
+    var _lastUpkeep: Ghhud_V1_UpkeepResult? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -7399,6 +7463,8 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
       _indexStatusAt = source._indexStatusAt
       _reindexing = source._reindexing
       _lastReindex = source._lastReindex
+      _upkeeping = source._upkeeping
+      _lastUpkeep = source._lastUpkeep
     }
   }
 
@@ -7440,6 +7506,8 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
         case 21: try { try decoder.decodeSingularMessageField(value: &_storage._indexStatusAt) }()
         case 22: try { try decoder.decodeSingularBoolField(value: &_storage._reindexing) }()
         case 23: try { try decoder.decodeSingularMessageField(value: &_storage._lastReindex) }()
+        case 24: try { try decoder.decodeSingularBoolField(value: &_storage._upkeeping) }()
+        case 25: try { try decoder.decodeSingularMessageField(value: &_storage._lastUpkeep) }()
         default: break
         }
       }
@@ -7521,6 +7589,12 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
       try { if let v = _storage._lastReindex {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 23)
       } }()
+      if _storage._upkeeping != false {
+        try visitor.visitSingularBoolField(value: _storage._upkeeping, fieldNumber: 24)
+      }
+      try { if let v = _storage._lastUpkeep {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 25)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -7553,10 +7627,86 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
         if _storage._indexStatusAt != rhs_storage._indexStatusAt {return false}
         if _storage._reindexing != rhs_storage._reindexing {return false}
         if _storage._lastReindex != rhs_storage._lastReindex {return false}
+        if _storage._upkeeping != rhs_storage._upkeeping {return false}
+        if _storage._lastUpkeep != rhs_storage._lastUpkeep {return false}
         return true
       }
       if !storagesAreEqual {return false}
     }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_UpkeepResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UpkeepResult"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}at\0\u{1}report\0\u{3}default_branch\0\u{1}behind\0\u{1}ahead\0\u{1}did\0\u{1}left\0\u{1}skipped\0\u{1}error\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._at) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.report) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.defaultBranch) }()
+      case 4: try { try decoder.decodeSingularInt64Field(value: &self.behind) }()
+      case 5: try { try decoder.decodeSingularInt64Field(value: &self.ahead) }()
+      case 6: try { try decoder.decodeRepeatedStringField(value: &self.did) }()
+      case 7: try { try decoder.decodeRepeatedStringField(value: &self.left) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.skipped) }()
+      case 9: try { try decoder.decodeSingularStringField(value: &self.error) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._at {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if self.report != false {
+      try visitor.visitSingularBoolField(value: self.report, fieldNumber: 2)
+    }
+    if !self.defaultBranch.isEmpty {
+      try visitor.visitSingularStringField(value: self.defaultBranch, fieldNumber: 3)
+    }
+    if self.behind != 0 {
+      try visitor.visitSingularInt64Field(value: self.behind, fieldNumber: 4)
+    }
+    if self.ahead != 0 {
+      try visitor.visitSingularInt64Field(value: self.ahead, fieldNumber: 5)
+    }
+    if !self.did.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.did, fieldNumber: 6)
+    }
+    if !self.left.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.left, fieldNumber: 7)
+    }
+    if !self.skipped.isEmpty {
+      try visitor.visitSingularStringField(value: self.skipped, fieldNumber: 8)
+    }
+    if !self.error.isEmpty {
+      try visitor.visitSingularStringField(value: self.error, fieldNumber: 9)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_UpkeepResult, rhs: Ghhud_V1_UpkeepResult) -> Bool {
+    if lhs._at != rhs._at {return false}
+    if lhs.report != rhs.report {return false}
+    if lhs.defaultBranch != rhs.defaultBranch {return false}
+    if lhs.behind != rhs.behind {return false}
+    if lhs.ahead != rhs.ahead {return false}
+    if lhs.did != rhs.did {return false}
+    if lhs.left != rhs.left {return false}
+    if lhs.skipped != rhs.skipped {return false}
+    if lhs.error != rhs.error {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

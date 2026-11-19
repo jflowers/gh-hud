@@ -262,6 +262,10 @@ type Options struct {
 	// "auto" also reindexes and warms it (deweyreindex.go), "off" skips
 	// the check.
 	DeweyReindex string
+	// Upkeep is what the idle fleet checkouts' upkeep does (upkeep.go):
+	// "report" (default) records what it would do, "auto" does it,
+	// "off" skips it.
+	Upkeep string
 }
 
 // Dispatcher launches and tracks agent sessions.
@@ -384,6 +388,16 @@ type Dispatcher struct {
 	reindexing   map[string]string
 	reindexes    map[string]ReindexResult
 	reindexesMod time.Time
+	// upkeeping is the checkout each machine's upkeep holds (machine key
+	// → dir, under mu); sweeping the machines whose upkeep sweep runs
+	// (under mu). upkeeps are the last upkeep per checkout, guarded by
+	// baseMu; upkeepsMod is upkeep.json's mtime. upkeepWork tracks sweep
+	// goroutines, so a test can wait for them.
+	upkeeping  map[string]string
+	sweeping   map[string]bool
+	upkeeps    map[string]UpkeepResult
+	upkeepsMod time.Time
+	upkeepWork sync.WaitGroup
 	// reindexWork tracks reindex goroutines, so a test can wait for them.
 	reindexWork sync.WaitGroup
 }
@@ -415,6 +429,11 @@ func normalizeOptions(opts *Options) error {
 	case "stash", "stash-tracked":
 	default:
 		opts.Dirty = "refuse"
+	}
+	switch opts.Upkeep {
+	case config.UpkeepOff, config.UpkeepReport, config.UpkeepAuto:
+	default:
+		opts.Upkeep = config.UpkeepReport
 	}
 	switch opts.DeweyReindex {
 	case config.DeweyReindexOff, config.DeweyReindexAuto:
@@ -1263,8 +1282,16 @@ func (d *Dispatcher) cachedViewBase(snaps map[string]agentSnapshot, reach map[st
 		}
 		v.liveDirs[r.Machine][r.Dir] = true
 	}
-	// A checkout being reindexed takes no dispatch (deweyreindex.go).
-	for mk, dir := range d.reindexingDirs() {
+	// A checkout being reindexed or kept up takes no dispatch
+	// (deweyreindex.go, upkeep.go).
+	held := d.reindexingDirs()
+	for mk, dir := range d.upkeepingDirs() {
+		if v.liveDirs[mk] == nil {
+			v.liveDirs[mk] = map[string]bool{}
+		}
+		v.liveDirs[mk][dir] = true
+	}
+	for mk, dir := range held {
 		if v.liveDirs[mk] == nil {
 			v.liveDirs[mk] = map[string]bool{}
 		}

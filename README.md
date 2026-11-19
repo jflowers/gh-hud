@@ -1098,6 +1098,43 @@ prune = true        # the hub prunes on its own every 6 hours (default off)
 sync_forks = true   # and fast-forwards the forks' default branches (default off)
 ```
 
+### Upkeep
+
+Fleet checkouts used to catch up with upstream only when a dispatch's
+preflight ran in them, so idle ones drifted: behind by hundreds of
+commits, Dewey indexes describing old trees, and drifted submodules
+reading as dirty. The hub keeps them current now, fast-forward only.
+
+After each Workspaces read (every 2 minutes), the dispatch owner keeps up
+each idle fleet checkout it hasn't kept up in the last hour, one checkout
+at a time per machine. A Dewey pass or rollout keeps a checkout up just
+before it reindexes it too, so the index describes the current tree.
+Each upkeep:
+
+1. fetches the remote the checkout syncs from (`upstream`, else
+   `origin`);
+2. puts Dewey's cache churn back (see above);
+3. on another branch with nothing left (no uncommitted files, no commits
+   no remote has), switches back to the default branch;
+4. on the default branch, fast-forwards it and brings submodules along
+   (the same rule as preflight); on a branch with work, moves only the
+   local default-branch ref;
+5. records what it did and what it left as the checkout's last upkeep,
+   shown in the Workspaces tab's detail pane (`upkeep failed` in the row
+   when it failed).
+
+It leaves alone a diverged default branch, local commits on it, and a
+branch with work on it: those show as "left" in the last upkeep. Like a
+reindex, an upkeep holds its machine's one maintenance slot (so upkeeps
+and Dewey reindexes never overlap on a machine) and marks the checkout
+busy, so nothing is dispatched there meanwhile, and it never touches a
+checkout with a live agent or a held `dewey.lock`.
+
+```toml
+[upkeep]
+mode = "auto"   # "report" (default): fetch and record what it would do; "off": nothing
+```
+
 ## Configuring dispatch
 
 Dispatch is configured in three layers, all in `config.toml`:
@@ -1753,6 +1790,10 @@ repos = []                 # single owner/name repos covered
 method = "squash"          # squash, merge or rebase
 hold_label = "hold"        # a PR with this label stays open
 update_method = "merge"    # merge train's branch update: merge or rebase
+
+# Keep idle fleet checkouts current, fast-forward only (see "Upkeep" above).
+[upkeep]
+mode = "report"            # off, report (record what it would do) or auto
 
 # How apps other than the TUI reach the hub (see "The hub" above).
 [hub]
