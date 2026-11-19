@@ -1013,7 +1013,12 @@ auto pass starts them like any other step:
   supervisor agent for a verdict:
   - **retry:** another run can get it done. The next run starts without
     waiting, and its plan file carries what went wrong and the
-    supervisor's hint.
+    supervisor's hint. It goes to the checkout the earlier run left its
+    work in, when that checkout still holds it, and carries on from there:
+    nothing is stashed, reset or switched, and the plan file lists what
+    was left. Any other task, or another issue, still refuses that
+    checkout as dirty. This holds for any `issue` run of the same item,
+    not only an epic's.
   - **human:** a person has to act first (a question only you can answer,
     a decision, a permission, an unclear issue). The piece needs you
     (`epic: <why>`). A run you start on it yourself (`a` in the Plan tab),
