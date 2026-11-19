@@ -20,6 +20,16 @@ public object Notices {
         else -> "gh-hud"
     }
 
+    /**
+     * The checkout an alert is about ("[machine:]workspace", for upkeep
+     * "[machine:]workspace/repo"): a failed reindex or upkeep opens its
+     * screen.
+     */
+    public fun checkout(a: Alert): String? = when (a.type) {
+        AlertType.ALERT_TYPE_REINDEX_FAILED, AlertType.ALERT_TYPE_UPKEEP_FAILED -> a.ref.ifEmpty { null }
+        else -> null
+    }
+
     /** The PR or issue an alert is about, if it names one. */
     public fun link(a: Alert): String? =
         Links.forRef(a.ref) ?: Links.forRef(a.run.ref) ?: Links.forRef(a.session.ref)

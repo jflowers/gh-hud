@@ -389,7 +389,7 @@ pass you asked for (`dewey pass: reindexing 3/12`, then the summary with
 the vaults that failed or were skipped); **Reindex vaults now…** (every
 machine, or one: tap its row) starts a pass after a confirmation, with
 **Force** to reindex every vault, and **Cancel pass** stops one. A failed
-automatic reindex is a notification.
+automatic reindex or upkeep is a notification that opens the checkout.
 
 **Install.** Each release (a `v*` tag) carries `gh-hud-VERSION.apk`, for
 any phone or tablet on Android 10 or later. Open the release page on the

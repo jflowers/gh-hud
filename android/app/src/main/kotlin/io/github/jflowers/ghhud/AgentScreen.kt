@@ -168,8 +168,9 @@ fun WorkspaceScreen(row: WorkspaceRow?, items: ItemActions, onBack: () -> Unit, 
         val facts = DeweyIndex.facts(row.health, now)
         if (facts.isNotEmpty()) {
             Text("Dewey index", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 12.dp).testTag("dewey"))
-            DeweyIndex.state(row.health, now)?.let { (text, tone) ->
-                Text(text, style = MaterialTheme.typography.bodyMedium, color = tone.color(), modifier = Modifier.testTag("index-state"))
+            DeweyIndex.state(row.health, now).let { (text, tone) ->
+                Text(text, style = MaterialTheme.typography.bodyMedium, color = indexColor(tone, DeweyIndex.machineProblem(row.health)),
+                    modifier = Modifier.testTag("index-state"))
             }
             Column(Modifier.padding(vertical = 4.dp)) {
                 for (f in facts) FactRow(f.label, f.value)

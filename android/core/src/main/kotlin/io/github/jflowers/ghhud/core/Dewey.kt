@@ -70,12 +70,13 @@ public object DeweyIndex {
     /**
      * The index in a few words for the checkout's row: "ok 2d 100%", "old
      * format 3d", "unindexed", "no embeddings" (the machine's fault, so a
-     * reindex won't help), "reindexing…". Null when there is nothing to
-     * say: not read, or not a Dewey vault.
+     * reindex won't help: see [machineProblem]), "reindexing…", and "—"
+     * when not read or not a Dewey vault. The Mac's index column says the
+     * same.
      */
-    public fun state(h: CheckoutHealth, now: Instant = Instant.now()): Pair<String, Tone>? {
+    public fun state(h: CheckoutHealth, now: Instant = Instant.now()): Pair<String, Tone> {
         if (h.reindexing) return "reindexing…" to Tone.PENDING
-        if (h.index.isEmpty() || h.index == NONE) return null
+        if (h.index.isEmpty() || h.index == NONE) return "—" to Tone.MUTED
         val p = parts(h.index)
         val reasons = reasons(h)
         var (text, tone) = when {
@@ -94,6 +95,13 @@ public object DeweyIndex {
         if (extra.isNotEmpty()) text += " " + extra.joinToString(" ")
         return text to tone
     }
+
+    /**
+     * Whether [state] names a machine problem, which a reindex won't fix:
+     * shown in a stronger warning than a reindex need.
+     */
+    public fun machineProblem(h: CheckoutHealth): Boolean =
+        !h.reindexing && reasons(h).isEmpty() && parts(h.index).machine.isNotEmpty()
 
     /** What an agent dispatched here works with, for a reason. */
     public fun means(reason: String): String = when (reason) {

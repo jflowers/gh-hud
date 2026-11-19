@@ -20,6 +20,10 @@ fun Tone.color(): Color {
     }
 }
 
+/** A checkout's Dewey index state: a machine problem in the stronger warning (orange), else its tone. */
+@Composable
+fun indexColor(tone: Tone, machine: Boolean): Color = if (machine) Marker.NEEDS_YOU.color() else tone.color()
+
 /** The ◆'s color: ready green, your move yellow, needs you orange. */
 @Composable
 fun Marker.color(): Color = when (this) {

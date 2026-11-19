@@ -11,6 +11,8 @@ import io.github.jflowers.ghhud.api.v1.deweyReindexResponse
 import io.github.jflowers.ghhud.api.v1.fleetMachine
 import io.github.jflowers.ghhud.api.v1.fleetSnapshot
 import io.github.jflowers.ghhud.api.v1.reindexResult
+import io.github.jflowers.ghhud.api.v1.alert
+import io.github.jflowers.ghhud.api.v1.snapshot
 import io.github.jflowers.ghhud.api.v1.run as hubRun
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -74,8 +76,15 @@ class DeweyTest {
         assertEquals("check failed" to Tone.BAD, DeweyIndex.state(checkoutHealth { index = "check failed: exit 1" }, now))
         assertEquals("unchecked" to Tone.MUTED, DeweyIndex.state(checkoutHealth { index = "unchecked" }, now))
         assertEquals("reindexing…" to Tone.PENDING, DeweyIndex.state(old.toBuilder().setReindexing(true).build(), now))
-        assertNull(DeweyIndex.state(checkoutHealth { index = "none" }, now))
-        assertNull(DeweyIndex.state(checkoutHealth {}, now))
+        assertEquals("—" to Tone.MUTED, DeweyIndex.state(checkoutHealth { index = "none" }, now))
+        assertEquals("—" to Tone.MUTED, DeweyIndex.state(checkoutHealth {}, now))
+        // A machine problem reads stronger than a reindex need.
+        assertTrue(DeweyIndex.machineProblem(checkoutHealth { index = "ok; machine problem: no embedding model" }))
+        assertFalse(DeweyIndex.machineProblem(old))
+        assertEquals("no embeddings +1" to Tone.WARN, DeweyIndex.state(checkoutHealth {
+            index = "reindex needed: no embeddings, unindexed"
+            indexReasons += listOf("no embeddings", "unindexed")
+        }, now))
         assertEquals("dewey: reindex", DeweyIndex.short("pages changed since the index was built"))
     }
 
@@ -228,6 +237,17 @@ class DeweyTest {
     fun alerts() {
         assertEquals("A Dewey reindex failed", Notices.title(AlertType.ALERT_TYPE_REINDEX_FAILED))
         assertEquals("A checkout's upkeep failed", Notices.title(AlertType.ALERT_TYPE_UPKEEP_FAILED))
+
+        // Both open the checkout's screen.
+        assertEquals("chai:api", Notices.checkout(alert { type = AlertType.ALERT_TYPE_REINDEX_FAILED; ref = "chai:api" }))
+        assertNull(Notices.checkout(alert { type = AlertType.ALERT_TYPE_BLOCKED; ref = "o/r#1" }))
+        val s = snapshot {
+            workspaces += checkoutHealth { machine = "chai"; workspace = "api"; repo = "acme/api"; dir = "/w/api" }
+            workspaces += checkoutHealth { workspace = "api"; repo = "acme/api"; dir = "/h/api" }
+        }
+        assertEquals("/w/api", WorkspaceList.byRef(s, "chai:api")?.health?.dir)
+        assertEquals("/h/api", WorkspaceList.byRef(s, "api/api")?.health?.dir)
+        assertNull(WorkspaceList.byRef(s, "oak:api"))
     }
 
     @Test

@@ -249,6 +249,21 @@ public data class WorkspaceRow(
 public object WorkspaceList {
     public fun rows(s: Snapshot): List<WorkspaceRow> = s.workspacesList.map { WorkspaceRow.of(it) }
 
+    /**
+     * The checkout an alert names: "[machine:]workspace", or with "/repo"
+     * after it (upkeep's). Null when it is no longer in the list.
+     */
+    public fun byRef(s: Snapshot, ref: String): WorkspaceRow? {
+        val rows = rows(s)
+        rows.firstOrNull { it.place == ref }?.let { return it }
+        val i = ref.lastIndexOf('/')
+        if (i < 0) return null
+        val place = ref.substring(0, i)
+        val repo = ref.substring(i + 1)
+        return rows.firstOrNull { it.place == place && (it.repo == repo || it.health.repo.endsWith("/$repo")) }
+            ?: rows.firstOrNull { it.place == place }
+    }
+
     /** Checkouts the next run could use: the count on the tab. */
     public fun ready(s: Snapshot): Int = rows(s).count { it.ready }
 

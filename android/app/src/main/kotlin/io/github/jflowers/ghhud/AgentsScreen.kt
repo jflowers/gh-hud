@@ -288,9 +288,9 @@ private fun WorkspaceRowView(r: WorkspaceRow, now: Instant, onOpen: () -> Unit, 
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(r.state, style = MaterialTheme.typography.bodySmall, color = r.tone.color(), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                DeweyIndex.state(r.health, now)?.let { (text, tone) ->
-                    Text("dewey $text", style = MaterialTheme.typography.bodySmall, color = tone.color(), maxLines = 1,
-                        overflow = TextOverflow.Ellipsis, modifier = Modifier.testTag("index:" + r.place))
+                DeweyIndex.state(r.health, now).let { (text, tone) ->
+                    Text("dewey $text", style = MaterialTheme.typography.bodySmall, color = indexColor(tone, DeweyIndex.machineProblem(r.health)),
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.testTag("index:" + r.place))
                 }
                 if (r.notes.isNotEmpty()) Text(r.notes, style = MaterialTheme.typography.bodySmall, color = Tone.MUTED.color())
             }

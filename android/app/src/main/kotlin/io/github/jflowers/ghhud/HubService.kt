@@ -94,12 +94,19 @@ class HubService : Service() {
 
     private fun post(a: Alert) {
         val link = Notices.link(a)
+        val checkout = Notices.checkout(a)
         val n = NotificationCompat.Builder(this, ALERTS)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(Notices.title(a.type))
             .setContentText(a.text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(a.text))
-            .setContentIntent(if (link != null) view(link) else openApp())
+            .setContentIntent(
+                when {
+                    checkout != null -> openApp(checkout)
+                    link != null -> view(link)
+                    else -> openApp()
+                },
+            )
             .setAutoCancel(true)
             .build()
         notify(null, nextAlert++, n)
@@ -140,10 +147,13 @@ class HubService : Service() {
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .build()
 
-    private fun openApp(): PendingIntent = PendingIntent.getActivity(
+    /** Opens the app; on a checkout's screen when checkout ("[machine:]workspace") is set. */
+    private fun openApp(checkout: String? = null): PendingIntent = PendingIntent.getActivity(
         this,
-        0,
-        Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+        checkout?.hashCode() ?: 0,
+        Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP).apply {
+            if (checkout != null) putExtra(MainActivity.EXTRA_CHECKOUT, checkout)
+        },
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
