@@ -455,6 +455,13 @@ message; there `w` watches a live run, `t` opens the transcript
 re-checks the checkout after you've committed, pushed or discarded the
 leftovers.
 
+Dewey's web-source cache (`.uf/dewey/cache/`) never counts either, in a
+checkout or an overlay. Some repos track it, the fullsend-ai overlays
+among them, and Dewey rewrites a cached page whenever it re-fetches a
+source that changed upstream, so nobody made the change. Preflight and
+the overlay sync put the cache back to what's committed before they
+fast-forward.
+
 Dewey learnings (`.uf/dewey/learnings/*`, written by agent sessions after
 most runs) are the exception: untracked learnings never count as dirty or
 as left work, since a new uniquely named file can't conflict with a
@@ -693,7 +700,7 @@ version its machine had when it started; the run view shows it, and
 `9` opens the Workspaces tab (its count is the number of ready
 checkouts): every fleet checkout on the hub and each worker, with what the
 next run there would hit. A checkout is ready unless an agent is running
-in it, it has uncommitted files (untracked dewey learnings don't count),
+in it, it has uncommitted files (untracked dewey learnings and Dewey's cache don't count),
 it has no `upstream` remote, or its default branch has diverged from
 upstream (preflight only fast-forwards). Being on another branch is fine:
 preflight switches to the default branch. Notes show what cleaning up
