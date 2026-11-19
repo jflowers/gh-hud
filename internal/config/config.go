@@ -45,7 +45,8 @@ type Config struct {
 
 	// DispatchInstancesOnly restricts dispatch (auto and manual, on every
 	// machine) to ghws @ instance workspaces; base workspaces stay
-	// human-only.
+	// human-only. Always so now: gh-hud only sees fleet checkouts, the
+	// org@label instances of Orgs (#157), and false only warns.
 	DispatchInstancesOnly bool `toml:"dispatch_instances_only"`
 	// LearningsPR opens a chore PR to upstream with a checkout's untracked
 	// .uf/dewey/learnings files after a clean agent run, at most once a
@@ -548,6 +549,9 @@ func Load(path string) (*Config, error) {
 	}
 	if w := unknownKeys(append(undecoded, dispUndecoded...)); w != "" {
 		cfg.Warnings = append(cfg.Warnings, w)
+	}
+	if !cfg.DispatchInstancesOnly {
+		cfg.Warnings = append(cfg.Warnings, "config: dispatch_instances_only = false does nothing: gh-hud only uses the fleet's org@label instances (#157)")
 	}
 	switch cfg.DeweyReindex {
 	case "":

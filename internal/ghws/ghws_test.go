@@ -110,3 +110,37 @@ func TestNilIndex(t *testing.T) {
 		t.Fatalf("nil RepoFor: got %q", s)
 	}
 }
+
+// The fleet is the org@label instances of the fleet's orgs (#157):
+// canonical clones and other orgs are left out, org case doesn't matter,
+// and no orgs means every instance.
+func TestFleet(t *testing.T) {
+	ix := NewIndex([]Checkout{
+		{Workspace: "acme@a", Repo: "acme/r", Dir: "/g/acme@a/r", Instance: true},
+		{Workspace: "acme", Repo: "acme/r", Dir: "/g/acme/r"},
+		{Workspace: "Beta@b", Repo: "Beta/s", Dir: "/g/Beta@b/s", Instance: true},
+		{Workspace: "other@c", Repo: "other/t", Dir: "/g/other@c/t", Instance: true},
+		{Workspace: "jflowers", Repo: "jflowers/gh-hud", Dir: "/g/jflowers/gh-hud"},
+	})
+	dirs := func(ix *Index) []string {
+		var out []string
+		for _, co := range ix.Checkouts() {
+			out = append(out, co.Dir)
+		}
+		return out
+	}
+	got := dirs(ix.Fleet([]string{"acme", "beta"}))
+	if len(got) != 2 || got[0] != "/g/acme@a/r" || got[1] != "/g/Beta@b/s" {
+		t.Errorf("fleet = %v", got)
+	}
+	if got := dirs(ix.Fleet(nil)); len(got) != 3 {
+		t.Errorf("no orgs: %v, want every instance", got)
+	}
+	if f := ix.Fleet([]string{"acme"}); f.RepoFor("/g/acme/r") != "" || len(f.Resolve("acme/r", "")) != 1 {
+		t.Errorf("canonical clone still in the fleet index")
+	}
+	var none *Index
+	if none.Fleet([]string{"acme"}) != nil {
+		t.Error("nil index: want nil")
+	}
+}

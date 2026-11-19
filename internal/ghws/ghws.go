@@ -90,6 +90,40 @@ type Index struct {
 	byDir     map[string]string
 }
 
+// InFleet reports whether co is a fleet checkout (#157): an org@label
+// instance whose org is one of orgs, or any instance when orgs is empty.
+// Canonical org clones and other orgs belong to whoever uses the machine,
+// not to gh-hud.
+func InFleet(co Checkout, orgs []string) bool {
+	if !co.Instance {
+		return false
+	}
+	if len(orgs) == 0 {
+		return true
+	}
+	owner, _, _ := strings.Cut(co.Repo, "/")
+	for _, o := range orgs {
+		if strings.EqualFold(o, owner) {
+			return true
+		}
+	}
+	return false
+}
+
+// Fleet is the index of ix's fleet checkouts (InFleet); nil for nil.
+func (ix *Index) Fleet(orgs []string) *Index {
+	if ix == nil {
+		return nil
+	}
+	var cos []Checkout
+	for _, co := range ix.checkouts {
+		if InFleet(co, orgs) {
+			cos = append(cos, co)
+		}
+	}
+	return NewIndex(cos)
+}
+
 // Checkouts returns every discovered checkout in a stable order.
 func (ix *Index) Checkouts() []Checkout {
 	if ix == nil {

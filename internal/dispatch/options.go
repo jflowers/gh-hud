@@ -44,7 +44,10 @@ func (d *Dispatcher) SetOptions(o Options) (restart []string) {
 	if !slices.Equal(o.Dirs, cur.Dirs) && o.Dirs != nil {
 		restart = append(restart, "dirs")
 	}
-	o.Root, o.StateDir, o.Runner, o.Dirs, o.LocalIndex = cur.Root, cur.StateDir, cur.Runner, cur.Dirs, cur.LocalIndex
+	if !slices.Equal(o.Orgs, cur.Orgs) {
+		restart = append(restart, "orgs")
+	}
+	o.Root, o.StateDir, o.Runner, o.Dirs, o.LocalIndex, o.Orgs = cur.Root, cur.StateDir, cur.Runner, cur.Dirs, cur.LocalIndex, cur.Orgs
 
 	d.optsMu.Lock()
 	defer d.optsMu.Unlock()

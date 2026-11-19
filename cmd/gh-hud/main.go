@@ -361,6 +361,9 @@ func buildHub(cfg *config.Config, cfgPath string, client *gh.Client, stateDir st
 	if idxErr != nil {
 		idx = nil
 	}
+	// Only the fleet's checkouts are gh-hud's (#157); the toolkit finds
+	// its canonical clones with its own lookup.
+	idx = idx.Fleet(cfg.Orgs)
 	var wsDirs []string
 	if idx != nil {
 		for _, co := range idx.Checkouts() {
@@ -490,6 +493,7 @@ func dispatchOptions(cfg *config.Config, stateDir string, wsDirs []string, idx *
 		LocalLabels:        cfg.Labels,
 		LocalExcludeLabels: cfg.ExcludeLabels,
 		LocalIndex:         idx,
+		Orgs:               cfg.Orgs,
 		InstancesOnly:      cfg.DispatchInstancesOnly,
 		StateDir:           stateDir,
 		LearningsPR:        cfg.LearningsPR,
