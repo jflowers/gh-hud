@@ -23,6 +23,7 @@ public  final class ReindexResult extends
     reasons_ = emptyProtobufList();
     skipped_ = "";
     error_ = "";
+    deweyVersion_ = "";
   }
   private int bitField0_;
   public static final int AT_FIELD_NUMBER = 1;
@@ -447,6 +448,104 @@ public  final class ReindexResult extends
     checkByteStringIsUtf8(value);
     error_ = value.toStringUtf8();
 
+  }
+
+  public static final int DEWEY_VERSION_FIELD_NUMBER = 7;
+  private java.lang.String deweyVersion_;
+  /**
+   * <pre>
+   * What the index records after the reindex (one dewey status read);
+   * "" and 0 when it couldn't be read.
+   * </pre>
+   *
+   * <code>string dewey_version = 7 [json_name = "deweyVersion"];</code>
+   * @return The deweyVersion.
+   */
+  @java.lang.Override
+  public java.lang.String getDeweyVersion() {
+    return deweyVersion_;
+  }
+  /**
+   * <pre>
+   * What the index records after the reindex (one dewey status read);
+   * "" and 0 when it couldn't be read.
+   * </pre>
+   *
+   * <code>string dewey_version = 7 [json_name = "deweyVersion"];</code>
+   * @return The bytes for deweyVersion.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getDeweyVersionBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(deweyVersion_);
+  }
+  /**
+   * <pre>
+   * What the index records after the reindex (one dewey status read);
+   * "" and 0 when it couldn't be read.
+   * </pre>
+   *
+   * <code>string dewey_version = 7 [json_name = "deweyVersion"];</code>
+   * @param value The deweyVersion to set.
+   */
+  private void setDeweyVersion(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    deweyVersion_ = value;
+  }
+  /**
+   * <pre>
+   * What the index records after the reindex (one dewey status read);
+   * "" and 0 when it couldn't be read.
+   * </pre>
+   *
+   * <code>string dewey_version = 7 [json_name = "deweyVersion"];</code>
+   */
+  private void clearDeweyVersion() {
+
+    deweyVersion_ = getDefaultInstance().getDeweyVersion();
+  }
+  /**
+   * <pre>
+   * What the index records after the reindex (one dewey status read);
+   * "" and 0 when it couldn't be read.
+   * </pre>
+   *
+   * <code>string dewey_version = 7 [json_name = "deweyVersion"];</code>
+   * @param value The bytes for deweyVersion to set.
+   */
+  private void setDeweyVersionBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    deweyVersion_ = value.toStringUtf8();
+
+  }
+
+  public static final int INDEX_FORMAT_FIELD_NUMBER = 8;
+  private long indexFormat_;
+  /**
+   * <code>int64 index_format = 8 [json_name = "indexFormat"];</code>
+   * @return The indexFormat.
+   */
+  @java.lang.Override
+  public long getIndexFormat() {
+    return indexFormat_;
+  }
+  /**
+   * <code>int64 index_format = 8 [json_name = "indexFormat"];</code>
+   * @param value The indexFormat to set.
+   */
+  private void setIndexFormat(long value) {
+    
+    indexFormat_ = value;
+  }
+  /**
+   * <code>int64 index_format = 8 [json_name = "indexFormat"];</code>
+   */
+  private void clearIndexFormat() {
+
+    indexFormat_ = 0L;
   }
 
   public static io.github.jflowers.ghhud.api.v1.ReindexResult parseFrom(
@@ -983,6 +1082,108 @@ public  final class ReindexResult extends
       return this;
     }
 
+    /**
+     * <pre>
+     * What the index records after the reindex (one dewey status read);
+     * "" and 0 when it couldn't be read.
+     * </pre>
+     *
+     * <code>string dewey_version = 7 [json_name = "deweyVersion"];</code>
+     * @return The deweyVersion.
+     */
+    @java.lang.Override
+    public java.lang.String getDeweyVersion() {
+      return instance.getDeweyVersion();
+    }
+    /**
+     * <pre>
+     * What the index records after the reindex (one dewey status read);
+     * "" and 0 when it couldn't be read.
+     * </pre>
+     *
+     * <code>string dewey_version = 7 [json_name = "deweyVersion"];</code>
+     * @return The bytes for deweyVersion.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getDeweyVersionBytes() {
+      return instance.getDeweyVersionBytes();
+    }
+    /**
+     * <pre>
+     * What the index records after the reindex (one dewey status read);
+     * "" and 0 when it couldn't be read.
+     * </pre>
+     *
+     * <code>string dewey_version = 7 [json_name = "deweyVersion"];</code>
+     * @param value The deweyVersion to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDeweyVersion(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setDeweyVersion(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * What the index records after the reindex (one dewey status read);
+     * "" and 0 when it couldn't be read.
+     * </pre>
+     *
+     * <code>string dewey_version = 7 [json_name = "deweyVersion"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDeweyVersion() {
+      copyOnWrite();
+      instance.clearDeweyVersion();
+      return this;
+    }
+    /**
+     * <pre>
+     * What the index records after the reindex (one dewey status read);
+     * "" and 0 when it couldn't be read.
+     * </pre>
+     *
+     * <code>string dewey_version = 7 [json_name = "deweyVersion"];</code>
+     * @param value The bytes for deweyVersion to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDeweyVersionBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDeweyVersionBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>int64 index_format = 8 [json_name = "indexFormat"];</code>
+     * @return The indexFormat.
+     */
+    @java.lang.Override
+    public long getIndexFormat() {
+      return instance.getIndexFormat();
+    }
+    /**
+     * <code>int64 index_format = 8 [json_name = "indexFormat"];</code>
+     * @param value The indexFormat to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIndexFormat(long value) {
+      copyOnWrite();
+      instance.setIndexFormat(value);
+      return this;
+    }
+    /**
+     * <code>int64 index_format = 8 [json_name = "indexFormat"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearIndexFormat() {
+      copyOnWrite();
+      instance.clearIndexFormat();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.ReindexResult)
   }
   @java.lang.Override
@@ -1006,10 +1207,12 @@ public  final class ReindexResult extends
             "reasons_",
             "skipped_",
             "error_",
+            "deweyVersion_",
+            "indexFormat_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0001\u0000\u0001\u1009\u0000\u0002" +
-              "\u1009\u0001\u0003\u0208\u0004\u021a\u0005\u0208\u0006\u0208";
+              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0001\u0000\u0001\u1009\u0000\u0002\u1009\u0001" +
+              "\u0003\u0208\u0004\u021a\u0005\u0208\u0006\u0208\u0007\u0208\b\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

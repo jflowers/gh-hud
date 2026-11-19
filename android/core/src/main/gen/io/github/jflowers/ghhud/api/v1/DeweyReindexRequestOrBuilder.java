@@ -49,4 +49,15 @@ public interface DeweyReindexRequestOrBuilder extends
    * @return The cancel.
    */
   boolean getCancel();
+
+  /**
+   * <pre>
+   * force reindexes every vault, not just the ones whose index check
+   * (Dewey's own verdict) says so.
+   * </pre>
+   *
+   * <code>bool force = 4 [json_name = "force"];</code>
+   * @return The force.
+   */
+  boolean getForce();
 }

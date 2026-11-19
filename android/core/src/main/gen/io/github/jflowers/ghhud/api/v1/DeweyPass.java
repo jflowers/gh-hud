@@ -7,7 +7,7 @@ package io.github.jflowers.ghhud.api.v1;
 
 /**
  * <pre>
- * DeweyPass is a machine's latest "reindex every vault now" pass (#139).
+ * DeweyPass is a machine's latest "reindex the vaults now" pass (#139).
  * </pre>
  *
  * Protobuf type {@code ghhud.v1.DeweyPass}
@@ -22,6 +22,7 @@ public  final class DeweyPass extends
     skipped_ = emptyProtobufList();
     failed_ = emptyProtobufList();
     note_ = "";
+    current_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int RUNNING_FIELD_NUMBER = 1;
@@ -579,6 +580,173 @@ public  final class DeweyPass extends
     bitField0_ = (bitField0_ & ~0x00000002);
   }
 
+  public static final int CURRENT_FIELD_NUMBER = 10;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> current_;
+  /**
+   * <pre>
+   * vaults whose check found them up to date
+   * </pre>
+   *
+   * <code>repeated string current = 10 [json_name = "current"];</code>
+   * @return A list containing the current.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getCurrentList() {
+    return current_;
+  }
+  /**
+   * <pre>
+   * vaults whose check found them up to date
+   * </pre>
+   *
+   * <code>repeated string current = 10 [json_name = "current"];</code>
+   * @return The count of current.
+   */
+  @java.lang.Override
+  public int getCurrentCount() {
+    return current_.size();
+  }
+  /**
+   * <pre>
+   * vaults whose check found them up to date
+   * </pre>
+   *
+   * <code>repeated string current = 10 [json_name = "current"];</code>
+   * @param index The index of the element to return.
+   * @return The current at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getCurrent(int index) {
+    return current_.get(index);
+  }
+  /**
+   * <pre>
+   * vaults whose check found them up to date
+   * </pre>
+   *
+   * <code>repeated string current = 10 [json_name = "current"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the current at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getCurrentBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        current_.get(index));
+  }
+  private void ensureCurrentIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        current_;  if (!tmp.isModifiable()) {
+      current_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <pre>
+   * vaults whose check found them up to date
+   * </pre>
+   *
+   * <code>repeated string current = 10 [json_name = "current"];</code>
+   * @param index The index to set the value at.
+   * @param value The current to set.
+   */
+  private void setCurrent(
+      int index, java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureCurrentIsMutable();
+    current_.set(index, value);
+  }
+  /**
+   * <pre>
+   * vaults whose check found them up to date
+   * </pre>
+   *
+   * <code>repeated string current = 10 [json_name = "current"];</code>
+   * @param value The current to add.
+   */
+  private void addCurrent(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureCurrentIsMutable();
+    current_.add(value);
+  }
+  /**
+   * <pre>
+   * vaults whose check found them up to date
+   * </pre>
+   *
+   * <code>repeated string current = 10 [json_name = "current"];</code>
+   * @param values The current to add.
+   */
+  private void addAllCurrent(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureCurrentIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, current_);
+  }
+  /**
+   * <pre>
+   * vaults whose check found them up to date
+   * </pre>
+   *
+   * <code>repeated string current = 10 [json_name = "current"];</code>
+   */
+  private void clearCurrent() {
+    current_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * vaults whose check found them up to date
+   * </pre>
+   *
+   * <code>repeated string current = 10 [json_name = "current"];</code>
+   * @param value The bytes of the current to add.
+   */
+  private void addCurrentBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureCurrentIsMutable();
+    current_.add(value.toStringUtf8());
+  }
+
+  public static final int FORCED_FIELD_NUMBER = 11;
+  private boolean forced_;
+  /**
+   * <pre>
+   * every vault reindexed, unchecked
+   * </pre>
+   *
+   * <code>bool forced = 11 [json_name = "forced"];</code>
+   * @return The forced.
+   */
+  @java.lang.Override
+  public boolean getForced() {
+    return forced_;
+  }
+  /**
+   * <pre>
+   * every vault reindexed, unchecked
+   * </pre>
+   *
+   * <code>bool forced = 11 [json_name = "forced"];</code>
+   * @param value The forced to set.
+   */
+  private void setForced(boolean value) {
+    
+    forced_ = value;
+  }
+  /**
+   * <pre>
+   * every vault reindexed, unchecked
+   * </pre>
+   *
+   * <code>bool forced = 11 [json_name = "forced"];</code>
+   */
+  private void clearForced() {
+
+    forced_ = false;
+  }
+
   public static io.github.jflowers.ghhud.api.v1.DeweyPass parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -664,7 +832,7 @@ public  final class DeweyPass extends
 
   /**
    * <pre>
-   * DeweyPass is a machine's latest "reindex every vault now" pass (#139).
+   * DeweyPass is a machine's latest "reindex the vaults now" pass (#139).
    * </pre>
    *
    * Protobuf type {@code ghhud.v1.DeweyPass}
@@ -1247,6 +1415,174 @@ public  final class DeweyPass extends
       return this;
     }
 
+    /**
+     * <pre>
+     * vaults whose check found them up to date
+     * </pre>
+     *
+     * <code>repeated string current = 10 [json_name = "current"];</code>
+     * @return A list containing the current.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getCurrentList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getCurrentList());
+    }
+    /**
+     * <pre>
+     * vaults whose check found them up to date
+     * </pre>
+     *
+     * <code>repeated string current = 10 [json_name = "current"];</code>
+     * @return The count of current.
+     */
+    @java.lang.Override
+    public int getCurrentCount() {
+      return instance.getCurrentCount();
+    }
+    /**
+     * <pre>
+     * vaults whose check found them up to date
+     * </pre>
+     *
+     * <code>repeated string current = 10 [json_name = "current"];</code>
+     * @param index The index of the element to return.
+     * @return The current at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getCurrent(int index) {
+      return instance.getCurrent(index);
+    }
+    /**
+     * <pre>
+     * vaults whose check found them up to date
+     * </pre>
+     *
+     * <code>repeated string current = 10 [json_name = "current"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the current at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getCurrentBytes(int index) {
+      return instance.getCurrentBytes(index);
+    }
+    /**
+     * <pre>
+     * vaults whose check found them up to date
+     * </pre>
+     *
+     * <code>repeated string current = 10 [json_name = "current"];</code>
+     * @param index The index to set the value at.
+     * @param value The current to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCurrent(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setCurrent(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * vaults whose check found them up to date
+     * </pre>
+     *
+     * <code>repeated string current = 10 [json_name = "current"];</code>
+     * @param value The current to add.
+     * @return This builder for chaining.
+     */
+    public Builder addCurrent(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addCurrent(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * vaults whose check found them up to date
+     * </pre>
+     *
+     * <code>repeated string current = 10 [json_name = "current"];</code>
+     * @param values The current to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllCurrent(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllCurrent(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * vaults whose check found them up to date
+     * </pre>
+     *
+     * <code>repeated string current = 10 [json_name = "current"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearCurrent() {
+      copyOnWrite();
+      instance.clearCurrent();
+      return this;
+    }
+    /**
+     * <pre>
+     * vaults whose check found them up to date
+     * </pre>
+     *
+     * <code>repeated string current = 10 [json_name = "current"];</code>
+     * @param value The bytes of the current to add.
+     * @return This builder for chaining.
+     */
+    public Builder addCurrentBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addCurrentBytes(value);
+      return this;
+    }
+
+    /**
+     * <pre>
+     * every vault reindexed, unchecked
+     * </pre>
+     *
+     * <code>bool forced = 11 [json_name = "forced"];</code>
+     * @return The forced.
+     */
+    @java.lang.Override
+    public boolean getForced() {
+      return instance.getForced();
+    }
+    /**
+     * <pre>
+     * every vault reindexed, unchecked
+     * </pre>
+     *
+     * <code>bool forced = 11 [json_name = "forced"];</code>
+     * @param value The forced to set.
+     * @return This builder for chaining.
+     */
+    public Builder setForced(boolean value) {
+      copyOnWrite();
+      instance.setForced(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * every vault reindexed, unchecked
+     * </pre>
+     *
+     * <code>bool forced = 11 [json_name = "forced"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearForced() {
+      copyOnWrite();
+      instance.clearForced();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.DeweyPass)
   }
   @java.lang.Override
@@ -1273,10 +1609,13 @@ public  final class DeweyPass extends
             "note_",
             "started_",
             "ended_",
+            "current_",
+            "forced_",
           };
           java.lang.String info =
-              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0002\u0000\u0001\u0007\u0002\u0004\u0003\u0004" +
-              "\u0004\u0004\u0005\u021a\u0006\u021a\u0007\u0208\b\u1009\u0000\t\u1009\u0001";
+              "\u0000\u000b\u0000\u0001\u0001\u000b\u000b\u0000\u0003\u0000\u0001\u0007\u0002\u0004" +
+              "\u0003\u0004\u0004\u0004\u0005\u021a\u0006\u021a\u0007\u0208\b\u1009\u0000\t\u1009" +
+              "\u0001\n\u021a\u000b\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

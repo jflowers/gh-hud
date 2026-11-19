@@ -1236,6 +1236,10 @@ public nonisolated struct Ghhud_V1_DeweyReindexRequest: Sendable {
   /// cancel the running pass instead of starting one
   public var cancel: Bool = false
 
+  /// force reindexes every vault, not just the ones whose index check
+  /// (Dewey's own verdict) says so.
+  public var force: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2707,8 +2711,11 @@ public nonisolated struct Ghhud_V1_CheckoutHealth: @unchecked Sendable {
   }
 
   /// Dewey index health: "" not read, "none" not a vault, "ok",
+  /// "unchecked" (dewey status not read since the index was built),
   /// "reindex needed: <reasons>", "check failed: …", "machine problem: …"
-  /// (joined with "; "). A reindex need doesn't make the checkout unready.
+  /// (joined with "; "). The reasons are "unindexed", "no embeddings" and
+  /// Dewey's own reindexReasons (#138). A reindex need doesn't make the
+  /// checkout unready.
   public var index: String {
     get {_storage._index}
     set {_uniqueStorage()._index = newValue}
@@ -2781,6 +2788,25 @@ public nonisolated struct Ghhud_V1_CheckoutHealth: @unchecked Sendable {
   public var hasLastUpkeep: Bool {_storage._lastUpkeep != nil}
   /// Clears the value of `lastUpkeep`. Subsequent reads from it will return its default value.
   public mutating func clearLastUpkeep() {_uniqueStorage()._lastUpkeep = nil}
+
+  /// The Dewey version and index format the index records (dewey status,
+  /// as of index_status_at): "" and 0 for an index built before Dewey
+  /// 3.9.0 recorded them.
+  public var indexDeweyVersion: String {
+    get {_storage._indexDeweyVersion}
+    set {_uniqueStorage()._indexDeweyVersion = newValue}
+  }
+
+  public var indexFormat: Int64 {
+    get {_storage._indexFormat}
+    set {_uniqueStorage()._indexFormat = newValue}
+  }
+
+  /// index's reindex reasons as a list (Dewey's contain commas).
+  public var indexReasons: [String] {
+    get {_storage._indexReasons}
+    set {_uniqueStorage()._indexReasons = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2869,6 +2895,12 @@ public nonisolated struct Ghhud_V1_ReindexResult: Sendable {
 
   /// why it failed
   public var error: String = String()
+
+  /// What the index records after the reindex (one dewey status read);
+  /// "" and 0 when it couldn't be read.
+  public var deweyVersion: String = String()
+
+  public var indexFormat: Int64 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2990,6 +3022,13 @@ public nonisolated struct Ghhud_V1_FleetMachine: @unchecked Sendable {
   /// Clears the value of `deweyPass`. Subsequent reads from it will return its default value.
   public mutating func clearDeweyPass() {_uniqueStorage()._deweyPass = nil}
 
+  /// The vaults the rollout's check found up to date (#138): nothing to
+  /// reindex.
+  public var reindexCurrent: [String] {
+    get {_storage._reindexCurrent}
+    set {_uniqueStorage()._reindexCurrent = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2997,7 +3036,7 @@ public nonisolated struct Ghhud_V1_FleetMachine: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-/// DeweyPass is a machine's latest "reindex every vault now" pass (#139).
+/// DeweyPass is a machine's latest "reindex the vaults now" pass (#139).
 public nonisolated struct Ghhud_V1_DeweyPass: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -3039,6 +3078,12 @@ public nonisolated struct Ghhud_V1_DeweyPass: Sendable {
   public var hasEnded: Bool {self._ended != nil}
   /// Clears the value of `ended`. Subsequent reads from it will return its default value.
   public mutating func clearEnded() {self._ended = nil}
+
+  /// vaults whose check found them up to date
+  public var current: [String] = []
+
+  /// every vault reindexed, unchecked
+  public var forced: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -5123,7 +5168,7 @@ nonisolated extension Ghhud_V1_FleetControlResponse: SwiftProtobuf.Message, Swif
 
 nonisolated extension Ghhud_V1_DeweyReindexRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DeweyReindexRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machine\0\u{1}all\0\u{1}cancel\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machine\0\u{1}all\0\u{1}cancel\0\u{1}force\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5134,6 +5179,7 @@ nonisolated extension Ghhud_V1_DeweyReindexRequest: SwiftProtobuf.Message, Swift
       case 1: try { try decoder.decodeSingularStringField(value: &self.machine) }()
       case 2: try { try decoder.decodeSingularBoolField(value: &self.all) }()
       case 3: try { try decoder.decodeSingularBoolField(value: &self.cancel) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.force) }()
       default: break
       }
     }
@@ -5149,6 +5195,9 @@ nonisolated extension Ghhud_V1_DeweyReindexRequest: SwiftProtobuf.Message, Swift
     if self.cancel != false {
       try visitor.visitSingularBoolField(value: self.cancel, fieldNumber: 3)
     }
+    if self.force != false {
+      try visitor.visitSingularBoolField(value: self.force, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -5156,6 +5205,7 @@ nonisolated extension Ghhud_V1_DeweyReindexRequest: SwiftProtobuf.Message, Swift
     if lhs.machine != rhs.machine {return false}
     if lhs.all != rhs.all {return false}
     if lhs.cancel != rhs.cancel {return false}
+    if lhs.force != rhs.force {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -7408,7 +7458,7 @@ nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CheckoutHealth"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machine\0\u{1}workspace\0\u{1}repo\0\u{1}dir\0\u{1}branch\0\u{3}default_branch\0\u{1}ahead\0\u{1}behind\0\u{1}dirty\0\u{1}learnings\0\u{3}local_only\0\u{1}stashes\0\u{1}busy\0\u{3}no_upstream\0\u{1}error\0\u{1}index\0\u{3}index_built\0\u{3}index_pages\0\u{3}index_blocks\0\u{3}index_embeddings\0\u{3}index_status_at\0\u{1}reindexing\0\u{3}last_reindex\0\u{1}upkeeping\0\u{3}last_upkeep\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machine\0\u{1}workspace\0\u{1}repo\0\u{1}dir\0\u{1}branch\0\u{3}default_branch\0\u{1}ahead\0\u{1}behind\0\u{1}dirty\0\u{1}learnings\0\u{3}local_only\0\u{1}stashes\0\u{1}busy\0\u{3}no_upstream\0\u{1}error\0\u{1}index\0\u{3}index_built\0\u{3}index_pages\0\u{3}index_blocks\0\u{3}index_embeddings\0\u{3}index_status_at\0\u{1}reindexing\0\u{3}last_reindex\0\u{1}upkeeping\0\u{3}last_upkeep\0\u{3}index_dewey_version\0\u{3}index_format\0\u{3}index_reasons\0")
 
   fileprivate class _StorageClass {
     var _machine: String = String()
@@ -7436,6 +7486,9 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
     var _lastReindex: Ghhud_V1_ReindexResult? = nil
     var _upkeeping: Bool = false
     var _lastUpkeep: Ghhud_V1_UpkeepResult? = nil
+    var _indexDeweyVersion: String = String()
+    var _indexFormat: Int64 = 0
+    var _indexReasons: [String] = []
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -7471,6 +7524,9 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
       _lastReindex = source._lastReindex
       _upkeeping = source._upkeeping
       _lastUpkeep = source._lastUpkeep
+      _indexDeweyVersion = source._indexDeweyVersion
+      _indexFormat = source._indexFormat
+      _indexReasons = source._indexReasons
     }
   }
 
@@ -7514,6 +7570,9 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
         case 23: try { try decoder.decodeSingularMessageField(value: &_storage._lastReindex) }()
         case 24: try { try decoder.decodeSingularBoolField(value: &_storage._upkeeping) }()
         case 25: try { try decoder.decodeSingularMessageField(value: &_storage._lastUpkeep) }()
+        case 26: try { try decoder.decodeSingularStringField(value: &_storage._indexDeweyVersion) }()
+        case 27: try { try decoder.decodeSingularInt64Field(value: &_storage._indexFormat) }()
+        case 28: try { try decoder.decodeRepeatedStringField(value: &_storage._indexReasons) }()
         default: break
         }
       }
@@ -7601,6 +7660,15 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
       try { if let v = _storage._lastUpkeep {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 25)
       } }()
+      if !_storage._indexDeweyVersion.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._indexDeweyVersion, fieldNumber: 26)
+      }
+      if _storage._indexFormat != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._indexFormat, fieldNumber: 27)
+      }
+      if !_storage._indexReasons.isEmpty {
+        try visitor.visitRepeatedStringField(value: _storage._indexReasons, fieldNumber: 28)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -7635,6 +7703,9 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
         if _storage._lastReindex != rhs_storage._lastReindex {return false}
         if _storage._upkeeping != rhs_storage._upkeeping {return false}
         if _storage._lastUpkeep != rhs_storage._lastUpkeep {return false}
+        if _storage._indexDeweyVersion != rhs_storage._indexDeweyVersion {return false}
+        if _storage._indexFormat != rhs_storage._indexFormat {return false}
+        if _storage._indexReasons != rhs_storage._indexReasons {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -7720,7 +7791,7 @@ nonisolated extension Ghhud_V1_UpkeepResult: SwiftProtobuf.Message, SwiftProtobu
 
 nonisolated extension Ghhud_V1_ReindexResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ReindexResult"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}at\0\u{1}duration\0\u{1}binary\0\u{1}reasons\0\u{1}skipped\0\u{1}error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}at\0\u{1}duration\0\u{1}binary\0\u{1}reasons\0\u{1}skipped\0\u{1}error\0\u{3}dewey_version\0\u{3}index_format\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -7734,6 +7805,8 @@ nonisolated extension Ghhud_V1_ReindexResult: SwiftProtobuf.Message, SwiftProtob
       case 4: try { try decoder.decodeRepeatedStringField(value: &self.reasons) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.skipped) }()
       case 6: try { try decoder.decodeSingularStringField(value: &self.error) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.deweyVersion) }()
+      case 8: try { try decoder.decodeSingularInt64Field(value: &self.indexFormat) }()
       default: break
       }
     }
@@ -7762,6 +7835,12 @@ nonisolated extension Ghhud_V1_ReindexResult: SwiftProtobuf.Message, SwiftProtob
     if !self.error.isEmpty {
       try visitor.visitSingularStringField(value: self.error, fieldNumber: 6)
     }
+    if !self.deweyVersion.isEmpty {
+      try visitor.visitSingularStringField(value: self.deweyVersion, fieldNumber: 7)
+    }
+    if self.indexFormat != 0 {
+      try visitor.visitSingularInt64Field(value: self.indexFormat, fieldNumber: 8)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -7772,6 +7851,8 @@ nonisolated extension Ghhud_V1_ReindexResult: SwiftProtobuf.Message, SwiftProtob
     if lhs.reasons != rhs.reasons {return false}
     if lhs.skipped != rhs.skipped {return false}
     if lhs.error != rhs.error {return false}
+    if lhs.deweyVersion != rhs.deweyVersion {return false}
+    if lhs.indexFormat != rhs.indexFormat {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -7859,7 +7940,7 @@ nonisolated extension Ghhud_V1_FleetSnapshot: SwiftProtobuf.Message, SwiftProtob
 
 nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".FleetMachine"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}state\0\u{1}reachable\0\u{1}applied\0\u{3}applied_short\0\u{1}waited\0\u{3}last_error\0\u{3}reindex_done\0\u{3}reindex_total\0\u{3}reindex_failures\0\u{3}reindex_note\0\u{3}dewey_pass\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}state\0\u{1}reachable\0\u{1}applied\0\u{3}applied_short\0\u{1}waited\0\u{3}last_error\0\u{3}reindex_done\0\u{3}reindex_total\0\u{3}reindex_failures\0\u{3}reindex_note\0\u{3}dewey_pass\0\u{3}reindex_current\0")
 
   fileprivate class _StorageClass {
     var _name: String = String()
@@ -7874,6 +7955,7 @@ nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobu
     var _reindexFailures: [String] = []
     var _reindexNote: String = String()
     var _deweyPass: Ghhud_V1_DeweyPass? = nil
+    var _reindexCurrent: [String] = []
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -7896,6 +7978,7 @@ nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobu
       _reindexFailures = source._reindexFailures
       _reindexNote = source._reindexNote
       _deweyPass = source._deweyPass
+      _reindexCurrent = source._reindexCurrent
     }
   }
 
@@ -7926,6 +8009,7 @@ nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobu
         case 10: try { try decoder.decodeRepeatedStringField(value: &_storage._reindexFailures) }()
         case 11: try { try decoder.decodeSingularStringField(value: &_storage._reindexNote) }()
         case 12: try { try decoder.decodeSingularMessageField(value: &_storage._deweyPass) }()
+        case 13: try { try decoder.decodeRepeatedStringField(value: &_storage._reindexCurrent) }()
         default: break
         }
       }
@@ -7974,6 +8058,9 @@ nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobu
       try { if let v = _storage._deweyPass {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
       } }()
+      if !_storage._reindexCurrent.isEmpty {
+        try visitor.visitRepeatedStringField(value: _storage._reindexCurrent, fieldNumber: 13)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -7995,6 +8082,7 @@ nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobu
         if _storage._reindexFailures != rhs_storage._reindexFailures {return false}
         if _storage._reindexNote != rhs_storage._reindexNote {return false}
         if _storage._deweyPass != rhs_storage._deweyPass {return false}
+        if _storage._reindexCurrent != rhs_storage._reindexCurrent {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -8006,7 +8094,7 @@ nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobu
 
 nonisolated extension Ghhud_V1_DeweyPass: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DeweyPass"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}running\0\u{1}done\0\u{1}total\0\u{1}reindexed\0\u{1}skipped\0\u{1}failed\0\u{1}note\0\u{1}started\0\u{1}ended\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}running\0\u{1}done\0\u{1}total\0\u{1}reindexed\0\u{1}skipped\0\u{1}failed\0\u{1}note\0\u{1}started\0\u{1}ended\0\u{1}current\0\u{1}forced\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -8023,6 +8111,8 @@ nonisolated extension Ghhud_V1_DeweyPass: SwiftProtobuf.Message, SwiftProtobuf._
       case 7: try { try decoder.decodeSingularStringField(value: &self.note) }()
       case 8: try { try decoder.decodeSingularMessageField(value: &self._started) }()
       case 9: try { try decoder.decodeSingularMessageField(value: &self._ended) }()
+      case 10: try { try decoder.decodeRepeatedStringField(value: &self.current) }()
+      case 11: try { try decoder.decodeSingularBoolField(value: &self.forced) }()
       default: break
       }
     }
@@ -8060,6 +8150,12 @@ nonisolated extension Ghhud_V1_DeweyPass: SwiftProtobuf.Message, SwiftProtobuf._
     try { if let v = self._ended {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
     } }()
+    if !self.current.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.current, fieldNumber: 10)
+    }
+    if self.forced != false {
+      try visitor.visitSingularBoolField(value: self.forced, fieldNumber: 11)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -8073,6 +8169,8 @@ nonisolated extension Ghhud_V1_DeweyPass: SwiftProtobuf.Message, SwiftProtobuf._
     if lhs.note != rhs.note {return false}
     if lhs._started != rhs._started {return false}
     if lhs._ended != rhs._ended {return false}
+    if lhs.current != rhs.current {return false}
+    if lhs.forced != rhs.forced {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

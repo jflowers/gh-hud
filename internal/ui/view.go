@@ -869,12 +869,12 @@ func (m *Model) fleetView() string {
 		hint = "s again! skipping drain wait"
 	}
 	lines = append(lines, comment.Render("p pause/resume · a apply now · "+hint+" · r retry · F/esc close"))
-	deweyHint := "↑↓ machine · d reindex its Dewey vaults · D every machine's · x cancel"
+	deweyHint := "↑↓ machine · d reindex its Dewey vaults that need it · D every machine's · x cancel"
 	if m.deweyArmed != "" && time.Since(m.deweyArmedAt) < skipWaitWindow {
 		if m.deweyArmed == "*" {
-			deweyHint = "D again! reindex every Dewey vault on every machine"
+			deweyHint = "D again! reindex the Dewey vaults that need it on every machine · f every vault"
 		} else {
-			deweyHint = "d again! reindex every Dewey vault on " + m.deweyArmed
+			deweyHint = "d again! reindex the Dewey vaults that need it on " + m.deweyArmed + " · f every vault"
 		}
 	}
 	lines = append(lines, comment.Render(deweyHint))

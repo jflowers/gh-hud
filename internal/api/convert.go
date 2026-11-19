@@ -624,16 +624,19 @@ func checkoutToPB(h dispatch.CheckoutHealth) *pb.CheckoutHealth {
 		NoUpstream:    h.NoUpstream,
 		Error:         h.Err,
 
-		Index:           h.Index,
-		IndexBuilt:      ts(h.IndexBuilt),
-		IndexPages:      int64(h.IndexPages),
-		IndexBlocks:     int64(h.IndexBlocks),
-		IndexEmbeddings: int64(h.IndexEmbeddings),
-		IndexStatusAt:   ts(h.IndexStatusAt),
-		Reindexing:      h.Reindexing,
-		LastReindex:     reindexToPB(h.LastReindex),
-		Upkeeping:       h.Upkeeping,
-		LastUpkeep:      upkeepToPB(h.LastUpkeep),
+		Index:             h.Index,
+		IndexBuilt:        ts(h.IndexBuilt),
+		IndexPages:        int64(h.IndexPages),
+		IndexBlocks:       int64(h.IndexBlocks),
+		IndexEmbeddings:   int64(h.IndexEmbeddings),
+		IndexStatusAt:     ts(h.IndexStatusAt),
+		IndexDeweyVersion: h.IndexDeweyVersion,
+		IndexReasons:      strs(h.IndexReasons),
+		IndexFormat:       int64(h.IndexFormat),
+		Reindexing:        h.Reindexing,
+		LastReindex:       reindexToPB(h.LastReindex),
+		Upkeeping:         h.Upkeeping,
+		LastUpkeep:        upkeepToPB(h.LastUpkeep),
 	}
 }
 
@@ -666,6 +669,7 @@ func reindexToPB(r *dispatch.ReindexResult) *pb.ReindexResult {
 	return &pb.ReindexResult{
 		At: ts(r.At), Duration: dur(r.Duration), Binary: r.Binary,
 		Reasons: strs(r.Reasons), Skipped: r.Skipped, Error: r.Err,
+		DeweyVersion: r.DeweyVersion, IndexFormat: int64(r.IndexFormat),
 	}
 }
 
@@ -676,36 +680,40 @@ func reindexFromPB(p *pb.ReindexResult) *dispatch.ReindexResult {
 	return &dispatch.ReindexResult{
 		At: fromTS(p.GetAt()), Duration: fromDur(p.GetDuration()), Binary: p.GetBinary(),
 		Reasons: strs(p.GetReasons()), Skipped: p.GetSkipped(), Err: p.GetError(),
+		DeweyVersion: p.GetDeweyVersion(), IndexFormat: int(p.GetIndexFormat()),
 	}
 }
 
 func checkoutFromPB(p *pb.CheckoutHealth) dispatch.CheckoutHealth {
 	return dispatch.CheckoutHealth{
-		Machine:         p.GetMachine(),
-		Workspace:       p.GetWorkspace(),
-		Repo:            p.GetRepo(),
-		Dir:             p.GetDir(),
-		Branch:          p.GetBranch(),
-		Default:         p.GetDefaultBranch(),
-		Ahead:           int(p.GetAhead()),
-		Behind:          int(p.GetBehind()),
-		Dirty:           strs(p.GetDirty()),
-		Learnings:       int(p.GetLearnings()),
-		LocalOnly:       strs(p.GetLocalOnly()),
-		Stashes:         int(p.GetStashes()),
-		Busy:            p.GetBusy(),
-		NoUpstream:      p.GetNoUpstream(),
-		Err:             p.GetError(),
-		Reindexing:      p.GetReindexing(),
-		LastReindex:     reindexFromPB(p.GetLastReindex()),
-		Upkeeping:       p.GetUpkeeping(),
-		LastUpkeep:      upkeepFromPB(p.GetLastUpkeep()),
-		Index:           p.GetIndex(),
-		IndexBuilt:      fromTS(p.GetIndexBuilt()),
-		IndexPages:      int(p.GetIndexPages()),
-		IndexBlocks:     int(p.GetIndexBlocks()),
-		IndexEmbeddings: int(p.GetIndexEmbeddings()),
-		IndexStatusAt:   fromTS(p.GetIndexStatusAt()),
+		Machine:           p.GetMachine(),
+		Workspace:         p.GetWorkspace(),
+		Repo:              p.GetRepo(),
+		Dir:               p.GetDir(),
+		Branch:            p.GetBranch(),
+		Default:           p.GetDefaultBranch(),
+		Ahead:             int(p.GetAhead()),
+		Behind:            int(p.GetBehind()),
+		Dirty:             strs(p.GetDirty()),
+		Learnings:         int(p.GetLearnings()),
+		LocalOnly:         strs(p.GetLocalOnly()),
+		Stashes:           int(p.GetStashes()),
+		Busy:              p.GetBusy(),
+		NoUpstream:        p.GetNoUpstream(),
+		Err:               p.GetError(),
+		Reindexing:        p.GetReindexing(),
+		LastReindex:       reindexFromPB(p.GetLastReindex()),
+		Upkeeping:         p.GetUpkeeping(),
+		LastUpkeep:        upkeepFromPB(p.GetLastUpkeep()),
+		Index:             p.GetIndex(),
+		IndexBuilt:        fromTS(p.GetIndexBuilt()),
+		IndexPages:        int(p.GetIndexPages()),
+		IndexBlocks:       int(p.GetIndexBlocks()),
+		IndexEmbeddings:   int(p.GetIndexEmbeddings()),
+		IndexStatusAt:     fromTS(p.GetIndexStatusAt()),
+		IndexDeweyVersion: p.GetIndexDeweyVersion(),
+		IndexReasons:      strs(p.GetIndexReasons()),
+		IndexFormat:       int(p.GetIndexFormat()),
 	}
 }
 
@@ -731,7 +739,8 @@ func fleetToPB(f fleet.Snapshot) *pb.FleetSnapshot {
 				Waited: dur(m.Waited), LastError: m.LastErr,
 				ReindexDone: int32(m.Reindex.Done), ReindexTotal: int32(m.Reindex.Total), //nolint:gosec // G115: vault counts
 				ReindexFailures: m.Reindex.Failed, ReindexNote: m.Reindex.Note,
-				DeweyPass: passToPB(m.Pass),
+				ReindexCurrent: strs(m.Reindex.Current),
+				DeweyPass:      passToPB(m.Pass),
 			}
 		}),
 	}
@@ -757,6 +766,7 @@ func fleetFromPB(p *pb.FleetSnapshot) fleet.Snapshot {
 				Reindex: fleet.ReindexProgress{
 					Done: int(m.GetReindexDone()), Total: int(m.GetReindexTotal()),
 					Failed: m.GetReindexFailures(), Note: m.GetReindexNote(),
+					Current: strs(m.GetReindexCurrent()),
 				},
 				Pass: passFromPB(m.GetDeweyPass()),
 			}
@@ -773,6 +783,7 @@ func passToPB(p fleet.DeweyPass) *pb.DeweyPass {
 		Running: p.Running,
 		Done:    int32(p.Done), Total: int32(p.Total), Reindexed: int32(p.Reindexed), //nolint:gosec // G115: vault counts
 		Skipped: strs(p.Skipped), Failed: strs(p.Failed), Note: p.Note,
+		Current: strs(p.Current), Forced: p.Forced,
 		Started: ts(p.Started), Ended: ts(p.Ended),
 	}
 }
@@ -784,8 +795,9 @@ func passFromPB(p *pb.DeweyPass) fleet.DeweyPass {
 	return fleet.DeweyPass{
 		ReindexProgress: fleet.ReindexProgress{
 			Done: int(p.GetDone()), Total: int(p.GetTotal()), Failed: strs(p.GetFailed()), Note: p.GetNote(),
+			Current: strs(p.GetCurrent()),
 		},
-		Reindexed: int(p.GetReindexed()), Skipped: strs(p.GetSkipped()), Running: p.GetRunning(),
+		Reindexed: int(p.GetReindexed()), Skipped: strs(p.GetSkipped()), Forced: p.GetForced(), Running: p.GetRunning(),
 		Started: fromTS(p.GetStarted()), Ended: fromTS(p.GetEnded()),
 	}
 }

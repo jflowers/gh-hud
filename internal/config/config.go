@@ -98,12 +98,12 @@ type Config struct {
 	Dispatch map[string]TaskConfig `toml:"-"`
 	// DeweyReindex is [dispatch] dewey_reindex: what the after-run Dewey
 	// index check does when a checkout's index needs a reindex. "report"
-	// (default) only records it on the run; "auto" reindexes and warms
+	// (default) only records it on the run; "auto" reindexes
 	// the index once the checkout is idle (#133); "off" skips the check.
 	DeweyReindex string `toml:"-"`
 	// DeweyReindexTimeout is [dispatch] dewey_reindex_timeout (a
 	// duration, default DefaultDeweyReindexTimeout): how long one
-	// vault's reindex and warm may run before the script on the machine
+	// vault's reindex may run before the script on the machine
 	// stops it. Every reindex uses it: the automatic one, a rollout's, a
 	// requested pass.
 	DeweyReindexTimeout time.Duration `toml:"-"`

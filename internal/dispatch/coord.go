@@ -63,6 +63,9 @@ func (d *Dispatcher) acquireOwnership() bool {
 	_ = f.Truncate(0)
 	_, _ = f.WriteAt([]byte(strconv.Itoa(os.Getpid())+"\n"), 0)
 	d.lock = f
+	// Dewey records what built each index itself now (#138): the old
+	// binary-path baselines are dead weight.
+	_ = os.Remove(filepath.Join(d.o().StateDir, deweyLegacyBasesName))
 	return true
 }
 

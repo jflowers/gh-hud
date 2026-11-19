@@ -183,7 +183,7 @@ func TestFleetDeweyPassKeys(t *testing.T) {
 	if len(fake.Calls) != 0 || m.deweyArmed != "lap2" {
 		t.Fatalf("first d: calls %q, armed %q", fake.Calls, m.deweyArmed)
 	}
-	if out := m.fleetView(); !strings.Contains(out, "d again! reindex every Dewey vault on lap2") {
+	if out := m.fleetView(); !strings.Contains(out, "d again! reindex the Dewey vaults that need it on lap2 · f every vault") {
 		t.Errorf("armed hint missing:\n%s", out)
 	}
 	pressKey(t, m, "d")
@@ -192,7 +192,10 @@ func TestFleetDeweyPassKeys(t *testing.T) {
 	pressKey(t, m, "D")
 	pressKey(t, m, "D")
 	pressKey(t, m, "x")
-	want := []string{"DeweyReindex lap2", "DeweyReindex", "DeweyReindexCancel lap2"}
+	pressKey(t, m, "f") // not armed: nothing
+	pressKey(t, m, "d")
+	pressKey(t, m, "f") // armed by d: a forced pass
+	want := []string{"DeweyReindex lap2", "DeweyReindex", "DeweyReindexCancel lap2", "DeweyReindex -force lap2"}
 	if !slices.Equal(fake.Calls, want) {
 		t.Errorf("calls = %q, want %q", fake.Calls, want)
 	}

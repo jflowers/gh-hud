@@ -334,17 +334,17 @@ func TestDeweyReindexOnlyOnTheOwner(t *testing.T) {
 	ctx := t.Context()
 	fl := &fakeFleet{}
 	h := New(Options{Config: testCfg(), Fetch: (&fakeFetcher{}).fetch, Fleet: fl, Dispatcher: &fakeDisp{owner: true}})
-	if st, err := h.DeweyReindex(ctx, "lap1"); err != nil || !slices.Equal(st.Started, []string{"lap1"}) {
+	if st, err := h.DeweyReindex(ctx, "lap1", false); err != nil || !slices.Equal(st.Started, []string{"lap1"}) {
 		t.Errorf("DeweyReindex = %+v, %v", st, err)
 	}
 	if got, err := h.DeweyReindexCancel(ctx, ""); err != nil || len(got) != 1 {
 		t.Errorf("DeweyReindexCancel = %v, %v", got, err)
 	}
 	follower := New(Options{Config: testCfg(), Fetch: (&fakeFetcher{}).fetch, Fleet: fl, Dispatcher: &fakeDisp{owner: false}})
-	if _, err := follower.DeweyReindex(ctx, "lap1"); !errors.Is(err, errNotOwner) {
+	if _, err := follower.DeweyReindex(ctx, "lap1", true); !errors.Is(err, errNotOwner) {
 		t.Errorf("follower DeweyReindex err = %v", err)
 	}
-	if _, err := New(Options{Config: testCfg(), Fetch: (&fakeFetcher{}).fetch}).DeweyReindex(ctx, ""); !errors.Is(err, ErrNoFleet) {
+	if _, err := New(Options{Config: testCfg(), Fetch: (&fakeFetcher{}).fetch}).DeweyReindex(ctx, "", false); !errors.Is(err, ErrNoFleet) {
 		t.Errorf("no fleet err = %v", err)
 	}
 	fl.mu.Lock()

@@ -432,10 +432,10 @@ func (c *Client) FleetRetry(ctx context.Context) error {
 	return c.fleet(ctx, pb.FleetAction_FLEET_ACTION_RETRY)
 }
 
-func (c *Client) DeweyReindex(ctx context.Context, machine string) (fleet.PassStart, error) {
+func (c *Client) DeweyReindex(ctx context.Context, machine string, force bool) (fleet.PassStart, error) {
 	ctx, cancel := withDeadline(ctx, callTimeout)
 	defer cancel()
-	resp, err := c.rpc.DeweyReindex(ctx, connect.NewRequest(&pb.DeweyReindexRequest{Machine: machine, All: machine == ""}))
+	resp, err := c.rpc.DeweyReindex(ctx, connect.NewRequest(&pb.DeweyReindexRequest{Machine: machine, All: machine == "", Force: force}))
 	if err != nil {
 		return fleet.PassStart{}, fromConnect(err)
 	}

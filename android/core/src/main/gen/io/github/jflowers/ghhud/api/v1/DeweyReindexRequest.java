@@ -160,6 +160,47 @@ public  final class DeweyReindexRequest extends
     cancel_ = false;
   }
 
+  public static final int FORCE_FIELD_NUMBER = 4;
+  private boolean force_;
+  /**
+   * <pre>
+   * force reindexes every vault, not just the ones whose index check
+   * (Dewey's own verdict) says so.
+   * </pre>
+   *
+   * <code>bool force = 4 [json_name = "force"];</code>
+   * @return The force.
+   */
+  @java.lang.Override
+  public boolean getForce() {
+    return force_;
+  }
+  /**
+   * <pre>
+   * force reindexes every vault, not just the ones whose index check
+   * (Dewey's own verdict) says so.
+   * </pre>
+   *
+   * <code>bool force = 4 [json_name = "force"];</code>
+   * @param value The force to set.
+   */
+  private void setForce(boolean value) {
+    
+    force_ = value;
+  }
+  /**
+   * <pre>
+   * force reindexes every vault, not just the ones whose index check
+   * (Dewey's own verdict) says so.
+   * </pre>
+   *
+   * <code>bool force = 4 [json_name = "force"];</code>
+   */
+  private void clearForce() {
+
+    force_ = false;
+  }
+
   public static io.github.jflowers.ghhud.api.v1.DeweyReindexRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -406,6 +447,49 @@ public  final class DeweyReindexRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * force reindexes every vault, not just the ones whose index check
+     * (Dewey's own verdict) says so.
+     * </pre>
+     *
+     * <code>bool force = 4 [json_name = "force"];</code>
+     * @return The force.
+     */
+    @java.lang.Override
+    public boolean getForce() {
+      return instance.getForce();
+    }
+    /**
+     * <pre>
+     * force reindexes every vault, not just the ones whose index check
+     * (Dewey's own verdict) says so.
+     * </pre>
+     *
+     * <code>bool force = 4 [json_name = "force"];</code>
+     * @param value The force to set.
+     * @return This builder for chaining.
+     */
+    public Builder setForce(boolean value) {
+      copyOnWrite();
+      instance.setForce(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * force reindexes every vault, not just the ones whose index check
+     * (Dewey's own verdict) says so.
+     * </pre>
+     *
+     * <code>bool force = 4 [json_name = "force"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearForce() {
+      copyOnWrite();
+      instance.clearForce();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.DeweyReindexRequest)
   }
   @java.lang.Override
@@ -425,10 +509,11 @@ public  final class DeweyReindexRequest extends
             "machine_",
             "all_",
             "cancel_",
+            "force_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\u0007" +
-              "\u0003\u0007";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u0007" +
+              "\u0003\u0007\u0004\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -213,8 +213,12 @@ func (f *Fake) FleetApplyNow(context.Context) error { return f.call("FleetApplyN
 func (f *Fake) FleetSkipWait(context.Context) error { return f.call("FleetSkipWait") }
 func (f *Fake) FleetRetry(context.Context) error    { return f.call("FleetRetry") }
 
-func (f *Fake) DeweyReindex(_ context.Context, machine string) (fleet.PassStart, error) {
-	if err := f.call("DeweyReindex %s", machine); err != nil {
+func (f *Fake) DeweyReindex(_ context.Context, machine string, force bool) (fleet.PassStart, error) {
+	call := "DeweyReindex %s"
+	if force {
+		call = "DeweyReindex -force %s"
+	}
+	if err := f.call(call, machine); err != nil {
 		return fleet.PassStart{}, err
 	}
 	return f.Pass, nil

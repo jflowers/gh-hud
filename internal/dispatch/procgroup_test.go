@@ -13,8 +13,8 @@ import (
 	"time"
 )
 
-// longScript starts a background child, as reindexScript's warm
-// `dewey serve` does, and a foreground one, as `dewey reindex` is, and
+// longScript starts a background child, as reindexScript's `dewey
+// reindex` does, and a foreground one, and
 // writes their pids to dir/pids.
 func longScript(dir string) string {
 	return "sleep 300 & echo $! > " + shellQuote(filepath.Join(dir, "pids")) + "\n" +

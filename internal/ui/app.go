@@ -914,6 +914,13 @@ func (m *Model) handleFleetKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.deweyArmed = ""
 	case "d", "D":
 		m.fleetDeweyKey(msg.String() == "D")
+	case "f":
+		// Armed by d or D: reindex every vault, whatever its check says.
+		if m.deweyArmed != "" && time.Since(m.deweyArmedAt) < skipWaitWindow {
+			target := m.deweyArmed
+			m.deweyArmed = ""
+			m.startDeweyPass(target, true)
+		}
 	case "x":
 		if name := m.fleetSelected(); name != "" {
 			got, err := m.backend.DeweyReindexCancel(ctx(), name)
@@ -953,7 +960,8 @@ func (m *Model) fleetSelected() string {
 
 // fleetDeweyKey is d (the selected machine) and D (every machine): the
 // first press arms a Dewey reindex pass (#139), a second within
-// skipWaitWindow starts it.
+// skipWaitWindow starts it (the vaults whose check says so, #138), and f
+// instead starts a forced one (every vault).
 func (m *Model) fleetDeweyKey(all bool) {
 	target := m.fleetSelected()
 	where := target
@@ -967,20 +975,29 @@ func (m *Model) fleetDeweyKey(all bool) {
 	if m.deweyArmed != target || time.Since(m.deweyArmedAt) >= skipWaitWindow {
 		m.deweyArmed, m.deweyArmedAt = target, time.Now()
 		m.skipWaitArmed = false
-		m.flash("press " + key + " again to reindex every Dewey vault on " + where)
+		m.flash("press " + key + " again to reindex the Dewey vaults that need it on " + where + ", f to reindex every one")
 		return
 	}
 	m.deweyArmed = ""
+	m.startDeweyPass(target, false)
+}
+
+// startDeweyPass starts a Dewey reindex pass on target (a machine, or
+// "*" for every one).
+func (m *Model) startDeweyPass(target string, force bool) {
 	machine := target
-	if all {
+	if target == "*" {
 		machine = ""
 	}
-	st, err := m.backend.DeweyReindex(ctx(), machine)
+	st, err := m.backend.DeweyReindex(ctx(), machine, force)
 	if err != nil {
 		m.flash("dewey: " + err.Error() + " (failed)")
 		return
 	}
 	msg := "Dewey reindex pass started on " + strings.Join(st.Started, ", ")
+	if force {
+		msg = "forced " + msg
+	}
 	if len(st.Refused) > 0 {
 		msg += "; not on " + strings.Join(st.Refused, "; ")
 	}

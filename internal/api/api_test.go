@@ -137,11 +137,12 @@ func TestCommandsOverSocket(t *testing.T) {
 	must(c.FleetSkipWait(ctx))
 	must(c.FleetRetry(ctx))
 	fake.Pass = fleet.PassStart{Started: []string{"lap2", "local"}, Refused: []string{"lap1: busy"}}
-	if st, err := c.DeweyReindex(ctx, ""); err != nil || !reflect.DeepEqual(st, fake.Pass) {
+	if st, err := c.DeweyReindex(ctx, "", false); err != nil || !reflect.DeepEqual(st, fake.Pass) {
 		t.Errorf("DeweyReindex all = %+v, %v", st, err)
 	}
 	must2 := func(_ any, err error) { must(err) }
-	must2(c.DeweyReindex(ctx, "lap1"))
+	must2(c.DeweyReindex(ctx, "lap1", false))
+	must2(c.DeweyReindex(ctx, "lap1", true))
 	if got, err := c.DeweyReindexCancel(ctx, "lap1"); err != nil || !slices.Equal(got, []string{"lap2", "local"}) {
 		t.Errorf("DeweyReindexCancel = %v, %v", got, err)
 	}
@@ -158,7 +159,7 @@ func TestCommandsOverSocket(t *testing.T) {
 		"Enqueue review u1", "Unqueue review a/r#1", "MoveQueued review a/r#1 -1",
 		"Watch lap1/s1", "WatchRun run1", "OpenTranscript run1",
 		"FleetPause true", "FleetPause false", "FleetApplyNow", "FleetSkipWait", "FleetRetry",
-		"DeweyReindex", "DeweyReindex lap1", "DeweyReindexCancel lap1",
+		"DeweyReindex", "DeweyReindex lap1", "DeweyReindex -force lap1", "DeweyReindexCancel lap1",
 		"ToolkitRollout uf 0.22.0", "ToolkitControl cancel uf@0.22.0", "ToolkitControl retry uf@0.22.0",
 		"ToolkitControl dismiss uf@0.22.0", "ToolkitControl check uf@0.22.0",
 	}

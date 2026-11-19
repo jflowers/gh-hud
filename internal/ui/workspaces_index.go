@@ -17,14 +17,23 @@ import (
 
 const wsIndexW = 24
 
-// indexShort is a reindex reason as the column names it.
-var indexShort = map[string]string{
-	"learnings changed": "learnings chg",
-	"knowledge changed": "knowledge chg",
+// indexShort is a reindex reason as the column names it: gh-hud's own
+// as they are, and Dewey's (#138), which are sentences ("index format 0,
+// this Dewey writes 1"), by what they're about. The detail has them in
+// full.
+func indexShort(reason string) string {
+	switch {
+	case reason == "unindexed", reason == "no embeddings":
+		return reason
+	case strings.HasPrefix(reason, "index format"):
+		return "old format"
+	}
+	return "dewey: reindex"
 }
 
 // indexParts splits CheckoutHealth.Index into its reindex reasons, machine
-// problem and check error.
+// problem and check error. Prefer CheckoutHealth.IndexReasons for the
+// reasons (checkoutReasons): Dewey's own contain commas.
 func indexParts(index string) (reasons []string, machine, failed string) {
 	for _, p := range strings.Split(index, "; ") {
 		switch {
@@ -37,6 +46,16 @@ func indexParts(index string) (reasons []string, machine, failed string) {
 		}
 	}
 	return reasons, machine, failed
+}
+
+// checkoutReasons is the checkout's reindex reasons: IndexReasons, else
+// split out of Index (a hub that didn't send the list).
+func checkoutReasons(h dispatch.CheckoutHealth) []string {
+	reasons, _, _ := indexParts(h.Index)
+	if len(h.IndexReasons) > 0 && len(reasons) > 0 {
+		return h.IndexReasons
+	}
+	return reasons
 }
 
 // wsCoverage is the share of blocks with an embedding, "" when dewey
@@ -57,25 +76,28 @@ func wsIndex(h dispatch.CheckoutHealth, now time.Time) (string, lipgloss.Color) 
 	case dispatch.IndexNone:
 		return "none", cDim
 	}
-	reasons, machine, failed := indexParts(h.Index)
+	_, machine, failed := indexParts(h.Index)
+	reasons := checkoutReasons(h)
 	text, color := "ok", cGreen
 	switch {
 	case len(reasons) > 0:
-		text, color = reasons[0], cYellow
-		if s, ok := indexShort[text]; ok {
-			text = s
-		}
+		text, color = indexShort(reasons[0]), cYellow
 		if len(reasons) > 1 {
 			text += fmt.Sprintf(" +%d", len(reasons)-1)
 		}
 	case machine != "":
-		// orange: the machine has no embedder, so a reindex won't help
+		// orange: the machine is at fault, so a reindex won't help
 		text, color = "no embeddings", cOrange
-		if strings.Contains(machine, "no dewey") {
+		switch {
+		case strings.Contains(machine, "no dewey"):
 			text = "no dewey"
+		case strings.Contains(machine, "is older than"):
+			text = "dewey too old"
 		}
 	case failed != "":
 		text, color = "check failed", cRed
+	case h.Index == dispatch.IndexUnchecked:
+		text, color = "unchecked", cDim
 	}
 	var extra []string
 	if !h.IndexBuilt.IsZero() {
@@ -90,13 +112,16 @@ func wsIndex(h dispatch.CheckoutHealth, now time.Time) (string, lipgloss.Color) 
 	return text, color
 }
 
-// indexMeans says what an agent dispatched here works with, per reason.
-var indexMeans = map[string]string{
-	"unindexed":         "no index: the agent's first search builds one mid-run",
-	"no embeddings":     "keyword search only: semantic search finds nothing",
-	"learnings changed": "search may return the old text of learnings edited or deleted since the index was built",
-	"knowledge changed": "search may return the old text of knowledge files edited or deleted since the index was built",
-	"dewey upgraded":    "the index was built by an older dewey than the agent runs",
+// indexMeans says what an agent dispatched here works with, per reason;
+// Dewey's own reasons (#138) all mean the same.
+func indexMeans(reason string) string {
+	switch reason {
+	case "unindexed":
+		return "no index: the agent's first search builds one mid-run"
+	case "no embeddings":
+		return "keyword search only: semantic search finds nothing"
+	}
+	return "an index Dewey says to rebuild (" + reason + "): search may miss what the newer Dewey would index"
 }
 
 // wsIndexDetail is the selected checkout's index lines, as (key, value)
@@ -108,22 +133,29 @@ func wsIndexDetail(h dispatch.CheckoutHealth, now time.Time) [][2]string {
 	if h.Index == dispatch.IndexNone {
 		return [][2]string{{"index", "none (not a Dewey vault)"}}
 	}
-	reasons, machine, _ := indexParts(h.Index)
+	_, machine, _ := indexParts(h.Index)
+	reasons := checkoutReasons(h)
 	idx := h.Index
 	if len(reasons) > 0 {
 		idx += " (still dispatchable)"
 	}
 	out := [][2]string{{"index", idx}}
 	for _, r := range reasons {
-		if m, ok := indexMeans[r]; ok {
-			out = append(out, [2]string{"", "an agent here: " + m})
-		}
+		out = append(out, [2]string{"", "an agent here: " + indexMeans(r)})
 	}
 	if machine != "" {
 		out = append(out, [2]string{"", "a reindex here wouldn't help: fix the machine"})
 	}
 	if !h.IndexBuilt.IsZero() {
-		out = append(out, [2]string{"built", h.IndexBuilt.Local().Format("2006-01-02 15:04") + " (" + wsAgo(h.IndexBuilt, now) + ")"})
+		v := h.IndexBuilt.Local().Format("2006-01-02 15:04") + " (" + wsAgo(h.IndexBuilt, now) + ")"
+		if !h.IndexStatusAt.IsZero() {
+			if h.IndexDeweyVersion == "" && h.IndexFormat == 0 {
+				v += ", by a Dewey before 3.9.0 (format 0)"
+			} else {
+				v += ", " + indexBuiltBy(h.IndexDeweyVersion, h.IndexFormat)
+			}
+		}
+		out = append(out, [2]string{"built", v})
 	}
 	switch {
 	case !h.IndexStatusAt.IsZero():

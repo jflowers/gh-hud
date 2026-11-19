@@ -262,11 +262,11 @@ type Options struct {
 	Branches config.BranchesConfig
 	// DeweyReindex is what the after-run Dewey index check does with a
 	// checkout that needs a reindex: "report" (default) records it,
-	// "auto" also reindexes and warms it (deweyreindex.go), "off" skips
+	// "auto" also reindexes it (deweyreindex.go), "off" skips
 	// the check.
 	DeweyReindex string
 	// DeweyReindexTimeout is [dispatch] dewey_reindex_timeout: how long
-	// one vault's reindex and warm may run on its machine (0 = the
+	// one vault's reindex may run on its machine (0 = the
 	// default, config.DefaultDeweyReindexTimeout).
 	DeweyReindexTimeout time.Duration
 	// Upkeep is what the idle fleet checkouts' upkeep does (upkeep.go):
@@ -382,19 +382,15 @@ type Dispatcher struct {
 	// automatic one finished.
 	pruning  bool
 	prunedAt time.Time
-	// deweyBases are the Dewey binaries each checkout's index was last
-	// built with (deweyhealth.go), guarded by baseMu; deweyBasesMod is
-	// dewey-baselines.json's mtime at the last load or save.
-	baseMu        sync.Mutex
-	deweyBases    map[string]DeweyBaseline
-	deweyBasesMod time.Time
+	// baseMu guards the last reindexes (reindexes, reindexesMod).
+	baseMu sync.Mutex
 	// idxStatus is the last dewey status read per checkout, for the
 	// Workspaces tab (workspaces_index.go).
 	idxStatus indexStatusCache
 	// reindexing is the checkout each machine is reindexing (machine key
 	// → dir; deweyreindex.go), guarded by mu: one per machine. reindexes
-	// are the last reindex per checkout, guarded by baseMu like the
-	// baselines; reindexesMod is dewey-reindexes.json's mtime.
+	// are the last reindex per checkout, guarded by baseMu;
+	// reindexesMod is dewey-reindexes.json's mtime.
 	reindexing   map[string]string
 	reindexes    map[string]ReindexResult
 	reindexesMod time.Time

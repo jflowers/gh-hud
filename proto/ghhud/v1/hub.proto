@@ -81,9 +81,10 @@ service HubService {
   // FleetControl drives the GitOps rollout; FAILED_PRECONDITION when the
   // fleet is off.
   rpc FleetControl(FleetControlRequest) returns (FleetControlResponse);
-  // DeweyReindex starts, or cancels, a pass that reindexes every Dewey
-  // vault on a fleet machine, or on every one (#139). A pass goes vault
-  // by vault, skipping busy ones; its progress is FleetMachine.dewey_pass.
+  // DeweyReindex starts, or cancels, a pass that reindexes the Dewey
+  // vaults on a fleet machine, or on every one (#139): the ones Dewey
+  // says need it (#138), or every one with force. A pass goes vault by
+  // vault, skipping busy ones; its progress is FleetMachine.dewey_pass.
   // FAILED_PRECONDITION when the fleet is off; refused when
   // [dispatch] dewey_reindex is "off", a pass already runs there, or this
   // hub doesn't own dispatch.
@@ -380,6 +381,9 @@ message DeweyReindexRequest {
   string machine = 1; // a fleet machine ("local" is the hub); "" with all
   bool all = 2; // every fleet machine
   bool cancel = 3; // cancel the running pass instead of starting one
+  // force reindexes every vault, not just the ones whose index check
+  // (Dewey's own verdict) says so.
+  bool force = 4;
 }
 
 message DeweyReindexResponse {
@@ -776,8 +780,11 @@ message CheckoutHealth {
   bool no_upstream = 14;
   string error = 15;
   // Dewey index health: "" not read, "none" not a vault, "ok",
+  // "unchecked" (dewey status not read since the index was built),
   // "reindex needed: <reasons>", "check failed: …", "machine problem: …"
-  // (joined with "; "). A reindex need doesn't make the checkout unready.
+  // (joined with "; "). The reasons are "unindexed", "no embeddings" and
+  // Dewey's own reindexReasons (#138). A reindex need doesn't make the
+  // checkout unready.
   string index = 16;
   google.protobuf.Timestamp index_built = 17; // graph.db mtime; unset = no index
   // From dewey status, as of index_status_at (unset = never read).
@@ -792,6 +799,13 @@ message CheckoutHealth {
   // dispatch.
   bool upkeeping = 24;
   UpkeepResult last_upkeep = 25; // unset: none yet
+  // The Dewey version and index format the index records (dewey status,
+  // as of index_status_at): "" and 0 for an index built before Dewey
+  // 3.9.0 recorded them.
+  string index_dewey_version = 26;
+  int64 index_format = 27;
+  // index's reindex reasons as a list (Dewey's contain commas).
+  repeated string index_reasons = 28;
 }
 
 // UpkeepResult is the last upkeep of an idle fleet checkout: fetched,
@@ -816,6 +830,10 @@ message ReindexResult {
   repeated string reasons = 4; // why it ran
   string skipped = 5; // why it didn't run ("dewey.lock held")
   string error = 6; // why it failed
+  // What the index records after the reindex (one dewey status read);
+  // "" and 0 when it couldn't be read.
+  string dewey_version = 7;
+  int64 index_format = 8;
 }
 
 message FleetSnapshot {
@@ -849,9 +867,12 @@ message FleetMachine {
   repeated string reindex_failures = 10;
   string reindex_note = 11;
   DeweyPass dewey_pass = 12; // unset: no pass asked for since the hub started
+  // The vaults the rollout's check found up to date (#138): nothing to
+  // reindex.
+  repeated string reindex_current = 13;
 }
 
-// DeweyPass is a machine's latest "reindex every vault now" pass (#139).
+// DeweyPass is a machine's latest "reindex the vaults now" pass (#139).
 message DeweyPass {
   bool running = 1;
   int32 done = 2; // vaults handled so far (reindexed, skipped or failed)
@@ -862,6 +883,8 @@ message DeweyPass {
   string note = 7; // the summary ("reindexed 10/12, 1 skipped, 1 failed")
   google.protobuf.Timestamp started = 8;
   google.protobuf.Timestamp ended = 9; // unset while it runs
+  repeated string current = 10; // vaults whose check found them up to date
+  bool forced = 11; // every vault reindexed, unchecked
 }
 
 enum EventKind {

@@ -169,4 +169,55 @@ public interface DeweyPassOrBuilder extends
    * @return The ended.
    */
   com.google.protobuf.Timestamp getEnded();
+
+  /**
+   * <pre>
+   * vaults whose check found them up to date
+   * </pre>
+   *
+   * <code>repeated string current = 10 [json_name = "current"];</code>
+   * @return A list containing the current.
+   */
+  java.util.List<java.lang.String>
+      getCurrentList();
+  /**
+   * <pre>
+   * vaults whose check found them up to date
+   * </pre>
+   *
+   * <code>repeated string current = 10 [json_name = "current"];</code>
+   * @return The count of current.
+   */
+  int getCurrentCount();
+  /**
+   * <pre>
+   * vaults whose check found them up to date
+   * </pre>
+   *
+   * <code>repeated string current = 10 [json_name = "current"];</code>
+   * @param index The index of the element to return.
+   * @return The current at the given index.
+   */
+  java.lang.String getCurrent(int index);
+  /**
+   * <pre>
+   * vaults whose check found them up to date
+   * </pre>
+   *
+   * <code>repeated string current = 10 [json_name = "current"];</code>
+   * @param index The index of the element to return.
+   * @return The current at the given index.
+   */
+  com.google.protobuf.ByteString
+      getCurrentBytes(int index);
+
+  /**
+   * <pre>
+   * every vault reindexed, unchecked
+   * </pre>
+   *
+   * <code>bool forced = 11 [json_name = "forced"];</code>
+   * @return The forced.
+   */
+  boolean getForced();
 }

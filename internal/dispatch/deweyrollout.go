@@ -1,17 +1,19 @@
 package dispatch
 
 // Dewey reindex during a fleet rollout (#134). When a rollout changes a
-// machine's Dewey binary, every index on it was built by the old one. The
-// fleet coordinator, with the machine drained and fleet-apply done, asks
-// for the machine's vaults and reindexes them one after another through
+// machine's Dewey binary, the new Dewey may write a newer index format
+// than the indexes on the machine record. The fleet coordinator, with the
+// machine drained and fleet-apply done, asks for the machine's vaults,
+// checks each one (VaultIndexHealth: Dewey's own verdict, #138) and
+// reindexes the ones that need it, one after another, through
 // reindexCheckout, so the busy mark, the one-per-machine rule, the
-// live-agent / leftovers / dewey.lock checks, the last-reindex record and
-// the baseline update are the same as for the automatic reindex (#133).
+// live-agent / leftovers / dewey.lock checks and the last-reindex record
+// are the same as for the automatic reindex (#133).
 //
 // These are the fleet's entry points, by fleet machine name ("local" is
 // the hub); the fleet's "reindex every vault now" pass (#139) uses them
-// too, through RequestedReindex. Gating on [dispatch] dewey_reindex is the coordinator's: it
-// reads DeweyReindexMode.
+// too, through RequestedReindex. Gating on [dispatch] dewey_reindex is
+// the coordinator's: it reads DeweyReindexMode.
 
 import (
 	"context"
@@ -168,32 +170,71 @@ func parseDeweyVaults(out string) []deweyVaultLine {
 	return vs
 }
 
-// RolloutReindex reindexes and warms the vault of checkout dir on the
-// machine for a rollout that changed its Dewey binary, through
-// reindexCheckout: busy "reindexing" meanwhile, skipped (an error
-// wrapping errReindexSkipped) when an agent is live in it, it has
-// leftovers or its dewey.lock is held, its last reindex recorded and, on
-// success, its baseline set to the binary it ran. A machine reindexing
+// VaultIndexHealth runs the index check (dewey status included) on the
+// vault of checkout dir on the machine: the verdict a rollout or a pass
+// reindexes by. An error means there is no verdict: an agent is live in
+// the checkout, it isn't a Dewey vault, or the check couldn't run.
+func (d *Dispatcher) VaultIndexHealth(ctx context.Context, machine, dir string) (IndexHealth, error) {
+	m, ok := d.rolloutMachine(machine)
+	if !ok {
+		return IndexHealth{}, fmt.Errorf("unknown machine %q", machine)
+	}
+	rec, h, ok := d.checkIndexHealthFull(ctx, m, Record{Machine: m.key(), Dir: dir})
+	switch {
+	case ok:
+		return h, nil
+	case rec == "":
+		return h, errors.New("not a Dewey vault")
+	case rec == busySkip:
+		return h, errors.New("another agent is active in the checkout")
+	}
+	return h, errors.New(rec)
+}
+
+// ReindexDecision is what a rollout or a pass does with a vault whose
+// check says h: reindex it (for h.Reasons), or not, and then why not
+// ("" when the index is up to date): the check failed, or only the
+// machine is at fault.
+func ReindexDecision(h IndexHealth) (reindex bool, why string) {
+	switch {
+	case h.Err != "":
+		return false, "check failed: " + h.Err
+	case h.NeedsReindex():
+		return true, ""
+	case h.Machine != "":
+		return false, "machine problem: " + h.Machine
+	case h.Unchecked:
+		return false, "not checked"
+	}
+	return false, ""
+}
+
+// RolloutReindex reindexes the vault of checkout dir on the machine for a
+// rollout that changed its Dewey binary, through reindexCheckout, for
+// reasons (the vault's check's): busy "reindexing" meanwhile, skipped (an
+// error wrapping errReindexSkipped) when an agent is live in it, it has
+// leftovers or its dewey.lock is held, its last reindex recorded. A
+// machine reindexing
 // another vault (an automatic reindex begun before the drain) is waited
 // for, within ctx and a bound (then the error is IsMachineStuck); each
 // attempt has the configured dewey_reindex_timeout. Only the dispatch
 // owner reindexes.
-func (d *Dispatcher) RolloutReindex(ctx context.Context, machine, dir string) (ReindexResult, error) {
-	return d.gatedReindex(ctx, machine, dir, []string{reasonDeweyUpgraded})
+func (d *Dispatcher) RolloutReindex(ctx context.Context, machine, dir string, reasons []string) (ReindexResult, error) {
+	return d.gatedReindex(ctx, machine, dir, reasons)
 }
 
-// reasonRequested is why a person's "reindex every vault now" pass (#139)
-// ran, as the checkout's last reindex shows it.
-const reasonRequested = "requested pass"
+// ReasonForced is why a forced pass (#138) reindexed a vault whatever its
+// check said, as the checkout's last reindex shows it.
+const ReasonForced = "requested pass, forced"
 
 // RequestedReindex is RolloutReindex for a pass a person asked for
-// ("reindex every vault on this machine now", #139): the same gates, the
-// same wait for the machine's one reindex slot, the same record and
-// baseline; only the reason it records differs. The machine isn't
-// drained, so a checkout with a live agent, leftovers or a held
-// dewey.lock is skipped rather than waited for.
-func (d *Dispatcher) RequestedReindex(ctx context.Context, machine, dir string) (ReindexResult, error) {
-	return d.gatedReindex(ctx, machine, dir, []string{reasonRequested})
+// ("reindex the vaults on this machine now", #139): the same gates, the
+// same wait for the machine's one reindex slot, the same record; reasons
+// are the vault's check's, or ReasonForced. The machine isn't drained,
+// so a checkout with a live agent, leftovers or a held dewey.lock is
+// skipped rather than waited for.
+func (d *Dispatcher) RequestedReindex(ctx context.Context, machine, dir string, reasons []string) (ReindexResult, error) {
+	return d.gatedReindex(ctx, machine, dir, reasons)
 }
 
 // gatedReindex is RolloutReindex and RequestedReindex: reindexCheckout on

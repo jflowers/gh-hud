@@ -72,7 +72,7 @@ type Fleet interface {
 	SkipWait()
 	Retry()
 	// Dewey reindex passes by fleet machine, "" for every one (#139).
-	StartDeweyReindex(machine string) (fleet.PassStart, error)
+	StartDeweyReindex(machine string, force bool) (fleet.PassStart, error)
 	CancelDeweyReindex(machine string) ([]string, error)
 }
 
@@ -165,11 +165,12 @@ type Backend interface {
 	FleetApplyNow(ctx context.Context) error
 	FleetSkipWait(ctx context.Context) error
 	FleetRetry(ctx context.Context) error
-	// DeweyReindex starts a pass reindexing every Dewey vault on a fleet
-	// machine ("" for every one), and DeweyReindexCancel cancels it; they
-	// return the machines they acted on (#139). A pass's progress is the
-	// fleet snapshot's MachineStatus.Pass. They fail when the fleet is off.
-	DeweyReindex(ctx context.Context, machine string) (fleet.PassStart, error)
+	// DeweyReindex starts a pass reindexing the Dewey vaults on a fleet
+	// machine ("" for every one) that need it, or every one with force,
+	// and DeweyReindexCancel cancels it; they return the machines they
+	// acted on (#139). A pass's progress is the fleet snapshot's
+	// MachineStatus.Pass. They fail when the fleet is off.
+	DeweyReindex(ctx context.Context, machine string, force bool) (fleet.PassStart, error)
 	DeweyReindexCancel(ctx context.Context, machine string) ([]string, error)
 
 	// Toolkit rollouts (issue #75); they fail when the toolkit is off.

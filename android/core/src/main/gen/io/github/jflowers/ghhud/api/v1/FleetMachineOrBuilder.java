@@ -169,4 +169,49 @@ public interface FleetMachineOrBuilder extends
    * @return The deweyPass.
    */
   io.github.jflowers.ghhud.api.v1.DeweyPass getDeweyPass();
+
+  /**
+   * <pre>
+   * The vaults the rollout's check found up to date (#138): nothing to
+   * reindex.
+   * </pre>
+   *
+   * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+   * @return A list containing the reindexCurrent.
+   */
+  java.util.List<java.lang.String>
+      getReindexCurrentList();
+  /**
+   * <pre>
+   * The vaults the rollout's check found up to date (#138): nothing to
+   * reindex.
+   * </pre>
+   *
+   * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+   * @return The count of reindexCurrent.
+   */
+  int getReindexCurrentCount();
+  /**
+   * <pre>
+   * The vaults the rollout's check found up to date (#138): nothing to
+   * reindex.
+   * </pre>
+   *
+   * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+   * @param index The index of the element to return.
+   * @return The reindexCurrent at the given index.
+   */
+  java.lang.String getReindexCurrent(int index);
+  /**
+   * <pre>
+   * The vaults the rollout's check found up to date (#138): nothing to
+   * reindex.
+   * </pre>
+   *
+   * <code>repeated string reindex_current = 13 [json_name = "reindexCurrent"];</code>
+   * @param index The index of the element to return.
+   * @return The reindexCurrent at the given index.
+   */
+  com.google.protobuf.ByteString
+      getReindexCurrentBytes(int index);
 }

@@ -343,7 +343,112 @@ public object FleetMachineKt {
 
     public val FleetMachineKt.Dsl.deweyPassOrNull: io.github.jflowers.ghhud.api.v1.DeweyPass?
       get() = _builder.deweyPassOrNull
-  }
+
+    /**
+     * An uninstantiable, behaviorless type to represent the field in
+     * generics.
+     */
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+    public class ReindexCurrentProxy private constructor() : com.google.protobuf.kotlin.DslProxy()
+    /**
+     * ```
+     * The vaults the rollout's check found up to date (#138): nothing to
+     * reindex.
+     * ```
+     *
+     * `repeated string reindex_current = 13 [json_name = "reindexCurrent"];`
+     * @return A list containing the reindexCurrent.
+     */
+    public val reindexCurrent: com.google.protobuf.kotlin.DslList<kotlin.String, ReindexCurrentProxy>
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+      get() = com.google.protobuf.kotlin.DslList(
+        _builder.reindexCurrentList
+      )
+    /**
+     * ```
+     * The vaults the rollout's check found up to date (#138): nothing to
+     * reindex.
+     * ```
+     *
+     * `repeated string reindex_current = 13 [json_name = "reindexCurrent"];`
+     * @param value The reindexCurrent to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addReindexCurrent")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, ReindexCurrentProxy>.add(value: kotlin.String) {
+      _builder.addReindexCurrent(value)
+    }
+    /**
+     * ```
+     * The vaults the rollout's check found up to date (#138): nothing to
+     * reindex.
+     * ```
+     *
+     * `repeated string reindex_current = 13 [json_name = "reindexCurrent"];`
+     * @param value The reindexCurrent to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignReindexCurrent")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, ReindexCurrentProxy>.plusAssign(value: kotlin.String) {
+      add(value)
+    }
+    /**
+     * ```
+     * The vaults the rollout's check found up to date (#138): nothing to
+     * reindex.
+     * ```
+     *
+     * `repeated string reindex_current = 13 [json_name = "reindexCurrent"];`
+     * @param values The reindexCurrent to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addAllReindexCurrent")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, ReindexCurrentProxy>.addAll(values: kotlin.collections.Iterable<kotlin.String>) {
+      _builder.addAllReindexCurrent(values)
+    }
+    /**
+     * ```
+     * The vaults the rollout's check found up to date (#138): nothing to
+     * reindex.
+     * ```
+     *
+     * `repeated string reindex_current = 13 [json_name = "reindexCurrent"];`
+     * @param values The reindexCurrent to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignAllReindexCurrent")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, ReindexCurrentProxy>.plusAssign(values: kotlin.collections.Iterable<kotlin.String>) {
+      addAll(values)
+    }
+    /**
+     * ```
+     * The vaults the rollout's check found up to date (#138): nothing to
+     * reindex.
+     * ```
+     *
+     * `repeated string reindex_current = 13 [json_name = "reindexCurrent"];`
+     * @param index The index to set the value at.
+     * @param value The reindexCurrent to set.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setReindexCurrent")
+    public operator fun com.google.protobuf.kotlin.DslList<kotlin.String, ReindexCurrentProxy>.set(index: kotlin.Int, value: kotlin.String) {
+      _builder.setReindexCurrent(index, value)
+    }/**
+     * ```
+     * The vaults the rollout's check found up to date (#138): nothing to
+     * reindex.
+     * ```
+     *
+     * `repeated string reindex_current = 13 [json_name = "reindexCurrent"];`
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setReindexCurrent")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, ReindexCurrentProxy>.clear() {
+      _builder.clearReindexCurrent()
+    }}
 }
 public inline fun io.github.jflowers.ghhud.api.v1.FleetMachine.copy(block: `io.github.jflowers.ghhud.api.v1`.FleetMachineKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.FleetMachine =
   `io.github.jflowers.ghhud.api.v1`.FleetMachineKt.Dsl._create(this.toBuilder()).apply { block() }._build()

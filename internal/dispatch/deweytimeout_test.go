@@ -127,8 +127,8 @@ func TestReindexScriptEnforcesItsDeadline(t *testing.T) {
 	}
 	f.assertNoneAlive(t, "reindex")
 	assertNoPidFile(t, work)
-	if f.count(t, "serve") != 0 {
-		t.Error("warmed after a timed-out reindex")
+	if f.count(t, "status") != 0 {
+		t.Error("read status after a timed-out reindex")
 	}
 	if last, ok := d.lastReindex(work); !ok || !strings.Contains(last.Err, "timed out") {
 		t.Errorf("last reindex = %+v %v", last, ok)
@@ -185,11 +185,11 @@ func TestReindexCancelEndsDewey(t *testing.T) {
 // d0 is the hub as a machine.
 func d0() Machine { return Machine{Name: "local", Local: true} }
 
-// The warm-up dewey serve is ended the same way when gh-hud's context
-// ends.
-func TestReindexCancelEndsWarmServe(t *testing.T) {
+// The status read after the reindex is ended the same way when gh-hud's
+// context ends.
+func TestReindexCancelEndsStatus(t *testing.T) {
 	f := fakeReindexDewey(t)
-	t.Setenv("FAKE_DEWEY_GATE", f.gate) // never created: serve never finishes indexing
+	t.Setenv("FAKE_DEWEY_GATE", f.gate) // never created: status never answers
 	work := vaultCheckout(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -198,7 +198,7 @@ func TestReindexCancelEndsWarmServe(t *testing.T) {
 		_, err := reindexVault(ctx, d0(), work, time.Hour)
 		done <- err
 	}()
-	f.waitAlive(t, "serve")
+	f.waitAlive(t, "status")
 	cancel()
 	select {
 	case err := <-done:
@@ -208,7 +208,7 @@ func TestReindexCancelEndsWarmServe(t *testing.T) {
 	case <-time.After(20 * time.Second):
 		t.Fatal("reindexVault didn't return")
 	}
-	f.assertNoneAlive(t, "serve")
+	f.assertNoneAlive(t, "status")
 	assertNoPidFile(t, work)
 }
 
@@ -284,7 +284,7 @@ func TestForeignReindexHoldsRequestedPass(t *testing.T) {
 	tries := f.count(t, "mise-which")
 	done := make(chan error, 1)
 	go func() {
-		_, err := d.RequestedReindex(context.Background(), "local", work)
+		_, err := d.RequestedReindex(context.Background(), "local", work, []string{ReasonForced})
 		done <- err
 	}()
 	// Wait for a few attempts (each resolves the binary, then finds the
@@ -325,7 +325,7 @@ func TestForeignReindexHoldsRequestedPass(t *testing.T) {
 	t.Cleanup(func() { machineBusyWait = oldBusy })
 	_ = startForeign(t, f, other)
 	before := f.count(t, "reindex")
-	_, err := d.RequestedReindex(context.Background(), "local", work)
+	_, err := d.RequestedReindex(context.Background(), "local", work, []string{ReasonForced})
 	if !IsMachineStuck(err) || !strings.Contains(err.Error(), "another dewey reindex is already running on local") {
 		t.Errorf("outlasted wait: %v", err)
 	}
@@ -351,15 +351,15 @@ func TestRequestedPassTimeoutNeverOverlaps(t *testing.T) {
 	hangVault(t, slow, true) // and ignores SIGTERM
 
 	ctx := context.Background()
-	res, err := d.RequestedReindex(ctx, "local", slow)
+	res, err := d.RequestedReindex(ctx, "local", slow, []string{ReasonForced})
 	if err == nil || IsMachineStuck(err) || !strings.Contains(res.Err, "timed out after 2s") {
 		t.Fatalf("slow vault = %+v, %v", res, err)
 	}
 	f.assertNoneAlive(t, "reindex")
 	assertNoPidFile(t, slow)
-	d.opts.DeweyReindexTimeout = time.Minute // room to warm the healthy ones under -race
+	d.opts.DeweyReindexTimeout = time.Minute // room for the healthy ones under -race
 	for _, dir := range []string{ok1, ok2} {
-		if _, err := d.RequestedReindex(ctx, "local", dir); err != nil {
+		if _, err := d.RequestedReindex(ctx, "local", dir, []string{ReasonForced}); err != nil {
 			t.Errorf("%s: %v", dir, err)
 		}
 	}
@@ -442,16 +442,17 @@ func TestReindexPidFileIsNotLeftWork(t *testing.T) {
 // A SIGPIPE to the script (its first signal when ssh drops: bash writes to
 // the closed pipe) stops what it started, like a SIGTERM: untrapped it
 // killed bash outright and left dewey's own process group running (seen
-// on lap1). Both the reindex (ignoring SIGTERM) and the warm-up serve.
+// on lap1). Both the reindex (ignoring SIGTERM) and the status read after
+// it.
 func TestReindexScriptSurvivesSIGPIPE(t *testing.T) {
-	for _, stage := range []string{"reindex", "serve"} {
+	for _, stage := range []string{"reindex", "status"} {
 		t.Run(stage, func(t *testing.T) {
 			f := fakeReindexDewey(t)
 			work := vaultCheckout(t)
 			if stage == "reindex" {
 				hangVault(t, work, true)
 			} else {
-				t.Setenv("FAKE_DEWEY_GATE", f.gate) // never created: serve never finishes
+				t.Setenv("FAKE_DEWEY_GATE", f.gate) // never created: status never answers
 			}
 			cmd := exec.Command("bash", "-c", reindexScript(work, time.Hour))
 			cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
