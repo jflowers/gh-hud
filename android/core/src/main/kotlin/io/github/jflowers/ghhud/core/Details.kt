@@ -56,6 +56,10 @@ public object AgentDetail {
         return listOfNotNull(
             if (run.leftCount > 0) FactList("Left behind", "commit, push or discard it, then Re-check", run.leftList, Tone.WARN) else null,
             if (run.pushedCount > 0) FactList("Pushed", null, run.pushedList, null) else null,
+            DeweyIndex.run(run)?.let { (text, tone) ->
+                val machine = text.startsWith("machine problem: ")
+                FactList("Dewey index", if (machine) "a reindex here wouldn't help: fix the machine" else null, listOf(text), if (tone == Tone.GOOD) null else tone)
+            },
         )
     }
 

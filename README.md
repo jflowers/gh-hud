@@ -379,6 +379,18 @@ its link, or share the link to gh-hud from your browser or the GitHub
 app. As on the Mac (Start Agent on URL), it offers every task that fits,
 the suggested ones marked.
 
+Dewey indexes show where the TUI shows them: each checkout on
+**Agents → Workspaces** has a `dewey` line (`ok 2d 100%`, `old format`,
+`unindexed`, `no embeddings`, `reindexing…`), and its screen has the
+verdict, each reason on its own line, what built the index and when, its
+contents and the last reindex. A run's screen shows its after-run index
+check. On **Fleet**, each machine lists its rollout's reindex and the
+pass you asked for (`dewey pass: reindexing 3/12`, then the summary with
+the vaults that failed or were skipped); **Reindex vaults now…** (every
+machine, or one: tap its row) starts a pass after a confirmation, with
+**Force** to reindex every vault, and **Cancel pass** stops one. A failed
+automatic reindex is a notification.
+
 **Install.** Each release (a `v*` tag) carries `gh-hud-VERSION.apk`, for
 any phone or tablet on Android 10 or later. Open the release page on the
 device, download the APK and open it; Android asks once to allow installs

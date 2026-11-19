@@ -29,6 +29,7 @@ import io.github.jflowers.ghhud.api.v1.ToolkitAction
 import io.github.jflowers.ghhud.core.RolloutRow
 import io.github.jflowers.ghhud.core.ToolkitCommands
 import io.github.jflowers.ghhud.core.FleetCommands
+import io.github.jflowers.ghhud.core.DeweyCommands
 import io.github.jflowers.ghhud.core.Viewers
 import io.github.jflowers.ghhud.core.WatchTarget
 import io.github.jflowers.ghhud.core.FleetSort
@@ -81,6 +82,10 @@ class MainActivity : ComponentActivity() {
         override suspend fun recheck(r: AgentRow) = AgentCommands.recheck(model.connection, r)
 
         override suspend fun fleet(action: FleetAction) = FleetCommands.run(model.connection, action, model.ui.value.hub.snapshot.fleet)
+
+        override suspend fun dewey(machine: String?, force: Boolean) = DeweyCommands.start(model.connection, machine, force)
+
+        override suspend fun deweyCancel(machine: String?) = DeweyCommands.cancel(model.connection, machine)
 
         override fun updateFleet(change: (ListState<FleetSort>) -> ListState<FleetSort>) = model.updateFleet(change)
 

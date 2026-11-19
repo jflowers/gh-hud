@@ -42,6 +42,7 @@ import io.github.jflowers.ghhud.core.ItemList
 import io.github.jflowers.ghhud.core.TableFilter
 import io.github.jflowers.ghhud.core.Tone
 import io.github.jflowers.ghhud.core.WorkspaceList
+import io.github.jflowers.ghhud.core.DeweyIndex
 import io.github.jflowers.ghhud.core.WorkspaceRow
 import io.github.jflowers.ghhud.core.WorkspaceSort
 import io.github.jflowers.ghhud.core.filterChoices
@@ -206,7 +207,7 @@ private fun Workspaces(ui: Ui, view: AgentsView, ctl: AgentsControl, onOpen: (Wo
                 }
             }
             items(rows, key = { it.id }) { r ->
-                WorkspaceRowView(r, onOpen = { onOpen(r) }, onFilter = { f -> workspaces { it.adding(f) } })
+                WorkspaceRowView(r, now, onOpen = { onOpen(r) }, onFilter = { f -> workspaces { it.adding(f) } })
                 HorizontalDivider()
             }
         }
@@ -268,7 +269,7 @@ private fun AgentRowView(r: AgentRow, now: Instant, onOpen: () -> Unit, onFilter
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun WorkspaceRowView(r: WorkspaceRow, onOpen: () -> Unit, onFilter: (ColumnFilter) -> Unit) {
+private fun WorkspaceRowView(r: WorkspaceRow, now: Instant, onOpen: () -> Unit, onFilter: (ColumnFilter) -> Unit) {
     var menu by remember { mutableStateOf(false) }
     Box {
         Row(
@@ -287,6 +288,10 @@ private fun WorkspaceRowView(r: WorkspaceRow, onOpen: () -> Unit, onFilter: (Col
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(r.state, style = MaterialTheme.typography.bodySmall, color = r.tone.color(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                DeweyIndex.state(r.health, now)?.let { (text, tone) ->
+                    Text("dewey $text", style = MaterialTheme.typography.bodySmall, color = tone.color(), maxLines = 1,
+                        overflow = TextOverflow.Ellipsis, modifier = Modifier.testTag("index:" + r.place))
+                }
                 if (r.notes.isNotEmpty()) Text(r.notes, style = MaterialTheme.typography.bodySmall, color = Tone.MUTED.color())
             }
         }

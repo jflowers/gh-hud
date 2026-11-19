@@ -46,6 +46,8 @@ object NoopActions : AppActions {
     override fun refreshWorkspaces() {}
     override suspend fun recheck(r: AgentRow): Answer<String> = Answer.Ok("")
     override suspend fun fleet(action: FleetAction): Answer<String> = Answer.Ok("")
+    override suspend fun dewey(machine: String?, force: Boolean): Answer<String> = Answer.Ok("")
+    override suspend fun deweyCancel(machine: String?): Answer<String> = Answer.Ok("")
     override fun updateFleet(change: (ListState<FleetSort>) -> ListState<FleetSort>) {}
     override fun follow(t: WatchTarget) = kotlinx.coroutines.flow.emptyFlow<PaneRead>()
     override suspend fun transcript(runId: String): Answer<TranscriptResponse> = Answer.No("none")

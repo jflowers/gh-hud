@@ -168,7 +168,7 @@ class HubService : Service() {
         )
         m.createNotificationChannel(
             NotificationChannel(ALERTS, "Hub alerts", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Agents waiting on you, PRs ready for review, finished runs"
+                description = "Agents waiting on you, PRs ready for review, finished runs, failed Dewey reindexes and upkeep"
             },
         )
     }

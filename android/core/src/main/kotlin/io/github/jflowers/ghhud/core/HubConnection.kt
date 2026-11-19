@@ -13,6 +13,8 @@ import io.github.jflowers.ghhud.api.v1.HubServiceClient
 import io.github.jflowers.ghhud.api.v1.Snapshot
 import io.github.jflowers.ghhud.api.v1.SubscribeResponse
 import io.github.jflowers.ghhud.api.v1.DispatchResponse
+import io.github.jflowers.ghhud.api.v1.DeweyReindexResponse
+import io.github.jflowers.ghhud.api.v1.deweyReindexRequest
 import io.github.jflowers.ghhud.api.v1.ItemChoicesResponse
 import io.github.jflowers.ghhud.api.v1.MenuChoicesResponse
 import io.github.jflowers.ghhud.api.v1.itemChoicesRequest
@@ -352,6 +354,28 @@ public class HubConnection(
     /** Drives the fleet rollout: pause, resume, apply now, skip the drain wait, retry. */
     public suspend fun fleet(action: FleetAction): Answer<Unit> =
         answer(hub.fleetControl(fleetControlRequest { this.action = action }, headers)) { }
+
+    /**
+     * Starts, or cancels, a Dewey reindex pass on a fleet machine, or on
+     * every one (all).
+     */
+    public suspend fun deweyReindex(
+        machine: String,
+        all: Boolean = false,
+        cancel: Boolean = false,
+        force: Boolean = false,
+    ): Answer<DeweyReindexResponse> =
+        answer(
+            hub.deweyReindex(
+                deweyReindexRequest {
+                    this.machine = machine
+                    this.all = all
+                    this.cancel = cancel
+                    this.force = force
+                },
+                headers,
+            ),
+        ) { it }
 
     /** The end of a live agent's pane: the run's when runId is set, else the session's. */
     public suspend fun readPane(runId: String, sessionId: String, lines: Int = 200): Answer<String> =

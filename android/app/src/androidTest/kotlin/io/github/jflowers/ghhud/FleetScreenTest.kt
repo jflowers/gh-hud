@@ -18,6 +18,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.jflowers.ghhud.api.v1.FleetAction
 import io.github.jflowers.ghhud.api.v1.ToolkitAction
 import io.github.jflowers.ghhud.api.v1.Snapshot
+import io.github.jflowers.ghhud.api.v1.DeweyPass
+import com.google.protobuf.Timestamp
 import io.github.jflowers.ghhud.core.AgentChoice
 import io.github.jflowers.ghhud.core.AgentRow
 import io.github.jflowers.ghhud.core.Answer
@@ -59,10 +61,18 @@ class FleetScreenTest {
             asked += action.name
             return Answer.Ok("did $action")
         }
+        override suspend fun dewey(machine: String?, force: Boolean): Answer<String> {
+            asked += "dewey ${machine ?: "all"} force=$force"
+            return Answer.No("dewey_reindex is off")
+        }
+        override suspend fun deweyCancel(machine: String?): Answer<String> {
+            asked += "cancel ${machine ?: "all"}"
+            return Answer.Ok("Dewey reindex pass cancelled on ${machine ?: "all"}")
+        }
         override fun updateFleet(change: (ListState<FleetSort>) -> ListState<FleetSort>) { state.value = change(state.value) }
     }
 
-    private fun show(status: HubStatus = HubStatus.Connected) {
+    private fun show(status: HubStatus = HubStatus.Connected, snap: Snapshot = this.snap) {
         val ui = Ui(HubAddress("https://hub"), HubState(status, snap, Attention.of(snap)))
         compose.setContent { MaterialTheme { FleetScreen(ui, state.value, act, say = { t, bad -> said += "$t bad=$bad" }, refresh = {}) } }
     }
@@ -99,6 +109,41 @@ class FleetScreenTest {
         compose.onNodeWithTag("search").performImeAction()
         compose.onNodeWithTag("machine:oak").assertIsDisplayed()
         compose.onNodeWithTag("machine:chai").assertDoesNotExist()
+    }
+
+    /** A Dewey reindex pass on chai, running (#139). */
+    private fun passing(): Snapshot {
+        val b = snap.toBuilder()
+        val f = b.fleet.toBuilder()
+        val i = f.machinesList.indexOfFirst { it.name == "chai" }
+        f.setMachines(
+            i,
+            f.getMachines(i).toBuilder().setDeweyPass(
+                DeweyPass.newBuilder().setRunning(true).setDone(3).setTotal(12)
+                    .setStarted(Timestamp.newBuilder().setSeconds(System.currentTimeMillis() / 1000 - 60)),
+            ),
+        )
+        return b.setFleet(f).build()
+    }
+
+    @Test
+    fun reindexingAsksFirstAndSaysWhyNot() {
+        show(snap = passing())
+        compose.onNodeWithTag("dewey-line:chai:0", useUnmergedTree = true).assertTextContains("dewey pass: reindexing 3/12", substring = true)
+        compose.onNodeWithTag("dewey-all").performClick()
+        compose.onNodeWithTag("dewey-ask").assertTextEquals("Reindex the Dewey vaults that need it on every machine?")
+        compose.onNodeWithTag("dewey-force").performClick()
+        compose.onNodeWithTag("dewey-ask").assertTextEquals("Reindex every Dewey vault on every machine?")
+        assertEquals(emptyList<String>(), asked)
+        compose.onNodeWithTag("dewey-confirm").performClick()
+        compose.waitUntil(5_000) { said.isNotEmpty() }
+        assertEquals(listOf("dewey all force=true"), asked)
+        assertEquals(listOf("dewey_reindex is off bad=true"), said)
+
+        compose.onNodeWithTag("machine:chai").performClick()
+        compose.onNodeWithTag("dewey-cancel:chai").performClick()
+        compose.waitUntil(5_000) { said.size == 2 }
+        assertEquals("cancel chai", asked.last())
     }
 
     /** The app shows the Fleet place only while the hub runs a fleet. */
