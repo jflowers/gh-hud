@@ -4,7 +4,9 @@ package dispatch
 // .uf/dewey/learnings/ after most runs. Untracked learnings never count as
 // dirty — a fresh, uniquely named file can't conflict with a checkout or a
 // fast-forward — and after a clean run gh-hud moves them into a chore PR
-// to upstream, at most once a day per checkout. Learnings inside the
+// to upstream: one open PR per checkout at a time, on the day's branch,
+// and a new one (suffixed -2, -3, ...) once that day's PR has merged or
+// closed (#15). Learnings inside the
 // stealth overlays the checkout links into get the same treatment, with a
 // PR on each overlay's own repo.
 
@@ -34,7 +36,8 @@ func dirtyLines(out string) []string {
 }
 
 // learningsBranch is the day's chore branch for a checkout
-// ("chore/dewey-learnings-chai-20261105"): one PR per checkout per day.
+// ("chore/dewey-learnings-chai-20261105"). Later PRs the same day add a
+// suffix (learningsBranchPick).
 func learningsBranch(r Record, now time.Time) string {
 	label := r.Workspace
 	if _, after, ok := strings.Cut(label, "@"); ok {
@@ -46,29 +49,48 @@ func learningsBranch(r Record, now time.Time) string {
 	return "chore/dewey-learnings-" + sanitize(label) + "-" + now.Format("20060102")
 }
 
-// learningsPRScript commits the checkout's untracked learnings on branch
-// (cut from upstream/def), pushes it to origin, and opens a PR on repo.
-// It prints "none" or "exists" when there is nothing to do, or
-// "pr<TAB>count<TAB>url". It ends on def either way; a failed push undoes
-// the commit so the files stay in the working tree.
+// learningsBranchPick defines pick_branch DIR BASE REPO, which prints the
+// branch the day's next learnings PR goes on: BASE when origin doesn't
+// have it, else BASE-2, BASE-3, ... past every one whose PR on REPO
+// merged or closed (#15). It fails, so the run waits, when the newest one
+// still has an open PR or none at all (a PR still to open from an
+// earlier failure), or when gh can't say. The day's base name comes
+// first, so the usual one PR a day keeps its name.
+const learningsBranchPick = `pick_branch() {
+  for s in "" -2 -3 -4 -5 -6 -7 -8 -9; do
+    git -C "$1" ls-remote --exit-code --heads origin "$2$s" >/dev/null 2>&1 || { printf '%s' "$2$s"; return 0; }
+    st=$(cd -- "$1" && gh pr list --repo "$3" --head "$2$s" --state all --json state --jq '.[0].state' 2>/dev/null) || return 1
+    case $st in MERGED|CLOSED) ;; *) return 1 ;; esac
+  done
+  return 1
+}
+`
+
+// learningsPRScript commits the checkout's untracked learnings on the
+// day's branch (pick_branch from branch, cut from upstream/def), pushes it
+// to origin, and opens a PR on repo. It prints "none" or "exists" when
+// there is nothing to do, or "pr<TAB>count<TAB>url". It ends on def either
+// way; a failed push undoes the commit so the files stay in the working
+// tree.
 func learningsPRScript(dir, repo, def, branch, title, body string) string {
 	q := shellQuote
 	back := "git switch -q " + q(def)
 	return "cd -- " + shellQuoteTilde(dir) + " || exit 1\n" +
+		learningsBranchPick +
 		"n=$(git status --porcelain --untracked-files=all -- " + learningsDir + " 2>/dev/null | grep -c '^?? ')\n" +
 		"[ \"$n\" -gt 0 ] || { echo none; exit 0; }\n" +
-		"if git ls-remote --exit-code --heads origin " + q(branch) + " >/dev/null 2>&1; then echo exists; exit 0; fi\n" +
+		"br=$(pick_branch . " + q(branch) + " " + q(repo) + ") || { echo exists; exit 0; }\n" +
 		"git fetch -q upstream " + q(def) + " || exit 1\n" +
-		"git switch -q --no-track -c " + q(branch) + " " + q("upstream/"+def) + " || exit 1\n" +
+		"git switch -q --no-track -c \"$br\" " + q("upstream/"+def) + " || exit 1\n" +
 		"if ! { git add -- " + learningsDir + " && git commit -q -m " + q(title) + "; }; then\n" +
-		"  " + back + "; git branch -q -D " + q(branch) + "; echo 'commit failed' >&2; exit 1\n" +
+		"  " + back + "; git branch -q -D \"$br\"; echo 'commit failed' >&2; exit 1\n" +
 		"fi\n" +
-		"if ! git push -q origin " + q(branch) + "; then\n" +
-		"  git reset -q HEAD~1; " + back + "; git branch -q -D " + q(branch) + "; echo 'push to origin failed' >&2; exit 1\n" +
+		"if ! git push -q origin \"$br\"; then\n" +
+		"  git reset -q HEAD~1; " + back + "; git branch -q -D \"$br\"; echo 'push to origin failed' >&2; exit 1\n" +
 		"fi\n" +
 		"owner=$(git remote get-url origin | sed -E 's#\\.git$##; s#^.*[:/]([^/]+)/[^/]+$#\\1#')\n" +
-		"url=$(gh pr create --repo " + q(repo) + " --base " + q(def) + " --head \"$owner:\"" + q(branch) +
-		" --title " + q(title) + " --body " + q(body) + ") || { " + back + "; echo 'gh pr create failed; learnings are on origin/'" + q(branch) + " >&2; exit 1; }\n" +
+		"url=$(gh pr create --repo " + q(repo) + " --base " + q(def) + " --head \"$owner:$br\"" +
+		" --title " + q(title) + " --body " + q(body) + ") || { " + back + "; echo \"gh pr create failed; learnings are on origin/$br\" >&2; exit 1; }\n" +
 		back + "\n" +
 		"printf 'pr\\t%s\\t%s\\n' \"$n\" \"$url\"\n"
 }
@@ -117,6 +139,7 @@ func (d *Dispatcher) learningsPR(ctx context.Context, m Machine, r Record, def s
 func overlayLearningsPRScript(dir, branch, title, body string) string {
 	q := shellQuote
 	return "cd -- " + shellQuoteTilde(dir) + " || exit 1\n" +
+		learningsBranchPick +
 		"tmp=$(mktemp -d) || exit 1\n" +
 		"trap 'rm -rf \"$tmp\"' EXIT\n" +
 		"list=\"$tmp/list\" idx=\"$tmp/index\"\n" +
@@ -127,17 +150,17 @@ func overlayLearningsPRScript(dir, branch, title, body string) string {
 		"  [ \"$n\" -gt 0 ] || { printf 'onone\\t%s\\n' \"$o\"; continue; }\n" +
 		"  u=$(git -C \"$o\" rev-parse --abbrev-ref '@{u}' 2>/dev/null) || { printf 'oskip\\t%s\\tno upstream\\n' \"$o\"; continue; }\n" +
 		"  ur=${u%%/*} base=${u#*/}\n" +
-		"  if git -C \"$o\" ls-remote --exit-code --heads origin " + q(branch) + " >/dev/null 2>&1; then printf 'oexists\\t%s\\n' \"$o\"; continue; fi\n" +
+		"  repo=$(git -C \"$o\" remote get-url \"$ur\" | sed -E 's#\\.git$##; s#^.*[:/]([^/]+/[^/]+)$#\\1#')\n" +
+		"  br=$(pick_branch \"$o\" " + q(branch) + " \"$repo\") || { printf 'oexists\\t%s\\n' \"$o\"; continue; }\n" +
 		"  git -C \"$o\" fetch -q \"$ur\" 2>/dev/null || { printf 'ofail\\t%s\\tfetch %s failed\\n' \"$o\" \"$ur\"; continue; }\n" +
 		"  c=$(cd -- \"$o\" && export GIT_INDEX_FILE=\"$idx\" && git read-tree \"refs/remotes/$u\" &&\n" +
 		"    git add --pathspec-from-file=\"$list\" --pathspec-file-nul && t=$(git write-tree) &&\n" +
 		"    git commit-tree \"$t\" -p \"refs/remotes/$u\" -m " + q(title) + ") || { printf 'ofail\\t%s\\tcommit failed\\n' \"$o\"; continue; }\n" +
-		"  git -C \"$o\" push -q origin \"$c:refs/heads/\"" + q(branch) + " 2>/dev/null || { printf 'ofail\\t%s\\tpush to origin failed\\n' \"$o\"; continue; }\n" +
+		"  git -C \"$o\" push -q origin \"$c:refs/heads/$br\" 2>/dev/null || { printf 'ofail\\t%s\\tpush to origin failed\\n' \"$o\"; continue; }\n" +
 		"  (cd -- \"$o\" && xargs -0 rm -f -- <\"$list\")\n" +
-		"  repo=$(git -C \"$o\" remote get-url \"$ur\" | sed -E 's#\\.git$##; s#^.*[:/]([^/]+/[^/]+)$#\\1#')\n" +
 		"  owner=$(git -C \"$o\" remote get-url origin | sed -E 's#\\.git$##; s#^.*[:/]([^/]+)/[^/]+$#\\1#')\n" +
-		"  url=$(cd -- \"$o\" && gh pr create --repo \"$repo\" --base \"$base\" --head \"$owner:\"" + q(branch) +
-		" --title " + q(title) + " --body " + q(body) + ") || { printf 'ofail\\t%s\\tgh pr create failed; learnings are on origin/%s\\n' \"$o\" " + q(branch) + "; continue; }\n" +
+		"  url=$(cd -- \"$o\" && gh pr create --repo \"$repo\" --base \"$base\" --head \"$owner:$br\"" +
+		" --title " + q(title) + " --body " + q(body) + ") || { printf 'ofail\\t%s\\tgh pr create failed; learnings are on origin/%s\\n' \"$o\" \"$br\"; continue; }\n" +
 		"  printf 'opr\\t%s\\t%s\\t%s\\n' \"$o\" \"$n\" \"$url\"\n" +
 		"done\n"
 }
