@@ -3,6 +3,8 @@ package dispatch
 import (
 	"context"
 	"encoding/base64"
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -53,7 +55,7 @@ func TestShellQuoteTilde(t *testing.T) {
 
 // TestMachineScriptRemote verifies the script ssh ends up running: a cd
 // into the (tilde-expanding) dir and an exec of the quoted argv. Feeding
-// the equivalent `bash -lc '<script>'` line to a local shell proves the
+// the same command line (remoteCommand) to a local shell proves the
 // quoting survives the remote shell layer.
 func TestMachineScriptRemote(t *testing.T) {
 	script := machineScript("~/Projects/github/acme@dev/r", []string{"git", "status", "--porcelain"})
@@ -65,9 +67,20 @@ func TestMachineScriptRemote(t *testing.T) {
 		t.Errorf("empty dir script = %q", machineScript("", []string{"echo", "hi"}))
 	}
 
-	// End to end through a shell, like sshd would run it.
-	remote := "bash -lc " + shellQuote(machineScript("", []string{"printf", "%s\\n", "two words"}))
-	out, err := runCmd(context.Background(), "", "bash", "-c", remote)
+	// End to end through a shell, like sshd would run it: the real
+	// command line, remoteWrapper included, with stdin held open as
+	// sshCommand holds it (EOF there means the connection dropped).
+	remote := remoteCommand(machineScript("", []string{"printf", "%s\\n", "two words"}))
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = w.Close() }()
+	cmd := exec.Command("bash", "-c", remote)
+	cmd.Stdin = r
+	raw, err := cmd.Output()
+	_ = r.Close()
+	out := string(raw)
 	if err != nil {
 		t.Fatalf("bash -c remote: %v", err)
 	}
