@@ -46,6 +46,7 @@ type Dispatcher interface {
 	Reinspect(ctx context.Context, id string) (dispatch.Run, error)
 	PruneBranches(ctx context.Context, apply bool) (dispatch.BranchSweep, error)
 	AutoPruneBranches(ctx context.Context) []string
+	StartCheckoutAction(machine, dir string, a dispatch.CheckoutAction, done func(string, error)) (string, error)
 	QueueChoices(it model.Item) []dispatch.Task
 	Enqueue(task dispatch.Task, it model.Item) error
 	Unqueue(task dispatch.Task, ref string) error
@@ -128,6 +129,10 @@ type Backend interface {
 	Reinspect(ctx context.Context, runID string) (dispatch.Run, error)
 	// PruneBranches sweeps for branches whose PR is done; apply deletes them.
 	PruneBranches(ctx context.Context, apply bool) (dispatch.BranchSweep, error)
+	// CheckoutAction starts an action on one fleet checkout of the last
+	// Workspaces read (machine "" is the hub) and returns what started;
+	// its outcome comes as an event and in the next Workspaces read.
+	CheckoutAction(ctx context.Context, machine, dir string, a dispatch.CheckoutAction) (string, error)
 
 	// Your queue. Enqueue returns the entry's position (1 is first),
 	// MoveQueued its new index (0 is first).

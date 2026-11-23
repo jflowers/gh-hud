@@ -102,6 +102,9 @@ const (
 	HubServiceFleetControlProcedure = "/ghhud.v1.HubService/FleetControl"
 	// HubServiceDeweyReindexProcedure is the fully-qualified name of the HubService's DeweyReindex RPC.
 	HubServiceDeweyReindexProcedure = "/ghhud.v1.HubService/DeweyReindex"
+	// HubServiceCheckoutActionProcedure is the fully-qualified name of the HubService's CheckoutAction
+	// RPC.
+	HubServiceCheckoutActionProcedure = "/ghhud.v1.HubService/CheckoutAction"
 	// HubServiceToolkitRolloutProcedure is the fully-qualified name of the HubService's ToolkitRollout
 	// RPC.
 	HubServiceToolkitRolloutProcedure = "/ghhud.v1.HubService/ToolkitRollout"
@@ -171,6 +174,14 @@ type HubServiceClient interface {
 	// [dispatch] dewey_reindex is "off", a pass already runs there, or this
 	// hub doesn't own dispatch.
 	DeweyReindex(context.Context, *connect.Request[v1.DeweyReindexRequest]) (*connect.Response[v1.DeweyReindexResponse], error)
+	// CheckoutAction starts one action on one fleet checkout from the
+	// Workspaces list (#172): fast-forward it, open its learnings PRs, save
+	// its leftover work to a draft PR, keep it up now, or reindex its Dewey
+	// vault. It runs in the background; the outcome is the checkout's last
+	// upkeep or reindex and an event. Refused when this hub doesn't own
+	// dispatch, the checkout isn't a fleet checkout in the last Workspaces
+	// read, or its machine's slot is taken.
+	CheckoutAction(context.Context, *connect.Request[v1.CheckoutActionRequest]) (*connect.Response[v1.CheckoutActionResponse], error)
 	// ToolkitRollout starts rolling a tool release out (issue #75);
 	// ToolkitControl drives rollouts. FAILED_PRECONDITION when the toolkit
 	// is off.
@@ -345,6 +356,12 @@ func NewHubServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(hubServiceMethods.ByName("DeweyReindex")),
 			connect.WithClientOptions(opts...),
 		),
+		checkoutAction: connect.NewClient[v1.CheckoutActionRequest, v1.CheckoutActionResponse](
+			httpClient,
+			baseURL+HubServiceCheckoutActionProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("CheckoutAction")),
+			connect.WithClientOptions(opts...),
+		),
 		toolkitRollout: connect.NewClient[v1.ToolkitRolloutRequest, v1.ToolkitRolloutResponse](
 			httpClient,
 			baseURL+HubServiceToolkitRolloutProcedure,
@@ -388,6 +405,7 @@ type hubServiceClient struct {
 	transcript      *connect.Client[v1.TranscriptRequest, v1.TranscriptResponse]
 	fleetControl    *connect.Client[v1.FleetControlRequest, v1.FleetControlResponse]
 	deweyReindex    *connect.Client[v1.DeweyReindexRequest, v1.DeweyReindexResponse]
+	checkoutAction  *connect.Client[v1.CheckoutActionRequest, v1.CheckoutActionResponse]
 	toolkitRollout  *connect.Client[v1.ToolkitRolloutRequest, v1.ToolkitRolloutResponse]
 	toolkitControl  *connect.Client[v1.ToolkitControlRequest, v1.ToolkitControlResponse]
 }
@@ -522,6 +540,11 @@ func (c *hubServiceClient) DeweyReindex(ctx context.Context, req *connect.Reques
 	return c.deweyReindex.CallUnary(ctx, req)
 }
 
+// CheckoutAction calls ghhud.v1.HubService.CheckoutAction.
+func (c *hubServiceClient) CheckoutAction(ctx context.Context, req *connect.Request[v1.CheckoutActionRequest]) (*connect.Response[v1.CheckoutActionResponse], error) {
+	return c.checkoutAction.CallUnary(ctx, req)
+}
+
 // ToolkitRollout calls ghhud.v1.HubService.ToolkitRollout.
 func (c *hubServiceClient) ToolkitRollout(ctx context.Context, req *connect.Request[v1.ToolkitRolloutRequest]) (*connect.Response[v1.ToolkitRolloutResponse], error) {
 	return c.toolkitRollout.CallUnary(ctx, req)
@@ -593,6 +616,14 @@ type HubServiceHandler interface {
 	// [dispatch] dewey_reindex is "off", a pass already runs there, or this
 	// hub doesn't own dispatch.
 	DeweyReindex(context.Context, *connect.Request[v1.DeweyReindexRequest]) (*connect.Response[v1.DeweyReindexResponse], error)
+	// CheckoutAction starts one action on one fleet checkout from the
+	// Workspaces list (#172): fast-forward it, open its learnings PRs, save
+	// its leftover work to a draft PR, keep it up now, or reindex its Dewey
+	// vault. It runs in the background; the outcome is the checkout's last
+	// upkeep or reindex and an event. Refused when this hub doesn't own
+	// dispatch, the checkout isn't a fleet checkout in the last Workspaces
+	// read, or its machine's slot is taken.
+	CheckoutAction(context.Context, *connect.Request[v1.CheckoutActionRequest]) (*connect.Response[v1.CheckoutActionResponse], error)
 	// ToolkitRollout starts rolling a tool release out (issue #75);
 	// ToolkitControl drives rollouts. FAILED_PRECONDITION when the toolkit
 	// is off.
@@ -763,6 +794,12 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(hubServiceMethods.ByName("DeweyReindex")),
 		connect.WithHandlerOptions(opts...),
 	)
+	hubServiceCheckoutActionHandler := connect.NewUnaryHandler(
+		HubServiceCheckoutActionProcedure,
+		svc.CheckoutAction,
+		connect.WithSchema(hubServiceMethods.ByName("CheckoutAction")),
+		connect.WithHandlerOptions(opts...),
+	)
 	hubServiceToolkitRolloutHandler := connect.NewUnaryHandler(
 		HubServiceToolkitRolloutProcedure,
 		svc.ToolkitRollout,
@@ -829,6 +866,8 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 			hubServiceFleetControlHandler.ServeHTTP(w, r)
 		case HubServiceDeweyReindexProcedure:
 			hubServiceDeweyReindexHandler.ServeHTTP(w, r)
+		case HubServiceCheckoutActionProcedure:
+			hubServiceCheckoutActionHandler.ServeHTTP(w, r)
 		case HubServiceToolkitRolloutProcedure:
 			hubServiceToolkitRolloutHandler.ServeHTTP(w, r)
 		case HubServiceToolkitControlProcedure:
@@ -944,6 +983,10 @@ func (UnimplementedHubServiceHandler) FleetControl(context.Context, *connect.Req
 
 func (UnimplementedHubServiceHandler) DeweyReindex(context.Context, *connect.Request[v1.DeweyReindexRequest]) (*connect.Response[v1.DeweyReindexResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.DeweyReindex is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) CheckoutAction(context.Context, *connect.Request[v1.CheckoutActionRequest]) (*connect.Response[v1.CheckoutActionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.CheckoutAction is not implemented"))
 }
 
 func (UnimplementedHubServiceHandler) ToolkitRollout(context.Context, *connect.Request[v1.ToolkitRolloutRequest]) (*connect.Response[v1.ToolkitRolloutResponse], error) {

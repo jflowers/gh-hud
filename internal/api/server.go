@@ -175,6 +175,15 @@ func (s *Server) PruneBranches(ctx context.Context, req *connect.Request[pb.Prun
 	return connect.NewResponse(sweepToPB(sweep)), nil
 }
 
+func (s *Server) CheckoutAction(ctx context.Context, req *connect.Request[pb.CheckoutActionRequest]) (*connect.Response[pb.CheckoutActionResponse], error) {
+	a, ok := checkoutActionFromPB(req.Msg.GetAction())
+	if !ok {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("unknown checkout action "+req.Msg.GetAction().String()))
+	}
+	started, err := s.b.CheckoutAction(ctx, req.Msg.GetMachine(), req.Msg.GetDir(), a)
+	return reply(&pb.CheckoutActionResponse{Started: started}, err)
+}
+
 func (s *Server) QueueChoices(ctx context.Context, req *connect.Request[pb.QueueChoicesRequest]) (*connect.Response[pb.QueueChoicesResponse], error) {
 	tasks, err := s.b.QueueChoices(ctx, req.Msg.GetUrl())
 	if err != nil {

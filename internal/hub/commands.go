@@ -158,6 +158,41 @@ func (h *Hub) PruneBranches(ctx context.Context, apply bool) (dispatch.BranchSwe
 	return d.PruneBranches(ctx, apply)
 }
 
+// CheckoutAction starts action a on a fleet checkout of the last
+// Workspaces read. The outcome is a notice (an alert when it failed) and
+// a Workspaces read, so the row shows it.
+func (h *Hub) CheckoutAction(_ context.Context, machine, dir string, a dispatch.CheckoutAction) (string, error) {
+	d, err := h.disp()
+	if err != nil {
+		return "", err
+	}
+	known := false
+	for _, w := range h.Snapshot().Workspaces {
+		if w.Machine == machine && w.Dir == dir {
+			if w.Unmanaged {
+				return "", fmt.Errorf("%s isn't a fleet checkout", dir)
+			}
+			known = true
+			break
+		}
+	}
+	if !known {
+		return "", fmt.Errorf("%s isn't in the last Workspaces read", dir)
+	}
+	started, err := d.StartCheckoutAction(machine, dir, a, func(line string, err error) {
+		if err != nil {
+			line = "checkout " + string(a) + " failed: " + line
+		}
+		h.emit(Event{Kind: EventNotice, Text: line})
+		_ = h.RefreshWorkspaces(context.Background())
+	})
+	if err != nil {
+		return "", err
+	}
+	_ = h.RefreshWorkspaces(context.Background())
+	return started, nil
+}
+
 // Reinspect re-runs a finished run's after-run inspection.
 func (h *Hub) Reinspect(ctx context.Context, runID string) (dispatch.Run, error) {
 	d, err := h.disp()

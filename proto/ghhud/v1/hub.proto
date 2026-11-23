@@ -90,6 +90,15 @@ service HubService {
   // hub doesn't own dispatch.
   rpc DeweyReindex(DeweyReindexRequest) returns (DeweyReindexResponse);
 
+  // CheckoutAction starts one action on one fleet checkout from the
+  // Workspaces list (#172): fast-forward it, open its learnings PRs, save
+  // its leftover work to a draft PR, keep it up now, or reindex its Dewey
+  // vault. It runs in the background; the outcome is the checkout's last
+  // upkeep or reindex and an event. Refused when this hub doesn't own
+  // dispatch, the checkout isn't a fleet checkout in the last Workspaces
+  // read, or its machine's slot is taken.
+  rpc CheckoutAction(CheckoutActionRequest) returns (CheckoutActionResponse);
+
   // ToolkitRollout starts rolling a tool release out (issue #75);
   // ToolkitControl drives rollouts. FAILED_PRECONDITION when the toolkit
   // is off.
@@ -389,6 +398,25 @@ message DeweyReindexRequest {
 message DeweyReindexResponse {
   repeated string machines = 1; // where a pass started (or was cancelled)
   repeated string refused = 2; // with all: "<machine>: <why>" for the rest
+}
+
+message CheckoutActionRequest {
+  string machine = 1; // CheckoutHealth.machine ("" is the hub)
+  string dir = 2; // CheckoutHealth.dir
+  CheckoutActionKind action = 3;
+}
+
+enum CheckoutActionKind {
+  CHECKOUT_ACTION_KIND_UNSPECIFIED = 0;
+  CHECKOUT_ACTION_KIND_PULL = 1; // fast-forward the default branch
+  CHECKOUT_ACTION_KIND_LEARNINGS = 2; // open the learnings PRs
+  CHECKOUT_ACTION_KIND_SAVE = 3; // leftover work to a draft PR from the fork
+  CHECKOUT_ACTION_KIND_UPKEEP = 4; // a full upkeep now, acting
+  CHECKOUT_ACTION_KIND_REINDEX = 5; // reindex the checkout's Dewey vault
+}
+
+message CheckoutActionResponse {
+  string started = 1; // one line: what started
 }
 
 message ToolkitRolloutRequest {

@@ -933,6 +933,27 @@ func recordFromPB(p *pb.DispatchResponse) dispatch.Record {
 	}
 }
 
+var checkoutActions = map[dispatch.CheckoutAction]pb.CheckoutActionKind{
+	dispatch.CheckoutPull:      pb.CheckoutActionKind_CHECKOUT_ACTION_KIND_PULL,
+	dispatch.CheckoutLearnings: pb.CheckoutActionKind_CHECKOUT_ACTION_KIND_LEARNINGS,
+	dispatch.CheckoutSave:      pb.CheckoutActionKind_CHECKOUT_ACTION_KIND_SAVE,
+	dispatch.CheckoutUpkeep:    pb.CheckoutActionKind_CHECKOUT_ACTION_KIND_UPKEEP,
+	dispatch.CheckoutReindex:   pb.CheckoutActionKind_CHECKOUT_ACTION_KIND_REINDEX,
+}
+
+func checkoutActionToPB(a dispatch.CheckoutAction) pb.CheckoutActionKind {
+	return checkoutActions[a]
+}
+
+func checkoutActionFromPB(k pb.CheckoutActionKind) (dispatch.CheckoutAction, bool) {
+	for a, v := range checkoutActions {
+		if v == k {
+			return a, true
+		}
+	}
+	return "", false
+}
+
 func sweepToPB(s dispatch.BranchSweep) *pb.PruneBranchesResponse {
 	return &pb.PruneBranchesResponse{
 		Local:     mapSlice(s.Local, branchPruneToPB),

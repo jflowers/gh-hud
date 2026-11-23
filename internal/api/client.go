@@ -276,6 +276,18 @@ func (c *Client) PruneBranches(ctx context.Context, apply bool) (dispatch.Branch
 	return sweepFromPB(resp.Msg), nil
 }
 
+func (c *Client) CheckoutAction(ctx context.Context, machine, dir string, a dispatch.CheckoutAction) (string, error) {
+	ctx, cancel := withDeadline(ctx, callTimeout)
+	defer cancel()
+	resp, err := c.rpc.CheckoutAction(ctx, connect.NewRequest(&pb.CheckoutActionRequest{
+		Machine: machine, Dir: dir, Action: checkoutActionToPB(a),
+	}))
+	if err != nil {
+		return "", fromConnect(err)
+	}
+	return resp.Msg.GetStarted(), nil
+}
+
 func (c *Client) QueueChoices(ctx context.Context, url string) ([]dispatch.Task, error) {
 	ctx, cancel := withDeadline(ctx, callTimeout)
 	defer cancel()

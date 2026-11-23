@@ -265,6 +265,8 @@ struct AgentDetail: View {
 struct WorkspacesPane: View {
     let conn: HubConnection
     @ObservedObject var ui: DashboardState
+    /// An action that pushes or opens a PR, waiting for its confirmation.
+    @State private var confirming: (row: WorkspaceRow, action: WorkspaceActions.Action)?
 
     var body: some View {
         let rows = TableFilter.rows(WorkspaceList.rows(conn.snapshot), query: ui.workspaceQuery,
@@ -304,6 +306,14 @@ struct WorkspacesPane: View {
             }
             .contextMenu(forSelectionType: WorkspaceRow.ID.self) { ids in
                 if let r = rows.first(where: { ids.contains($0.id) }) {
+                    let actions = WorkspaceActions.actions(r.health)
+                    ForEach(actions, id: \.kind) { a in
+                        Button(a.title) {
+                            if a.confirm { confirming = (r, a) } else { start(a.kind, on: r) }
+                        }
+                        .disabled(!a.enabled)
+                    }
+                    if !actions.isEmpty { Divider() }
                     Button("Copy Directory") { copy(r.health.dir) }
                     if r.machine == "local", !r.health.dir.isEmpty {
                         Button("Show in Finder") {
@@ -313,6 +323,14 @@ struct WorkspacesPane: View {
                     FilterMenu(row: r, filters: $ui.workspaceFilters)
                 }
                 HubOrderButton(sort: $ui.workspaceSort)
+            }
+            .confirmationDialog(confirming.map { "\($0.action.title.replacingOccurrences(of: "…", with: "")) in \($0.row.place)?" } ?? "",
+                                isPresented: Binding(get: { confirming != nil }, set: { if !$0 { confirming = nil } }),
+                                titleVisibility: .visible, presenting: confirming) { c in
+                Button(c.action.title.replacingOccurrences(of: "…", with: "")) { start(c.action.kind, on: c.row) }
+                Button("Cancel", role: .cancel) {}
+            } message: { c in
+                Text(WorkspaceActions.confirmation(c.action.kind, c.row.health))
             }
             .safeAreaInset(edge: .top, spacing: 0) { FilterBar(filters: $ui.workspaceFilters) }
             .tableSearch(text: $ui.workspaceQuery, kept: $ui.workspaceFilters, columns: WorkspaceRow.filterColumns,
@@ -347,6 +365,21 @@ struct WorkspacesPane: View {
             // Opening the pane reads older checkouts again, as the TUI does.
             if WorkspaceList.stale(conn.snapshot) {
                 _ = await conn.refresh(.workspaces)
+            }
+        }
+    }
+}
+
+extension WorkspacesPane {
+    /// Asks the hub to start an action on a checkout and says what started,
+    /// or its refusal as it said it.
+    fileprivate func start(_ kind: Ghhud_V1_CheckoutActionKind, on r: WorkspaceRow) {
+        Task { @MainActor in
+            switch await conn.checkoutAction(r.health, kind) {
+            case .success(let started):
+                ui.say(started.capitalizedFirst + ". The outcome shows in the checkout's detail.")
+            case .failure(let why):
+                ui.say("\(r.place): \(why)", bad: true)
             }
         }
     }
@@ -401,6 +434,12 @@ struct WorkspaceDetail: View {
         if h.stashes > 0 { facts.append(("stashes", "\(h.stashes)")) }
         if h.learnings > 0 {
             facts.append(("learnings", "\(h.learnings) untracked; the next clean run opens the daily chore PR"))
+        }
+        if h.upkeeping {
+            facts.append(("upkeep", "running now; no dispatch here until it ends"))
+        }
+        if h.hasLastUpkeep {
+            facts.append(("last upkeep", WorkspaceActions.upkeepLine(h.lastUpkeep)))
         }
         return facts
     }

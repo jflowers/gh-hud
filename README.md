@@ -805,6 +805,28 @@ branches. One script per machine reads every checkout (no fetch, so the
 upstream column is as of each checkout's last fetch), every 2 minutes and
 on `r`; `y` copies the checkout's dir.
 
+In the Mac app, a checkout's right-click menu starts [upkeep](#upkeep)'s
+steps on it now, instead of waiting for the next sweep (#172). Each runs on
+the hub in the background, takes the machine's one upkeep/reindex slot,
+and refuses a checkout with an agent in it. Its outcome is the checkout's
+last upkeep (or reindex) in the detail pane:
+
+- **Fast-Forward** the default branch (and submodules); nothing else.
+- **Open Learnings PR**: the checkout's and its overlays' learnings PRs,
+  on a clean checkout on its default branch (`learnings_pr` on).
+- **Save Work to a Draft PR**: commits everything but untracked learnings
+  on a `wip/` branch (a finished run's own, else
+  `wip/<label>/saved-<time>`), pushes it to your fork, opens a draft PR
+  from it, and puts the checkout back on its default branch. A default
+  branch ahead of upstream is backed up and reset as upkeep does.
+- **Keep Up Now**: a full upkeep, acting even when `[upkeep] mode` only
+  reports.
+- **Reindex Dewey**: the checkout's vault (not with `dewey_reindex =
+  "off"`).
+
+The two that push and open PRs ask first. The agent token can't call
+them.
+
 ### Coordination
 
 gh-hud moves a PR toward merge one step at a time and keeps agents from

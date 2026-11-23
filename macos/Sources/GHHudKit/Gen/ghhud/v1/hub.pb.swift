@@ -124,6 +124,66 @@ public nonisolated enum Ghhud_V1_FleetAction: SwiftProtobuf.Enum, Swift.CaseIter
 
 }
 
+public nonisolated enum Ghhud_V1_CheckoutActionKind: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+
+  /// fast-forward the default branch
+  case pull // = 1
+
+  /// open the learnings PRs
+  case learnings // = 2
+
+  /// leftover work to a draft PR from the fork
+  case save // = 3
+
+  /// a full upkeep now, acting
+  case upkeep // = 4
+
+  /// reindex the checkout's Dewey vault
+  case reindex // = 5
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .pull
+    case 2: self = .learnings
+    case 3: self = .save
+    case 4: self = .upkeep
+    case 5: self = .reindex
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .pull: return 1
+    case .learnings: return 2
+    case .save: return 3
+    case .upkeep: return 4
+    case .reindex: return 5
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [Ghhud_V1_CheckoutActionKind] = [
+    .unspecified,
+    .pull,
+    .learnings,
+    .save,
+    .upkeep,
+    .reindex,
+  ]
+
+}
+
 public nonisolated enum Ghhud_V1_ToolkitAction: SwiftProtobuf.Enum, Swift.CaseIterable {
   public typealias RawValue = Int
   case unspecified // = 0
@@ -1255,6 +1315,37 @@ public nonisolated struct Ghhud_V1_DeweyReindexResponse: Sendable {
 
   /// with all: "<machine>: <why>" for the rest
   public var refused: [String] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Ghhud_V1_CheckoutActionRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// CheckoutHealth.machine ("" is the hub)
+  public var machine: String = String()
+
+  /// CheckoutHealth.dir
+  public var dir: String = String()
+
+  public var action: Ghhud_V1_CheckoutActionKind = .unspecified
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Ghhud_V1_CheckoutActionResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// one line: what started
+  public var started: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3397,6 +3488,10 @@ nonisolated extension Ghhud_V1_FleetAction: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0FLEET_ACTION_UNSPECIFIED\0\u{1}FLEET_ACTION_PAUSE\0\u{1}FLEET_ACTION_RESUME\0\u{1}FLEET_ACTION_APPLY_NOW\0\u{1}FLEET_ACTION_SKIP_WAIT\0\u{1}FLEET_ACTION_RETRY\0")
 }
 
+nonisolated extension Ghhud_V1_CheckoutActionKind: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0CHECKOUT_ACTION_KIND_UNSPECIFIED\0\u{1}CHECKOUT_ACTION_KIND_PULL\0\u{1}CHECKOUT_ACTION_KIND_LEARNINGS\0\u{1}CHECKOUT_ACTION_KIND_SAVE\0\u{1}CHECKOUT_ACTION_KIND_UPKEEP\0\u{1}CHECKOUT_ACTION_KIND_REINDEX\0")
+}
+
 nonisolated extension Ghhud_V1_ToolkitAction: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0TOOLKIT_ACTION_UNSPECIFIED\0\u{1}TOOLKIT_ACTION_CANCEL\0\u{1}TOOLKIT_ACTION_RETRY\0\u{1}TOOLKIT_ACTION_DISMISS\0\u{1}TOOLKIT_ACTION_CHECK\0")
 }
@@ -5257,6 +5352,76 @@ nonisolated extension Ghhud_V1_DeweyReindexResponse: SwiftProtobuf.Message, Swif
   public static func ==(lhs: Ghhud_V1_DeweyReindexResponse, rhs: Ghhud_V1_DeweyReindexResponse) -> Bool {
     if lhs.machines != rhs.machines {return false}
     if lhs.refused != rhs.refused {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_CheckoutActionRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CheckoutActionRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machine\0\u{1}dir\0\u{1}action\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.machine) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.dir) }()
+      case 3: try { try decoder.decodeSingularEnumField(value: &self.action) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.machine.isEmpty {
+      try visitor.visitSingularStringField(value: self.machine, fieldNumber: 1)
+    }
+    if !self.dir.isEmpty {
+      try visitor.visitSingularStringField(value: self.dir, fieldNumber: 2)
+    }
+    if self.action != .unspecified {
+      try visitor.visitSingularEnumField(value: self.action, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_CheckoutActionRequest, rhs: Ghhud_V1_CheckoutActionRequest) -> Bool {
+    if lhs.machine != rhs.machine {return false}
+    if lhs.dir != rhs.dir {return false}
+    if lhs.action != rhs.action {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_CheckoutActionResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".CheckoutActionResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}started\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.started) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.started.isEmpty {
+      try visitor.visitSingularStringField(value: self.started, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_CheckoutActionResponse, rhs: Ghhud_V1_CheckoutActionResponse) -> Bool {
+    if lhs.started != rhs.started {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
