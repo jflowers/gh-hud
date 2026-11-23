@@ -98,9 +98,18 @@ func InFleet(co Checkout, orgs []string) bool {
 	if !co.Instance {
 		return false
 	}
-	if len(orgs) == 0 {
-		return true
-	}
+	return len(orgs) == 0 || ownedBy(co, orgs)
+}
+
+// IsPlain reports whether co is a fleet org's plain ghws dir: the
+// canonical (non-instance) clone of a repo of one of orgs, which ghws
+// clones new org@label instances from. Workers keep these current (upkeep)
+// but no agent ever runs in one. With no orgs there are none.
+func IsPlain(co Checkout, orgs []string) bool {
+	return !co.Instance && len(orgs) > 0 && ownedBy(co, orgs)
+}
+
+func ownedBy(co Checkout, orgs []string) bool {
 	owner, _, _ := strings.Cut(co.Repo, "/")
 	for _, o := range orgs {
 		if strings.EqualFold(o, owner) {
@@ -108,6 +117,20 @@ func InFleet(co Checkout, orgs []string) bool {
 		}
 	}
 	return false
+}
+
+// Plain is the index of ix's plain dirs of orgs (IsPlain); nil for nil.
+func (ix *Index) Plain(orgs []string) *Index {
+	if ix == nil {
+		return nil
+	}
+	var cos []Checkout
+	for _, co := range ix.checkouts {
+		if IsPlain(co, orgs) {
+			cos = append(cos, co)
+		}
+	}
+	return NewIndex(cos)
 }
 
 // Fleet is the index of ix's fleet checkouts (InFleet); nil for nil.

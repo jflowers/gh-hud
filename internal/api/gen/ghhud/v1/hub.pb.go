@@ -5890,7 +5890,12 @@ type CheckoutHealth struct {
 	IndexReasons []string `protobuf:"bytes,28,rep,name=index_reasons,json=indexReasons,proto3" json:"index_reasons,omitempty"`
 	// Not a checkout: a worker's ghws root (dir) whose last_upkeep is its
 	// last removal of what isn't the fleet's ([[machines]] remove_unmanaged).
-	Unmanaged     bool `protobuf:"varint,29,opt,name=unmanaged,proto3" json:"unmanaged,omitempty"`
+	Unmanaged bool `protobuf:"varint,29,opt,name=unmanaged,proto3" json:"unmanaged,omitempty"`
+	// A fleet org's plain ghws dir on a worker (not an org@label instance):
+	// ghws clones new instances from it, so upkeep keeps it current, but no
+	// run ever starts here. Never ready; its state is "upkeep only" when
+	// nothing else stands out.
+	UpkeepOnly    bool `protobuf:"varint,30,opt,name=upkeep_only,json=upkeepOnly,proto3" json:"upkeep_only,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6124,6 +6129,13 @@ func (x *CheckoutHealth) GetIndexReasons() []string {
 func (x *CheckoutHealth) GetUnmanaged() bool {
 	if x != nil {
 		return x.Unmanaged
+	}
+	return false
+}
+
+func (x *CheckoutHealth) GetUpkeepOnly() bool {
+	if x != nil {
+		return x.UpkeepOnly
 	}
 	return false
 }
@@ -7820,7 +7832,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\acleared\x18\n" +
 	" \x01(\bR\acleared\x12\x16\n" +
 	"\x06labels\x18\v \x03(\tR\x06labels\x12!\n" +
-	"\flabels_known\x18\f \x01(\bR\vlabelsKnown\"\xe2\a\n" +
+	"\flabels_known\x18\f \x01(\bR\vlabelsKnown\"\x83\b\n" +
 	"\x0eCheckoutHealth\x12\x18\n" +
 	"\amachine\x18\x01 \x01(\tR\amachine\x12\x1c\n" +
 	"\tworkspace\x18\x02 \x01(\tR\tworkspace\x12\x12\n" +
@@ -7858,7 +7870,9 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x13index_dewey_version\x18\x1a \x01(\tR\x11indexDeweyVersion\x12!\n" +
 	"\findex_format\x18\x1b \x01(\x03R\vindexFormat\x12#\n" +
 	"\rindex_reasons\x18\x1c \x03(\tR\findexReasons\x12\x1c\n" +
-	"\tunmanaged\x18\x1d \x01(\bR\tunmanaged\"\xfd\x01\n" +
+	"\tunmanaged\x18\x1d \x01(\bR\tunmanaged\x12\x1f\n" +
+	"\vupkeep_only\x18\x1e \x01(\bR\n" +
+	"upkeepOnly\"\xfd\x01\n" +
 	"\fUpkeepResult\x12*\n" +
 	"\x02at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x12\x16\n" +
 	"\x06report\x18\x02 \x01(\bR\x06report\x12%\n" +

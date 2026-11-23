@@ -64,6 +64,9 @@ func wsCells(h dispatch.CheckoutHealth) (glyph string, color lipgloss.Color, sta
 		return "●", cTeal, h.Problem()
 	case h.NoUpstream:
 		return "◆", cYellow, h.Problem()
+	case h.Problem() == "upkeep only":
+		// a worker's plain dir: kept current for new instances, no runs
+		return "◇", cDim, h.Problem()
 	case !h.Ready():
 		return "✗", cRed, h.Problem()
 	}
@@ -275,6 +278,8 @@ func wsDetail(h dispatch.CheckoutHealth, w int) []string {
 		state += " — a run here switches to " + h.Default + " and fast-forwards it"
 	case h.Ready():
 		state += " — a run here fast-forwards " + h.Default + " to upstream"
+	case h.UpkeepOnly:
+		state += " — ghws clones new instances from it: upkeep keeps it current, no run starts here"
 	case len(h.Dirty) > 0 && h.Busy == "":
 		state += " — a run here is refused until these are committed or discarded"
 	case h.Ahead > 0 && h.Behind > 0:

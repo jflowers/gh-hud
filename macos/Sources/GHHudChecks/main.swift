@@ -445,24 +445,26 @@ do {
         health("lost") { $0.noUpstream = true; $0.ahead = -1; $0.behind = -1 },
         health("broken") { $0.error = "ssh: no route" },
         health("elsewhere") { $0.branch = "feat" },
+        health("plain") { $0.machine = "lap1"; $0.upkeepOnly = true },
     ]
     let ws = WorkspaceList.rows(s)
-    check(ws.map(\.state) == ["ready", "running #12", "2 uncommitted", "main diverged", "no upstream remote", "ssh: no route", "ready"],
+    check(ws.map(\.state) == ["ready", "running #12", "2 uncommitted", "main diverged", "no upstream remote", "ssh: no route", "ready", "upkeep only"],
           "workspace states \(ws.map(\.state))")
-    check(ws.map(\.tone) == [.good, .pending, .bad, .bad, .warn, .bad, .good], "workspace tones")
-    check(ws.map(\.sync) == ["↓3", "=", "↑1", "↓1 ↑2", "—", "=", "="], "sync \(ws.map(\.sync))")
+    check(ws.map(\.tone) == [.good, .pending, .bad, .bad, .warn, .bad, .good, .muted], "workspace tones")
+    check(ws.map(\.sync) == ["↓3", "=", "↑1", "↓1 ↑2", "—", "=", "=", "="], "sync \(ws.map(\.sync))")
     check(ws[1].place == "chai:busy" && ws[0].place == "ready" && ws[1].machine == "chai", "places")
     check(ws[2].notes == "1 stash" && ws[3].notes == "3 local-only", "notes \(ws[2].notes) / \(ws[3].notes)")
     check(ws[0].explanation == "A run here fast-forwards main to upstream.", "ready explanation")
     check(ws[6].explanation == "A run here switches to main and fast-forwards it.", "other branch explanation")
+    check(!ws[7].ready && ws[7].explanation?.hasPrefix("ghws clones new instances") == true, "plain dir: upkeep only, never ready")
     check(ws[2].explanation == "A run here is refused until these are committed or discarded.", "dirty explanation")
     check(ws[3].explanation == "main can't fast-forward to upstream/main.", "diverged explanation")
     check(WorkspaceList.ready(s) == 2, "ready count")
     check(TableFilter.rows(ws, query: "where:chai", kept: []).map(\.workspace) == ["busy"], "workspace where")
     check(TableFilter.rows(ws, query: "uncommitted", kept: []).map(\.workspace) == ["dirty"], "free text, any column")
-    check(TableFilter.rows(ws, query: "", kept: [ColumnFilter("state", "ready", exclude: true)]).count == 5, "hide ready")
+    check(TableFilter.rows(ws, query: "", kept: [ColumnFilter("state", "ready", exclude: true)]).count == 6, "hide ready")
     let bySync = ws.sorted(using: KeyPathComparator(\.syncKey)).map(\.workspace)
-    check(bySync == ["busy", "broken", "elsewhere", "dirty", "diverged", "ready", "lost"],
+    check(bySync == ["busy", "broken", "elsewhere", "plain", "dirty", "diverged", "ready", "lost"],
           "sync: in step first, unknown last: \(bySync)")
     check(ws.sorted(using: KeyPathComparator(\.stateRank)).map(\.workspace).prefix(3) == ["dirty", "diverged", "broken"],
           "problems first")

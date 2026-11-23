@@ -9,7 +9,8 @@ import (
 
 // gh-hud only sees fleet checkouts (#157): the hub's index, the
 // session-scan dirs and every remote scan keep the org@label instances of
-// Orgs and drop canonical clones and other orgs.
+// Orgs and drop canonical clones and other orgs (a worker's plain dirs of
+// Orgs are kept apart, for upkeep).
 func TestFleetScope(t *testing.T) {
 	mixed := func(root string) *ghws.Index {
 		return ghws.NewIndex([]ghws.Checkout{
@@ -39,12 +40,13 @@ func TestFleetScope(t *testing.T) {
 	d.scanHook = func(context.Context, Machine, bool) (*ghws.Index, string, bool, error) {
 		return mixed("/w"), "", false, nil
 	}
-	ix, _, _, err := d.scan(context.Background(), Machine{Name: "w1", SSH: "w1"}, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cos := ix.Checkouts(); len(cos) != 1 || cos[0].Dir != "/w/acme@a/r" {
+	w1 := Machine{Name: "w1", SSH: "w1"}
+	if cos := d.remoteIndex(context.Background(), w1).Checkouts(); len(cos) != 1 || cos[0].Dir != "/w/acme@a/r" {
 		t.Errorf("remote index = %v, want only acme@a/r", cos)
+	}
+	// The fleet orgs' plain dirs are kept apart, for upkeep only.
+	if cos := d.plainIndex(w1).Checkouts(); len(cos) != 1 || cos[0].Dir != "/w/acme/r" {
+		t.Errorf("remote plain dirs = %v, want only acme/r", cos)
 	}
 
 	// The fleet's orgs only change with a restart, like the ghws root.

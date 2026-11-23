@@ -22,6 +22,11 @@ package dispatch
 //  5. records what it did, and what it left, as the checkout's last
 //     upkeep (upkeep.json), shown in the Workspaces tab.
 //
+// On the workers, upkeep also keeps the fleet orgs' plain ghws dirs
+// current (ghws.IsPlain, Dispatcher.plainIndex): ghws clones new instances
+// from them. They're Workspaces rows marked UpkeepOnly, never dispatch
+// targets; the hub's plain dirs are its user's and stay out.
+//
 // "report" (the default) fetches and records what it would do without
 // changing anything else. Leftover work, a diverged default branch, and a
 // branch with work on it are left as they are (#158 takes those).

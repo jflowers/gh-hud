@@ -239,7 +239,9 @@ type Options struct {
 	// changes only fleet checkouts, their org@label instances
 	// (ghws.InFleet), on every machine: the hub's index, every remote
 	// scan and the Dewey vault list are cut down to them (#157). Empty:
-	// any instance.
+	// any instance. The one exception is upkeep on the workers, which also
+	// keeps the fleet orgs' plain dirs current (ghws.IsPlain): ghws clones
+	// new instances from them. They're never dispatch targets.
 	Orgs []string
 	// InstancesOnly restricts dispatch targets to @ instance workspaces
 	// (base workspaces are human-only). The fleet scope (Orgs) already
@@ -419,8 +421,9 @@ type agentSnapshot struct {
 }
 
 type indexEntry struct {
-	ix *ghws.Index
-	at time.Time
+	ix    *ghws.Index // the machine's fleet checkouts: dispatch targets
+	plain *ghws.Index // the fleet orgs' plain dirs: upkeep only
+	at    time.Time
 }
 
 // normalizeOptions fills in the defaults of unset options.
