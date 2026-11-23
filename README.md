@@ -1200,6 +1200,17 @@ After each Workspaces read (every 2 minutes), the dispatch owner keeps up
 each idle fleet checkout it hasn't kept up in the last hour, one checkout
 at a time per machine. A Dewey pass or rollout keeps a checkout up just
 before it reindexes it too, so the index describes the current tree.
+
+On the workers, upkeep also keeps the fleet orgs' plain ghws dirs current
+(`~/Projects/github/<org>/<repo>` next to the `<org>@<label>` instances,
+for each org in `orgs`): ghws clones new instances from them, so a stale
+plain dir means a stale new instance. They get the same upkeep as a fleet
+checkout, backups included (their branches are named for the org, e.g.
+`backup/<org>/<default>-<time>`), but no agent ever runs in one: they are
+never dispatch targets, and the Workspaces tab lists them as `upkeep
+only`, never ready. The hub's plain dirs are its user's, and gh-hud
+leaves them alone.
+
 Each upkeep:
 
 1. fetches the remote the checkout syncs from (`upstream`, else

@@ -158,6 +158,19 @@ class DeweyTest {
     }
 
     @Test
+    fun plainDirIsUpkeepOnly() {
+        val r = WorkspaceRow.of(checkoutHealth {
+            machine = "lap1"
+            workspace = "acme"
+            defaultBranch = "main"
+            branch = "main"
+            upkeepOnly = true
+        })
+        assertEquals("upkeep only" to Tone.MUTED, r.state to r.tone)
+        assertFalse(r.ready)
+    }
+
+    @Test
     fun aRunsCheck() {
         assertNull(DeweyIndex.run(hubRun {}))
         assertEquals("ok" to Tone.GOOD, DeweyIndex.run(hubRun { indexHealth = "ok" }))

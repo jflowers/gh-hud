@@ -193,6 +193,7 @@ public data class WorkspaceRow(
                 }
                 h.reindexing || h.upkeeping -> problem to Tone.PENDING
                 h.noUpstream -> problem to Tone.WARN
+                problem == UPKEEP_ONLY -> problem to Tone.MUTED
                 problem.isNotEmpty() -> problem to Tone.BAD
                 else -> "ready" to Tone.GOOD
             }
@@ -210,6 +211,8 @@ public data class WorkspaceRow(
                 ready -> "A run here fast-forwards ${h.defaultBranch} to upstream."
                 h.reindexing -> "gh-hud is reindexing its Dewey index: no run starts here until it ends."
                 h.upkeeping -> "gh-hud is fetching and fast-forwarding it: no run starts here until it ends."
+                problem == UPKEEP_ONLY ->
+                    "ghws clones new instances from it: upkeep keeps it current, and no run starts here."
                 h.dirtyCount > 0 && h.busy.isEmpty() -> "A run here is refused until these are committed or discarded."
                 h.ahead > 0 && h.behind > 0 -> "${h.defaultBranch} can't fast-forward to upstream/${h.defaultBranch}."
                 else -> null
@@ -237,8 +240,12 @@ public data class WorkspaceRow(
             h.noUpstream -> "no upstream remote"
             h.dirtyCount > 0 -> "${h.dirtyCount} uncommitted"
             h.ahead > 0 && h.behind > 0 -> h.defaultBranch + " diverged"
+            h.upkeepOnly -> UPKEEP_ONLY
             else -> ""
         }
+
+        /** problem for a worker's plain ghws dir with nothing else to report. */
+        private const val UPKEEP_ONLY = "upkeep only"
 
         /** Commits on no remote, across branches ("branch\tcount" lines). */
         internal fun localOnlyCommits(h: CheckoutHealth): Int =

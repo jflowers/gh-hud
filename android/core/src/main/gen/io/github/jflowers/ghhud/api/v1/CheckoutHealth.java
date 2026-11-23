@@ -1532,6 +1532,53 @@ public  final class CheckoutHealth extends
     unmanaged_ = false;
   }
 
+  public static final int UPKEEP_ONLY_FIELD_NUMBER = 30;
+  private boolean upkeepOnly_;
+  /**
+   * <pre>
+   * A fleet org's plain ghws dir on a worker (not an org&#64;label instance):
+   * ghws clones new instances from it, so upkeep keeps it current, but no
+   * run ever starts here. Never ready; its state is "upkeep only" when
+   * nothing else stands out.
+   * </pre>
+   *
+   * <code>bool upkeep_only = 30 [json_name = "upkeepOnly"];</code>
+   * @return The upkeepOnly.
+   */
+  @java.lang.Override
+  public boolean getUpkeepOnly() {
+    return upkeepOnly_;
+  }
+  /**
+   * <pre>
+   * A fleet org's plain ghws dir on a worker (not an org&#64;label instance):
+   * ghws clones new instances from it, so upkeep keeps it current, but no
+   * run ever starts here. Never ready; its state is "upkeep only" when
+   * nothing else stands out.
+   * </pre>
+   *
+   * <code>bool upkeep_only = 30 [json_name = "upkeepOnly"];</code>
+   * @param value The upkeepOnly to set.
+   */
+  private void setUpkeepOnly(boolean value) {
+    
+    upkeepOnly_ = value;
+  }
+  /**
+   * <pre>
+   * A fleet org's plain ghws dir on a worker (not an org&#64;label instance):
+   * ghws clones new instances from it, so upkeep keeps it current, but no
+   * run ever starts here. Never ready; its state is "upkeep only" when
+   * nothing else stands out.
+   * </pre>
+   *
+   * <code>bool upkeep_only = 30 [json_name = "upkeepOnly"];</code>
+   */
+  private void clearUpkeepOnly() {
+
+    upkeepOnly_ = false;
+  }
+
   public static io.github.jflowers.ghhud.api.v1.CheckoutHealth parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -3184,6 +3231,55 @@ public  final class CheckoutHealth extends
       return this;
     }
 
+    /**
+     * <pre>
+     * A fleet org's plain ghws dir on a worker (not an org&#64;label instance):
+     * ghws clones new instances from it, so upkeep keeps it current, but no
+     * run ever starts here. Never ready; its state is "upkeep only" when
+     * nothing else stands out.
+     * </pre>
+     *
+     * <code>bool upkeep_only = 30 [json_name = "upkeepOnly"];</code>
+     * @return The upkeepOnly.
+     */
+    @java.lang.Override
+    public boolean getUpkeepOnly() {
+      return instance.getUpkeepOnly();
+    }
+    /**
+     * <pre>
+     * A fleet org's plain ghws dir on a worker (not an org&#64;label instance):
+     * ghws clones new instances from it, so upkeep keeps it current, but no
+     * run ever starts here. Never ready; its state is "upkeep only" when
+     * nothing else stands out.
+     * </pre>
+     *
+     * <code>bool upkeep_only = 30 [json_name = "upkeepOnly"];</code>
+     * @param value The upkeepOnly to set.
+     * @return This builder for chaining.
+     */
+    public Builder setUpkeepOnly(boolean value) {
+      copyOnWrite();
+      instance.setUpkeepOnly(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * A fleet org's plain ghws dir on a worker (not an org&#64;label instance):
+     * ghws clones new instances from it, so upkeep keeps it current, but no
+     * run ever starts here. Never ready; its state is "upkeep only" when
+     * nothing else stands out.
+     * </pre>
+     *
+     * <code>bool upkeep_only = 30 [json_name = "upkeepOnly"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearUpkeepOnly() {
+      copyOnWrite();
+      instance.clearUpkeepOnly();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.CheckoutHealth)
   }
   @java.lang.Override
@@ -3230,13 +3326,15 @@ public  final class CheckoutHealth extends
             "indexFormat_",
             "indexReasons_",
             "unmanaged_",
+            "upkeepOnly_",
           };
           java.lang.String info =
-              "\u0000\u001d\u0000\u0001\u0001\u001d\u001d\u0000\u0003\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u001e\u0000\u0001\u0001\u001e\u001e\u0000\u0003\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u0208\u0007\u0002\b\u0002\t\u021a\n\u0002" +
               "\u000b\u021a\f\u0002\r\u0208\u000e\u0007\u000f\u0208\u0010\u0208\u0011\u1009\u0000" +
               "\u0012\u0002\u0013\u0002\u0014\u0002\u0015\u1009\u0001\u0016\u0007\u0017\u1009\u0002" +
-              "\u0018\u0007\u0019\u1009\u0003\u001a\u0208\u001b\u0002\u001c\u021a\u001d\u0007";
+              "\u0018\u0007\u0019\u1009\u0003\u001a\u0208\u001b\u0002\u001c\u021a\u001d\u0007\u001e" +
+              "\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

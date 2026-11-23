@@ -144,3 +144,23 @@ func TestFleet(t *testing.T) {
 		t.Error("nil index: want nil")
 	}
 }
+
+func TestPlain(t *testing.T) {
+	ix := NewIndex([]Checkout{
+		{Workspace: "acme@a", Repo: "acme/r", Dir: "/w/acme@a/r", Instance: true},
+		{Workspace: "acme", Repo: "acme/r", Dir: "/w/acme/r"},
+		{Workspace: "Other", Repo: "Other/s", Dir: "/w/Other/s"},
+		{Workspace: "jflowers", Repo: "jflowers/x", Dir: "/w/jflowers/x"},
+	})
+	cos := ix.Plain([]string{"acme", "other"}).Checkouts()
+	if len(cos) != 2 || cos[0].Dir != "/w/acme/r" || cos[1].Dir != "/w/Other/s" {
+		t.Errorf("plain = %+v, want acme/r and Other/s", cos)
+	}
+	if got := ix.Plain(nil).Checkouts(); len(got) != 0 {
+		t.Errorf("plain with no orgs = %+v, want none", got)
+	}
+	var none *Index
+	if none.Plain([]string{"acme"}) != nil {
+		t.Error("nil index has plain dirs")
+	}
+}

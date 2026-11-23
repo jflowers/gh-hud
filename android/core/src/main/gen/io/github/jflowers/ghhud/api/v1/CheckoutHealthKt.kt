@@ -870,6 +870,37 @@ public object CheckoutHealthKt {
     public fun clearUnmanaged() {
       _builder.clearUnmanaged()
     }
+
+    /**
+     * ```
+     * A fleet org's plain ghws dir on a worker (not an org@label instance):
+     * ghws clones new instances from it, so upkeep keeps it current, but no
+     * run ever starts here. Never ready; its state is "upkeep only" when
+     * nothing else stands out.
+     * ```
+     *
+     * `bool upkeep_only = 30 [json_name = "upkeepOnly"];`
+     */
+    public var upkeepOnly: kotlin.Boolean
+      @kotlin.jvm.JvmName("getUpkeepOnly")
+        get() = _builder.upkeepOnly
+      @kotlin.jvm.JvmName("setUpkeepOnly")
+        set(value) {
+        _builder.upkeepOnly = value
+      }
+    /**
+     * ```
+     * A fleet org's plain ghws dir on a worker (not an org@label instance):
+     * ghws clones new instances from it, so upkeep keeps it current, but no
+     * run ever starts here. Never ready; its state is "upkeep only" when
+     * nothing else stands out.
+     * ```
+     *
+     * `bool upkeep_only = 30 [json_name = "upkeepOnly"];`
+     */
+    public fun clearUpkeepOnly() {
+      _builder.clearUpkeepOnly()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.CheckoutHealth.copy(block: `io.github.jflowers.ghhud.api.v1`.CheckoutHealthKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.CheckoutHealth =

@@ -416,4 +416,17 @@ public interface CheckoutHealthOrBuilder extends
    * @return The unmanaged.
    */
   boolean getUnmanaged();
+
+  /**
+   * <pre>
+   * A fleet org's plain ghws dir on a worker (not an org&#64;label instance):
+   * ghws clones new instances from it, so upkeep keeps it current, but no
+   * run ever starts here. Never ready; its state is "upkeep only" when
+   * nothing else stands out.
+   * </pre>
+   *
+   * <code>bool upkeep_only = 30 [json_name = "upkeepOnly"];</code>
+   * @return The upkeepOnly.
+   */
+  boolean getUpkeepOnly();
 }

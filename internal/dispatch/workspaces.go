@@ -67,7 +67,15 @@ type CheckoutHealth struct {
 	// carrying its last removal of what isn't the fleet's
 	// (upkeep_unmanaged.go) as LastUpkeep.
 	Unmanaged bool
+	// UpkeepOnly: a fleet org's plain ghws dir on a worker (ghws.IsPlain),
+	// which ghws clones new instances from. Upkeep keeps it current; no
+	// dispatch ever targets it, so it's never Ready.
+	UpkeepOnly bool
 }
+
+// problemUpkeepOnly is Problem for an upkeep-only checkout with nothing
+// else to report.
+const problemUpkeepOnly = "upkeep only"
 
 // Problem is why a dispatch would not use or would refuse the checkout
 // ("" = ready).
@@ -89,6 +97,8 @@ func (h CheckoutHealth) Problem() string {
 		return fmt.Sprintf("%d uncommitted", len(h.Dirty))
 	case h.Ahead > 0 && h.Behind > 0:
 		return h.Default + " diverged"
+	case h.UpkeepOnly:
+		return problemUpkeepOnly
 	}
 	return ""
 }
@@ -108,7 +118,8 @@ func (h CheckoutHealth) LocalOnlyCommits() int {
 }
 
 // Workspaces reads every dispatchable checkout on the hub and the enabled
-// workers (instances only when dispatch_instances_only): one script per
+// workers (instances only when dispatch_instances_only), and each
+// worker's plain dirs of the fleet's orgs (UpkeepOnly): one script per
 // machine, run concurrently. It does not fetch, so behind counts are as
 // of each checkout's last fetch.
 func (d *Dispatcher) Workspaces(ctx context.Context) []CheckoutHealth {
@@ -134,7 +145,7 @@ func (d *Dispatcher) Workspaces(ctx context.Context) []CheckoutHealth {
 			if !m.Local {
 				ix = d.remoteIndex(ctx, m)
 			}
-			results[i] = d.machineWorkspaces(ctx, m, ix, busy)
+			results[i] = d.machineWorkspaces(ctx, m, ix, d.plainIndex(m), busy)
 		}()
 	}
 	wg.Wait()
@@ -165,14 +176,20 @@ func (d *Dispatcher) Workspaces(ctx context.Context) []CheckoutHealth {
 	return append(out, d.unmanagedRows(upkeeping, upkeeps)...)
 }
 
-// machineWorkspaces checks one machine's checkouts. busy maps machine key
-// + "\x00" + dir to the ref of the live run there.
-func (d *Dispatcher) machineWorkspaces(ctx context.Context, m Machine, ix *ghws.Index, busy map[string]string) []CheckoutHealth {
+// machineWorkspaces checks one machine's checkouts: ix's, and plain's as
+// UpkeepOnly. busy maps machine key + "\x00" + dir to the ref of the live
+// run there.
+func (d *Dispatcher) machineWorkspaces(ctx context.Context, m Machine, ix, plain *ghws.Index, busy map[string]string) []CheckoutHealth {
 	var cos []ghws.Checkout
 	for _, co := range ix.Checkouts() {
 		if d.o().InstancesOnly && !co.Instance {
 			continue
 		}
+		cos = append(cos, co)
+	}
+	upkeepOnly := map[string]bool{}
+	for _, co := range plain.Checkouts() {
+		upkeepOnly[co.Dir] = true
 		cos = append(cos, co)
 	}
 	if ix == nil && !m.Local {
@@ -198,6 +215,7 @@ func (d *Dispatcher) machineWorkspaces(ctx context.Context, m Machine, ix *ghws.
 		}
 		h.Machine, h.Workspace, h.Repo, h.Dir = m.key(), co.Workspace, co.Repo, co.Dir
 		h.Busy = busy[h.Machine+"\x00"+h.Dir]
+		h.UpkeepOnly = upkeepOnly[co.Dir]
 		rows = append(rows, h)
 	}
 	d.applyIndexHealth(ctx, m, rows, time.Now())

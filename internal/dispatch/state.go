@@ -168,25 +168,44 @@ func (d *Dispatcher) scanWithVersion(ctx context.Context, m Machine) *ghws.Index
 	return ix
 }
 
-// scan runs scanRemote, or the test hook in its place, and keeps only
-// the machine's fleet checkouts (Options.Orgs).
+// scan runs scanRemote, or the test hook in its place: every workspace
+// on the machine. storeIndex splits it into the fleet's checkouts and the
+// fleet orgs' plain dirs.
 func (d *Dispatcher) scan(ctx context.Context, m Machine, version bool) (*ghws.Index, string, bool, error) {
 	scan := scanRemote
 	if d.scanHook != nil {
 		scan = d.scanHook
 	}
-	ix, v, gotV, err := scan(ctx, m, version)
-	return ix.Fleet(d.o().Orgs), v, gotV, err
+	return scan(ctx, m, version)
 }
 
-// storeIndex records a scan result and clears the in-flight marker.
+// storeIndex records a scan result (nil: the scan failed) and clears the
+// in-flight marker. The cached index keeps only the machine's fleet
+// checkouts (Options.Orgs), the only dispatch targets; the fleet orgs'
+// plain dirs are kept apart for upkeep (plainIndex). It returns the fleet
+// index.
 func (d *Dispatcher) storeIndex(name string, ix *ghws.Index) *ghws.Index {
+	orgs := d.o().Orgs
+	fleet := ix.Fleet(orgs)
 	d.cacheMu.Lock()
 	if d.indexCache == nil {
 		d.indexCache = map[string]indexEntry{}
 	}
-	d.indexCache[name] = indexEntry{ix: ix, at: time.Now()}
+	d.indexCache[name] = indexEntry{ix: fleet, plain: ix.Plain(orgs), at: time.Now()}
 	delete(d.indexLoading, name)
 	d.cacheMu.Unlock()
-	return ix
+	return fleet
+}
+
+// plainIndex is the worker m's plain dirs of the fleet's orgs, from its
+// last scan (remoteIndex keeps that fresh): the dirs ghws clones new
+// instances from, which upkeep keeps current and nothing dispatches to.
+// The hub has none: its plain dirs are its user's.
+func (d *Dispatcher) plainIndex(m Machine) *ghws.Index {
+	if m.Local {
+		return nil
+	}
+	d.cacheMu.Lock()
+	defer d.cacheMu.Unlock()
+	return d.indexCache[m.Name].plain
 }

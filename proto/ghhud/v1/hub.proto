@@ -809,6 +809,11 @@ message CheckoutHealth {
   // Not a checkout: a worker's ghws root (dir) whose last_upkeep is its
   // last removal of what isn't the fleet's ([[machines]] remove_unmanaged).
   bool unmanaged = 29;
+  // A fleet org's plain ghws dir on a worker (not an org@label instance):
+  // ghws clones new instances from it, so upkeep keeps it current, but no
+  // run ever starts here. Never ready; its state is "upkeep only" when
+  // nothing else stands out.
+  bool upkeep_only = 30;
 }
 
 // UpkeepResult is the last upkeep of an idle fleet checkout: fetched,

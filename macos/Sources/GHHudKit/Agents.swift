@@ -189,6 +189,8 @@ public struct WorkspaceRow: Identifiable, Equatable, Sendable {
             (state, tone) = (problem, .pending)
         case h.noUpstream:
             (state, tone) = (problem, .warn)
+        case problem == "upkeep only":
+            (state, tone) = (problem, .muted)
         case !problem.isEmpty:
             (state, tone) = (problem, .bad)
         default:
@@ -206,6 +208,8 @@ public struct WorkspaceRow: Identifiable, Equatable, Sendable {
             explanation = "A run here switches to \(h.defaultBranch) and fast-forwards it."
         } else if ready {
             explanation = "A run here fast-forwards \(h.defaultBranch) to upstream."
+        } else if h.upkeepOnly, problem == "upkeep only" {
+            explanation = "ghws clones new instances from it: upkeep keeps it current, and no run starts here."
         } else if !h.dirty.isEmpty, h.busy.isEmpty {
             explanation = "A run here is refused until these are committed or discarded."
         } else if h.ahead > 0, h.behind > 0 {
@@ -224,6 +228,7 @@ public struct WorkspaceRow: Identifiable, Equatable, Sendable {
         if h.noUpstream { return "no upstream remote" }
         if !h.dirty.isEmpty { return "\(h.dirty.count) uncommitted" }
         if h.ahead > 0, h.behind > 0 { return h.defaultBranch + " diverged" }
+        if h.upkeepOnly { return "upkeep only" }
         return ""
     }
 
