@@ -247,7 +247,8 @@ public data class WorkspaceRow(
 }
 
 public object WorkspaceList {
-    public fun rows(s: Snapshot): List<WorkspaceRow> = s.workspacesList.map { WorkspaceRow.of(it) }
+    /** The checkouts; a worker's unmanaged-removal row isn't one. */
+    public fun rows(s: Snapshot): List<WorkspaceRow> = s.workspacesList.filter { !it.unmanaged }.map { WorkspaceRow.of(it) }
 
     /**
      * The checkout an alert names: "[machine:]workspace", or with "/repo"

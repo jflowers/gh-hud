@@ -45,6 +45,12 @@ func (m *Model) readyCheckouts() int {
 // wsCells is a checkout's glyph, color and state text.
 func wsCells(h dispatch.CheckoutHealth) (glyph string, color lipgloss.Color, state string) {
 	switch {
+	case h.Unmanaged && h.Upkeeping:
+		return "●", cTeal, "removing unmanaged"
+	case h.Unmanaged && h.LastUpkeep != nil && h.LastUpkeep.Failed():
+		return "◆", cYellow, "kept work"
+	case h.Unmanaged:
+		return "·", cComment, "unmanaged removal"
 	case h.Err != "":
 		return "✗", cRed, h.Err
 	case h.Busy != "":
@@ -98,7 +104,7 @@ func wsNotes(h dispatch.CheckoutHealth) string {
 	if r := h.LastReindex; r != nil && r.Failed() && !h.Reindexing {
 		parts = append(parts, "reindex failed")
 	}
-	if u := h.LastUpkeep; u != nil && u.Failed() && !h.Upkeeping {
+	if u := h.LastUpkeep; u != nil && u.Failed() && !h.Upkeeping && !h.Unmanaged {
 		parts = append(parts, "upkeep failed")
 	}
 	return strings.Join(parts, " · ")
@@ -194,15 +200,18 @@ func (m *Model) workspacesView() string {
 	if end < len(list) {
 		pos += fmt.Sprintf("↓ %d ", len(list)-end)
 	}
-	busy := 0
+	busy, others := 0, 0
 	for _, h := range list {
-		if h.Busy != "" || h.Reindexing || h.Upkeeping {
+		switch {
+		case h.Unmanaged:
+			others++ // a worker's removal row, not a checkout
+		case h.Busy != "" || h.Reindexing || h.Upkeeping:
 			busy++
 		}
 	}
-	if len(list) > 0 {
+	if len(list) > others {
 		ready := m.readyCheckouts()
-		pos += fmt.Sprintf("· %d ready · %d running · %d blocked ", ready, busy, len(list)-ready-busy)
+		pos += fmt.Sprintf("· %d ready · %d running · %d blocked ", ready, busy, len(list)-others-ready-busy)
 	}
 	switch {
 	case m.wsLoading:
@@ -257,6 +266,9 @@ func wsDetail(h dispatch.CheckoutHealth, w int) []string {
 	lines := []string{
 		lipgloss.NewStyle().Foreground(color).Bold(true).Render(truncatePlain(where+"  "+h.Repo, w)),
 		"",
+	}
+	if h.Unmanaged {
+		return append(lines, unmanagedDetail(h, field)...)
 	}
 	switch {
 	case h.Ready() && h.Default != "" && h.Branch != h.Default:
@@ -313,6 +325,38 @@ func wsDetail(h dispatch.CheckoutHealth, w int) []string {
 	}
 	if u := h.LastUpkeep; u != nil {
 		lines = append(lines, field("last upkeep", truncatePlain(upkeepLine(*u, time.Now()), w-14)))
+	}
+	return lines
+}
+
+// unmanagedDetail is the detail pane body for a worker's removal of what
+// isn't the fleet's (remove_unmanaged): what it removed (or would), what
+// it kept because it holds work found nowhere else, what it left.
+func unmanagedDetail(h dispatch.CheckoutHealth, field func(k, v string) string) []string {
+	lines := []string{field("root", h.Dir)}
+	if h.Upkeeping {
+		lines = append(lines, field("state", "removing what isn't the fleet's"))
+	}
+	u := h.LastUpkeep
+	if u == nil {
+		return lines
+	}
+	lines = append(lines, field("last run", u.At.Local().Format("Jan 2 15:04")+" ("+model.RelativeTime(u.At, time.Now())+" ago)"))
+	verb := "removed"
+	if u.Report {
+		verb = "to remove"
+	}
+	for _, d := range u.Did {
+		lines = append(lines, field(verb, strings.TrimPrefix(d, "remove ")))
+	}
+	if u.Err != "" {
+		lines = append(lines, field("kept", u.Err))
+	}
+	for _, l := range u.Left {
+		lines = append(lines, field("left", l))
+	}
+	if len(u.Did) == 0 && u.Err == "" && len(u.Left) == 0 {
+		lines = append(lines, field("state", "nothing to remove"))
 	}
 	return lines
 }

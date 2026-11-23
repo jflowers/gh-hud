@@ -637,6 +637,7 @@ func checkoutToPB(h dispatch.CheckoutHealth) *pb.CheckoutHealth {
 		LastReindex:       reindexToPB(h.LastReindex),
 		Upkeeping:         h.Upkeeping,
 		LastUpkeep:        upkeepToPB(h.LastUpkeep),
+		Unmanaged:         h.Unmanaged,
 	}
 }
 
@@ -705,6 +706,7 @@ func checkoutFromPB(p *pb.CheckoutHealth) dispatch.CheckoutHealth {
 		LastReindex:       reindexFromPB(p.GetLastReindex()),
 		Upkeeping:         p.GetUpkeeping(),
 		LastUpkeep:        upkeepFromPB(p.GetLastUpkeep()),
+		Unmanaged:         p.GetUnmanaged(),
 		Index:             p.GetIndex(),
 		IndexBuilt:        fromTS(p.GetIndexBuilt()),
 		IndexPages:        int(p.GetIndexPages()),

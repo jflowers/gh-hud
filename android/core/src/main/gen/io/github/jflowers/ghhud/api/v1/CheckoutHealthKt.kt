@@ -843,7 +843,34 @@ public object CheckoutHealthKt {
 @kotlin.jvm.JvmName("setIndexReasons")
     public fun com.google.protobuf.kotlin.DslList<kotlin.String, IndexReasonsProxy>.clear() {
       _builder.clearIndexReasons()
-    }}
+    }
+    /**
+     * ```
+     * Not a checkout: a worker's ghws root (dir) whose last_upkeep is its
+     * last removal of what isn't the fleet's ([[machines]] remove_unmanaged).
+     * ```
+     *
+     * `bool unmanaged = 29 [json_name = "unmanaged"];`
+     */
+    public var unmanaged: kotlin.Boolean
+      @kotlin.jvm.JvmName("getUnmanaged")
+        get() = _builder.unmanaged
+      @kotlin.jvm.JvmName("setUnmanaged")
+        set(value) {
+        _builder.unmanaged = value
+      }
+    /**
+     * ```
+     * Not a checkout: a worker's ghws root (dir) whose last_upkeep is its
+     * last removal of what isn't the fleet's ([[machines]] remove_unmanaged).
+     * ```
+     *
+     * `bool unmanaged = 29 [json_name = "unmanaged"];`
+     */
+    public fun clearUnmanaged() {
+      _builder.clearUnmanaged()
+    }
+  }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.CheckoutHealth.copy(block: `io.github.jflowers.ghhud.api.v1`.CheckoutHealthKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.CheckoutHealth =
   `io.github.jflowers.ghhud.api.v1`.CheckoutHealthKt.Dsl._create(this.toBuilder()).apply { block() }._build()

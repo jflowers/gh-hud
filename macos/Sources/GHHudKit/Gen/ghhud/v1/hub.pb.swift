@@ -2808,6 +2808,13 @@ public nonisolated struct Ghhud_V1_CheckoutHealth: @unchecked Sendable {
     set {_uniqueStorage()._indexReasons = newValue}
   }
 
+  /// Not a checkout: a worker's ghws root (dir) whose last_upkeep is its
+  /// last removal of what isn't the fleet's ([[machines]] remove_unmanaged).
+  public var unmanaged: Bool {
+    get {_storage._unmanaged}
+    set {_uniqueStorage()._unmanaged = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -7458,7 +7465,7 @@ nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CheckoutHealth"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machine\0\u{1}workspace\0\u{1}repo\0\u{1}dir\0\u{1}branch\0\u{3}default_branch\0\u{1}ahead\0\u{1}behind\0\u{1}dirty\0\u{1}learnings\0\u{3}local_only\0\u{1}stashes\0\u{1}busy\0\u{3}no_upstream\0\u{1}error\0\u{1}index\0\u{3}index_built\0\u{3}index_pages\0\u{3}index_blocks\0\u{3}index_embeddings\0\u{3}index_status_at\0\u{1}reindexing\0\u{3}last_reindex\0\u{1}upkeeping\0\u{3}last_upkeep\0\u{3}index_dewey_version\0\u{3}index_format\0\u{3}index_reasons\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machine\0\u{1}workspace\0\u{1}repo\0\u{1}dir\0\u{1}branch\0\u{3}default_branch\0\u{1}ahead\0\u{1}behind\0\u{1}dirty\0\u{1}learnings\0\u{3}local_only\0\u{1}stashes\0\u{1}busy\0\u{3}no_upstream\0\u{1}error\0\u{1}index\0\u{3}index_built\0\u{3}index_pages\0\u{3}index_blocks\0\u{3}index_embeddings\0\u{3}index_status_at\0\u{1}reindexing\0\u{3}last_reindex\0\u{1}upkeeping\0\u{3}last_upkeep\0\u{3}index_dewey_version\0\u{3}index_format\0\u{3}index_reasons\0\u{1}unmanaged\0")
 
   fileprivate class _StorageClass {
     var _machine: String = String()
@@ -7489,6 +7496,7 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
     var _indexDeweyVersion: String = String()
     var _indexFormat: Int64 = 0
     var _indexReasons: [String] = []
+    var _unmanaged: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -7527,6 +7535,7 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
       _indexDeweyVersion = source._indexDeweyVersion
       _indexFormat = source._indexFormat
       _indexReasons = source._indexReasons
+      _unmanaged = source._unmanaged
     }
   }
 
@@ -7573,6 +7582,7 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
         case 26: try { try decoder.decodeSingularStringField(value: &_storage._indexDeweyVersion) }()
         case 27: try { try decoder.decodeSingularInt64Field(value: &_storage._indexFormat) }()
         case 28: try { try decoder.decodeRepeatedStringField(value: &_storage._indexReasons) }()
+        case 29: try { try decoder.decodeSingularBoolField(value: &_storage._unmanaged) }()
         default: break
         }
       }
@@ -7669,6 +7679,9 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
       if !_storage._indexReasons.isEmpty {
         try visitor.visitRepeatedStringField(value: _storage._indexReasons, fieldNumber: 28)
       }
+      if _storage._unmanaged != false {
+        try visitor.visitSingularBoolField(value: _storage._unmanaged, fieldNumber: 29)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -7706,6 +7719,7 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
         if _storage._indexDeweyVersion != rhs_storage._indexDeweyVersion {return false}
         if _storage._indexFormat != rhs_storage._indexFormat {return false}
         if _storage._indexReasons != rhs_storage._indexReasons {return false}
+        if _storage._unmanaged != rhs_storage._unmanaged {return false}
         return true
       }
       if !storagesAreEqual {return false}

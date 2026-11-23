@@ -471,6 +471,9 @@ func dispatchOptions(cfg *config.Config, stateDir string, wsDirs []string, idx *
 
 			Labels:        mc.Labels,
 			ExcludeLabels: mc.ExcludeLabels,
+
+			RemoveUnmanaged: mc.RemoveUnmanaged,
+			Keep:            mc.Keep,
 		})
 	}
 	return dispatch.Options{

@@ -1491,6 +1491,47 @@ public  final class CheckoutHealth extends
     indexReasons_.add(value.toStringUtf8());
   }
 
+  public static final int UNMANAGED_FIELD_NUMBER = 29;
+  private boolean unmanaged_;
+  /**
+   * <pre>
+   * Not a checkout: a worker's ghws root (dir) whose last_upkeep is its
+   * last removal of what isn't the fleet's ([[machines]] remove_unmanaged).
+   * </pre>
+   *
+   * <code>bool unmanaged = 29 [json_name = "unmanaged"];</code>
+   * @return The unmanaged.
+   */
+  @java.lang.Override
+  public boolean getUnmanaged() {
+    return unmanaged_;
+  }
+  /**
+   * <pre>
+   * Not a checkout: a worker's ghws root (dir) whose last_upkeep is its
+   * last removal of what isn't the fleet's ([[machines]] remove_unmanaged).
+   * </pre>
+   *
+   * <code>bool unmanaged = 29 [json_name = "unmanaged"];</code>
+   * @param value The unmanaged to set.
+   */
+  private void setUnmanaged(boolean value) {
+    
+    unmanaged_ = value;
+  }
+  /**
+   * <pre>
+   * Not a checkout: a worker's ghws root (dir) whose last_upkeep is its
+   * last removal of what isn't the fleet's ([[machines]] remove_unmanaged).
+   * </pre>
+   *
+   * <code>bool unmanaged = 29 [json_name = "unmanaged"];</code>
+   */
+  private void clearUnmanaged() {
+
+    unmanaged_ = false;
+  }
+
   public static io.github.jflowers.ghhud.api.v1.CheckoutHealth parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -3100,6 +3141,49 @@ public  final class CheckoutHealth extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Not a checkout: a worker's ghws root (dir) whose last_upkeep is its
+     * last removal of what isn't the fleet's ([[machines]] remove_unmanaged).
+     * </pre>
+     *
+     * <code>bool unmanaged = 29 [json_name = "unmanaged"];</code>
+     * @return The unmanaged.
+     */
+    @java.lang.Override
+    public boolean getUnmanaged() {
+      return instance.getUnmanaged();
+    }
+    /**
+     * <pre>
+     * Not a checkout: a worker's ghws root (dir) whose last_upkeep is its
+     * last removal of what isn't the fleet's ([[machines]] remove_unmanaged).
+     * </pre>
+     *
+     * <code>bool unmanaged = 29 [json_name = "unmanaged"];</code>
+     * @param value The unmanaged to set.
+     * @return This builder for chaining.
+     */
+    public Builder setUnmanaged(boolean value) {
+      copyOnWrite();
+      instance.setUnmanaged(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Not a checkout: a worker's ghws root (dir) whose last_upkeep is its
+     * last removal of what isn't the fleet's ([[machines]] remove_unmanaged).
+     * </pre>
+     *
+     * <code>bool unmanaged = 29 [json_name = "unmanaged"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearUnmanaged() {
+      copyOnWrite();
+      instance.clearUnmanaged();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.CheckoutHealth)
   }
   @java.lang.Override
@@ -3145,13 +3229,14 @@ public  final class CheckoutHealth extends
             "indexDeweyVersion_",
             "indexFormat_",
             "indexReasons_",
+            "unmanaged_",
           };
           java.lang.String info =
-              "\u0000\u001c\u0000\u0001\u0001\u001c\u001c\u0000\u0003\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u001d\u0000\u0001\u0001\u001d\u001d\u0000\u0003\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u0208\u0007\u0002\b\u0002\t\u021a\n\u0002" +
               "\u000b\u021a\f\u0002\r\u0208\u000e\u0007\u000f\u0208\u0010\u0208\u0011\u1009\u0000" +
               "\u0012\u0002\u0013\u0002\u0014\u0002\u0015\u1009\u0001\u0016\u0007\u0017\u1009\u0002" +
-              "\u0018\u0007\u0019\u1009\u0003\u001a\u0208\u001b\u0002\u001c\u021a";
+              "\u0018\u0007\u0019\u1009\u0003\u001a\u0208\u001b\u0002\u001c\u021a\u001d\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

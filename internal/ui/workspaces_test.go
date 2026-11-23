@@ -68,3 +68,26 @@ func TestWorkspacesTabUpkeep(t *testing.T) {
 		t.Errorf("upkeep checkout's detail:\n%s", plain)
 	}
 }
+
+// A worker's removal of what isn't the fleet's is its own row: not counted
+// as a checkout, and its detail lists what it would remove and kept.
+func TestWorkspacesTabUnmanaged(t *testing.T) {
+	at := time.Now().Add(-5 * time.Minute)
+	m := &Model{cfg: config.Default(), width: 160, height: 40, wsMode: true, wsAt: time.Now()}
+	m.ws = []dispatch.CheckoutHealth{
+		{Machine: "lap1", Workspace: "unmanaged", Dir: "~/Projects/github", Ahead: -1, Behind: -1, Unmanaged: true,
+			LastUpkeep: &dispatch.UpkeepResult{At: at, Report: true, Did: []string{"remove Opencode-DCP, jflowers/opencode-supervisor"},
+				Err: "kept, work found nowhere else: jflowers/x (jflowers/x: 1 uncommitted, 0 on no remote)"}},
+		{Workspace: "uf@chai", Repo: "unbound-force/dewey", Dir: "/w/uf@chai/dewey", Branch: "main", Default: "main"},
+	}
+	plain := ansiRe.ReplaceAllString(m.View(), "")
+	for _, want := range []string{"kept work", "1 ready · 0 running · 0 blocked", "to remove", "Opencode-DCP, jflowers/opencode-supervisor",
+		"kept", "jflowers/x: 1 uncommitted", "(5m ago)"} {
+		if !strings.Contains(plain, want) {
+			t.Errorf("workspaces tab missing %q:\n%s", want, plain)
+		}
+	}
+	if strings.Contains(plain, "upkeep failed") {
+		t.Errorf("the removal row reads as a failed checkout upkeep:\n%s", plain)
+	}
+}

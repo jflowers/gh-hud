@@ -806,6 +806,9 @@ message CheckoutHealth {
   int64 index_format = 27;
   // index's reindex reasons as a list (Dewey's contain commas).
   repeated string index_reasons = 28;
+  // Not a checkout: a worker's ghws root (dir) whose last_upkeep is its
+  // last removal of what isn't the fleet's ([[machines]] remove_unmanaged).
+  bool unmanaged = 29;
 }
 
 // UpkeepResult is the last upkeep of an idle fleet checkout: fetched,
