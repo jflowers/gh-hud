@@ -52,9 +52,10 @@ const (
 var errBotToken = errors.New(botTokenVar + " is missing or empty")
 
 // runsAsBot reports whether the task runs as the bot account: a review of
-// my own PR in model.BotOrg. Other people's PRs are reviewed as me.
+// my own PR or a Dependabot PR in model.BotOrg. Other people's PRs are
+// reviewed as me.
 func runsAsBot(task Task, it model.Item) bool {
-	return task == TaskReview && mine(it) && it.InBotOrg()
+	return task == TaskReview && (mine(it) || it.Dependabot()) && it.InBotOrg()
 }
 
 // botGuard is the gh first on PATH in a bot dispatch. It refuses merges,
@@ -172,8 +173,13 @@ func botTokenError(m Machine, ref string) error {
 // botCommand wraps a local-runner command so it runs as the bot, through
 // the same shell lines as a pane, and exits rather than run as the operator.
 func botCommand(bin string, argv []string) *exec.Cmd {
+	return botCommandContext(context.Background(), bin, argv)
+}
+
+// botCommandContext is botCommand, killed when ctx ends.
+func botCommandContext(ctx context.Context, bin string, argv []string) *exec.Cmd {
 	script := botLoad + `; [ -n "$` + botTokenVar + `" ] || { echo "` + botTokenVar + ` is missing or empty" >&2; exit 78; }; ` + botExport + `; exec "$0" "$@"`
-	return exec.Command("sh", append([]string{"-c", script, bin}, argv...)...)
+	return exec.CommandContext(ctx, "sh", append([]string{"-c", script, bin}, argv...)...)
 }
 
 // autoFailNote is the one-line notice for an auto-dispatch that failed for

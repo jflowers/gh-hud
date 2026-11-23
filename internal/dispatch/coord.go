@@ -259,7 +259,7 @@ func stageOf(it model.Item, runs []Run, tasks map[string]config.TaskConfig, am c
 	}
 	steps := pipelineTasks(it, tasks)
 	if len(steps) == 0 {
-		if it.Kind == model.KindPR && it.AutoMergeOn && mine(it) && am.Covers(it.Repo) {
+		if it.Kind == model.KindPR && it.AutoMergeOn && mergeOwned(it) && am.Covers(it.Repo) {
 			return Stage{Kind: StageMerge, Reason: tp.mergeReason(it)}
 		}
 		return Stage{}
