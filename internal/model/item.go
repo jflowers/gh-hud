@@ -214,9 +214,24 @@ func (i Item) InBotOrg() bool {
 var choreTitle = regexp.MustCompile(`(?i)^chore(\([^)]*\))?!?:`)
 
 // IsChore reports whether the item is a chore PR, which never dispatches
-// on its own.
+// on its own. A Dependabot PR isn't one, whatever its title: it has a path
+// of its own (a bot review, then auto-merge).
 func (i Item) IsChore() bool {
-	return i.Kind == KindPR && choreTitle.MatchString(i.Title)
+	return i.Kind == KindPR && choreTitle.MatchString(i.Title) && !i.Dependabot()
+}
+
+// Dependabot reports whether the item is a PR Dependabot opened. GraphQL
+// names the app "dependabot"; REST and the search syntax say
+// "dependabot[bot]" and "app/dependabot".
+func (i Item) Dependabot() bool {
+	if i.Kind != KindPR {
+		return false
+	}
+	switch strings.ToLower(i.Author) {
+	case "dependabot", "dependabot[bot]", "app/dependabot":
+		return true
+	}
+	return false
 }
 
 // ReviewQueueReady reports whether a PR is ready for an agent review: not
@@ -226,12 +241,14 @@ func (i Item) IsChore() bool {
 // reviewed since their latest activity). My own PR only qualifies in
 // BotOrg, where BotLogin can review it, until BotLogin has reviewed the
 // head commit (again, when it asked for changes and I've answered since).
+// A Dependabot PR is treated like my own: in BotOrg, until BotLogin has
+// reviewed its head, so its approval can let auto-merge land it.
 func (i Item) ReviewQueueReady(me string, window time.Duration, bots *BotFilter) bool {
 	if i.Kind != KindPR || me == "" || i.Draft || !ciSettled(i.CI) ||
 		i.IsChore() || i.Merge == "⚠️" || time.Since(i.UpdatedAt) > window {
 		return false
 	}
-	if i.Author == me {
+	if i.Author == me || i.Dependabot() {
 		return i.InBotOrg() && i.BotReviewDue
 	}
 	return !bots.IsBot(i.Author) && i.WaitingOn == "them"

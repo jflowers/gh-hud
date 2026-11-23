@@ -44,11 +44,19 @@ const (
 	mergeNow     mergeAction = "merge"
 )
 
+// mergeOwned reports whether auto-merge may act on a PR: one I opened, or
+// one Dependabot opened (issue #19). Dependabot's PRs reach the Queue for
+// a bot review in model.BotOrg, and that approval is what the branch rules
+// wait for.
+func mergeOwned(it model.Item) bool {
+	return mine(it) || it.Dependabot()
+}
+
 // autoMergeAction decides what to do with one PR. A base branch whose rules
 // require no approval leaves auto-merge nothing to wait for, so those PRs
 // are skipped.
 func autoMergeAction(it model.Item, cfg config.AutoMergeConfig) mergeAction {
-	if it.Kind != model.KindPR || !mine(it) || !cfg.Covers(it.Repo) || it.NodeID == "" {
+	if it.Kind != model.KindPR || !mergeOwned(it) || !cfg.Covers(it.Repo) || it.NodeID == "" {
 		return mergeNone
 	}
 	held := it.Draft || slices.ContainsFunc(it.Labels, func(l string) bool {
@@ -90,6 +98,7 @@ func (d *Dispatcher) AutoMerge(ctx context.Context, items []model.Item) []string
 		return runs
 	}
 	msgs := sup
+	msgs = append(msgs, d.approveLearnings(ctx, items)...)
 	for _, it := range items {
 		action := autoMergeAction(it, cfg)
 		ref := it.Ref()
@@ -138,6 +147,7 @@ func (d *Dispatcher) AutoMerge(ctx context.Context, items []model.Item) []string
 		}
 	}
 	msgs = append(msgs, d.updateHeads(ctx, allRuns)...)
+	msgs = append(msgs, d.rebaseDependabot(ctx, items, allRuns)...)
 	return append(msgs, d.rearmBranches(ctx, allRuns)...)
 }
 
@@ -182,7 +192,7 @@ func holdForRun(action mergeAction, it model.Item, cfg config.AutoMergeConfig, w
 	case mergeEnable, mergeNow:
 		return mergeNone
 	case mergeNone:
-		if it.AutoMergeOn && it.Kind == model.KindPR && mine(it) && cfg.Covers(it.Repo) && it.NodeID != "" {
+		if it.AutoMergeOn && it.Kind == model.KindPR && mergeOwned(it) && cfg.Covers(it.Repo) && it.NodeID != "" {
 			return mergeDisable
 		}
 	}

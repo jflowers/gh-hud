@@ -241,3 +241,40 @@ func TestRequiredReviews(t *testing.T) {
 		}
 	}
 }
+
+func TestReviewQueueReadyDependabot(t *testing.T) {
+	bots := NewBotFilter([]string{"dependabot"})
+	window := 48 * time.Hour
+	dep := Item{
+		Kind: KindPR, Author: "dependabot", Repo: "unbound-force/unbound-force",
+		Title: "chore(deps): bump x from 1.0.0 to 2.0.0", CI: CIOK, Merge: " ",
+		BotReviewDue: true, UpdatedAt: time.Now().Add(-time.Hour),
+	}
+	cases := []struct {
+		name  string
+		mutae func(*Item)
+		want  bool
+	}{
+		{"dependabot in bot org", func(*Item) {}, true},
+		{"rest login", func(i *Item) { i.Author = "dependabot[bot]" }, true},
+		{"ci title", func(i *Item) { i.Title = "ci(deps): bump actions/setup-go" }, true},
+		{"bot reviewed head", func(i *Item) { i.BotReviewDue = false }, false},
+		{"other org", func(i *Item) { i.Repo = "fullsend-ai/coverport" }, false},
+		{"pending ci", func(i *Item) { i.CI = CIPending }, false},
+		{"conflict", func(i *Item) { i.Merge = "⚠️" }, false},
+		{"another bot", func(i *Item) { i.Author = "renovate" }, false},
+	}
+	for _, tc := range cases {
+		it := dep
+		tc.mutae(&it)
+		if got := it.ReviewQueueReady("me", window, bots); got != tc.want {
+			t.Errorf("%s: got %v want %v", tc.name, got, tc.want)
+		}
+	}
+	if dep.IsChore() {
+		t.Error("a Dependabot PR must not count as a chore")
+	}
+	if !(Item{Kind: KindPR, Author: "me", Title: dep.Title}).IsChore() {
+		t.Error("my chore(deps) PR is still a chore")
+	}
+}

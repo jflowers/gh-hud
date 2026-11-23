@@ -59,9 +59,10 @@ described under [Agent dispatch](#agent-dispatch) and
 - **Queue** (8) — PRs ready for an agent review: updated within
   `queue_window_hours`, checks settled, no conflicts, and not a chore (a title
   starting `chore:` or `chore(scope):`). That's other humans' PRs
-  where the author acted last, plus your own `unbound-force` PRs until
-  `uf-divisor` has reviewed the head commit
-  (requires `orgs`; the sweep is disabled without them). With
+  where the author acted last, plus your own and Dependabot's
+  `unbound-force` PRs until `uf-divisor` has reviewed the head commit
+  (requires `orgs`; the sweep is disabled without them). A Dependabot PR is
+  never a chore, whatever its title. With
   `[dispatch.review] auto = true` these drain automatically as agent slots
   free up (see [Configuring dispatch](#configuring-dispatch)).
 
@@ -661,7 +662,7 @@ login, including reviews of other people's `unbound-force` PRs.
 
 | Task | your `unbound-force` PR | anything else |
 | --- | --- | --- |
-| `review` | `uf-divisor` | you |
+| `review` | `uf-divisor` (Dependabot's PRs too) | you |
 | `feedback`, `ci`, `rebase`, `issue` | you | you |
 
 Your `unbound-force` PRs enter the Queue until `uf-divisor` has reviewed the
@@ -674,7 +675,10 @@ feedback run is still pushing (see [Coordination](#coordination)).
 
 Chore PRs skip the Queue, so
 they only get a review if you start one with `a`; on a branch that requires
-an approval, they won't auto-merge without one. No task auto-dispatches on a
+an approval, they won't auto-merge without one. Two kinds are handled for
+you, in `unbound-force` only: gh-hud's own learnings PRs get a `uf-divisor`
+approval with no agent (see [Auto-merge](#auto-merge)), and Dependabot's PRs
+aren't chores, so they reach the Queue and get a bot review like yours. No task auto-dispatches on a
 chore PR, so a chore with failing CI or a conflict also waits for you. With `[dispatch.review] auto =
 true` they drain like any other Queue row.
 
@@ -1594,7 +1598,7 @@ update_method = "merge"          # how the merge train updates the next PR: merg
 where approvals, checks and resolved threads are configured. gh-hud acts on a
 PR only when all of these hold:
 
-- you opened it, and it's in a covered repo
+- you or Dependabot opened it, and it's in a covered repo
 - it's not a draft, has no `hold_label` or `human_gate_label` label and has
   no merge conflict
 - the repo allows auto-merge
@@ -1607,6 +1611,21 @@ PR only when all of these hold:
 The last check is the safety net: on a branch with no such rule, auto-merge
 has nothing to wait for. gh-hud also doesn't use `gh pr merge --auto`, which
 merges on the spot when nothing is pending.
+
+**Learnings PRs** (gh-hud's own `chore/dewey-learnings-…` branches) are
+chores, so no agent reviews them and nothing would approve them. In
+`unbound-force`, gh-hud approves one as `uf-divisor` itself, with no agent,
+once every changed file is under `.uf/dewey/learnings/` (added or modified,
+not renamed in). The approval names the head commit it checked, so a new
+push gets a new one. A held, human-gated, drafted or conflicted learnings PR
+isn't approved, and a PR on that branch that changes anything else is left
+to you, reported once. The token comes from `agent-env`, as for a bot review.
+
+**Dependabot PRs** get a real `uf-divisor` review through the Queue, then
+auto-merge like yours, for every bump size. They stay out of the merge
+train, since a push to Dependabot's branch stops Dependabot managing it:
+when the branch rules hold one as behind its base, gh-hud comments
+`@dependabot rebase` instead, once per head commit.
 
 A PR that's already approved and `CLEAN` when gh-hud first sees it has nothing
 left to wait for, so GitHub refuses auto-merge and gh-hud merges it directly.
