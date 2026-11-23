@@ -260,6 +260,19 @@ public final class HubConnection {
         return Self.result(await client.deweyReindex(request: req, headers: hub.authHeaders))
     }
 
+    /// Starts an action on one checkout of the Workspaces list (#172). It
+    /// runs on the hub in the background; what started comes back, and its
+    /// outcome is the checkout's last upkeep or reindex.
+    public func checkoutAction(_ h: Ghhud_V1_CheckoutHealth, _ kind: Ghhud_V1_CheckoutActionKind)
+        async -> Result<String, CommandError> {
+        guard let hub, let client = commands else { return .failure(.notConnected) }
+        var req = Ghhud_V1_CheckoutActionRequest()
+        req.machine = h.machine
+        req.dir = h.dir
+        req.action = kind
+        return Self.result(await client.checkoutAction(request: req, headers: hub.authHeaders)).map(\.started)
+    }
+
     /// Starts rolling a tool out at version ("" for its latest release).
     /// Returns why it failed, if it did.
     public func rollOut(tool: String, version: String = "") async -> String? {

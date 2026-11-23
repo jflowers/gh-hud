@@ -127,6 +127,13 @@ func (f *Fake) PruneBranches(_ context.Context, apply bool) (dispatch.BranchSwee
 	return f.Sweep, nil
 }
 
+func (f *Fake) CheckoutAction(_ context.Context, machine, dir string, a dispatch.CheckoutAction) (string, error) {
+	if err := f.call("CheckoutAction %s %s %s", machine, dir, a); err != nil {
+		return "", err
+	}
+	return string(a) + " " + dir, nil
+}
+
 func (f *Fake) QueueChoices(_ context.Context, url string) ([]dispatch.Task, error) {
 	if err := f.call("QueueChoices %s", url); err != nil {
 		return nil, err

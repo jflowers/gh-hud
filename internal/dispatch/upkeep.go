@@ -278,10 +278,17 @@ func (d *Dispatcher) upkeepCheckout(ctx context.Context, m Machine, dir string) 
 		return UpkeepResult{}, fmt.Errorf("%w: %w", errUpkeepSkipped, err)
 	}
 	defer d.releaseUpkeepSlot(key, dir)
+	return d.upkeepHeld(ctx, m, dir, mode != config.UpkeepAuto, true)
+}
+
+// upkeepHeld is upkeepCheckout's work, with the slot already taken:
+// report only says what it would do. Without full it only fast-forwards
+// (and brings submodules along): no backups, no learnings PRs.
+func (d *Dispatcher) upkeepHeld(ctx context.Context, m Machine, dir string, report, full bool) (UpkeepResult, error) {
+	key := m.key()
 	if d.busyElsewhere(ctx, Record{Machine: key, Dir: dir}) {
 		return UpkeepResult{}, fmt.Errorf("%w: an agent is active in the checkout", errUpkeepSkipped)
 	}
-	report := mode != config.UpkeepAuto
 	out, err := m.shell(ctx, upkeepScript(dir, report))
 	u, f := parseUpkeep(out)
 	u.At, u.Report = time.Now(), report
@@ -291,7 +298,7 @@ func (d *Dispatcher) upkeepCheckout(ctx context.Context, m Machine, dir string) 
 	if u.Skipped != "" {
 		return u, fmt.Errorf("%w: %s", errUpkeepSkipped, u.Skipped)
 	}
-	if u.Err == "" {
+	if u.Err == "" && full {
 		did, left, errMsg, changed := d.backUp(ctx, m, dir, u, f, report)
 		switch {
 		case errMsg != "":
@@ -325,7 +332,7 @@ func (d *Dispatcher) upkeepCheckout(ctx context.Context, m Machine, dir string) 
 			u.Left = append(u.Left, "submodule "+l)
 		}
 	}
-	if u.Err == "" {
+	if u.Err == "" && full {
 		d.upkeepLearnings(ctx, m, dir, &u, f)
 	}
 	d.recordUpkeep(key, dir, u)

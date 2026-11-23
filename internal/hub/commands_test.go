@@ -111,6 +111,14 @@ func (d *fakeDisp) PruneBranches(_ context.Context, apply bool) (dispatch.Branch
 
 func (d *fakeDisp) AutoPruneBranches(context.Context) []string { return nil }
 
+func (d *fakeDisp) StartCheckoutAction(machine, dir string, a dispatch.CheckoutAction, done func(string, error)) (string, error) {
+	d.record("CheckoutAction %s %s %s", machine, dir, a)
+	if done != nil {
+		done(dir+": done", nil)
+	}
+	return string(a) + " " + dir, nil
+}
+
 func (d *fakeDisp) QueueChoices(model.Item) []dispatch.Task {
 	return []dispatch.Task{dispatch.TaskReview}
 }
@@ -576,5 +584,46 @@ func TestChoicesSayWhyNothingCanStart(t *testing.T) {
 	}
 	if _, why, _ := h.MenuChoices(ctx, "u1"); why != "" {
 		t.Errorf("MenuChoices(u1) why = %q, want none", why)
+	}
+}
+
+// A checkout action needs a fleet checkout of the last Workspaces read;
+// its outcome comes back as a notice.
+func TestCheckoutAction(t *testing.T) {
+	d := &fakeDisp{owner: true}
+	h := withItems(t, d)
+	h.update(func(s *Snapshot) {
+		s.Workspaces = []dispatch.CheckoutHealth{
+			{Machine: "lap1", Dir: "/w/acme@lap1/r"},
+			{Machine: "lap1", Dir: "/w/other/r", Unmanaged: true},
+		}
+	})
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	_, events := h.Subscribe(ctx)
+
+	started, err := h.CheckoutAction(ctx, "lap1", "/w/acme@lap1/r", dispatch.CheckoutPull)
+	if err != nil || started != "pull /w/acme@lap1/r" {
+		t.Fatalf("CheckoutAction = %q, %v", started, err)
+	}
+	select {
+	case e := <-events:
+		if e.Kind != EventNotice || e.Text != "/w/acme@lap1/r: done" {
+			t.Errorf("event = %+v", e)
+		}
+	case <-time.After(5 * time.Second):
+		t.Error("no notice")
+	}
+	for _, c := range []struct{ machine, dir string }{
+		{"lap1", "/w/other/r"},     // not the fleet's
+		{"lap2", "/w/acme@lap1/r"}, // wrong machine
+		{"lap1", "/w/nowhere"},     // not read
+	} {
+		if _, err := h.CheckoutAction(ctx, c.machine, c.dir, dispatch.CheckoutPull); err == nil {
+			t.Errorf("%s:%s: started", c.machine, c.dir)
+		}
+	}
+	if got := strings.Join(d.calls, ","); got != "CheckoutAction lap1 /w/acme@lap1/r pull" {
+		t.Errorf("calls = %q", got)
 	}
 }

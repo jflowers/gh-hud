@@ -30,6 +30,9 @@ var agentDenied = map[string]bool{
 	ghhudv1connect.HubServiceWatchProcedure:           true,
 	ghhudv1connect.HubServiceWatchRunProcedure:        true,
 	ghhudv1connect.HubServiceOpenTranscriptProcedure:  true,
+	// It moves a checkout's work to a PR or reindexes it: an agent has no
+	// business with another checkout.
+	ghhudv1connect.HubServiceCheckoutActionProcedure: true,
 }
 
 func TestEveryProcedureIsDecidedForTheAgent(t *testing.T) {

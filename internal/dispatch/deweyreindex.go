@@ -209,6 +209,12 @@ func (d *Dispatcher) reindexCheckout(ctx context.Context, m Machine, r Record, r
 		return ReindexResult{}, fmt.Errorf("%w: %w", errReindexSkipped, err)
 	}
 	defer d.releaseReindexSlot(key, r.Dir)
+	return d.reindexHeld(ctx, m, r, reasons)
+}
+
+// reindexHeld is reindexCheckout's work, with the slot already taken.
+func (d *Dispatcher) reindexHeld(ctx context.Context, m Machine, r Record, reasons []string) (ReindexResult, error) {
+	key := m.key()
 	if d.busyElsewhere(ctx, r) {
 		return ReindexResult{}, fmt.Errorf("%w: another agent is active in the checkout", errReindexSkipped)
 	}

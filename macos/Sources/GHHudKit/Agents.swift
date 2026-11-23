@@ -202,6 +202,7 @@ public struct WorkspaceRow: Identifiable, Equatable, Sendable {
         if h.stashes > 0 { n.append("\(h.stashes) stash") }
         if h.learnings > 0 { n.append("\(h.learnings) learnings") }
         if h.hasLastReindex, DeweyIndex.failed(h.lastReindex), !h.reindexing { n.append("reindex failed") }
+        if h.hasLastUpkeep, !h.lastUpkeep.error.isEmpty, !h.upkeeping, !h.unmanaged { n.append("upkeep failed") }
         notes = n.joined(separator: " · ")
         let ready = problem.isEmpty
         if ready, !h.defaultBranch.isEmpty, h.branch != h.defaultBranch {
@@ -240,6 +241,78 @@ public struct WorkspaceRow: Identifiable, Equatable, Sendable {
     }
 
     public var ready: Bool { state == "ready" }
+}
+
+/// What a checkout's right-click menu can start on it (#172), and whether
+/// it can now: the hub's own checkout actions.
+public enum WorkspaceActions {
+    public struct Action: Equatable, Sendable {
+        public let kind: Ghhud_V1_CheckoutActionKind
+        public let title: String
+        public let enabled: Bool
+        /// Pushes or opens a PR: the menu asks first.
+        public let confirm: Bool
+    }
+
+    /// The actions for a checkout, in menu order. A busy checkout (an
+    /// agent, a reindex or an upkeep in it) offers them all disabled; a
+    /// plain ghws dir only fast-forwards and keeps up.
+    public static func actions(_ h: Ghhud_V1_CheckoutHealth) -> [Action] {
+        guard !h.unmanaged else { return [] }
+        let idle = h.busy.isEmpty && !h.reindexing && !h.upkeeping && h.error.isEmpty
+        let onDefault = h.defaultBranch.isEmpty || h.branch == h.defaultBranch
+        let work = !h.dirty.isEmpty || WorkspaceRow.localOnlyCommits(h) > 0 || h.ahead > 0
+        let vault = !h.index.isEmpty && h.index != DeweyIndex.none
+        var out = [
+            Action(kind: .pull, title: h.behind > 0 ? "Fast-Forward \(h.defaultBranch) (\(h.behind) behind)"
+                : "Fast-Forward \(h.defaultBranch.isEmpty ? "Default Branch" : h.defaultBranch)",
+                enabled: idle && !h.noUpstream && !(h.ahead > 0 && h.behind > 0), confirm: false),
+        ]
+        if !h.upkeepOnly {
+            out.append(Action(kind: .learnings, title: "Open Learnings PR" + (h.learnings > 0 ? " (\(h.learnings))" : ""),
+                              enabled: idle && h.learnings > 0 && h.dirty.isEmpty && onDefault, confirm: true))
+            out.append(Action(kind: .save, title: "Save Work to a Draft PR…",
+                              enabled: idle && work && !h.noUpstream, confirm: true))
+        }
+        out.append(Action(kind: .upkeep, title: "Keep Up Now", enabled: idle, confirm: false))
+        if !h.upkeepOnly {
+            out.append(Action(kind: .reindex, title: "Reindex Dewey", enabled: idle && vault, confirm: false))
+        }
+        return out
+    }
+
+    /// What the confirmation says an action will do.
+    public static func confirmation(_ kind: Ghhud_V1_CheckoutActionKind, _ h: Ghhud_V1_CheckoutHealth) -> String {
+        switch kind {
+        case .save:
+            return "Commits everything in \(h.workspace)/\(h.repo.split(separator: "/").last.map(String.init) ?? h.repo) "
+                + "(but untracked learnings) on a wip branch, pushes it to your fork, opens a draft PR from it, "
+                + "and puts the checkout back on \(h.defaultBranch)."
+        case .learnings:
+            return "Commits the \(h.learnings) untracked learning(s) on the day's learnings branch, pushes it to "
+                + "your fork and opens the PR."
+        default:
+            return ""
+        }
+    }
+
+    /// A last upkeep, as the detail shows it: "fast-forward main by 1,
+    /// Nov 19 09:30 (5m ago)" (the hub's UpkeepResult.String).
+    public static func upkeepLine(_ u: Ghhud_V1_UpkeepResult, now: Date = Date()) -> String {
+        var s: String
+        if !u.skipped.isEmpty {
+            s = "skipped: " + u.skipped
+        } else if !u.error.isEmpty {
+            s = "failed: " + u.error
+        } else {
+            var parts: [String] = []
+            if !u.did.isEmpty { parts.append((u.report ? "would " : "") + u.did.joined(separator: "; ")) }
+            if !u.left.isEmpty { parts.append("left: " + u.left.joined(separator: "; ")) }
+            s = parts.isEmpty ? "up to date" : parts.joined(separator: "; ")
+        }
+        if u.hasAt { s += ", " + DeweyIndex.stamp(u.at.date, now: now) }
+        return s
+    }
 }
 
 public enum WorkspaceList {

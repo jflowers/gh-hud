@@ -476,6 +476,60 @@ do {
     check(!WorkspaceList.stale(s, now: now), "not while a read is under way")
 }
 
+// MARK: workspace actions (#172)
+
+do {
+    var h = Ghhud_V1_CheckoutHealth()
+    h.machine = "lap1"; h.workspace = "acme@lap1"; h.repo = "acme/widgets"; h.dir = "/w/acme@lap1/widgets"
+    h.branch = "main"; h.defaultBranch = "main"; h.behind = 3; h.index = "ok"
+    func kinds(_ h: Ghhud_V1_CheckoutHealth) -> [Ghhud_V1_CheckoutActionKind] { WorkspaceActions.actions(h).map(\.kind) }
+    func on(_ h: Ghhud_V1_CheckoutHealth) -> [Ghhud_V1_CheckoutActionKind] {
+        WorkspaceActions.actions(h).filter(\.enabled).map(\.kind)
+    }
+    check(kinds(h) == [.pull, .learnings, .save, .upkeep, .reindex], "workspace actions: menu order \(kinds(h))")
+    check(on(h) == [.pull, .upkeep, .reindex], "workspace actions: a clean vault behind upstream \(on(h))")
+    check(WorkspaceActions.actions(h)[0].title == "Fast-Forward main (3 behind)", "workspace actions: pull title")
+
+    var l = h; l.learnings = 2
+    check(on(l).contains(.learnings), "workspace actions: learnings on a clean default branch")
+    l.branch = "opsx/x"
+    check(!on(l).contains(.learnings), "workspace actions: no learnings PR off the default branch")
+
+    var w = h; w.dirty = ["M a.txt"]
+    check(on(w).contains(.save) && !on(w).contains(.learnings), "workspace actions: save dirty work \(on(w))")
+    var lo = h; lo.localOnly = ["opsx/x\t2"]
+    check(on(lo).contains(.save), "workspace actions: save local-only commits")
+    lo.noUpstream = true
+    check(!on(lo).contains(.save) && !on(lo).contains(.pull), "workspace actions: no fork to save to without upstream")
+    check(WorkspaceActions.actions(w).first { $0.kind == .save }?.confirm == true, "workspace actions: save asks first")
+
+    var d = h; d.ahead = 1
+    check(!on(d).contains(.pull) && on(d).contains(.save), "workspace actions: diverged can't fast-forward, can save")
+
+    var busy = w; busy.busy = "acme/widgets#7"
+    check(on(busy).isEmpty && kinds(busy).count == 5, "workspace actions: a busy checkout offers all, disabled")
+    var up = h; up.upkeeping = true
+    check(on(up).isEmpty, "workspace actions: nothing while upkeep runs")
+
+    var plain = h; plain.upkeepOnly = true
+    check(kinds(plain) == [.pull, .upkeep], "workspace actions: a plain dir only pulls and keeps up")
+    var nv = h; nv.index = DeweyIndex.none
+    check(!on(nv).contains(.reindex), "workspace actions: no reindex outside a vault")
+    var un = h; un.unmanaged = true
+    check(kinds(un).isEmpty, "workspace actions: the unmanaged row has none")
+
+    var u = Ghhud_V1_UpkeepResult()
+    u.did = ["fast-forward main by 1"]
+    check(WorkspaceActions.upkeepLine(u) == "fast-forward main by 1", "upkeep line: did")
+    u.report = true
+    check(WorkspaceActions.upkeepLine(u) == "would fast-forward main by 1", "upkeep line: report")
+    u.error = "push failed"
+    check(WorkspaceActions.upkeepLine(u) == "failed: push failed", "upkeep line: failed")
+    var f = h; f.lastUpkeep = u
+    check(WorkspaceRow(f).notes.contains("upkeep failed"), "workspace row: upkeep failed note")
+    check(WorkspaceRow(h).notes.isEmpty, "workspace row: no notes when clean")
+}
+
 // MARK: plan
 
 do {
