@@ -159,12 +159,15 @@ type Item struct {
 	Labels           []string // label names
 
 	// Which checks fail and whether that matters (see dispatch/checks.go).
-	FailingChecks  []string // names of failing checks on the head commit
-	ChecksRequired bool     // the base branch requires some checks
-	RequiredFails  []string // the failing checks that are required
-	BaseFailing    []string // failing checks on the base branch's latest commit
-	BasePassing    []string // passing checks on the base branch's latest commit
-	BaseOID        string   // the base branch's latest commit
+	FailingChecks []string // names of failing checks on the head commit
+	// CancelledChecks are the head's cancelled check runs: CI shows them
+	// as passing, but GitHub blocks the merge on them (#186).
+	CancelledChecks []string
+	ChecksRequired  bool     // the base branch requires some checks
+	RequiredFails   []string // the failing checks that are required
+	BaseFailing     []string // failing checks on the base branch's latest commit
+	BasePassing     []string // passing checks on the base branch's latest commit
+	BaseOID         string   // the base branch's latest commit
 
 	// What the merge train orders on (see dispatch/train.go).
 	Size  int      // lines added plus removed

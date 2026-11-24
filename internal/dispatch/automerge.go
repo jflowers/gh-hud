@@ -148,6 +148,7 @@ func (d *Dispatcher) AutoMerge(ctx context.Context, items []model.Item) []string
 	}
 	msgs = append(msgs, d.updateHeads(ctx, allRuns)...)
 	msgs = append(msgs, d.rebaseDependabot(ctx, items, allRuns)...)
+	msgs = append(msgs, d.rerunCancelled(ctx, items, allRuns)...)
 	return append(msgs, d.rearmBranches(ctx, allRuns)...)
 }
 

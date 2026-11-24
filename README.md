@@ -1659,6 +1659,15 @@ train, since a push to Dependabot's branch stops Dependabot managing it:
 when the branch rules hold one as behind its base, gh-hud comments
 `@dependabot rebase` instead, once per head commit.
 
+**Cancelled check runs.** A workflow with cancel-in-progress concurrency can
+start two sets of runs on one push and cancel one of them. gh-hud reads a
+cancelled run as passing, but GitHub counts it as failing, so the PR sits
+`BLOCKED` with auto-merge on and green checks, and at the head of a merge
+train it stops the whole repo. When one of the PRs gh-hud merges is
+approved, up to date, `BLOCKED`, has nothing failing or running, and has
+cancelled runs on its head, gh-hud re-runs those workflow runs, once per
+head commit, and says so in its notices.
+
 A PR that's already approved and `CLEAN` when gh-hud first sees it has nothing
 left to wait for, so GitHub refuses auto-merge and gh-hud merges it directly.
 Every call names the head commit it checked, so a newer push makes GitHub

@@ -645,4 +645,49 @@ public interface ItemOrBuilder extends
    */
   com.google.protobuf.ByteString
       getRunEventBytes();
+
+  /**
+   * <pre>
+   * The head's cancelled check runs: CI shows them as passing, but GitHub
+   * blocks the merge on them (#186).
+   * </pre>
+   *
+   * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+   * @return A list containing the cancelledChecks.
+   */
+  java.util.List<java.lang.String>
+      getCancelledChecksList();
+  /**
+   * <pre>
+   * The head's cancelled check runs: CI shows them as passing, but GitHub
+   * blocks the merge on them (#186).
+   * </pre>
+   *
+   * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+   * @return The count of cancelledChecks.
+   */
+  int getCancelledChecksCount();
+  /**
+   * <pre>
+   * The head's cancelled check runs: CI shows them as passing, but GitHub
+   * blocks the merge on them (#186).
+   * </pre>
+   *
+   * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+   * @param index The index of the element to return.
+   * @return The cancelledChecks at the given index.
+   */
+  java.lang.String getCancelledChecks(int index);
+  /**
+   * <pre>
+   * The head's cancelled check runs: CI shows them as passing, but GitHub
+   * blocks the merge on them (#186).
+   * </pre>
+   *
+   * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+   * @param index The index of the element to return.
+   * @return The cancelledChecks at the given index.
+   */
+  com.google.protobuf.ByteString
+      getCancelledChecksBytes(int index);
 }

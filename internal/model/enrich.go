@@ -100,6 +100,20 @@ func FailingChecks(checks []checkContext) []string {
 	return out
 }
 
+// CancelledChecks returns the names of check runs that were cancelled.
+// The verdict counts a cancelled run as passing (it's no finding about the
+// code), but GitHub's rollup counts it as failing and blocks the merge
+// until it's re-run (#186).
+func CancelledChecks(checks []checkContext) []string {
+	var out []string
+	for _, c := range checks {
+		if c.Status == "COMPLETED" && c.Conclusion == "CANCELLED" && !slices.Contains(out, c.label()) {
+			out = append(out, c.label())
+		}
+	}
+	return out
+}
+
 // PassingChecks returns the names of checks that passed.
 func PassingChecks(checks []checkContext) []string {
 	var out []string

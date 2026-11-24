@@ -223,3 +223,20 @@ func TestFetchAllMergeNotifications(t *testing.T) {
 		t.Errorf("reasons: %v", it.Reasons)
 	}
 }
+
+// A cancelled run reads as passing CI, and is listed apart (#186).
+func TestCancelledChecks(t *testing.T) {
+	checks := []checkContext{
+		{Name: "Test", Status: "COMPLETED", Conclusion: "CANCELLED"},
+		{Name: "Test", Status: "COMPLETED", Conclusion: "SUCCESS"},
+		{Name: "Lint", Status: "COMPLETED", Conclusion: "CANCELLED"},
+		{Name: "Build", Status: "COMPLETED", Conclusion: "SUCCESS"},
+		{Context: "ci/legacy", State: "SUCCESS"},
+	}
+	if got := CancelledChecks(checks); len(got) != 2 || got[0] != "Test" || got[1] != "Lint" {
+		t.Errorf("cancelled = %v", got)
+	}
+	if got := CIEmoji(checks); got != CIOK {
+		t.Errorf("ci = %v, want ok", got)
+	}
+}
