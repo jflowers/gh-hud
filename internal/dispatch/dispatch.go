@@ -319,6 +319,9 @@ type Dispatcher struct {
 	// approve checks a learnings PR and approves it as the bot (a hook for
 	// tests).
 	approve func(ctx context.Context, it model.Item) error
+	// rerun re-runs the cancelled workflow runs on a repo's commit and
+	// returns how many (a hook for tests).
+	rerun func(ctx context.Context, repo, sha string) (int, error)
 	// Guarded by mu: the state auto-merge last acted on, per PR.
 	mergeTried map[string]string
 
@@ -527,6 +530,7 @@ func New(opts Options) (*Dispatcher, error) {
 			return gh.New().Graphql(ctx, query, vars, nil)
 		},
 		approve:    approveLearningsGH,
+		rerun:      rerunCancelledGH,
 		mergeTried: map[string]string{},
 	}
 	d.loadState()

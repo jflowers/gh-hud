@@ -112,6 +112,12 @@ func (c *Client) REST(ctx context.Context, path string, out any) error {
 	return nil
 }
 
+// Post calls a REST endpoint with POST and no body, ignoring the response.
+func (c *Client) Post(ctx context.Context, path string) error {
+	_, err := run(ctx, "api", "-X", "POST", path)
+	return err
+}
+
 var (
 	ghPathOnce sync.Once
 	ghPath     string

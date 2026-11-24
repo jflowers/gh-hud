@@ -44,6 +44,7 @@ public  final class Item extends
     headBranch_ = "";
     runBranch_ = "";
     runEvent_ = "";
+    cancelledChecks_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int KIND_FIELD_NUMBER = 1;
@@ -2413,6 +2414,144 @@ public  final class Item extends
     checkByteStringIsUtf8(value);
     runEvent_ = value.toStringUtf8();
 
+  }
+
+  public static final int CANCELLED_CHECKS_FIELD_NUMBER = 46;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> cancelledChecks_;
+  /**
+   * <pre>
+   * The head's cancelled check runs: CI shows them as passing, but GitHub
+   * blocks the merge on them (#186).
+   * </pre>
+   *
+   * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+   * @return A list containing the cancelledChecks.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getCancelledChecksList() {
+    return cancelledChecks_;
+  }
+  /**
+   * <pre>
+   * The head's cancelled check runs: CI shows them as passing, but GitHub
+   * blocks the merge on them (#186).
+   * </pre>
+   *
+   * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+   * @return The count of cancelledChecks.
+   */
+  @java.lang.Override
+  public int getCancelledChecksCount() {
+    return cancelledChecks_.size();
+  }
+  /**
+   * <pre>
+   * The head's cancelled check runs: CI shows them as passing, but GitHub
+   * blocks the merge on them (#186).
+   * </pre>
+   *
+   * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+   * @param index The index of the element to return.
+   * @return The cancelledChecks at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getCancelledChecks(int index) {
+    return cancelledChecks_.get(index);
+  }
+  /**
+   * <pre>
+   * The head's cancelled check runs: CI shows them as passing, but GitHub
+   * blocks the merge on them (#186).
+   * </pre>
+   *
+   * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the cancelledChecks at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getCancelledChecksBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        cancelledChecks_.get(index));
+  }
+  private void ensureCancelledChecksIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        cancelledChecks_;  if (!tmp.isModifiable()) {
+      cancelledChecks_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <pre>
+   * The head's cancelled check runs: CI shows them as passing, but GitHub
+   * blocks the merge on them (#186).
+   * </pre>
+   *
+   * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+   * @param index The index to set the value at.
+   * @param value The cancelledChecks to set.
+   */
+  private void setCancelledChecks(
+      int index, java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureCancelledChecksIsMutable();
+    cancelledChecks_.set(index, value);
+  }
+  /**
+   * <pre>
+   * The head's cancelled check runs: CI shows them as passing, but GitHub
+   * blocks the merge on them (#186).
+   * </pre>
+   *
+   * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+   * @param value The cancelledChecks to add.
+   */
+  private void addCancelledChecks(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureCancelledChecksIsMutable();
+    cancelledChecks_.add(value);
+  }
+  /**
+   * <pre>
+   * The head's cancelled check runs: CI shows them as passing, but GitHub
+   * blocks the merge on them (#186).
+   * </pre>
+   *
+   * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+   * @param values The cancelledChecks to add.
+   */
+  private void addAllCancelledChecks(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureCancelledChecksIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, cancelledChecks_);
+  }
+  /**
+   * <pre>
+   * The head's cancelled check runs: CI shows them as passing, but GitHub
+   * blocks the merge on them (#186).
+   * </pre>
+   *
+   * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+   */
+  private void clearCancelledChecks() {
+    cancelledChecks_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * The head's cancelled check runs: CI shows them as passing, but GitHub
+   * blocks the merge on them (#186).
+   * </pre>
+   *
+   * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+   * @param value The bytes of the cancelledChecks to add.
+   */
+  private void addCancelledChecksBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureCancelledChecksIsMutable();
+    cancelledChecks_.add(value.toStringUtf8());
   }
 
   public static io.github.jflowers.ghhud.api.v1.Item parseFrom(
@@ -4957,6 +5096,143 @@ public  final class Item extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The head's cancelled check runs: CI shows them as passing, but GitHub
+     * blocks the merge on them (#186).
+     * </pre>
+     *
+     * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+     * @return A list containing the cancelledChecks.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getCancelledChecksList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getCancelledChecksList());
+    }
+    /**
+     * <pre>
+     * The head's cancelled check runs: CI shows them as passing, but GitHub
+     * blocks the merge on them (#186).
+     * </pre>
+     *
+     * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+     * @return The count of cancelledChecks.
+     */
+    @java.lang.Override
+    public int getCancelledChecksCount() {
+      return instance.getCancelledChecksCount();
+    }
+    /**
+     * <pre>
+     * The head's cancelled check runs: CI shows them as passing, but GitHub
+     * blocks the merge on them (#186).
+     * </pre>
+     *
+     * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+     * @param index The index of the element to return.
+     * @return The cancelledChecks at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getCancelledChecks(int index) {
+      return instance.getCancelledChecks(index);
+    }
+    /**
+     * <pre>
+     * The head's cancelled check runs: CI shows them as passing, but GitHub
+     * blocks the merge on them (#186).
+     * </pre>
+     *
+     * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the cancelledChecks at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getCancelledChecksBytes(int index) {
+      return instance.getCancelledChecksBytes(index);
+    }
+    /**
+     * <pre>
+     * The head's cancelled check runs: CI shows them as passing, but GitHub
+     * blocks the merge on them (#186).
+     * </pre>
+     *
+     * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+     * @param index The index to set the value at.
+     * @param value The cancelledChecks to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCancelledChecks(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setCancelledChecks(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The head's cancelled check runs: CI shows them as passing, but GitHub
+     * blocks the merge on them (#186).
+     * </pre>
+     *
+     * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+     * @param value The cancelledChecks to add.
+     * @return This builder for chaining.
+     */
+    public Builder addCancelledChecks(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addCancelledChecks(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The head's cancelled check runs: CI shows them as passing, but GitHub
+     * blocks the merge on them (#186).
+     * </pre>
+     *
+     * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+     * @param values The cancelledChecks to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllCancelledChecks(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllCancelledChecks(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * The head's cancelled check runs: CI shows them as passing, but GitHub
+     * blocks the merge on them (#186).
+     * </pre>
+     *
+     * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearCancelledChecks() {
+      copyOnWrite();
+      instance.clearCancelledChecks();
+      return this;
+    }
+    /**
+     * <pre>
+     * The head's cancelled check runs: CI shows them as passing, but GitHub
+     * blocks the merge on them (#186).
+     * </pre>
+     *
+     * <code>repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];</code>
+     * @param value The bytes of the cancelledChecks to add.
+     * @return This builder for chaining.
+     */
+    public Builder addCancelledChecksBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addCancelledChecksBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.Item)
   }
   @java.lang.Override
@@ -5019,15 +5295,16 @@ public  final class Item extends
             "runEvent_",
             "threadsOpen_",
             "threadsMore_",
+            "cancelledChecks_",
           };
           java.lang.String info =
-              "\u0000-\u0000\u0001\u0001--\u0000\u0007\u0000\u0001\f\u0002\u000b\u0003\u0208\u0004" +
-              "\u0208\u0005\u0002\u0006\u0208\u0007\u0208\b\u0007\t\u1009\u0000\n\u1009\u0001\u000b" +
-              "\f\f\f\r\u0208\u000e\u0208\u000f\u0208\u0010\u0002\u0011\u0002\u0012\u0208\u0013" +
-              "\u0208\u0014\u0007\u0015\u0007\u0016\u0007\u0017\u0007\u0018\u021a\u0019\u0208\u001a" +
-              "\u0208\u001b\u0208\u001c\u0208\u001d\u0002\u001e\u0007\u001f\u0007 \u021a!\u021a" +
-              "\"\u0007#\u021a$\u021a%\u021a&\u0208\'\u0002(\u021a)\u0208*\u0208+\u0208,\u0002-" +
-              "\u0007";
+              "\u0000.\u0000\u0001\u0001..\u0000\b\u0000\u0001\f\u0002\u000b\u0003\u0208\u0004\u0208" +
+              "\u0005\u0002\u0006\u0208\u0007\u0208\b\u0007\t\u1009\u0000\n\u1009\u0001\u000b\f" +
+              "\f\f\r\u0208\u000e\u0208\u000f\u0208\u0010\u0002\u0011\u0002\u0012\u0208\u0013\u0208" +
+              "\u0014\u0007\u0015\u0007\u0016\u0007\u0017\u0007\u0018\u021a\u0019\u0208\u001a\u0208" +
+              "\u001b\u0208\u001c\u0208\u001d\u0002\u001e\u0007\u001f\u0007 \u021a!\u021a\"\u0007" +
+              "#\u021a$\u021a%\u021a&\u0208\'\u0002(\u021a)\u0208*\u0208+\u0208,\u0002-\u0007.\u021a" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

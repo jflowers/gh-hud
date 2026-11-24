@@ -385,6 +385,7 @@ func BuildPRItem(n prNode, me string, bots *BotFilter) Item {
 	required := requiredChecks(n)
 	it.ChecksRequired = len(required) > 0
 	it.FailingChecks = FailingChecks(checks)
+	it.CancelledChecks = CancelledChecks(checks)
 	for _, name := range it.FailingChecks {
 		if required[name] {
 			it.RequiredFails = append(it.RequiredFails, name)

@@ -1366,7 +1366,112 @@ public object ItemKt {
     public fun clearRunEvent() {
       _builder.clearRunEvent()
     }
-  }
+
+    /**
+     * An uninstantiable, behaviorless type to represent the field in
+     * generics.
+     */
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+    public class CancelledChecksProxy private constructor() : com.google.protobuf.kotlin.DslProxy()
+    /**
+     * ```
+     * The head's cancelled check runs: CI shows them as passing, but GitHub
+     * blocks the merge on them (#186).
+     * ```
+     *
+     * `repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];`
+     * @return A list containing the cancelledChecks.
+     */
+    public val cancelledChecks: com.google.protobuf.kotlin.DslList<kotlin.String, CancelledChecksProxy>
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+      get() = com.google.protobuf.kotlin.DslList(
+        _builder.cancelledChecksList
+      )
+    /**
+     * ```
+     * The head's cancelled check runs: CI shows them as passing, but GitHub
+     * blocks the merge on them (#186).
+     * ```
+     *
+     * `repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];`
+     * @param value The cancelledChecks to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addCancelledChecks")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, CancelledChecksProxy>.add(value: kotlin.String) {
+      _builder.addCancelledChecks(value)
+    }
+    /**
+     * ```
+     * The head's cancelled check runs: CI shows them as passing, but GitHub
+     * blocks the merge on them (#186).
+     * ```
+     *
+     * `repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];`
+     * @param value The cancelledChecks to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignCancelledChecks")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, CancelledChecksProxy>.plusAssign(value: kotlin.String) {
+      add(value)
+    }
+    /**
+     * ```
+     * The head's cancelled check runs: CI shows them as passing, but GitHub
+     * blocks the merge on them (#186).
+     * ```
+     *
+     * `repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];`
+     * @param values The cancelledChecks to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addAllCancelledChecks")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, CancelledChecksProxy>.addAll(values: kotlin.collections.Iterable<kotlin.String>) {
+      _builder.addAllCancelledChecks(values)
+    }
+    /**
+     * ```
+     * The head's cancelled check runs: CI shows them as passing, but GitHub
+     * blocks the merge on them (#186).
+     * ```
+     *
+     * `repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];`
+     * @param values The cancelledChecks to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignAllCancelledChecks")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, CancelledChecksProxy>.plusAssign(values: kotlin.collections.Iterable<kotlin.String>) {
+      addAll(values)
+    }
+    /**
+     * ```
+     * The head's cancelled check runs: CI shows them as passing, but GitHub
+     * blocks the merge on them (#186).
+     * ```
+     *
+     * `repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];`
+     * @param index The index to set the value at.
+     * @param value The cancelledChecks to set.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setCancelledChecks")
+    public operator fun com.google.protobuf.kotlin.DslList<kotlin.String, CancelledChecksProxy>.set(index: kotlin.Int, value: kotlin.String) {
+      _builder.setCancelledChecks(index, value)
+    }/**
+     * ```
+     * The head's cancelled check runs: CI shows them as passing, but GitHub
+     * blocks the merge on them (#186).
+     * ```
+     *
+     * `repeated string cancelled_checks = 46 [json_name = "cancelledChecks"];`
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setCancelledChecks")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, CancelledChecksProxy>.clear() {
+      _builder.clearCancelledChecks()
+    }}
 }
 public inline fun io.github.jflowers.ghhud.api.v1.Item.copy(block: `io.github.jflowers.ghhud.api.v1`.ItemKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.Item =
   `io.github.jflowers.ghhud.api.v1`.ItemKt.Dsl._create(this.toBuilder()).apply { block() }._build()

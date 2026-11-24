@@ -4084,8 +4084,11 @@ type Item struct {
 	HeadBranch       string   `protobuf:"bytes,41,opt,name=head_branch,json=headBranch,proto3" json:"head_branch,omitempty"`
 	RunBranch        string   `protobuf:"bytes,42,opt,name=run_branch,json=runBranch,proto3" json:"run_branch,omitempty"`
 	RunEvent         string   `protobuf:"bytes,43,opt,name=run_event,json=runEvent,proto3" json:"run_event,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The head's cancelled check runs: CI shows them as passing, but GitHub
+	// blocks the merge on them (#186).
+	CancelledChecks []string `protobuf:"bytes,46,rep,name=cancelled_checks,json=cancelledChecks,proto3" json:"cancelled_checks,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Item) Reset() {
@@ -4431,6 +4434,13 @@ func (x *Item) GetRunEvent() string {
 		return x.RunEvent
 	}
 	return ""
+}
+
+func (x *Item) GetCancelledChecks() []string {
+	if x != nil {
+		return x.CancelledChecks
+	}
+	return nil
 }
 
 // Session is an agent session on some machine.
@@ -7851,7 +7861,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x05total\x18\x03 \x01(\x03R\x05total\"B\n" +
 	"\fSectionError\x12\x18\n" +
 	"\asection\x18\x01 \x01(\tR\asection\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\xae\v\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\xd9\v\n" +
 	"\x04Item\x12&\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x12.ghhud.v1.ItemKindR\x04kind\x12\x1e\n" +
 	"\n" +
@@ -7910,7 +7920,8 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"headBranch\x12\x1d\n" +
 	"\n" +
 	"run_branch\x18* \x01(\tR\trunBranch\x12\x1b\n" +
-	"\trun_event\x18+ \x01(\tR\brunEvent\"\x8e\x04\n" +
+	"\trun_event\x18+ \x01(\tR\brunEvent\x12)\n" +
+	"\x10cancelled_checks\x18. \x03(\tR\x0fcancelledChecks\"\x8e\x04\n" +
 	"\aSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1c\n" +

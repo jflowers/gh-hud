@@ -590,6 +590,9 @@ message Item {
   string head_branch = 41;
   string run_branch = 42;
   string run_event = 43;
+  // The head's cancelled check runs: CI shows them as passing, but GitHub
+  // blocks the merge on them (#186).
+  repeated string cancelled_checks = 46;
 }
 
 // Session is an agent session on some machine.
