@@ -327,6 +327,7 @@ max_concurrent = 5
 ghws_root = "~/work/ghws"
 tasks = ["review", "ci"]
 enabled = false
+agents = false
 `
 	if err := os.WriteFile(path, []byte(toml), 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
@@ -355,6 +356,12 @@ enabled = false
 	if w2.IsEnabled() {
 		t.Error("worker-2 enabled: want false (explicit)")
 	}
+	if !lap1.RunsAgents() {
+		t.Error("lap1 agents: want true by default")
+	}
+	if w2.RunsAgents() {
+		t.Error("worker-2 agents: want false (explicit)")
+	}
 	if len(w2.Tasks) != 2 || w2.Tasks[0] != "review" || w2.Tasks[1] != "ci" {
 		t.Errorf("worker-2 tasks: %v", w2.Tasks)
 	}
@@ -365,6 +372,7 @@ func TestLoadMachinesValidation(t *testing.T) {
 		{"missing name", "[[machines]]\nssh = \"x\"\n", "name is required"},
 		{"reserved local", "[[machines]]\nname = \"local\"\n", "reserved"},
 		{"duplicate", "[[machines]]\nname = \"a\"\n\n[[machines]]\nname = \"a\"\n", "duplicate"},
+		{"agents off but enabled", "[[machines]]\nname = \"a\"\nagents = false\n", "agents = false needs enabled = false"},
 	}
 	for _, tc := range cases {
 		path := filepath.Join(t.TempDir(), "config.toml")

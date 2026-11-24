@@ -60,7 +60,8 @@ func (d *Dispatcher) drainSnapshot() map[string]bool {
 // A machine with enabled = false still gets fleet rollouts but is never in
 // the scheduler's agent snapshot (agentsSnapshot polls enabled remotes
 // only), so its herdr is asked directly; reading the missing snapshot entry
-// as "unreachable" would hold its drain forever.
+// as "unreachable" would hold its drain forever. A machine with NoAgents
+// has no herdr to ask: it is idle by construction.
 func (d *Dispatcher) LiveOn(ctx context.Context, name string) (records, agents int, ok bool) {
 	key := drainKey(name)
 	m := d.localMachine()
@@ -74,6 +75,9 @@ func (d *Dispatcher) LiveOn(ctx context.Context, name string) (records, agents i
 		}
 		if !found {
 			return 0, 0, false
+		}
+		if m.NoAgents {
+			return 0, 0, true
 		}
 	}
 	snaps := d.agentsSnapshot(ctx)

@@ -1406,6 +1406,7 @@ adds a worker reached over ssh:
 | `labels` | any | the machine only takes PRs and issues with at least one of these labels |
 | `exclude_labels` | none | the machine never takes a PR or issue with any of these labels |
 | `enabled` | true | `false` takes the machine out of placement and polling; fleet rollouts still reach it (a drain asks its herdr directly) |
+| `agents` | true | `false` says the machine runs no agents and has no herdr (a services box); a fleet drain counts it idle without asking herdr. Needs `enabled = false` |
 | `dispatch_mode` | top-level | `run` (headless) or `tui` for agents on this machine |
 
 Placement ranks the machines that qualify for a dispatch (enabled,

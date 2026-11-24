@@ -32,6 +32,9 @@ type Machine struct {
 	// from GhwsRoot, except Keep (upkeep_unmanaged.go). Never for Local.
 	RemoveUnmanaged bool
 	Keep            []string
+	// NoAgents: the machine runs no agents and has no herdr ([[machines]]
+	// agents = false), so a drain counts it idle without asking herdr.
+	NoAgents bool
 }
 
 // labelBlock says why the machine's label rules refuse an item with

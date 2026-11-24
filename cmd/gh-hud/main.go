@@ -474,6 +474,7 @@ func dispatchOptions(cfg *config.Config, stateDir string, wsDirs []string, idx *
 
 			RemoveUnmanaged: mc.RemoveUnmanaged,
 			Keep:            mc.Keep,
+			NoAgents:        !mc.RunsAgents(),
 		})
 	}
 	return dispatch.Options{

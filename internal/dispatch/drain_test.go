@@ -96,3 +96,30 @@ func TestLiveOnDisabledMachine(t *testing.T) {
 		t.Errorf("hub: ok = %v, direct herdr calls = %v, want true and none", ok, asked)
 	}
 }
+
+// A machine with agents = false (NoAgents) has no herdr: its drain is idle
+// at once, and herdr is never asked (it isn't there to answer, which would
+// hold the drain forever).
+func TestLiveOnNoAgentsMachine(t *testing.T) {
+	d, err := New(Options{
+		Root:     "/tmp/ghws",
+		StateDir: t.TempDir(),
+		Machines: []Machine{{Name: "mini1", Max: 1, Enabled: false, NoAgents: true}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var asked []string
+	drainAgents = func(_ context.Context, m Machine) ([]herdrAgent, map[string]string, error) {
+		asked = append(asked, m.Name)
+		return nil, nil, errors.New("herdr: command not found")
+	}
+	t.Cleanup(func() { drainAgents = herdrAgents })
+
+	if records, agents, ok := d.LiveOn(context.Background(), "mini1"); !ok || records != 0 || agents != 0 {
+		t.Errorf("no-agents machine: LiveOn = (%d, %d, %v), want (0, 0, true)", records, agents, ok)
+	}
+	if len(asked) != 0 {
+		t.Errorf("herdr asked for %v, want none", asked)
+	}
+}
