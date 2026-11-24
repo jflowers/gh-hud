@@ -748,13 +748,13 @@ func applyOKLine(out, sha string) bool {
 }
 
 // failureDetail keeps the failing output tail for the view: the command's
-// own output (its FAIL line) plus stderr and the exec error. Output is
-// command output only — environment or secrets are never captured.
+// own output (its FAIL line) plus stderr and the exec error. Every client
+// flattens it to one line and shows the start, so it leads with the
+// headline (failureHeadline): the FAIL reason and the lines that say what
+// went wrong. The raw tail follows, then the exec error ("exit status 1"
+// says nothing on its own). Output is command output only — environment
+// or secrets are never captured.
 func failureDetail(out, errOut string, err error) string {
-	var b strings.Builder
-	if err != nil {
-		b.WriteString(err.Error())
-	}
 	combined := strings.TrimSpace(out)
 	if e := strings.TrimSpace(errOut); e != "" {
 		if combined != "" {
@@ -762,19 +762,66 @@ func failureDetail(out, errOut string, err error) string {
 		}
 		combined += e
 	}
-	if combined != "" {
-		if b.Len() > 0 {
-			b.WriteString("\n")
-		}
-		b.WriteString(strings.Join(tailLines(combined, errTailLines), "\n"))
+	var parts []string
+	if h := failureHeadline(out, errOut); h != "" {
+		parts = append(parts, h)
 	}
-	if b.Len() == 0 {
+	if combined != "" {
+		parts = append(parts, strings.Join(tailLines(combined, errTailLines), "\n"))
+	}
+	if err != nil {
+		parts = append(parts, err.Error())
+	}
+	if len(parts) == 0 {
 		return "fleet-apply failed"
 	}
-	if b.Len() > errTailMax {
-		return b.String()[:errTailMax]
+	s := strings.Join(parts, "\n")
+	if len(s) > errTailMax {
+		return s[:errTailMax]
 	}
-	return b.String()
+	return s
+}
+
+// failureHeadline picks the lines that explain a fleet-apply failure out
+// of its output: the "fleet-apply: FAIL <reason>" line, its "health: ..."
+// findings, git's "error:"/"fatal:" lines (with the tab-indented paths git
+// lists under them), and chezmoi's last "chezmoi: <target>: ..." line,
+// which names what it was applying. Empty when none are present.
+func failureHeadline(out, errOut string) string {
+	var fail string
+	var picked []string
+	for _, l := range strings.Split(out, "\n") {
+		t := strings.TrimSpace(l)
+		switch {
+		case strings.HasPrefix(t, "fleet-apply: FAIL"):
+			fail = strings.TrimPrefix(t, "fleet-apply: ")
+		case strings.HasPrefix(t, "health: "):
+			picked = append(picked, t)
+		}
+	}
+	var chezmoi string
+	lines := strings.Split(errOut, "\n")
+	for i := 0; i < len(lines); i++ {
+		t := strings.TrimSpace(lines[i])
+		switch {
+		case strings.HasPrefix(t, "error:"), strings.HasPrefix(t, "fatal:"):
+			msg := t
+			for i+1 < len(lines) && strings.HasPrefix(lines[i+1], "\t") {
+				i++
+				msg += " " + strings.TrimSpace(lines[i])
+			}
+			picked = append(picked, msg)
+		case strings.HasPrefix(t, "chezmoi: "):
+			chezmoi = t
+		}
+	}
+	if chezmoi != "" {
+		picked = append(picked, chezmoi)
+	}
+	if fail != "" {
+		picked = append([]string{fail}, picked...)
+	}
+	return strings.Join(picked, "\n")
 }
 
 func firstErr(errs ...error) error {

@@ -721,3 +721,34 @@ func TestNewRequiresMachines(t *testing.T) {
 		t.Errorf("New without machines: err = %v, want no-machines error", err)
 	}
 }
+
+// TestFailureDetailLeadsWithReason: clients show only the start of the
+// detail, so the FAIL reason and git's error come before the diffstat
+// noise a chezmoi git-repo pull prints (the lap1 failure that hid behind
+// "exit status 1 Fast-forward .github/workflows/ci.yml | 35 +++").
+func TestFailureDetailLeadsWithReason(t *testing.T) {
+	out := "Updating e0c8914..278a469\nFast-forward\n .github/workflows/ci.yml | 35 +++++\n 1 file changed\nfleet-apply: FAIL chezmoi apply\n"
+	errOut := "From github.com:jflowers/opencode-session-search\n   e0c8914..278a469  main       -> origin/main\n" +
+		"error: The following untracked working tree files would be overwritten by merge:\n\tAGENTS.md\n" +
+		"Please move or remove them before you merge.\nAborting\n" +
+		"chezmoi: Projects/github/jflowers/opencode-session-search: exit status 1\n"
+	detail := failureDetail(out, errOut, errors.New("exit status 1"))
+	want := "FAIL chezmoi apply\n" +
+		"error: The following untracked working tree files would be overwritten by merge: AGENTS.md\n" +
+		"chezmoi: Projects/github/jflowers/opencode-session-search: exit status 1\n"
+	if !strings.HasPrefix(detail, want) {
+		t.Errorf("failureDetail headline:\n%s\nwant prefix:\n%s", detail, want)
+	}
+	if !strings.HasSuffix(detail, "\nexit status 1") {
+		t.Errorf("failureDetail should end with the exec error: %q", detail)
+	}
+
+	health := failureDetail("health: missing herdr\nhealth: gh not authenticated\nfleet-apply: FAIL health check after apply\n", "", errors.New("exit status 1"))
+	if !strings.HasPrefix(health, "FAIL health check after apply\nhealth: missing herdr\nhealth: gh not authenticated\n") {
+		t.Errorf("health failure headline: %q", health)
+	}
+
+	if got := failureDetail("", "", nil); got != "fleet-apply failed" {
+		t.Errorf("empty failureDetail = %q", got)
+	}
+}
