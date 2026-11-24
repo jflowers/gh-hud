@@ -258,6 +258,8 @@ public object HubSummary {
             else -> "first refresh…"
         }
         if (s.follower.isNotEmpty()) parts += "read-only: gh-hud pid ${s.follower} owns dispatch"
+        // A section its search cut short: older matches gh-hud can't see (#184).
+        s.result.cutShortList.forEach { parts += "${it.section}: ${it.shown} of ${it.total} shown" }
         if (s.hasFleet()) {
             if (s.fleet.failed.isNotEmpty()) {
                 parts += "fleet failed on ${s.fleet.failed}"

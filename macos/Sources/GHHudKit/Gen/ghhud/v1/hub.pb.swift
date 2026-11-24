@@ -1599,12 +1599,33 @@ public nonisolated struct Ghhud_V1_FetchResult: Sendable {
 
   public var user: String = String()
 
+  /// Sections whose search matched more than they read (#184): the least
+  /// recently updated matches aren't here, and nothing acts on them.
+  public var cutShort: [Ghhud_V1_SectionCut] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _took: SwiftProtobuf.Google_Protobuf_Duration? = nil
   fileprivate var _fetchedAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+}
+
+/// SectionCut is a dashboard section its search cut short.
+public nonisolated struct Ghhud_V1_SectionCut: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var section: String = String()
+
+  public var shown: Int64 = 0
+
+  public var total: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
 }
 
 /// SectionError is a dashboard section that failed to load.
@@ -5765,7 +5786,7 @@ nonisolated extension Ghhud_V1_Snapshot: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension Ghhud_V1_FetchResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".FetchResult"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}items\0\u{1}errors\0\u{1}took\0\u{3}fetched_at\0\u{1}user\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}items\0\u{1}errors\0\u{1}took\0\u{3}fetched_at\0\u{1}user\0\u{3}cut_short\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5778,6 +5799,7 @@ nonisolated extension Ghhud_V1_FetchResult: SwiftProtobuf.Message, SwiftProtobuf
       case 3: try { try decoder.decodeSingularMessageField(value: &self._took) }()
       case 4: try { try decoder.decodeSingularMessageField(value: &self._fetchedAt) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.user) }()
+      case 6: try { try decoder.decodeRepeatedMessageField(value: &self.cutShort) }()
       default: break
       }
     }
@@ -5803,6 +5825,9 @@ nonisolated extension Ghhud_V1_FetchResult: SwiftProtobuf.Message, SwiftProtobuf
     if !self.user.isEmpty {
       try visitor.visitSingularStringField(value: self.user, fieldNumber: 5)
     }
+    if !self.cutShort.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.cutShort, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -5812,6 +5837,47 @@ nonisolated extension Ghhud_V1_FetchResult: SwiftProtobuf.Message, SwiftProtobuf
     if lhs._took != rhs._took {return false}
     if lhs._fetchedAt != rhs._fetchedAt {return false}
     if lhs.user != rhs.user {return false}
+    if lhs.cutShort != rhs.cutShort {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_SectionCut: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SectionCut"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}section\0\u{1}shown\0\u{1}total\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.section) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self.shown) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.total) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.section.isEmpty {
+      try visitor.visitSingularStringField(value: self.section, fieldNumber: 1)
+    }
+    if self.shown != 0 {
+      try visitor.visitSingularInt64Field(value: self.shown, fieldNumber: 2)
+    }
+    if self.total != 0 {
+      try visitor.visitSingularInt64Field(value: self.total, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_SectionCut, rhs: Ghhud_V1_SectionCut) -> Bool {
+    if lhs.section != rhs.section {return false}
+    if lhs.shown != rhs.shown {return false}
+    if lhs.total != rhs.total {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

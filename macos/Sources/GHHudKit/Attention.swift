@@ -277,6 +277,10 @@ public enum HubSummary {
         if !s.follower.isEmpty {
             parts.append("read-only: gh-hud pid \(s.follower) owns dispatch")
         }
+        // A section its search cut short: older matches gh-hud can't see (#184).
+        for c in s.result.cutShort {
+            parts.append("\(c.section): \(c.shown) of \(c.total) shown")
+        }
         if s.hasFleet {
             if !s.fleet.failed.isEmpty {
                 parts.append("fleet failed on \(s.fleet.failed)")

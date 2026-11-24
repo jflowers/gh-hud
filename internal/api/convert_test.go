@@ -209,3 +209,13 @@ func TestSectionErrorMessage(t *testing.T) {
 		t.Errorf("section error = %+v", e)
 	}
 }
+
+// A section its search cut short survives the trip (#184).
+func TestSectionCutRoundTrip(t *testing.T) {
+	cut := model.SectionCut{Section: "my-prs", Shown: 300, Total: 340}
+	s := hub.Snapshot{Res: &model.FetchResult{User: "me", CutShort: []model.SectionCut{cut}}}
+	got := SnapshotFromPB(SnapshotToPB(s))
+	if len(got.Res.CutShort) != 1 || got.Res.CutShort[0] != cut {
+		t.Errorf("cut short = %+v", got.Res.CutShort)
+	}
+}

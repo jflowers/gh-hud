@@ -11,8 +11,10 @@ import (
 // prSearchQuery is a port of the org-mode GraphQL search from pr-list.sh,
 // extended with recent commit authors for the last-actor computation.
 const prSearchQuery = `
-query($searchQuery: String!, $limit: Int!) {
-  search(query: $searchQuery, type: ISSUE, first: $limit) {
+query($searchQuery: String!, $limit: Int!, $after: String) {
+  search(query: $searchQuery, type: ISSUE, first: $limit, after: $after) {
+    issueCount
+    pageInfo { hasNextPage endCursor }
     nodes {
       ... on PullRequest {
 ` + prFields + `
@@ -100,7 +102,9 @@ const prFields = `
 
 type prSearchResult struct {
 	Search struct {
-		Nodes []prNode `json:"nodes"`
+		IssueCount int      `json:"issueCount"`
+		PageInfo   pageInfo `json:"pageInfo"`
+		Nodes      []prNode `json:"nodes"`
 	} `json:"search"`
 }
 
@@ -236,18 +240,26 @@ type reviewNode struct {
 	} `json:"commit"`
 }
 
-// fetchPRSearch runs a GitHub search restricted to open PRs and returns the
-// raw nodes. extra qualifiers are prepended to the search string.
-func fetchPRSearch(ctx context.Context, c *gh.Client, search string, limit int) ([]prNode, error) {
-	var res prSearchResult
-	vars := map[string]any{
-		"searchQuery": search + " is:pr is:open sort:updated-desc",
-		"limit":       limit,
-	}
-	if err := c.Graphql(ctx, prSearchQuery, vars, &res); err != nil {
-		return nil, err
-	}
-	return res.Search.Nodes, nil
+// fetchPRSearch runs a GitHub search restricted to open PRs and returns up
+// to upTo raw nodes, most recently updated first, and how many PRs match in
+// all. It reads them prPage at a time, each page bounded by pageTimeout.
+func fetchPRSearch(ctx context.Context, c *gh.Client, search string, upTo int, pageTimeout time.Duration) ([]prNode, int, error) {
+	return searchPages(upTo, func(after string) ([]prNode, int, pageInfo, error) {
+		pctx, cancel := context.WithTimeout(ctx, pageTimeout)
+		defer cancel()
+		var res prSearchResult
+		vars := map[string]any{
+			"searchQuery": search + " is:pr is:open sort:updated-desc",
+			"limit":       min(prPage, upTo),
+		}
+		if after != "" {
+			vars["after"] = after
+		}
+		if err := c.Graphql(pctx, prSearchQuery, vars, &res); err != nil {
+			return nil, 0, pageInfo{}, err
+		}
+		return res.Search.Nodes, res.Search.IssueCount, res.Search.PageInfo, nil
+	})
 }
 
 // botReviewDue reports whether the head commit still lacks a BotLogin

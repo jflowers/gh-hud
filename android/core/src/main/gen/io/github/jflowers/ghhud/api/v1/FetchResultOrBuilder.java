@@ -83,4 +83,33 @@ public interface FetchResultOrBuilder extends
    */
   com.google.protobuf.ByteString
       getUserBytes();
+
+  /**
+   * <pre>
+   * Sections whose search matched more than they read (#184): the least
+   * recently updated matches aren't here, and nothing acts on them.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+   */
+  java.util.List<io.github.jflowers.ghhud.api.v1.SectionCut> 
+      getCutShortList();
+  /**
+   * <pre>
+   * Sections whose search matched more than they read (#184): the least
+   * recently updated matches aren't here, and nothing acts on them.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+   */
+  io.github.jflowers.ghhud.api.v1.SectionCut getCutShort(int index);
+  /**
+   * <pre>
+   * Sections whose search matched more than they read (#184): the least
+   * recently updated matches aren't here, and nothing acts on them.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+   */
+  int getCutShortCount();
 }

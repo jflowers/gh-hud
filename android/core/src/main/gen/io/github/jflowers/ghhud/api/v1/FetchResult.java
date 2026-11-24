@@ -18,6 +18,7 @@ public  final class FetchResult extends
     items_ = emptyProtobufList();
     errors_ = emptyProtobufList();
     user_ = "";
+    cutShort_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int ITEMS_FIELD_NUMBER = 1;
@@ -391,6 +392,155 @@ public  final class FetchResult extends
     checkByteStringIsUtf8(value);
     user_ = value.toStringUtf8();
 
+  }
+
+  public static final int CUT_SHORT_FIELD_NUMBER = 6;
+  private com.google.protobuf.Internal.ProtobufList<io.github.jflowers.ghhud.api.v1.SectionCut> cutShort_;
+  /**
+   * <pre>
+   * Sections whose search matched more than they read (#184): the least
+   * recently updated matches aren't here, and nothing acts on them.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.jflowers.ghhud.api.v1.SectionCut> getCutShortList() {
+    return cutShort_;
+  }
+  /**
+   * <pre>
+   * Sections whose search matched more than they read (#184): the least
+   * recently updated matches aren't here, and nothing acts on them.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+   */
+  public java.util.List<? extends io.github.jflowers.ghhud.api.v1.SectionCutOrBuilder> 
+      getCutShortOrBuilderList() {
+    return cutShort_;
+  }
+  /**
+   * <pre>
+   * Sections whose search matched more than they read (#184): the least
+   * recently updated matches aren't here, and nothing acts on them.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+   */
+  @java.lang.Override
+  public int getCutShortCount() {
+    return cutShort_.size();
+  }
+  /**
+   * <pre>
+   * Sections whose search matched more than they read (#184): the least
+   * recently updated matches aren't here, and nothing acts on them.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+   */
+  @java.lang.Override
+  public io.github.jflowers.ghhud.api.v1.SectionCut getCutShort(int index) {
+    return cutShort_.get(index);
+  }
+  /**
+   * <pre>
+   * Sections whose search matched more than they read (#184): the least
+   * recently updated matches aren't here, and nothing acts on them.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+   */
+  public io.github.jflowers.ghhud.api.v1.SectionCutOrBuilder getCutShortOrBuilder(
+      int index) {
+    return cutShort_.get(index);
+  }
+  private void ensureCutShortIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.jflowers.ghhud.api.v1.SectionCut> tmp = cutShort_;
+    if (!tmp.isModifiable()) {
+      cutShort_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <pre>
+   * Sections whose search matched more than they read (#184): the least
+   * recently updated matches aren't here, and nothing acts on them.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+   */
+  private void setCutShort(
+      int index, io.github.jflowers.ghhud.api.v1.SectionCut value) {
+    java.util.Objects.requireNonNull(value);
+    ensureCutShortIsMutable();
+    cutShort_.set(index, value);
+  }
+  /**
+   * <pre>
+   * Sections whose search matched more than they read (#184): the least
+   * recently updated matches aren't here, and nothing acts on them.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+   */
+  private void addCutShort(io.github.jflowers.ghhud.api.v1.SectionCut value) {
+    java.util.Objects.requireNonNull(value);
+    ensureCutShortIsMutable();
+    cutShort_.add(value);
+  }
+  /**
+   * <pre>
+   * Sections whose search matched more than they read (#184): the least
+   * recently updated matches aren't here, and nothing acts on them.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+   */
+  private void addCutShort(
+      int index, io.github.jflowers.ghhud.api.v1.SectionCut value) {
+    java.util.Objects.requireNonNull(value);
+    ensureCutShortIsMutable();
+    cutShort_.add(index, value);
+  }
+  /**
+   * <pre>
+   * Sections whose search matched more than they read (#184): the least
+   * recently updated matches aren't here, and nothing acts on them.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+   */
+  private void addAllCutShort(
+      java.lang.Iterable<? extends io.github.jflowers.ghhud.api.v1.SectionCut> values) {
+    ensureCutShortIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, cutShort_);
+  }
+  /**
+   * <pre>
+   * Sections whose search matched more than they read (#184): the least
+   * recently updated matches aren't here, and nothing acts on them.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+   */
+  private void clearCutShort() {
+    cutShort_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * Sections whose search matched more than they read (#184): the least
+   * recently updated matches aren't here, and nothing acts on them.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+   */
+  private void removeCutShort(int index) {
+    ensureCutShortIsMutable();
+    cutShort_.remove(index);
   }
 
   public static io.github.jflowers.ghhud.api.v1.FetchResult parseFrom(
@@ -885,6 +1035,168 @@ public  final class FetchResult extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Sections whose search matched more than they read (#184): the least
+     * recently updated matches aren't here, and nothing acts on them.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.jflowers.ghhud.api.v1.SectionCut> getCutShortList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getCutShortList());
+    }
+    /**
+     * <pre>
+     * Sections whose search matched more than they read (#184): the least
+     * recently updated matches aren't here, and nothing acts on them.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+     */
+    @java.lang.Override
+    public int getCutShortCount() {
+      return instance.getCutShortCount();
+    }/**
+     * <pre>
+     * Sections whose search matched more than they read (#184): the least
+     * recently updated matches aren't here, and nothing acts on them.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+     */
+    @java.lang.Override
+    public io.github.jflowers.ghhud.api.v1.SectionCut getCutShort(int index) {
+      return instance.getCutShort(index);
+    }
+    /**
+     * <pre>
+     * Sections whose search matched more than they read (#184): the least
+     * recently updated matches aren't here, and nothing acts on them.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+     */
+    public Builder setCutShort(
+        int index, io.github.jflowers.ghhud.api.v1.SectionCut value) {
+      copyOnWrite();
+      instance.setCutShort(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Sections whose search matched more than they read (#184): the least
+     * recently updated matches aren't here, and nothing acts on them.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+     */
+    public Builder setCutShort(
+        int index, io.github.jflowers.ghhud.api.v1.SectionCut.Builder builderForValue) {
+      copyOnWrite();
+      instance.setCutShort(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Sections whose search matched more than they read (#184): the least
+     * recently updated matches aren't here, and nothing acts on them.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+     */
+    public Builder addCutShort(io.github.jflowers.ghhud.api.v1.SectionCut value) {
+      copyOnWrite();
+      instance.addCutShort(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Sections whose search matched more than they read (#184): the least
+     * recently updated matches aren't here, and nothing acts on them.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+     */
+    public Builder addCutShort(
+        int index, io.github.jflowers.ghhud.api.v1.SectionCut value) {
+      copyOnWrite();
+      instance.addCutShort(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Sections whose search matched more than they read (#184): the least
+     * recently updated matches aren't here, and nothing acts on them.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+     */
+    public Builder addCutShort(
+        io.github.jflowers.ghhud.api.v1.SectionCut.Builder builderForValue) {
+      copyOnWrite();
+      instance.addCutShort(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Sections whose search matched more than they read (#184): the least
+     * recently updated matches aren't here, and nothing acts on them.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+     */
+    public Builder addCutShort(
+        int index, io.github.jflowers.ghhud.api.v1.SectionCut.Builder builderForValue) {
+      copyOnWrite();
+      instance.addCutShort(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Sections whose search matched more than they read (#184): the least
+     * recently updated matches aren't here, and nothing acts on them.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+     */
+    public Builder addAllCutShort(
+        java.lang.Iterable<? extends io.github.jflowers.ghhud.api.v1.SectionCut> values) {
+      copyOnWrite();
+      instance.addAllCutShort(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * Sections whose search matched more than they read (#184): the least
+     * recently updated matches aren't here, and nothing acts on them.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+     */
+    public Builder clearCutShort() {
+      copyOnWrite();
+      instance.clearCutShort();
+      return this;
+    }
+    /**
+     * <pre>
+     * Sections whose search matched more than they read (#184): the least
+     * recently updated matches aren't here, and nothing acts on them.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];</code>
+     */
+    public Builder removeCutShort(int index) {
+      copyOnWrite();
+      instance.removeCutShort(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.FetchResult)
   }
   @java.lang.Override
@@ -909,10 +1221,12 @@ public  final class FetchResult extends
             "took_",
             "fetchedAt_",
             "user_",
+            "cutShort_",
+            io.github.jflowers.ghhud.api.v1.SectionCut.class,
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0001\u0001\u0005\u0005\u0000\u0002\u0000\u0001\u001b\u0002\u001b" +
-              "\u0003\u1009\u0000\u0004\u1009\u0001\u0005\u0208";
+              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0003\u0000\u0001\u001b\u0002\u001b" +
+              "\u0003\u1009\u0000\u0004\u1009\u0001\u0005\u0208\u0006\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

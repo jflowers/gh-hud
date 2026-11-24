@@ -493,6 +493,16 @@ message FetchResult {
   google.protobuf.Duration took = 3;
   google.protobuf.Timestamp fetched_at = 4;
   string user = 5;
+  // Sections whose search matched more than they read (#184): the least
+  // recently updated matches aren't here, and nothing acts on them.
+  repeated SectionCut cut_short = 6;
+}
+
+// SectionCut is a dashboard section its search cut short.
+message SectionCut {
+  string section = 1;
+  int64 shown = 2;
+  int64 total = 3;
 }
 
 // SectionError is a dashboard section that failed to load.

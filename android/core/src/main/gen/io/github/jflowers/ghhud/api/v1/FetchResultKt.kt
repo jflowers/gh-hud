@@ -269,6 +269,112 @@ public object FetchResultKt {
     public fun clearUser() {
       _builder.clearUser()
     }
+
+    /**
+     * An uninstantiable, behaviorless type to represent the field in
+     * generics.
+     */
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+    public class CutShortProxy private constructor() : com.google.protobuf.kotlin.DslProxy()
+    /**
+     * ```
+     * Sections whose search matched more than they read (#184): the least
+     * recently updated matches aren't here, and nothing acts on them.
+     * ```
+     *
+     * `repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];`
+     */
+     public val cutShort: com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.SectionCut, CutShortProxy>
+      @kotlin.jvm.JvmSynthetic
+  get() = com.google.protobuf.kotlin.DslList(
+        _builder.cutShortList
+      )
+    /**
+     * ```
+     * Sections whose search matched more than they read (#184): the least
+     * recently updated matches aren't here, and nothing acts on them.
+     * ```
+     *
+     * `repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];`
+     * @param value The cutShort to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addCutShort")
+    public fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.SectionCut, CutShortProxy>.add(value: io.github.jflowers.ghhud.api.v1.SectionCut) {
+      _builder.addCutShort(value)
+    }
+    /**
+     * ```
+     * Sections whose search matched more than they read (#184): the least
+     * recently updated matches aren't here, and nothing acts on them.
+     * ```
+     *
+     * `repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];`
+     * @param value The cutShort to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignCutShort")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.SectionCut, CutShortProxy>.plusAssign(value: io.github.jflowers.ghhud.api.v1.SectionCut) {
+      add(value)
+    }
+    /**
+     * ```
+     * Sections whose search matched more than they read (#184): the least
+     * recently updated matches aren't here, and nothing acts on them.
+     * ```
+     *
+     * `repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];`
+     * @param values The cutShort to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addAllCutShort")
+    public fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.SectionCut, CutShortProxy>.addAll(values: kotlin.collections.Iterable<io.github.jflowers.ghhud.api.v1.SectionCut>) {
+      _builder.addAllCutShort(values)
+    }
+    /**
+     * ```
+     * Sections whose search matched more than they read (#184): the least
+     * recently updated matches aren't here, and nothing acts on them.
+     * ```
+     *
+     * `repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];`
+     * @param values The cutShort to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignAllCutShort")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.SectionCut, CutShortProxy>.plusAssign(values: kotlin.collections.Iterable<io.github.jflowers.ghhud.api.v1.SectionCut>) {
+      addAll(values)
+    }
+    /**
+     * ```
+     * Sections whose search matched more than they read (#184): the least
+     * recently updated matches aren't here, and nothing acts on them.
+     * ```
+     *
+     * `repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];`
+     * @param index The index to set the value at.
+     * @param value The cutShort to set.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setCutShort")
+    public operator fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.SectionCut, CutShortProxy>.set(index: kotlin.Int, value: io.github.jflowers.ghhud.api.v1.SectionCut) {
+      _builder.setCutShort(index, value)
+    }
+    /**
+     * ```
+     * Sections whose search matched more than they read (#184): the least
+     * recently updated matches aren't here, and nothing acts on them.
+     * ```
+     *
+     * `repeated .ghhud.v1.SectionCut cut_short = 6 [json_name = "cutShort"];`
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("clearCutShort")
+    public fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.SectionCut, CutShortProxy>.clear() {
+      _builder.clearCutShort()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.FetchResult.copy(block: `io.github.jflowers.ghhud.api.v1`.FetchResultKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.FetchResult =

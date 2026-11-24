@@ -48,7 +48,11 @@ described under [Agent dispatch](#agent-dispatch) and
 [Plan and your queue](#plan-and-your-queue); the rest filter the dashboard.
 
 - **Review** — open PRs in your orgs where your review is requested or you're assigned
-- **Mine** — your open PRs in your orgs (set `my_prs_everywhere = true` for all of GitHub)
+- **Mine** — your open PRs in your orgs (set `my_prs_everywhere = true` for all of GitHub).
+  Unlike the other sections, it reads past `limit`, page by page, up to 300 PRs: auto-merge,
+  the merge train and learnings approval act only on PRs the dashboard has. A section whose
+  search matched more than it read says so (`⚠ 1 cut short` in the footer, the count in the
+  legend, and `my-prs: 300 of 340 shown` on the apps' status line).
 - **Issues** — open issues assigned to you or mentioning you
 - **CI** — failing checks on open PRs, plus failed runs on `watch_repos`
 - **Inbox** — unread notifications (mentions, comments, review requests, CI activity)
@@ -1917,7 +1921,7 @@ change without a restart, saying what changed:
 ```toml
 orgs = ["my-org", "another-org"]  # limit PR/issue searches to these orgs; also the fleet: gh-hud only manages their org@label checkouts
 refresh_secs = 120         # auto-refresh interval
-limit = 30                 # max items per search
+limit = 30                 # max items per search (Mine pages past it, up to 300)
 my_prs_everywhere = false  # "Mine" ignores `orgs` and covers all of GitHub
 watch_repos = []           # e.g. ["owner/repo"]: show failed Actions runs
 known_bots = ["fullsend-ai-", "codecov", "github-actions", "qodo-code-", "dependabot", "renovate", "greenkeeper"]

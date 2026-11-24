@@ -187,6 +187,9 @@ func fetchResultToPB(r *model.FetchResult) *pb.FetchResult {
 			}
 			return &pb.SectionError{Section: e.Section, Message: msg}
 		}),
+		CutShort: mapSlice(r.CutShort, func(c model.SectionCut) *pb.SectionCut {
+			return &pb.SectionCut{Section: c.Section, Shown: int64(c.Shown), Total: int64(c.Total)}
+		}),
 		Took:      dur(r.Took),
 		FetchedAt: ts(r.FetchedAt),
 		User:      r.User,
@@ -198,6 +201,9 @@ func fetchResultFromPB(p *pb.FetchResult) *model.FetchResult {
 		Items: mapSlice(p.GetItems(), ItemFromPB),
 		Errors: mapSlice(p.GetErrors(), func(e *pb.SectionError) model.SectionError {
 			return model.SectionError{Section: e.GetSection(), Err: errors.New(e.GetMessage())}
+		}),
+		CutShort: mapSlice(p.GetCutShort(), func(c *pb.SectionCut) model.SectionCut {
+			return model.SectionCut{Section: c.GetSection(), Shown: int(c.GetShown()), Total: int(c.GetTotal())}
 		}),
 		Took:      fromDur(p.GetTook()),
 		FetchedAt: fromTS(p.GetFetchedAt()),
