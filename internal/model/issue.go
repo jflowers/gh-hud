@@ -10,6 +10,7 @@ import (
 const issueSearchQuery = `
 query($searchQuery: String!, $limit: Int!) {
   search(query: $searchQuery, type: ISSUE, first: $limit) {
+    issueCount
     nodes {
       ... on Issue {
 ` + issueFields + `
@@ -37,7 +38,8 @@ const issueFields = `
 
 type issueSearchResult struct {
 	Search struct {
-		Nodes []issueNode `json:"nodes"`
+		IssueCount int         `json:"issueCount"`
+		Nodes      []issueNode `json:"nodes"`
 	} `json:"search"`
 }
 
@@ -67,17 +69,18 @@ type issueNode struct {
 	} `json:"labels"`
 }
 
-// fetchIssueSearch runs a GitHub search restricted to open issues.
-func fetchIssueSearch(ctx context.Context, c *gh.Client, search string, limit int) ([]issueNode, error) {
+// fetchIssueSearch runs a GitHub search restricted to open issues, one
+// page of limit, and returns its nodes and how many issues match in all.
+func fetchIssueSearch(ctx context.Context, c *gh.Client, search string, limit int) ([]issueNode, int, error) {
 	var res issueSearchResult
 	vars := map[string]any{
 		"searchQuery": search + " is:issue is:open sort:updated-desc",
 		"limit":       limit,
 	}
 	if err := c.Graphql(ctx, issueSearchQuery, vars, &res); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return res.Search.Nodes, nil
+	return res.Search.Nodes, res.Search.IssueCount, nil
 }
 
 // BuildIssueItem converts an issue node into an Item.

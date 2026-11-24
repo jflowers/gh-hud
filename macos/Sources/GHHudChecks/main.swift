@@ -887,6 +887,12 @@ do {
     let now = Date(timeIntervalSince1970: 10_000)
     s.fetchedAt = Google_Protobuf_Timestamp(timeIntervalSince1970: 10_000 - 180)
     check(HubSummary.line(s, now: now) == "me · updated 3m ago", "summary: \(HubSummary.line(s, now: now))")
+    var cut = Ghhud_V1_SectionCut()
+    cut.section = "my-prs"; cut.shown = 300; cut.total = 340
+    s.result.cutShort = [cut]
+    check(HubSummary.line(s, now: now) == "me · updated 3m ago · my-prs: 300 of 340 shown",
+          "cut short: \(HubSummary.line(s, now: now))")
+    s.result.cutShort = []
     s.follower = "42"
     s.fleet.paused = true
     check(HubSummary.line(s, now: now) == "me · updated 3m ago · read-only: gh-hud pid 42 owns dispatch · fleet paused",

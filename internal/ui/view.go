@@ -489,6 +489,9 @@ func (m *Model) headerBar() string {
 	if m.res != nil && len(m.res.Errors) > 0 {
 		right = append(right, p.text(cRed, fmt.Sprintf("⚠ %d failed", len(m.res.Errors))))
 	}
+	if m.res != nil && len(m.res.CutShort) > 0 {
+		right = append(right, p.text(cYellow, fmt.Sprintf("⚠ %d cut short", len(m.res.CutShort))))
+	}
 	if s := toolkitIndicatorText(p, m.toolkitSnap); s != "" {
 		right = append(right, s)
 	}
@@ -652,6 +655,12 @@ func (m *Model) helpView() string {
 		for _, e := range m.res.Errors {
 			right = append(right, lipgloss.NewStyle().Foreground(cRed).Render(
 				truncatePlain(e.Error(), 60)))
+		}
+	}
+	if m.res != nil && len(m.res.CutShort) > 0 {
+		right = append(right, "", h.Foreground(cYellow).Render("Cut short (older matches not shown)"))
+		for _, c := range m.res.CutShort {
+			right = append(right, lipgloss.NewStyle().Foreground(cYellow).Render(c.String()))
 		}
 	}
 
@@ -1048,6 +1057,10 @@ func PlainTable(res *model.FetchResult, cfg *config.Config, termW int, now time.
 	}
 	for _, e := range res.Errors {
 		b.WriteString(lipgloss.NewStyle().Foreground(cRed).Render("⚠ " + e.Error()))
+		b.WriteString("\n")
+	}
+	for _, c := range res.CutShort {
+		b.WriteString(lipgloss.NewStyle().Foreground(cYellow).Render("⚠ cut short: " + c.String()))
 		b.WriteString("\n")
 	}
 	return b.String()

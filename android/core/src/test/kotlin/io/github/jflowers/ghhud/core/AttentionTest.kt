@@ -1,6 +1,7 @@
 package io.github.jflowers.ghhud.core
 
 import com.google.protobuf.timestamp
+import io.github.jflowers.ghhud.api.v1.SectionCut
 import io.github.jflowers.ghhud.api.v1.Snapshot
 import io.github.jflowers.ghhud.api.v1.case
 import io.github.jflowers.ghhud.api.v1.decision
@@ -149,6 +150,9 @@ class AttentionTest {
         assertEquals("jay · updated 3m ago · read-only: gh-hud pid 42 owns dispatch", HubSummary.line(s, now))
         assertEquals("GitHub: bad token", HubSummary.line(s.toBuilder().setFetchError("bad token").build(), now))
         assertEquals("first refresh…", HubSummary.line(Snapshot.getDefaultInstance(), now))
+        val cut = SectionCut.newBuilder().setSection("my-prs").setShown(300).setTotal(340).build()
+        val withCut = s.toBuilder().setFollower("").setResult(s.result.toBuilder().addCutShort(cut)).build()
+        assertEquals("jay · updated 3m ago · my-prs: 300 of 340 shown", HubSummary.line(withCut, now))
         assertEquals("2d ago", HubSummary.ago(Instant.ofEpochSecond(0), Instant.ofEpochSecond(2 * 86400 + 5)))
     }
 
