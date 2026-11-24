@@ -279,3 +279,19 @@ func TestPaneSetupHeadlessQuestions(t *testing.T) {
 		t.Error("a bot pane doesn't turn on headless questions")
 	}
 }
+
+// Dispatch panes keep the supervisor to tool-arg repair, both with and
+// without the bot account (unbound-force/unbound-force#1199).
+func TestPaneSetupSupervisorRepairOnly(t *testing.T) {
+	line := strings.Replace(paneSetup(false), "echo ghhud-$RANDOM-ready", `printf %s "$OPENCODE_SUPERVISOR_MODE"`, 1)
+	out, err := exec.Command("sh", "-c", line).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(out) != "repair-only" {
+		t.Errorf("exported %q, want %q", out, "repair-only")
+	}
+	if !strings.Contains(paneSetup(true), supervisorRepairOnly) {
+		t.Error("a bot pane doesn't keep the supervisor to repair-only")
+	}
+}

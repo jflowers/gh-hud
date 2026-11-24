@@ -335,6 +335,16 @@ func paneSetupResult(raw json.RawMessage) error {
 // Plugin versions without headless mode ignore both variables.
 const headlessQuestions = `export AUTO_QUESTION_HEADLESS=1 AUTO_QUESTION_ESCALATION="$HOME/.config/opencode/auto-question/escalation-gh-hud.md"`
 
+// supervisorRepairOnly keeps opencode-agent-supervisor to its tool-arg
+// repair pass in a dispatch pane. In full mode its audit critiques abort
+// and steer the delegated child sessions an unattended pipeline spawns,
+// which surfaces as MessageAbortedError or model_mismatch in the parent
+// (unbound-force/unbound-force#1199, fixed in jflowers/opencode-supervisor#86).
+// The environment variable outranks the supervisor's project and global
+// config files, so sessions started by hand keep full mode. Drop this once
+// the fleet pins a supervisor release with that fix.
+const supervisorRepairOnly = `export OPENCODE_SUPERVISOR_MODE=repair-only`
+
 // paneSetup is the shell line typed into a fresh dispatch pane. Every pane
 // loads agent-env first, so its current keys win over the herdr server's
 // (#119); a plain pane then drops the bot token. A bot pane
@@ -342,7 +352,7 @@ const headlessQuestions = `export AUTO_QUESTION_HEADLESS=1 AUTO_QUESTION_ESCALAT
 // so the agent never starts as the operator. The line names the variable
 // and never holds its value, so the pane transcript stays clean.
 func paneSetup(bot bool) string {
-	line := "export OPENCODE_PERMISSION=" + shellQuote(dispatchPermission) + " && " + headlessQuestions + "; " + agentEnvLoad
+	line := "export OPENCODE_PERMISSION=" + shellQuote(dispatchPermission) + " && " + headlessQuestions + "; " + supervisorRepairOnly + "; " + agentEnvLoad
 	if !bot {
 		// agent-env carries the bot token too; a plain pane runs as you.
 		return line + "; unset " + botTokenVar + " && echo ghhud-$RANDOM-ready"

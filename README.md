@@ -719,6 +719,12 @@ longer than `blocked_notify_secs` (default 180, needs `notify`), the
 question went to a human and gh-hud sends a desktop notification naming the
 machine and pane to attach to.
 
+Dispatch panes also set `OPENCODE_SUPERVISOR_MODE=repair-only`, so
+opencode-agent-supervisor runs only its tool-arg repair pass there. In full
+mode its audit critiques abort and re-steer the child sessions a delegated
+pipeline spawns (unbound-force/unbound-force#1199). Sessions you start by
+hand keep the mode from the supervisor's config file.
+
 Dispatch panes also turn on auto-question's headless mode
 (`AUTO_QUESTION_HEADLESS=1`, plugin 0.4.0 or later): questions are answered
 inside the tool call and no form ever shows, for every agent and subagent.
