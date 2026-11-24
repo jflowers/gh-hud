@@ -439,6 +439,15 @@ type Machine struct {
 	// ("jflowers") or one repo in it ("jflowers/opencode-session-notes"),
 	// e.g. the opencode plugins the machine loads from there.
 	Keep []string `toml:"keep"`
+	// Agents: false says the machine runs no agents and has no herdr (a
+	// services box). A fleet drain counts it idle without asking herdr,
+	// which isn't there to answer. Needs enabled = false. Defaults to true.
+	Agents *bool `toml:"agents"`
+}
+
+// RunsAgents reports whether the machine runs agents (and herdr).
+func (m Machine) RunsAgents() bool {
+	return m.Agents == nil || *m.Agents
 }
 
 // IsEnabled reports whether the machine participates in dispatch.
@@ -848,6 +857,9 @@ func validateMachines(ms []Machine) error {
 		seen[m.Name] = true
 		if m.RemoveUnmanaged && isLoopback(m.SSH) {
 			return fmt.Errorf("machines[%d]: remove_unmanaged: ssh %q is this machine, and the hub keeps what it has", i, m.SSH)
+		}
+		if !m.RunsAgents() && m.IsEnabled() {
+			return fmt.Errorf("machines[%d]: agents = false needs enabled = false: a machine without agents can't take dispatches", i)
 		}
 		for _, k := range m.Keep {
 			if !validKeep(k) {
