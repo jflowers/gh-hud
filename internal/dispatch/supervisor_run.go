@@ -297,7 +297,7 @@ func (d *Dispatcher) settle(id string, approve bool) error {
 	i := slices.IndexFunc(d.proposals, func(p Proposal) bool { return p.ID == id })
 	if i < 0 {
 		d.mu.Unlock()
-		return fmt.Errorf("no proposal %q", id)
+		return d.settleReplan(id, approve) // a change to an epic's plan
 	}
 	p := d.proposals[i]
 	d.mu.Unlock()

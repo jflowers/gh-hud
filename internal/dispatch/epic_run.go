@@ -180,6 +180,12 @@ func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool, byRef ma
 				row.Stage = Stage{Kind: StageWait, Task: TaskIssue, Reason: "epic held: the " + e.Held + " label on " + e.Ref}
 			case reported && rep.Verdict == epic.VerdictHuman:
 				row.Stage = Stage{Kind: StageNeedsYou, Task: TaskIssue, Reason: "epic: " + rep.Why}
+			case reported && rep.Verdict == epic.VerdictDrop:
+				reason := "epic: kept after the supervisor proposed dropping it: " + rep.Why
+				if hasPendingDrop(e, n.Ref) {
+					reason = "epic: approve dropping it? " + rep.Why
+				}
+				row.Stage = Stage{Kind: StageNeedsYou, Task: TaskIssue, Reason: reason}
 			case len(p.runs) >= maxRuns:
 				row.Stage = Stage{Kind: StageNeedsYou, Task: TaskIssue, Reason: fmt.Sprintf("epic: %d runs, still no PR", len(p.runs))}
 			case ended && sup && (!reported || rep.Verdict == epic.VerdictReviewing):

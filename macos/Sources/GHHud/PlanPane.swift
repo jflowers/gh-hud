@@ -255,6 +255,17 @@ struct PlanCommands {
         }
     }
 
+    func settle(_ r: EpicRow.Replan, on e: EpicRow, approve: Bool) {
+        Task {
+            let why = approve ? await conn.approve(.proposal(id: r.id)) : await conn.reject(.proposal(id: r.id))
+            if let why {
+                ui.say("Can't \(approve ? "approve" : "reject") the change to \(e.ref): \(why)", bad: true)
+            } else {
+                ui.say(approve ? "Done on GitHub: \(r.what)" : "Rejected: \(r.what)")
+            }
+        }
+    }
+
     func finish(_ e: EpicRow) {
         guard let plan = e.planToFinish else { return }
         Task {
@@ -395,6 +406,19 @@ struct EpicView: View {
                     ForEach(Array(row.changes.enumerated()), id: \.offset) { _, c in
                         Text("± \(c)").font(.caption).foregroundStyle(Tone.warn.color)
                     }
+                }
+                .padding(.leading, 22)
+            }
+            ForEach(row.replans) { r in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Supervisor proposes: \(r.what)").foregroundStyle(Tone.warn.color)
+                    Text(r.why).font(.caption).foregroundStyle(.secondary)
+                    HStack {
+                        Button("Approve") { cmds.settle(r, on: row, approve: true) }
+                        Button("Reject") { cmds.settle(r, on: row, approve: false) }
+                    }
+                    .controlSize(.small)
+                    .disabled(cmds.off != nil)
                 }
                 .padding(.leading, 22)
             }

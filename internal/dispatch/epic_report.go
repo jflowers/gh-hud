@@ -144,17 +144,32 @@ func clipKeep(s string, n int) string {
 	return s[:n] + "\n[… cut]"
 }
 
-// pieceVerdict is the supervisor's answer on a piece's run.
+// pieceVerdict is the supervisor's answer on a piece's run. FollowUp is
+// new work the run turned up, proposed as a new piece (replan.go).
 type pieceVerdict struct {
-	Verdict string `json:"verdict"`
-	Why     string `json:"why"`
-	Hint    string `json:"hint"`
+	Verdict  string `json:"verdict"`
+	Why      string `json:"why"`
+	Hint     string `json:"hint"`
+	FollowUp *struct {
+		Title string `json:"title"`
+		Body  string `json:"body"`
+	} `json:"follow_up,omitempty"`
 }
 
 func (v pieceVerdict) check() error {
+	if f := v.FollowUp; f != nil {
+		switch {
+		case strings.TrimSpace(f.Title) == "" && strings.TrimSpace(f.Body) == "":
+			// an empty follow-up is none
+		case strings.TrimSpace(f.Title) == "" || len(f.Title) > replanTitleMax:
+			return fmt.Errorf("follow_up needs a title under %d characters", replanTitleMax)
+		case len(f.Body) > replanBodyMax:
+			return fmt.Errorf("the follow_up body is %d bytes; keep it under %d", len(f.Body), replanBodyMax)
+		}
+	}
 	switch {
-	case v.Verdict != epic.VerdictRetry && v.Verdict != epic.VerdictHuman:
-		return fmt.Errorf("verdict %q isn't retry or human", v.Verdict)
+	case v.Verdict != epic.VerdictRetry && v.Verdict != epic.VerdictHuman && v.Verdict != epic.VerdictDrop:
+		return fmt.Errorf("verdict %q isn't retry, human or drop", v.Verdict)
 	case strings.TrimSpace(v.Why) == "":
 		return fmt.Errorf("why is empty")
 	case len(v.Hint) > reportHintMax:
@@ -204,10 +219,18 @@ func (d *Dispatcher) reviewPiece(e epic.Epic, n epic.Node, rec Record, rep epic.
 	} else {
 		r.Verdict, r.Why, r.Hint = v.Verdict, oneLine(v.Why), oneLine(v.Hint)
 		what := "another run can do it"
-		if v.Verdict == epic.VerdictHuman {
+		switch v.Verdict {
+		case epic.VerdictHuman:
 			what = "it needs you"
+		case epic.VerdictDrop:
+			what = "the supervisor proposes dropping it (approve or reject in the Plan tab)"
+			d.proposeReplanLocked(i, epic.Replan{Kind: epic.ReplanDrop, Piece: n.Ref, Why: r.Why})
 		}
 		d.epicNotes = append(d.epicNotes, fmt.Sprintf("epic %s: %s's run on %s left no PR; %s: %s", e.Ref, n.Ref, rep.On, what, clip(r.Why, 200)))
+		if f := v.FollowUp; f != nil && strings.TrimSpace(f.Title) != "" {
+			d.proposeReplanLocked(i, epic.Replan{Kind: epic.ReplanFollowUp, Piece: n.Ref, Title: oneLine(f.Title), Body: strings.TrimSpace(f.Body), Why: r.Why})
+			d.epicNotes = append(d.epicNotes, fmt.Sprintf("epic %s: the supervisor proposes a new piece from %s's run: %s (approve or reject in the Plan tab)", e.Ref, n.Ref, clip(f.Title, 120)))
+		}
 	}
 	d.saveEpicsLocked()
 }
@@ -259,13 +282,22 @@ func pieceBrief(e epic.Epic, n epic.Node, rec Record, rep epic.Report) string {
   out. Put what the next run should do differently in hint.
 - human: a person has to act first: the agent asked a question only a person
   can answer, it needs a decision, a permission or a secret, the issue is
-  unclear or already done another way, or the work would break one of the
-  epic's rules.
+  unclear, or the work would break one of the epic's rules.
+- drop: the piece isn't needed: the run showed it's already done another
+  way, made moot by another piece, or not wanted. Say why with evidence.
+  gh-hud proposes closing the issue as not planned; nothing happens until
+  the owner approves.
+- follow_up (optional, with any verdict): the run turned up new work the
+  epic needs that no listed piece covers, e.g. a prerequisite or a bug it
+  found. Give a title and a short body for a new issue. gh-hud proposes
+  opening it as a new piece; nothing happens until the owner approves.
+  Leave it out unless the evidence is clear.
 - Say why in one sentence. Keep the hint to two sentences, or leave it empty.
 
 ## Answer
 End with exactly one fenced json block:
-{"verdict": "retry" | "human", "why": "<one sentence>", "hint": "<for the next run, or empty>"}
+{"verdict": "retry" | "human" | "drop", "why": "<one sentence>", "hint": "<for the next run, or empty>",
+ "follow_up": {"title": "<new issue title>", "body": "<what and why>"} or omit it}
 `, n.Ref)
 	return b.String()
 }

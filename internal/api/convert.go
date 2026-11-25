@@ -606,7 +606,8 @@ func epicToPB(e epic.Epic) *pb.Epic {
 		StatusComment: e.StatusComment, StatusHash: e.StatusHash,
 		Complete: tsPtr(e.Complete), Summary: e.Summary, SummaryComment: e.SummaryComment,
 		Closed: tsPtr(e.Closed), ClosedNote: e.ClosedNote, Held: e.Held,
-		Runs: int64(e.Runs), RunBudget: int64(e.RunBudget)}
+		Runs: int64(e.Runs), RunBudget: int64(e.RunBudget),
+		Replans: mapSlice(e.Replans, replanToPB), ApprovedAdds: strs(e.ApprovedAdds)}
 	out.Reports = mapSlice(e.Reports, func(r epic.Report) *pb.EpicReport {
 		return &pb.EpicReport{Piece: r.Piece, RunId: r.RunID, On: r.On, Status: r.Status, Finished: ts(r.Finished),
 			Summary: r.Summary, Reason: r.Reason, Verdict: r.Verdict, Why: r.Why, Hint: r.Hint, Log: r.Log}
@@ -622,7 +623,8 @@ func epicFromPB(p *pb.Epic) epic.Epic {
 		StatusComment: p.GetStatusComment(), StatusHash: p.GetStatusHash(),
 		Complete: fromTSPtr(p.GetComplete()), Summary: p.GetSummary(), SummaryComment: p.GetSummaryComment(),
 		Closed: fromTSPtr(p.GetClosed()), ClosedNote: p.GetClosedNote(), Held: p.GetHeld(),
-		Runs: int(p.GetRuns()), RunBudget: int(p.GetRunBudget())}
+		Runs: int(p.GetRuns()), RunBudget: int(p.GetRunBudget()),
+		Replans: mapSlice(p.GetReplans(), replanFromPB), ApprovedAdds: strs(p.GetApprovedAdds())}
 	e.Reports = mapSlice(p.GetReports(), func(r *pb.EpicReport) epic.Report {
 		return epic.Report{Piece: r.GetPiece(), RunID: r.GetRunId(), On: r.GetOn(), Status: r.GetStatus(), Finished: fromTS(r.GetFinished()),
 			Summary: r.GetSummary(), Reason: r.GetReason(), Verdict: r.GetVerdict(), Why: r.GetWhy(), Hint: r.GetHint(), Log: r.GetLog()}
@@ -1084,4 +1086,14 @@ func transcriptFromPB(r *pb.TranscriptResponse) hub.Transcript {
 // clamp32 is n as an int32, held to its range.
 func clamp32(n int) int32 {
 	return int32(max(min(n, math.MaxInt32), math.MinInt32)) //nolint:gosec // clamped on this line
+}
+
+func replanToPB(r epic.Replan) *pb.EpicReplan {
+	return &pb.EpicReplan{Id: r.ID, Kind: r.Kind, Piece: r.Piece, Title: r.Title, Body: r.Body, Why: r.Why,
+		Created: ts(r.Created), Status: r.Status, Note: r.Note, Issue: r.Issue}
+}
+
+func replanFromPB(p *pb.EpicReplan) epic.Replan {
+	return epic.Replan{ID: p.GetId(), Kind: p.GetKind(), Piece: p.GetPiece(), Title: p.GetTitle(), Body: p.GetBody(), Why: p.GetWhy(),
+		Created: fromTS(p.GetCreated()), Status: p.GetStatus(), Note: p.GetNote(), Issue: p.GetIssue()}
 }

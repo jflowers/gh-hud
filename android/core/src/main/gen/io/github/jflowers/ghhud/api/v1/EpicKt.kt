@@ -793,7 +793,197 @@ public object EpicKt {
     public fun clearRunBudget() {
       _builder.clearRunBudget()
     }
-  }
+
+    /**
+     * An uninstantiable, behaviorless type to represent the field in
+     * generics.
+     */
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+    public class ReplansProxy private constructor() : com.google.protobuf.kotlin.DslProxy()
+    /**
+     * ```
+     * replans: the supervisor's proposed changes to the plan (pending ones
+     * wait for you: ApproveProposal/RejectProposal with the replan's id);
+     * approved_adds: follow-up issues you approved, which a reread adds
+     * without asking for approval again.
+     * ```
+     *
+     * `repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];`
+     */
+     public val replans: com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.EpicReplan, ReplansProxy>
+      @kotlin.jvm.JvmSynthetic
+  get() = com.google.protobuf.kotlin.DslList(
+        _builder.replansList
+      )
+    /**
+     * ```
+     * replans: the supervisor's proposed changes to the plan (pending ones
+     * wait for you: ApproveProposal/RejectProposal with the replan's id);
+     * approved_adds: follow-up issues you approved, which a reread adds
+     * without asking for approval again.
+     * ```
+     *
+     * `repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];`
+     * @param value The replans to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addReplans")
+    public fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.EpicReplan, ReplansProxy>.add(value: io.github.jflowers.ghhud.api.v1.EpicReplan) {
+      _builder.addReplans(value)
+    }
+    /**
+     * ```
+     * replans: the supervisor's proposed changes to the plan (pending ones
+     * wait for you: ApproveProposal/RejectProposal with the replan's id);
+     * approved_adds: follow-up issues you approved, which a reread adds
+     * without asking for approval again.
+     * ```
+     *
+     * `repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];`
+     * @param value The replans to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignReplans")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.EpicReplan, ReplansProxy>.plusAssign(value: io.github.jflowers.ghhud.api.v1.EpicReplan) {
+      add(value)
+    }
+    /**
+     * ```
+     * replans: the supervisor's proposed changes to the plan (pending ones
+     * wait for you: ApproveProposal/RejectProposal with the replan's id);
+     * approved_adds: follow-up issues you approved, which a reread adds
+     * without asking for approval again.
+     * ```
+     *
+     * `repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];`
+     * @param values The replans to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addAllReplans")
+    public fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.EpicReplan, ReplansProxy>.addAll(values: kotlin.collections.Iterable<io.github.jflowers.ghhud.api.v1.EpicReplan>) {
+      _builder.addAllReplans(values)
+    }
+    /**
+     * ```
+     * replans: the supervisor's proposed changes to the plan (pending ones
+     * wait for you: ApproveProposal/RejectProposal with the replan's id);
+     * approved_adds: follow-up issues you approved, which a reread adds
+     * without asking for approval again.
+     * ```
+     *
+     * `repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];`
+     * @param values The replans to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignAllReplans")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.EpicReplan, ReplansProxy>.plusAssign(values: kotlin.collections.Iterable<io.github.jflowers.ghhud.api.v1.EpicReplan>) {
+      addAll(values)
+    }
+    /**
+     * ```
+     * replans: the supervisor's proposed changes to the plan (pending ones
+     * wait for you: ApproveProposal/RejectProposal with the replan's id);
+     * approved_adds: follow-up issues you approved, which a reread adds
+     * without asking for approval again.
+     * ```
+     *
+     * `repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];`
+     * @param index The index to set the value at.
+     * @param value The replans to set.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setReplans")
+    public operator fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.EpicReplan, ReplansProxy>.set(index: kotlin.Int, value: io.github.jflowers.ghhud.api.v1.EpicReplan) {
+      _builder.setReplans(index, value)
+    }
+    /**
+     * ```
+     * replans: the supervisor's proposed changes to the plan (pending ones
+     * wait for you: ApproveProposal/RejectProposal with the replan's id);
+     * approved_adds: follow-up issues you approved, which a reread adds
+     * without asking for approval again.
+     * ```
+     *
+     * `repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];`
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("clearReplans")
+    public fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.EpicReplan, ReplansProxy>.clear() {
+      _builder.clearReplans()
+    }
+
+    /**
+     * An uninstantiable, behaviorless type to represent the field in
+     * generics.
+     */
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+    public class ApprovedAddsProxy private constructor() : com.google.protobuf.kotlin.DslProxy()
+    /**
+     * `repeated string approved_adds = 26 [json_name = "approvedAdds"];`
+     * @return A list containing the approvedAdds.
+     */
+    public val approvedAdds: com.google.protobuf.kotlin.DslList<kotlin.String, ApprovedAddsProxy>
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+      get() = com.google.protobuf.kotlin.DslList(
+        _builder.approvedAddsList
+      )
+    /**
+     * `repeated string approved_adds = 26 [json_name = "approvedAdds"];`
+     * @param value The approvedAdds to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addApprovedAdds")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, ApprovedAddsProxy>.add(value: kotlin.String) {
+      _builder.addApprovedAdds(value)
+    }
+    /**
+     * `repeated string approved_adds = 26 [json_name = "approvedAdds"];`
+     * @param value The approvedAdds to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignApprovedAdds")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, ApprovedAddsProxy>.plusAssign(value: kotlin.String) {
+      add(value)
+    }
+    /**
+     * `repeated string approved_adds = 26 [json_name = "approvedAdds"];`
+     * @param values The approvedAdds to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addAllApprovedAdds")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, ApprovedAddsProxy>.addAll(values: kotlin.collections.Iterable<kotlin.String>) {
+      _builder.addAllApprovedAdds(values)
+    }
+    /**
+     * `repeated string approved_adds = 26 [json_name = "approvedAdds"];`
+     * @param values The approvedAdds to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignAllApprovedAdds")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, ApprovedAddsProxy>.plusAssign(values: kotlin.collections.Iterable<kotlin.String>) {
+      addAll(values)
+    }
+    /**
+     * `repeated string approved_adds = 26 [json_name = "approvedAdds"];`
+     * @param index The index to set the value at.
+     * @param value The approvedAdds to set.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setApprovedAdds")
+    public operator fun com.google.protobuf.kotlin.DslList<kotlin.String, ApprovedAddsProxy>.set(index: kotlin.Int, value: kotlin.String) {
+      _builder.setApprovedAdds(index, value)
+    }/**
+     * `repeated string approved_adds = 26 [json_name = "approvedAdds"];`
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setApprovedAdds")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, ApprovedAddsProxy>.clear() {
+      _builder.clearApprovedAdds()
+    }}
 }
 public inline fun io.github.jflowers.ghhud.api.v1.Epic.copy(block: `io.github.jflowers.ghhud.api.v1`.EpicKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.Epic =
   `io.github.jflowers.ghhud.api.v1`.EpicKt.Dsl._create(this.toBuilder()).apply { block() }._build()

@@ -34,6 +34,8 @@ public  final class Epic extends
     summaryComment_ = "";
     closedNote_ = "";
     held_ = "";
+    replans_ = emptyProtobufList();
+    approvedAdds_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int REF_FIELD_NUMBER = 1;
@@ -1523,6 +1525,270 @@ public  final class Epic extends
   private void clearRunBudget() {
 
     runBudget_ = 0L;
+  }
+
+  public static final int REPLANS_FIELD_NUMBER = 25;
+  private com.google.protobuf.Internal.ProtobufList<io.github.jflowers.ghhud.api.v1.EpicReplan> replans_;
+  /**
+   * <pre>
+   * replans: the supervisor's proposed changes to the plan (pending ones
+   * wait for you: ApproveProposal/RejectProposal with the replan's id);
+   * approved_adds: follow-up issues you approved, which a reread adds
+   * without asking for approval again.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.jflowers.ghhud.api.v1.EpicReplan> getReplansList() {
+    return replans_;
+  }
+  /**
+   * <pre>
+   * replans: the supervisor's proposed changes to the plan (pending ones
+   * wait for you: ApproveProposal/RejectProposal with the replan's id);
+   * approved_adds: follow-up issues you approved, which a reread adds
+   * without asking for approval again.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+   */
+  public java.util.List<? extends io.github.jflowers.ghhud.api.v1.EpicReplanOrBuilder> 
+      getReplansOrBuilderList() {
+    return replans_;
+  }
+  /**
+   * <pre>
+   * replans: the supervisor's proposed changes to the plan (pending ones
+   * wait for you: ApproveProposal/RejectProposal with the replan's id);
+   * approved_adds: follow-up issues you approved, which a reread adds
+   * without asking for approval again.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+   */
+  @java.lang.Override
+  public int getReplansCount() {
+    return replans_.size();
+  }
+  /**
+   * <pre>
+   * replans: the supervisor's proposed changes to the plan (pending ones
+   * wait for you: ApproveProposal/RejectProposal with the replan's id);
+   * approved_adds: follow-up issues you approved, which a reread adds
+   * without asking for approval again.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+   */
+  @java.lang.Override
+  public io.github.jflowers.ghhud.api.v1.EpicReplan getReplans(int index) {
+    return replans_.get(index);
+  }
+  /**
+   * <pre>
+   * replans: the supervisor's proposed changes to the plan (pending ones
+   * wait for you: ApproveProposal/RejectProposal with the replan's id);
+   * approved_adds: follow-up issues you approved, which a reread adds
+   * without asking for approval again.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+   */
+  public io.github.jflowers.ghhud.api.v1.EpicReplanOrBuilder getReplansOrBuilder(
+      int index) {
+    return replans_.get(index);
+  }
+  private void ensureReplansIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.jflowers.ghhud.api.v1.EpicReplan> tmp = replans_;
+    if (!tmp.isModifiable()) {
+      replans_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <pre>
+   * replans: the supervisor's proposed changes to the plan (pending ones
+   * wait for you: ApproveProposal/RejectProposal with the replan's id);
+   * approved_adds: follow-up issues you approved, which a reread adds
+   * without asking for approval again.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+   */
+  private void setReplans(
+      int index, io.github.jflowers.ghhud.api.v1.EpicReplan value) {
+    java.util.Objects.requireNonNull(value);
+    ensureReplansIsMutable();
+    replans_.set(index, value);
+  }
+  /**
+   * <pre>
+   * replans: the supervisor's proposed changes to the plan (pending ones
+   * wait for you: ApproveProposal/RejectProposal with the replan's id);
+   * approved_adds: follow-up issues you approved, which a reread adds
+   * without asking for approval again.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+   */
+  private void addReplans(io.github.jflowers.ghhud.api.v1.EpicReplan value) {
+    java.util.Objects.requireNonNull(value);
+    ensureReplansIsMutable();
+    replans_.add(value);
+  }
+  /**
+   * <pre>
+   * replans: the supervisor's proposed changes to the plan (pending ones
+   * wait for you: ApproveProposal/RejectProposal with the replan's id);
+   * approved_adds: follow-up issues you approved, which a reread adds
+   * without asking for approval again.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+   */
+  private void addReplans(
+      int index, io.github.jflowers.ghhud.api.v1.EpicReplan value) {
+    java.util.Objects.requireNonNull(value);
+    ensureReplansIsMutable();
+    replans_.add(index, value);
+  }
+  /**
+   * <pre>
+   * replans: the supervisor's proposed changes to the plan (pending ones
+   * wait for you: ApproveProposal/RejectProposal with the replan's id);
+   * approved_adds: follow-up issues you approved, which a reread adds
+   * without asking for approval again.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+   */
+  private void addAllReplans(
+      java.lang.Iterable<? extends io.github.jflowers.ghhud.api.v1.EpicReplan> values) {
+    ensureReplansIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, replans_);
+  }
+  /**
+   * <pre>
+   * replans: the supervisor's proposed changes to the plan (pending ones
+   * wait for you: ApproveProposal/RejectProposal with the replan's id);
+   * approved_adds: follow-up issues you approved, which a reread adds
+   * without asking for approval again.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+   */
+  private void clearReplans() {
+    replans_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * replans: the supervisor's proposed changes to the plan (pending ones
+   * wait for you: ApproveProposal/RejectProposal with the replan's id);
+   * approved_adds: follow-up issues you approved, which a reread adds
+   * without asking for approval again.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+   */
+  private void removeReplans(int index) {
+    ensureReplansIsMutable();
+    replans_.remove(index);
+  }
+
+  public static final int APPROVED_ADDS_FIELD_NUMBER = 26;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> approvedAdds_;
+  /**
+   * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+   * @return A list containing the approvedAdds.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getApprovedAddsList() {
+    return approvedAdds_;
+  }
+  /**
+   * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+   * @return The count of approvedAdds.
+   */
+  @java.lang.Override
+  public int getApprovedAddsCount() {
+    return approvedAdds_.size();
+  }
+  /**
+   * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+   * @param index The index of the element to return.
+   * @return The approvedAdds at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getApprovedAdds(int index) {
+    return approvedAdds_.get(index);
+  }
+  /**
+   * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the approvedAdds at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getApprovedAddsBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        approvedAdds_.get(index));
+  }
+  private void ensureApprovedAddsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        approvedAdds_;  if (!tmp.isModifiable()) {
+      approvedAdds_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+   * @param index The index to set the value at.
+   * @param value The approvedAdds to set.
+   */
+  private void setApprovedAdds(
+      int index, java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureApprovedAddsIsMutable();
+    approvedAdds_.set(index, value);
+  }
+  /**
+   * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+   * @param value The approvedAdds to add.
+   */
+  private void addApprovedAdds(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureApprovedAddsIsMutable();
+    approvedAdds_.add(value);
+  }
+  /**
+   * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+   * @param values The approvedAdds to add.
+   */
+  private void addAllApprovedAdds(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureApprovedAddsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, approvedAdds_);
+  }
+  /**
+   * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+   */
+  private void clearApprovedAdds() {
+    approvedAdds_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+   * @param value The bytes of the approvedAdds to add.
+   */
+  private void addApprovedAddsBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureApprovedAddsIsMutable();
+    approvedAdds_.add(value.toStringUtf8());
   }
 
   public static io.github.jflowers.ghhud.api.v1.Epic parseFrom(
@@ -3175,6 +3441,284 @@ public  final class Epic extends
       return this;
     }
 
+    /**
+     * <pre>
+     * replans: the supervisor's proposed changes to the plan (pending ones
+     * wait for you: ApproveProposal/RejectProposal with the replan's id);
+     * approved_adds: follow-up issues you approved, which a reread adds
+     * without asking for approval again.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.jflowers.ghhud.api.v1.EpicReplan> getReplansList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getReplansList());
+    }
+    /**
+     * <pre>
+     * replans: the supervisor's proposed changes to the plan (pending ones
+     * wait for you: ApproveProposal/RejectProposal with the replan's id);
+     * approved_adds: follow-up issues you approved, which a reread adds
+     * without asking for approval again.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+     */
+    @java.lang.Override
+    public int getReplansCount() {
+      return instance.getReplansCount();
+    }/**
+     * <pre>
+     * replans: the supervisor's proposed changes to the plan (pending ones
+     * wait for you: ApproveProposal/RejectProposal with the replan's id);
+     * approved_adds: follow-up issues you approved, which a reread adds
+     * without asking for approval again.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+     */
+    @java.lang.Override
+    public io.github.jflowers.ghhud.api.v1.EpicReplan getReplans(int index) {
+      return instance.getReplans(index);
+    }
+    /**
+     * <pre>
+     * replans: the supervisor's proposed changes to the plan (pending ones
+     * wait for you: ApproveProposal/RejectProposal with the replan's id);
+     * approved_adds: follow-up issues you approved, which a reread adds
+     * without asking for approval again.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+     */
+    public Builder setReplans(
+        int index, io.github.jflowers.ghhud.api.v1.EpicReplan value) {
+      copyOnWrite();
+      instance.setReplans(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * replans: the supervisor's proposed changes to the plan (pending ones
+     * wait for you: ApproveProposal/RejectProposal with the replan's id);
+     * approved_adds: follow-up issues you approved, which a reread adds
+     * without asking for approval again.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+     */
+    public Builder setReplans(
+        int index, io.github.jflowers.ghhud.api.v1.EpicReplan.Builder builderForValue) {
+      copyOnWrite();
+      instance.setReplans(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * replans: the supervisor's proposed changes to the plan (pending ones
+     * wait for you: ApproveProposal/RejectProposal with the replan's id);
+     * approved_adds: follow-up issues you approved, which a reread adds
+     * without asking for approval again.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+     */
+    public Builder addReplans(io.github.jflowers.ghhud.api.v1.EpicReplan value) {
+      copyOnWrite();
+      instance.addReplans(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * replans: the supervisor's proposed changes to the plan (pending ones
+     * wait for you: ApproveProposal/RejectProposal with the replan's id);
+     * approved_adds: follow-up issues you approved, which a reread adds
+     * without asking for approval again.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+     */
+    public Builder addReplans(
+        int index, io.github.jflowers.ghhud.api.v1.EpicReplan value) {
+      copyOnWrite();
+      instance.addReplans(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * replans: the supervisor's proposed changes to the plan (pending ones
+     * wait for you: ApproveProposal/RejectProposal with the replan's id);
+     * approved_adds: follow-up issues you approved, which a reread adds
+     * without asking for approval again.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+     */
+    public Builder addReplans(
+        io.github.jflowers.ghhud.api.v1.EpicReplan.Builder builderForValue) {
+      copyOnWrite();
+      instance.addReplans(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * replans: the supervisor's proposed changes to the plan (pending ones
+     * wait for you: ApproveProposal/RejectProposal with the replan's id);
+     * approved_adds: follow-up issues you approved, which a reread adds
+     * without asking for approval again.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+     */
+    public Builder addReplans(
+        int index, io.github.jflowers.ghhud.api.v1.EpicReplan.Builder builderForValue) {
+      copyOnWrite();
+      instance.addReplans(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * replans: the supervisor's proposed changes to the plan (pending ones
+     * wait for you: ApproveProposal/RejectProposal with the replan's id);
+     * approved_adds: follow-up issues you approved, which a reread adds
+     * without asking for approval again.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+     */
+    public Builder addAllReplans(
+        java.lang.Iterable<? extends io.github.jflowers.ghhud.api.v1.EpicReplan> values) {
+      copyOnWrite();
+      instance.addAllReplans(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * replans: the supervisor's proposed changes to the plan (pending ones
+     * wait for you: ApproveProposal/RejectProposal with the replan's id);
+     * approved_adds: follow-up issues you approved, which a reread adds
+     * without asking for approval again.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+     */
+    public Builder clearReplans() {
+      copyOnWrite();
+      instance.clearReplans();
+      return this;
+    }
+    /**
+     * <pre>
+     * replans: the supervisor's proposed changes to the plan (pending ones
+     * wait for you: ApproveProposal/RejectProposal with the replan's id);
+     * approved_adds: follow-up issues you approved, which a reread adds
+     * without asking for approval again.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+     */
+    public Builder removeReplans(int index) {
+      copyOnWrite();
+      instance.removeReplans(index);
+      return this;
+    }
+
+    /**
+     * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+     * @return A list containing the approvedAdds.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getApprovedAddsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getApprovedAddsList());
+    }
+    /**
+     * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+     * @return The count of approvedAdds.
+     */
+    @java.lang.Override
+    public int getApprovedAddsCount() {
+      return instance.getApprovedAddsCount();
+    }
+    /**
+     * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+     * @param index The index of the element to return.
+     * @return The approvedAdds at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getApprovedAdds(int index) {
+      return instance.getApprovedAdds(index);
+    }
+    /**
+     * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the approvedAdds at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getApprovedAddsBytes(int index) {
+      return instance.getApprovedAddsBytes(index);
+    }
+    /**
+     * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+     * @param index The index to set the value at.
+     * @param value The approvedAdds to set.
+     * @return This builder for chaining.
+     */
+    public Builder setApprovedAdds(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setApprovedAdds(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+     * @param value The approvedAdds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addApprovedAdds(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addApprovedAdds(value);
+      return this;
+    }
+    /**
+     * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+     * @param values The approvedAdds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllApprovedAdds(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllApprovedAdds(values);
+      return this;
+    }
+    /**
+     * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearApprovedAdds() {
+      copyOnWrite();
+      instance.clearApprovedAdds();
+      return this;
+    }
+    /**
+     * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+     * @param value The bytes of the approvedAdds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addApprovedAddsBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addApprovedAddsBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.Epic)
   }
   @java.lang.Override
@@ -3217,13 +3761,16 @@ public  final class Epic extends
             "held_",
             "runs_",
             "runBudget_",
+            "replans_",
+            io.github.jflowers.ghhud.api.v1.EpicReplan.class,
+            "approvedAdds_",
           };
           java.lang.String info =
-              "\u0000\u0018\u0000\u0001\u0001\u0018\u0018\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u001a\u0000\u0001\u0001\u001a\u001a\u0000\u0004\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\u1009\u0000\u0005\u0208\u0006\u0208\u0007\u1009\u0001\b\u1009" +
               "\u0002\t\u0208\n\u1009\u0003\u000b\u0208\f\u001b\r\u1009\u0004\u000e\u021a\u000f" +
               "\u0208\u0010\u0208\u0011\u1009\u0005\u0012\u0208\u0013\u0208\u0014\u1009\u0006\u0015" +
-              "\u0208\u0016\u0208\u0017\u0002\u0018\u0002";
+              "\u0208\u0016\u0208\u0017\u0002\u0018\u0002\u0019\u001b\u001a\u021a";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -22,6 +22,8 @@ const epicUsage = `usage: gh-hud epic <url | owner/repo#N>   enroll an epic and 
        gh-hud epic reread <ref>             read an epic again (a changed plan needs approving)
        gh-hud epic clear <ref> <piece>      clear a piece's gate (piece: #N or owner/repo#N)
        gh-hud epic finish <ref> [-y]        show a finished epic's summary; -y posts it as you and closes the epic
+       gh-hud epic accept <id>              make a change the supervisor proposed to a plan, on GitHub as you
+       gh-hud epic reject <id>              turn a proposed change down
        gh-hud epic drop <ref>               stop tracking an epic
 
 -hub/-token-file reach a hub on another machine (see gh-hud status -h).
@@ -64,6 +66,22 @@ func runEpic(args []string, stdout, stderr io.Writer) int {
 		return epic.Ref(repo, num), true
 	}
 	switch cmd {
+	case "accept", "reject":
+		if len(rest) != 1 {
+			fmt.Fprintf(stderr, "gh-hud epic %s: want one proposal id (gh-hud epic list shows them)\n", cmd)
+			return 2
+		}
+		if cmd == "accept" {
+			err = c.ApproveProposal(ctx, rest[0])
+		} else {
+			err = c.RejectProposal(ctx, rest[0])
+		}
+		if err != nil {
+			fmt.Fprintf(stderr, "gh-hud epic %s: %v\n", cmd, err)
+			return 1
+		}
+		fmt.Fprintf(stdout, "%s: %sed\n", rest[0], cmd)
+		return 0
 	case "clear":
 		if len(rest) != 2 {
 			fmt.Fprintln(stderr, "gh-hud epic clear: want the epic and the piece, e.g. gh-hud epic clear acme/app#100 #103")
@@ -300,5 +318,17 @@ func printEpics(w io.Writer, epics []epic.Epic) {
 		for _, r := range p.Rules {
 			fmt.Fprintf(w, "  rule: %s\n", r)
 		}
+		for _, r := range e.PendingReplans() {
+			fmt.Fprintf(w, "  proposed %s: %s (%s)\n", r.ID, replanLine(repo, r), r.Why)
+			fmt.Fprintf(w, "    gh-hud epic accept %s, or gh-hud epic reject %s\n", r.ID, r.ID)
+		}
 	}
+}
+
+// replanLine says what a proposed change to a plan does.
+func replanLine(repo string, r epic.Replan) string {
+	if r.Kind == epic.ReplanDrop {
+		return "drop " + epic.Short(repo, r.Piece) + " (close it as not planned)"
+	}
+	return fmt.Sprintf("new piece %q, from %s", r.Title, epic.Short(repo, r.Piece))
 }

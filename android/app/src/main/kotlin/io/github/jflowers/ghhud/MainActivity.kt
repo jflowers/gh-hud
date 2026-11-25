@@ -120,6 +120,7 @@ class MainActivity : ComponentActivity() {
         override suspend fun drop(e: EpicRow) = plan.drop(e)
 
         override suspend fun finish(e: EpicRow) = plan.finish(e)
+        override suspend fun settle(r: EpicRow.Replan, approve: Boolean) = plan.settle(r, approve)
 
         override suspend fun clearGate(epic: String, piece: String) = plan.clearGate(epic, piece)
 

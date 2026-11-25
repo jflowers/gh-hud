@@ -2865,11 +2865,73 @@ public nonisolated struct Ghhud_V1_Epic: @unchecked Sendable {
     set {_uniqueStorage()._runBudget = newValue}
   }
 
+  /// replans: the supervisor's proposed changes to the plan (pending ones
+  /// wait for you: ApproveProposal/RejectProposal with the replan's id);
+  /// approved_adds: follow-up issues you approved, which a reread adds
+  /// without asking for approval again.
+  public var replans: [Ghhud_V1_EpicReplan] {
+    get {_storage._replans}
+    set {_uniqueStorage()._replans = newValue}
+  }
+
+  public var approvedAdds: [String] {
+    get {_storage._approvedAdds}
+    set {_uniqueStorage()._approvedAdds = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+/// EpicReplan is a proposed change to an epic's plan (epic.Replan), made on
+/// GitHub, as you, only when you approve it.
+public nonisolated struct Ghhud_V1_EpicReplan: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var id: String = String()
+
+  /// open set: drop (close the piece as not planned), follow_up (open a new piece)
+  public var kind: String = String()
+
+  /// the piece whose run led to it
+  public var piece: String = String()
+
+  /// follow_up: the new issue's title
+  public var title: String = String()
+
+  /// follow_up: its body
+  public var body: String = String()
+
+  public var why: String = String()
+
+  public var created: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_created ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_created = newValue}
+  }
+  /// Returns true if `created` has been explicitly set.
+  public var hasCreated: Bool {self._created != nil}
+  /// Clears the value of `created`. Subsequent reads from it will return its default value.
+  public mutating func clearCreated() {self._created = nil}
+
+  /// open set: pending, approved, rejected, failed
+  public var status: String = String()
+
+  /// what approving did, or why it failed
+  public var note: String = String()
+
+  /// follow_up: the issue opened
+  public var issue: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _created: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
 }
 
 /// EpicReport is what a piece's run that left no PR did, and the
@@ -7909,7 +7971,7 @@ nonisolated extension Ghhud_V1_Proposal: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Epic"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}url\0\u{1}title\0\u{1}enrolled\0\u{1}state\0\u{1}error\0\u{1}plan\0\u{1}approved\0\u{3}approved_plan\0\u{3}checked_at\0\u{1}log\0\u{1}reports\0\u{3}approved_snapshot\0\u{1}changes\0\u{3}status_comment\0\u{3}status_hash\0\u{1}complete\0\u{1}summary\0\u{3}summary_comment\0\u{1}closed\0\u{3}closed_note\0\u{1}held\0\u{1}runs\0\u{3}run_budget\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}url\0\u{1}title\0\u{1}enrolled\0\u{1}state\0\u{1}error\0\u{1}plan\0\u{1}approved\0\u{3}approved_plan\0\u{3}checked_at\0\u{1}log\0\u{1}reports\0\u{3}approved_snapshot\0\u{1}changes\0\u{3}status_comment\0\u{3}status_hash\0\u{1}complete\0\u{1}summary\0\u{3}summary_comment\0\u{1}closed\0\u{3}closed_note\0\u{1}held\0\u{1}runs\0\u{3}run_budget\0\u{1}replans\0\u{3}approved_adds\0")
 
   fileprivate class _StorageClass {
     var _ref: String = String()
@@ -7936,6 +7998,8 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _held: String = String()
     var _runs: Int64 = 0
     var _runBudget: Int64 = 0
+    var _replans: [Ghhud_V1_EpicReplan] = []
+    var _approvedAdds: [String] = []
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -7970,6 +8034,8 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _held = source._held
       _runs = source._runs
       _runBudget = source._runBudget
+      _replans = source._replans
+      _approvedAdds = source._approvedAdds
     }
   }
 
@@ -8012,6 +8078,8 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 22: try { try decoder.decodeSingularStringField(value: &_storage._held) }()
         case 23: try { try decoder.decodeSingularInt64Field(value: &_storage._runs) }()
         case 24: try { try decoder.decodeSingularInt64Field(value: &_storage._runBudget) }()
+        case 25: try { try decoder.decodeRepeatedMessageField(value: &_storage._replans) }()
+        case 26: try { try decoder.decodeRepeatedStringField(value: &_storage._approvedAdds) }()
         default: break
         }
       }
@@ -8096,6 +8164,12 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
       if _storage._runBudget != 0 {
         try visitor.visitSingularInt64Field(value: _storage._runBudget, fieldNumber: 24)
       }
+      if !_storage._replans.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._replans, fieldNumber: 25)
+      }
+      if !_storage._approvedAdds.isEmpty {
+        try visitor.visitRepeatedStringField(value: _storage._approvedAdds, fieldNumber: 26)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -8129,10 +8203,91 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._held != rhs_storage._held {return false}
         if _storage._runs != rhs_storage._runs {return false}
         if _storage._runBudget != rhs_storage._runBudget {return false}
+        if _storage._replans != rhs_storage._replans {return false}
+        if _storage._approvedAdds != rhs_storage._approvedAdds {return false}
         return true
       }
       if !storagesAreEqual {return false}
     }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_EpicReplan: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".EpicReplan"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}kind\0\u{1}piece\0\u{1}title\0\u{1}body\0\u{1}why\0\u{1}created\0\u{1}status\0\u{1}note\0\u{1}issue\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.kind) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.piece) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.title) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.body) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.why) }()
+      case 7: try { try decoder.decodeSingularMessageField(value: &self._created) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.status) }()
+      case 9: try { try decoder.decodeSingularStringField(value: &self.note) }()
+      case 10: try { try decoder.decodeSingularStringField(value: &self.issue) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    if !self.kind.isEmpty {
+      try visitor.visitSingularStringField(value: self.kind, fieldNumber: 2)
+    }
+    if !self.piece.isEmpty {
+      try visitor.visitSingularStringField(value: self.piece, fieldNumber: 3)
+    }
+    if !self.title.isEmpty {
+      try visitor.visitSingularStringField(value: self.title, fieldNumber: 4)
+    }
+    if !self.body.isEmpty {
+      try visitor.visitSingularStringField(value: self.body, fieldNumber: 5)
+    }
+    if !self.why.isEmpty {
+      try visitor.visitSingularStringField(value: self.why, fieldNumber: 6)
+    }
+    try { if let v = self._created {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
+    } }()
+    if !self.status.isEmpty {
+      try visitor.visitSingularStringField(value: self.status, fieldNumber: 8)
+    }
+    if !self.note.isEmpty {
+      try visitor.visitSingularStringField(value: self.note, fieldNumber: 9)
+    }
+    if !self.issue.isEmpty {
+      try visitor.visitSingularStringField(value: self.issue, fieldNumber: 10)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_EpicReplan, rhs: Ghhud_V1_EpicReplan) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.kind != rhs.kind {return false}
+    if lhs.piece != rhs.piece {return false}
+    if lhs.title != rhs.title {return false}
+    if lhs.body != rhs.body {return false}
+    if lhs.why != rhs.why {return false}
+    if lhs._created != rhs._created {return false}
+    if lhs.status != rhs.status {return false}
+    if lhs.note != rhs.note {return false}
+    if lhs.issue != rhs.issue {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

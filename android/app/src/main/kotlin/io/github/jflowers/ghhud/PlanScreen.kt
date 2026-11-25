@@ -68,6 +68,7 @@ interface PlanActions {
     suspend fun reread(e: EpicRow): Answer<String>
     suspend fun drop(e: EpicRow): Answer<String>
     suspend fun finish(e: EpicRow): Answer<String>
+    suspend fun settle(r: EpicRow.Replan, approve: Boolean): Answer<String>
     suspend fun clearGate(epic: String, piece: String): Answer<String>
     suspend fun enroll(target: String): Answer<String>
 }
@@ -151,6 +152,7 @@ fun PlanScreen(ui: Ui, plan: PlanActions, items: ItemActions, say: Say, refresh:
                             onDrop = { dropping = e },
                             onFinish = { finishing = e },
                             onClear = { p -> go("gate:${e.ref} $p") { plan.clearGate(e.ref, p) } },
+                            onSettle = { r, yes -> go("replan:${r.id}") { plan.settle(r, yes) } },
                         )
                         HorizontalDivider()
                     }
@@ -286,6 +288,7 @@ private fun EpicView(
     onDrop: () -> Unit,
     onFinish: () -> Unit,
     onClear: (piece: String) -> Unit,
+    onSettle: (EpicRow.Replan, Boolean) -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
     var all by remember { mutableStateOf(false) }
@@ -321,6 +324,16 @@ private fun EpicView(
                 )
                 for (c in e.changes) {
                     Text("± $c", style = MaterialTheme.typography.bodySmall, color = Tone.WARN.color())
+                }
+            }
+        }
+        for (r in e.replans) {
+            Column(Modifier.padding(top = 6.dp, end = 16.dp).testTag("replan:" + r.id)) {
+                Text("Supervisor proposes: ${r.what}", color = Tone.WARN.color(), style = MaterialTheme.typography.bodyMedium)
+                Text(r.why, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { onSettle(r, true) }, enabled = enabled, modifier = Modifier.testTag("approve-replan:" + r.id)) { Text("Approve") }
+                    OutlinedButton(onClick = { onSettle(r, false) }, enabled = enabled, modifier = Modifier.testTag("reject-replan:" + r.id)) { Text("Reject") }
                 }
             }
         }

@@ -337,6 +337,25 @@ func (m *Model) handlePlanKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "Y", "N":
 		c, ok := m.proposalFor(cur, have)
+		if r, one := m.replanWaiting(); !ok && one {
+			var err error
+			if msg.String() == "Y" {
+				err = m.backend.ApproveProposal(ctx(), r.ID)
+			} else {
+				err = m.backend.RejectProposal(ctx(), r.ID)
+			}
+			switch {
+			case err != nil:
+				m.flash("failed: " + err.Error())
+			case msg.String() == "Y":
+				m.sync()
+				m.flash("approved: the change is made on GitHub as you")
+			default:
+				m.sync()
+				m.flash("rejected the proposed change")
+			}
+			break
+		}
 		if !ok {
 			m.flash("no proposal to settle: select a PR that says approve")
 			break
@@ -441,7 +460,23 @@ func (m *Model) pendingCount() int {
 			n++
 		}
 	}
+	for _, e := range m.epics {
+		n += len(e.PendingReplans())
+	}
 	return n
+}
+
+// replanWaiting is the one proposed change to an epic's plan that waits
+// for you, or none when none or several do (gh-hud epic accept picks).
+func (m *Model) replanWaiting() (epic.Replan, bool) {
+	var found []epic.Replan
+	for _, e := range m.epics {
+		found = append(found, e.PendingReplans()...)
+	}
+	if len(found) != 1 {
+		return epic.Replan{}, false
+	}
+	return found[0], true
 }
 
 // proposalFor is the case whose proposal Y/N settle: the selected PR's,
@@ -618,6 +653,14 @@ func (m *Model) epicLines(w int) []string {
 		out = append(out, epicChangeLines(e, w)...)
 		out = append(out, epicSummaryLines(e, w)...)
 		repo, _, _ := epic.ParseRef(e.Ref)
+		for _, r := range e.PendingReplans() {
+			what := "drop " + epic.Short(repo, r.Piece) + " (close it as not planned)"
+			if r.Kind == epic.ReplanFollowUp {
+				what = fmt.Sprintf("new piece %q, from %s", r.Title, epic.Short(repo, r.Piece))
+			}
+			out = append(out, lipgloss.NewStyle().Foreground(cOrange).Render(truncatePlain("      ? supervisor proposes: "+what+": Y approve · N reject", max(w-2, 10))))
+			out = append(out, dim.Render(truncatePlain("        "+r.Why, max(w-2, 10))))
+		}
 		var open []epic.Node
 		for _, n := range e.Plan.Nodes {
 			if n.State != epic.NodeDone && n.State != epic.NodeDropped {

@@ -1296,6 +1296,27 @@ auto pass starts them like any other step:
   apps. As with any approval, the counts start over, per piece too. The
   epic's line shows the runs used, for example `7/20 runs`.
 
+**Re-planning.** When a piece's run leaves no PR and the supervisor reads
+it, the supervisor can also propose a change to the plan:
+
+- **drop**: the piece isn't needed. For example, another PR already did it,
+  or another piece made it moot. The piece needs you
+  (`epic: approve dropping it? …`). Approving comments on its issue with
+  the reason and closes it as not planned, as you, so it reads as dropped.
+  Rejecting keeps it, and it needs you.
+- **follow-up**: the run turned up new work the epic needs, such as a
+  prerequisite or a bug. This can come with any verdict. Approving opens an
+  issue for it in the piece's repo, as you, and adds it as a sub-issue of
+  the epic. The next read picks it up as a piece. That read keeps the plan
+  approved when the follow-ups you approved are all that's new.
+
+Each proposal waits for you. Nothing changes on GitHub without your
+approval, and the agent token can't approve. The Plan tab lists the pending
+ones under their epic (`Y` approves and `N` rejects when only one is
+pending), and so does `gh-hud epic list`, with
+`gh-hud epic accept <id>` and `gh-hud epic reject <id>`. The Mac and
+Android apps show them with Approve and Reject.
+
 **Finishing.** When every piece of the approved plan is done or dropped,
 the epic is finished: nothing is left to run. A piece blocked by a dropped
 one isn't finished; it needs you. gh-hud says so once (`epic acme/app#100:

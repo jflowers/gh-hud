@@ -307,3 +307,29 @@ func TestPlanEpicRunBudgetSpent(t *testing.T) {
 		t.Error("E didn't approve the epic again")
 	}
 }
+
+// gh-hud#22: a change the supervisor proposes to a plan shows under its
+// epic, and Y approves it.
+func TestPlanShowsReplans(t *testing.T) {
+	approved := time.Now().Add(-time.Hour)
+	fake := &hubtest.Fake{}
+	fake.SetSnap(hub.Snapshot{Seq: 1, Dispatch: true, Res: &model.FetchResult{},
+		Epics: []epic.Epic{{Ref: "acme/app#100", Title: "The epic", State: epic.StateApproved, ApprovedPlan: "p7", Approved: &approved,
+			Plan: &epic.Plan{ID: "p7", Nodes: []epic.Node{{Ref: "acme/app#101", Title: "first", State: epic.NodeReady}}},
+			Replans: []epic.Replan{
+				{ID: "r1", Kind: epic.ReplanDrop, Piece: "acme/app#101", Why: "PR #9 did it.", Status: epic.ReplanPending},
+				{ID: "r0", Kind: epic.ReplanFollowUp, Piece: "acme/app#101", Title: "old", Why: "x", Status: epic.ReplanRejected},
+			}}}})
+	m := New(config.Default(), fake)
+	m.width, m.height = 160, 30
+	key := func(k string) { m.handleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)}) }
+	key("p")
+	view := ansiRe.ReplaceAllString(m.View(), "")
+	if !strings.Contains(view, "? supervisor proposes: drop #101 (close it as not planned): Y approve · N reject") || !strings.Contains(view, "PR #9 did it.") || strings.Contains(view, `"old"`) {
+		t.Errorf("plan view:\n%s", view)
+	}
+	key("Y")
+	if fake.Called("ApproveProposal r1") != 1 {
+		t.Error("Y didn't approve r1")
+	}
+}

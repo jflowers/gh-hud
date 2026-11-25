@@ -850,6 +850,27 @@ message Epic {
   // plan again.
   int64 runs = 23;
   int64 run_budget = 24;
+  // replans: the supervisor's proposed changes to the plan (pending ones
+  // wait for you: ApproveProposal/RejectProposal with the replan's id);
+  // approved_adds: follow-up issues you approved, which a reread adds
+  // without asking for approval again.
+  repeated EpicReplan replans = 25;
+  repeated string approved_adds = 26;
+}
+
+// EpicReplan is a proposed change to an epic's plan (epic.Replan), made on
+// GitHub, as you, only when you approve it.
+message EpicReplan {
+  string id = 1;
+  string kind = 2;  // open set: drop (close the piece as not planned), follow_up (open a new piece)
+  string piece = 3; // the piece whose run led to it
+  string title = 4; // follow_up: the new issue's title
+  string body = 5;  // follow_up: its body
+  string why = 6;
+  google.protobuf.Timestamp created = 7;
+  string status = 8; // open set: pending, approved, rejected, failed
+  string note = 9;   // what approving did, or why it failed
+  string issue = 10; // follow_up: the issue opened
 }
 
 // EpicReport is what a piece's run that left no PR did, and the

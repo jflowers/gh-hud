@@ -63,6 +63,14 @@ public class PlanCommands(private val hub: HubConnection) {
         return say(hub.finishEpic(e.ref, plan), { "Posted the summary and closed ${e.ref}" }, { "Can't finish ${e.ref}: $it" })
     }
 
+    /** Approves or rejects a change the supervisor proposed to an epic's plan. */
+    public suspend fun settle(r: EpicRow.Replan, approve: Boolean): Answer<String> =
+        if (approve) {
+            say(why(hub.approve(Approval.Proposal(r.id))), { "Done on GitHub: ${r.what}" }, { "Can't approve the change: $it" })
+        } else {
+            say(why(hub.reject(Approval.Proposal(r.id))), { "Rejected: ${r.what}" }, { "Can't reject the change: $it" })
+        }
+
     public suspend fun drop(e: EpicRow): Answer<String> =
         say(hub.dropEpic(e.ref), { "Dropped ${e.ref}" }, { "Can't drop ${e.ref}: $it" })
 

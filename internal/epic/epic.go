@@ -140,6 +140,12 @@ type Epic struct {
 	// Reports are the latest run report of each piece whose run ended
 	// without a PR.
 	Reports []Report `json:"reports,omitempty"`
+	// Replans are the supervisor's proposed changes to the plan, kept
+	// after you settle them; ApprovedAdds are the follow-up issues you
+	// approved, so a reread that adds them keeps the plan approved
+	// (replan.go).
+	Replans      []Replan `json:"replans,omitempty"`
+	ApprovedAdds []string `json:"approved_adds,omitempty"`
 	// Complete is when every piece of the approved plan was first seen
 	// finished (done or dropped); nil while one isn't. Summary is then the
 	// comment gh-hud offers to post as it closes the epic (FinishSummary).
@@ -231,6 +237,7 @@ const (
 	VerdictReviewing = ""           // the supervisor is looking at it
 	VerdictRetry     = "retry"      // another run can get it done
 	VerdictHuman     = "human"      // it needs a person before another run
+	VerdictDrop      = "drop"       // it isn't needed: dropping it waits for you (replan.go)
 	VerdictNone      = "unreviewed" // no supervisor, or its review failed
 )
 

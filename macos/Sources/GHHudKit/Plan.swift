@@ -194,6 +194,20 @@ public struct EpicRow: Identifiable, Equatable, Sendable {
     /// The plan whose pieces are all finished, when the epic can be
     /// finished (gh-hud#22), and the comment finishing it posts as you.
     public let planToFinish: String?
+    /// A change the supervisor proposes to the plan, waiting for you:
+    /// approving makes it on GitHub, as you.
+    public struct Replan: Identifiable, Equatable, Sendable {
+        public let id: String
+        public let what: String // "drop #12 (close it as not planned)"
+        public let why: String
+
+        public init(id: String, what: String, why: String) {
+            self.id = id
+            self.what = what
+            self.why = why
+        }
+    }
+    public let replans: [Replan]
     public let summary: String
     /// Pieces still to do, running and ready first.
     public let open: [Piece]
@@ -241,6 +255,13 @@ public struct EpicRow: Identifiable, Equatable, Sendable {
         changes = planToApprove == nil ? [] : e.changes
         planToFinish = e.state == "approved" && e.hasComplete && e.hasPlan && !e.plan.stale && !e.summary.isEmpty ? e.plan.id : nil
         summary = planToFinish == nil ? "" : e.summary
+        let epicRepo = e.ref.split(separator: "#", maxSplits: 1).first.map(String.init) ?? e.ref
+        replans = e.replans.filter { $0.status == "pending" }.map { r in
+            let what = r.kind == "drop"
+                ? "drop \(Self.short(epicRepo, r.piece)) (close it as not planned)"
+                : "new piece \u{201C}\(r.title)\u{201D}, from \(Self.short(epicRepo, r.piece))"
+            return Replan(id: r.id, what: what, why: r.why)
+        }
         let repo = e.ref.split(separator: "#", maxSplits: 1).first.map(String.init) ?? e.ref
         let rank = ["running": 0, "ready": 1, "in_progress": 2, "gated": 3, "blocked": 4, "waiting": 5, "unknown": 6]
         let approved = e.state == "approved"
