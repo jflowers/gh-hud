@@ -1342,13 +1342,13 @@ Dispatch is configured in three layers, all in `config.toml`:
 
 | Layer | Where | Decides |
 |---|---|---|
-| Tasks | `[dispatch.<task>]` | what each task runs (`command`), whether it starts itself (`auto`), and for which orgs (`orgs`) and items (`mine`); `[[dispatch.issue.by_label]]` gives labelled issues their own command |
+| Tasks | `[dispatch.<task>]` | what each task runs (`command`), whether it starts itself (`auto`), and for which orgs and repos (`orgs`, `repos`) and items (`mine`); `[[dispatch.issue.by_label]]` gives labelled issues their own command |
 | Machines | top level (the hub) and `[[machines]]` (workers) | where agents may run, how many at once, which tasks and which labelled items each machine accepts, and how agents run there |
 | Checkouts | ghws `@` instances on each machine | which repos a machine can take work for at all |
 
-Task settings are global: one `command`, `auto`, `orgs` and `mine` per task, used
+Task settings are global: one `command`, `auto`, `orgs`, `repos` and `mine` per task, used
 on every machine. Per-machine control is the `[[machines]] tasks`
-allowlist; per-org control of auto-dispatch is the task's `orgs` list. A
+allowlist; per-org and per-repo control of auto-dispatch is the task's `orgs` and `repos` lists. A
 machine only takes work for repos it has a ghws instance of, so which
 orgs a worker serves is also decided by which workspaces you create on it.
 
@@ -1378,15 +1378,19 @@ starts twice for the same PR or issue state: it waits until the item
 changes (new commits, comments, checks), and never restarts a ref within
 30 minutes of its last start. For `review` this drains the Queue.
 
-`orgs` limits `auto` to repos owned by the listed orgs or users
-(case-insensitive). Empty or unset means every org.
+`orgs` limits `auto` to repos owned by the listed orgs or users, and
+`repos` to single `owner/name` repos (both case-insensitive). A repo is
+covered when its owner is in `orgs` or it is in `repos`; with both empty
+or unset, every repo is. To auto-review one org whole and only two repos
+of another: `orgs = ["unbound-force"]`, `repos = ["fullsend-ai/fullsend",
+"fullsend-ai/agents"]`.
 
 `mine = true` limits `auto` to items that are yours: PRs you opened, and
 issues assigned to you (not ones that only mention you). `feedback` only
 ever triggers on your PRs, so it needs no `mine`; on `review` it means
 auto never fires, since auto-review covers only others' PRs.
 
-`orgs` and `mine` combine (both must match), and neither limits `a`: you
+`orgs`/`repos` and `mine` combine (both must match), and none limits `a`: you
 can still dispatch any task by hand on any PR or issue.
 
 ### Machines
@@ -1980,12 +1984,14 @@ dewey_reindex_timeout = "2h"  # one vault's reindex; the machine kills dewey pas
 # All five are built in with these commands; a table only needs the keys
 # it changes. command: slash-command template ({num} = PR/issue number).
 # auto: dispatch on refresh, no keypress. orgs: limit auto to these repo
-# owners (empty = every org). mine: limit auto to your PRs and issues
-# assigned to you. Neither limits a keypress dispatch.
+# owners; repos: and these owner/name repos (both empty = every repo).
+# mine: limit auto to your PRs and issues assigned to you. None limits a
+# keypress dispatch.
 [dispatch.rebase]          # any listed PR with a merge conflict
 command = "/uf.rebase-pr {num}"
 auto = false
 orgs = []
+repos = []
 mine = false
 
 [dispatch.ci]              # any listed PR with failing checks

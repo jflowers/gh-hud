@@ -237,6 +237,36 @@ func TestLoadDispatchOrgs(t *testing.T) {
 	}
 }
 
+func TestLoadDispatchRepos(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.toml")
+	data := "[dispatch.review]\nauto = true\norgs = [\"unbound-force\"]\nrepos = [\"Fullsend-AI/fullsend\", \"fullsend-ai/agents\"]\n"
+	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	review := c.Dispatch["review"]
+	for repo, want := range map[string]bool{
+		"fullsend-ai/fullsend":     true, // listed repo, case-insensitive
+		"fullsend-ai/agents":       true,
+		"unbound-force/gaze":       true, // listed org
+		"fullsend-ai/rfe-creator":  false,
+		"zero-dot-force/anything":  false,
+		"fullsend-ai/fullsend-ext": false,
+	} {
+		if got := review.AutoFor(repo); got != want {
+			t.Errorf("AutoFor(%s) = %v, want %v", repo, got, want)
+		}
+	}
+	only := TaskConfig{Auto: true, Repos: []string{"fullsend-ai/agents"}}
+	if only.AutoFor("fullsend-ai/fullsend") || !only.AutoFor("fullsend-ai/agents") {
+		t.Error("repos alone should limit auto to those repos")
+	}
+}
+
 func TestLoadRunnerLocal(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.toml")

@@ -316,7 +316,8 @@ func (c AutoMergeConfig) Covers(repo string) bool {
 type TaskConfig struct {
 	Command string   `toml:"command"` // slash command template, {num} = PR/issue number
 	Auto    bool     `toml:"auto"`    // auto-dispatch on refresh without confirmation
-	Orgs    []string `toml:"orgs"`    // limits auto to these repo owners; empty = every org
+	Orgs    []string `toml:"orgs"`    // limits auto to these repo owners; empty (with repos) = every org
+	Repos   []string `toml:"repos"`   // and these single owner/name repos (gh-hud#189)
 	Mine    bool     `toml:"mine"`    // limits auto to your PRs and issues assigned to you
 	// MaxRounds caps how many times the task auto-dispatches on one PR,
 	// counting runs started by hand. 0 uses the default (see RoundLimit),
@@ -396,18 +397,24 @@ func (tc TaskConfig) RoundLimit(task string) int {
 }
 
 // AutoFor reports whether the task auto-dispatches for repo ("owner/name"):
-// auto is on and the owner is in orgs (any owner when orgs is empty). orgs
-// never limits a dispatch you start with a keypress.
+// auto is on and the repo is covered: its owner is in orgs or it is in
+// repos (any repo when both are empty). Neither limits a dispatch you
+// start with a keypress.
 func (tc TaskConfig) AutoFor(repo string) bool {
 	if !tc.Auto {
 		return false
 	}
-	if len(tc.Orgs) == 0 {
+	if len(tc.Orgs) == 0 && len(tc.Repos) == 0 {
 		return true
 	}
 	owner, _, _ := strings.Cut(repo, "/")
 	for _, o := range tc.Orgs {
 		if strings.EqualFold(o, owner) {
+			return true
+		}
+	}
+	for _, r := range tc.Repos {
+		if strings.EqualFold(r, repo) {
 			return true
 		}
 	}
