@@ -516,7 +516,7 @@ func planRowFromPB(p *pb.PlanRow) dispatch.PlanRow {
 }
 
 func caseToPB(c dispatch.Case) *pb.Case {
-	out := &pb.Case{Id: c.ID, Kind: string(c.Kind), Repo: c.Repo, Check: c.Check,
+	out := &pb.Case{Id: c.ID, Kind: string(c.Kind), Repo: c.Repo, Check: c.Check, Pr: int64(c.PR),
 		Facts: factsToPB(c.CaseFacts), Supervising: c.Supervising}
 	if c.Decision != nil {
 		out.Decision = decisionToPB(*c.Decision)
@@ -528,7 +528,7 @@ func caseToPB(c dispatch.Case) *pb.Case {
 }
 
 func caseFromPB(p *pb.Case) dispatch.Case {
-	c := dispatch.Case{ID: p.GetId(), Kind: dispatch.CaseKind(p.GetKind()), Repo: p.GetRepo(), Check: p.GetCheck(),
+	c := dispatch.Case{ID: p.GetId(), Kind: dispatch.CaseKind(p.GetKind()), Repo: p.GetRepo(), Check: p.GetCheck(), PR: int(p.GetPr()),
 		CaseFacts: factsFromPB(p.GetFacts()), Supervising: p.GetSupervising()}
 	if p.GetDecision() != nil {
 		d := decisionFromPB(p.GetDecision())
@@ -542,21 +542,32 @@ func caseFromPB(p *pb.Case) dispatch.Case {
 }
 
 func factsToPB(f dispatch.CaseFacts) *pb.CaseFacts {
-	return &pb.CaseFacts{Prs: mapSlice(f.PRs, func(n int) int64 { return int64(n) }), OnBase: f.OnBase, BaseOid: f.BaseOID}
+	return &pb.CaseFacts{Prs: mapSlice(f.PRs, func(n int) int64 { return int64(n) }), OnBase: f.OnBase, BaseOid: f.BaseOID, Stamp: f.Stamp}
 }
 
 func factsFromPB(p *pb.CaseFacts) dispatch.CaseFacts {
-	return dispatch.CaseFacts{PRs: mapSlice(p.GetPrs(), func(n int64) int { return int(n) }), OnBase: p.GetOnBase(), BaseOID: p.GetBaseOid()}
+	return dispatch.CaseFacts{PRs: mapSlice(p.GetPrs(), func(n int64) int { return int(n) }), OnBase: p.GetOnBase(), BaseOID: p.GetBaseOid(), Stamp: p.GetStamp()}
 }
 
 func decisionToPB(d dispatch.Decision) *pb.Decision {
 	return &pb.Decision{CaseId: d.Case, Kind: string(d.Kind), FixPr: int64(d.FixPR), Summary: d.Summary,
-		Options: d.Options, By: d.By, Facts: factsToPB(d.Facts), Decided: ts(d.Decided)}
+		Options: d.Options, By: d.By, Facts: factsToPB(d.Facts), Decided: ts(d.Decided), Replies: mapSlice(d.Replies, replyToPB)}
+}
+
+func replyToPB(r dispatch.Reply) *pb.ReviewReply {
+	return &pb.ReviewReply{Thread: r.Thread, LastComment: r.LastComment, Path: r.Path, Line: int64(r.Line),
+		Author: r.Author, Quote: r.Quote, Url: r.URL, Body: r.Body}
+}
+
+func replyFromPB(p *pb.ReviewReply) dispatch.Reply {
+	return dispatch.Reply{Thread: p.GetThread(), LastComment: p.GetLastComment(), Path: p.GetPath(), Line: int(p.GetLine()),
+		Author: p.GetAuthor(), Quote: p.GetQuote(), URL: p.GetUrl(), Body: p.GetBody()}
 }
 
 func decisionFromPB(p *pb.Decision) dispatch.Decision {
 	return dispatch.Decision{Case: p.GetCaseId(), Kind: dispatch.DecisionKind(p.GetKind()), FixPR: int(p.GetFixPr()),
-		Summary: p.GetSummary(), Options: p.GetOptions(), By: p.GetBy(), Facts: factsFromPB(p.GetFacts()), Decided: fromTS(p.GetDecided())}
+		Summary: p.GetSummary(), Options: p.GetOptions(), By: p.GetBy(), Facts: factsFromPB(p.GetFacts()), Decided: fromTS(p.GetDecided()),
+		Replies: mapSlice(p.GetReplies(), replyFromPB)}
 }
 
 func proposalToPB(p dispatch.Proposal) *pb.Proposal {

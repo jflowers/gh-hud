@@ -341,7 +341,8 @@ func stageOf(it model.Item, runs []Run, tasks map[string]config.TaskConfig, am c
 // Stage reports a PR's stage in the auto pipeline from the given runs
 // (as Runs returns them). No I/O.
 func (d *Dispatcher) Stage(it model.Item, runs []Run) Stage {
-	st := stageOf(it, runs, d.o().Tasks, d.o().AutoMerge, d.trainSnapshot(), time.Now())
+	tp := d.trainSnapshot()
+	st := tp.reviewOverlay(it, stageOf(it, runs, d.o().Tasks, d.o().AutoMerge, tp, time.Now()))
 	if humanGated(it, d.o().HumanGate) && st.Kind != StageRunning && (it.Kind == model.KindPR || it.Kind == model.KindIssue) {
 		return Stage{Kind: StageNeedsYou, Reason: "human gate"}
 	}

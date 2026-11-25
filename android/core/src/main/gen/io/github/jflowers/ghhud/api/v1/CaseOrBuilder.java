@@ -132,4 +132,15 @@ public interface CaseOrBuilder extends
    * @return The proposal.
    */
   io.github.jflowers.ghhud.api.v1.Proposal getProposal();
+
+  /**
+   * <pre>
+   * pr: a review_reply case's PR, whose review threads wait on you; its
+   * proposal's decision (kind answer) carries the drafted replies.
+   * </pre>
+   *
+   * <code>int64 pr = 9 [json_name = "pr"];</code>
+   * @return The pr.
+   */
+  long getPr();
 }

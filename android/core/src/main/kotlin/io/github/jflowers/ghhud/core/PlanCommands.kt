@@ -31,7 +31,12 @@ public class PlanCommands(private val hub: HubConnection) {
 
     public suspend fun approve(c: CaseRow): Answer<String> {
         val id = c.proposal ?: return Answer.No("Nothing to approve for ${c.title}")
-        return say(why(hub.approve(Approval.Proposal(id))), { "Approved: ${c.summary}" }, {
+        val done = if (c.isReview) {
+            "Posted ${if (c.replies.size == 1) "1 reply" else "${c.replies.size} replies"} to ${c.title} as you"
+        } else {
+            "Approved: ${c.summary}"
+        }
+        return say(why(hub.approve(Approval.Proposal(id))), { done }, {
             "Can't approve the proposal for ${c.title}: $it"
         })
     }

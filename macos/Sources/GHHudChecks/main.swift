@@ -627,6 +627,27 @@ do {
     c.supervising = true
     check(CaseRow(c).status == "supervisor looking…", "supervising case")
 
+    var rc = Ghhud_V1_Case()
+    rc.id = "review_reply|acme/r|#12"
+    rc.kind = "review_reply"
+    rc.repo = "acme/r"
+    rc.pr = 12
+    rc.facts.prs = [12]
+    rc.supervising = true
+    check(CaseRow(rc).title == "acme/r#12 review threads" && CaseRow(rc).scope.isEmpty
+          && CaseRow(rc).status == "supervisor drafting replies…" && CaseRow(rc).isReview, "review case \(CaseRow(rc).status)")
+    rc.supervising = false
+    rc.proposal.id = "p2"
+    rc.proposal.decision.kind = "answer"
+    rc.proposal.decision.summary = "Answered the LRU question."
+    var rr = Ghhud_V1_ReviewReply()
+    rr.path = "index/cache.go"; rr.line = 42; rr.author = "alice"; rr.quote = "Why a map\nand not an LRU?"; rr.body = "Per run."
+    rc.proposal.decision.replies = [rr]
+    let drafted = CaseRow(rc)
+    check(drafted.status == "supervisor drafted 1 reply" && drafted.proposal == "p2"
+          && drafted.replies == [CaseRow.Reply(place: "index/cache.go:42", author: "alice", quote: "Why a map and not an LRU?", body: "Per run.")],
+          "drafted replies \(drafted.status) \(drafted.replies)")
+
     func node(_ ref: String, _ state: String, gate: String = "") -> Ghhud_V1_EpicNode {
         var n = Ghhud_V1_EpicNode()
         n.ref = ref

@@ -187,6 +187,11 @@ func (d *Dispatcher) superviseRuns() []string {
 			}
 			d.supRunning[c.ID] = true
 			changed = true
+			if c.Kind == CaseReviewReply {
+				notes = append(notes, fmt.Sprintf("supervisor: drafting replies on %s#%d", c.Repo, c.PR))
+				go d.runReviewCase(c)
+				continue
+			}
 			brief := supervisorBrief(c, d.train.items, time.Now())
 			notes = append(notes, fmt.Sprintf("supervisor: looking at %s %s", c.Repo, c.Check))
 			go d.runCase(c, brief)
@@ -244,6 +249,13 @@ func (d *Dispatcher) runCase(c Case, brief string) {
 
 func proposalNote(p Proposal, c Case) string {
 	what := fmt.Sprintf("%s %s", c.Repo, c.Check)
+	if c.Kind == CaseReviewReply {
+		what = fmt.Sprintf("%s#%d", c.Repo, c.PR)
+		if p.Status == ProposalPending {
+			return fmt.Sprintf("supervisor drafted %s on %s's review threads: read and approve or reject in the Plan tab", replyCount(len(p.Decision.Replies), ""), what)
+		}
+		return fmt.Sprintf("supervisor on %s's review threads: %s", what, p.Decision.Summary)
+	}
 	switch p.Status {
 	case ProposalPending:
 		return fmt.Sprintf("supervisor proposes %s for %s: approve or reject in the Plan tab", p.Decision.stageReason(), what)
@@ -294,7 +306,15 @@ func (d *Dispatcher) settle(id string, approve bool) error {
 	}
 	status := ProposalRejected
 	var err error
-	if approve {
+	if approve && p.Decision.Kind == DecideAnswer {
+		status = ProposalApproved
+		var what string
+		if what, err = d.postReplies(p.Decision); err != nil {
+			status = ProposalRefused
+		} else {
+			p.Note = what
+		}
+	} else if approve {
 		status = ProposalApproved
 		dec := p.Decision
 		dec.By = supervisorAgentName + ", approved"
@@ -307,6 +327,8 @@ func (d *Dispatcher) settle(id string, approve bool) error {
 		d.proposals[i].Status = status
 		if err != nil {
 			d.proposals[i].Note = err.Error()
+		} else if p.Note != "" {
+			d.proposals[i].Note = p.Note
 		}
 		d.saveProposalsLocked()
 		d.resupLocked()

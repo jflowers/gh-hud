@@ -2460,6 +2460,13 @@ public nonisolated struct Ghhud_V1_Case: @unchecked Sendable {
   /// Clears the value of `proposal`. Subsequent reads from it will return its default value.
   public mutating func clearProposal() {_uniqueStorage()._proposal = nil}
 
+  /// pr: a review_reply case's PR, whose review threads wait on you; its
+  /// proposal's decision (kind answer) carries the drafted replies.
+  public var pr: Int64 {
+    get {_storage._pr}
+    set {_uniqueStorage()._pr = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2479,6 +2486,9 @@ public nonisolated struct Ghhud_V1_CaseFacts: Sendable {
 
   public var baseOid: String = String()
 
+  /// review_reply: the PR's head, updated time and open threads
+  public var stamp: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2492,7 +2502,7 @@ public nonisolated struct Ghhud_V1_Decision: Sendable {
 
   public var caseID: String = String()
 
-  /// open set: link_fix, escalate
+  /// open set: link_fix, escalate, answer
   public var kind: String = String()
 
   public var fixPr: Int64 = 0
@@ -2521,12 +2531,49 @@ public nonisolated struct Ghhud_V1_Decision: Sendable {
   /// Clears the value of `decided`. Subsequent reads from it will return its default value.
   public mutating func clearDecided() {self._decided = nil}
 
+  /// answer: the drafted replies
+  public var replies: [Ghhud_V1_ReviewReply] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _facts: Ghhud_V1_CaseFacts? = nil
   fileprivate var _decided: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+}
+
+/// ReviewReply is a reply the supervisor drafted to a review thread; it's
+/// posted as you only when you approve the proposal.
+public nonisolated struct Ghhud_V1_ReviewReply: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// the review thread's node id
+  public var thread: String = String()
+
+  /// the comment it answers
+  public var lastComment: String = String()
+
+  public var path: String = String()
+
+  public var line: Int64 = 0
+
+  /// who wrote that comment
+  public var author: String = String()
+
+  /// that comment, clipped
+  public var quote: String = String()
+
+  /// that comment's URL
+  public var url: String = String()
+
+  /// the draft
+  public var body: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
 }
 
 /// Proposal is the supervisor agent's answer to a case.
@@ -7250,7 +7297,7 @@ nonisolated extension Ghhud_V1_QueueEntry: SwiftProtobuf.Message, SwiftProtobuf.
 
 nonisolated extension Ghhud_V1_Case: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Case"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}kind\0\u{1}repo\0\u{1}check\0\u{1}facts\0\u{1}decision\0\u{1}supervising\0\u{1}proposal\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}kind\0\u{1}repo\0\u{1}check\0\u{1}facts\0\u{1}decision\0\u{1}supervising\0\u{1}proposal\0\u{1}pr\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -7261,6 +7308,7 @@ nonisolated extension Ghhud_V1_Case: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _decision: Ghhud_V1_Decision? = nil
     var _supervising: Bool = false
     var _proposal: Ghhud_V1_Proposal? = nil
+    var _pr: Int64 = 0
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -7279,6 +7327,7 @@ nonisolated extension Ghhud_V1_Case: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _decision = source._decision
       _supervising = source._supervising
       _proposal = source._proposal
+      _pr = source._pr
     }
   }
 
@@ -7305,6 +7354,7 @@ nonisolated extension Ghhud_V1_Case: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 6: try { try decoder.decodeSingularMessageField(value: &_storage._decision) }()
         case 7: try { try decoder.decodeSingularBoolField(value: &_storage._supervising) }()
         case 8: try { try decoder.decodeSingularMessageField(value: &_storage._proposal) }()
+        case 9: try { try decoder.decodeSingularInt64Field(value: &_storage._pr) }()
         default: break
         }
       }
@@ -7341,6 +7391,9 @@ nonisolated extension Ghhud_V1_Case: SwiftProtobuf.Message, SwiftProtobuf._Messa
       try { if let v = _storage._proposal {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
       } }()
+      if _storage._pr != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._pr, fieldNumber: 9)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -7358,6 +7411,7 @@ nonisolated extension Ghhud_V1_Case: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._decision != rhs_storage._decision {return false}
         if _storage._supervising != rhs_storage._supervising {return false}
         if _storage._proposal != rhs_storage._proposal {return false}
+        if _storage._pr != rhs_storage._pr {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -7369,7 +7423,7 @@ nonisolated extension Ghhud_V1_Case: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 nonisolated extension Ghhud_V1_CaseFacts: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CaseFacts"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}prs\0\u{3}on_base\0\u{3}base_oid\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}prs\0\u{3}on_base\0\u{3}base_oid\0\u{1}stamp\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -7380,6 +7434,7 @@ nonisolated extension Ghhud_V1_CaseFacts: SwiftProtobuf.Message, SwiftProtobuf._
       case 1: try { try decoder.decodeRepeatedInt64Field(value: &self.prs) }()
       case 2: try { try decoder.decodeSingularBoolField(value: &self.onBase) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.baseOid) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.stamp) }()
       default: break
       }
     }
@@ -7395,6 +7450,9 @@ nonisolated extension Ghhud_V1_CaseFacts: SwiftProtobuf.Message, SwiftProtobuf._
     if !self.baseOid.isEmpty {
       try visitor.visitSingularStringField(value: self.baseOid, fieldNumber: 3)
     }
+    if !self.stamp.isEmpty {
+      try visitor.visitSingularStringField(value: self.stamp, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -7402,6 +7460,7 @@ nonisolated extension Ghhud_V1_CaseFacts: SwiftProtobuf.Message, SwiftProtobuf._
     if lhs.prs != rhs.prs {return false}
     if lhs.onBase != rhs.onBase {return false}
     if lhs.baseOid != rhs.baseOid {return false}
+    if lhs.stamp != rhs.stamp {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -7409,7 +7468,7 @@ nonisolated extension Ghhud_V1_CaseFacts: SwiftProtobuf.Message, SwiftProtobuf._
 
 nonisolated extension Ghhud_V1_Decision: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Decision"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}case_id\0\u{1}kind\0\u{3}fix_pr\0\u{1}summary\0\u{1}options\0\u{1}by\0\u{1}facts\0\u{1}decided\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}case_id\0\u{1}kind\0\u{3}fix_pr\0\u{1}summary\0\u{1}options\0\u{1}by\0\u{1}facts\0\u{1}decided\0\u{1}replies\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -7425,6 +7484,7 @@ nonisolated extension Ghhud_V1_Decision: SwiftProtobuf.Message, SwiftProtobuf._M
       case 6: try { try decoder.decodeSingularStringField(value: &self.by) }()
       case 7: try { try decoder.decodeSingularMessageField(value: &self._facts) }()
       case 8: try { try decoder.decodeSingularMessageField(value: &self._decided) }()
+      case 9: try { try decoder.decodeRepeatedMessageField(value: &self.replies) }()
       default: break
       }
     }
@@ -7459,6 +7519,9 @@ nonisolated extension Ghhud_V1_Decision: SwiftProtobuf.Message, SwiftProtobuf._M
     try { if let v = self._decided {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
     } }()
+    if !self.replies.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.replies, fieldNumber: 9)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -7471,6 +7534,72 @@ nonisolated extension Ghhud_V1_Decision: SwiftProtobuf.Message, SwiftProtobuf._M
     if lhs.by != rhs.by {return false}
     if lhs._facts != rhs._facts {return false}
     if lhs._decided != rhs._decided {return false}
+    if lhs.replies != rhs.replies {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_ReviewReply: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ReviewReply"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}thread\0\u{3}last_comment\0\u{1}path\0\u{1}line\0\u{1}author\0\u{1}quote\0\u{1}url\0\u{1}body\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.thread) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.lastComment) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.path) }()
+      case 4: try { try decoder.decodeSingularInt64Field(value: &self.line) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.author) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.quote) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.url) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.body) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.thread.isEmpty {
+      try visitor.visitSingularStringField(value: self.thread, fieldNumber: 1)
+    }
+    if !self.lastComment.isEmpty {
+      try visitor.visitSingularStringField(value: self.lastComment, fieldNumber: 2)
+    }
+    if !self.path.isEmpty {
+      try visitor.visitSingularStringField(value: self.path, fieldNumber: 3)
+    }
+    if self.line != 0 {
+      try visitor.visitSingularInt64Field(value: self.line, fieldNumber: 4)
+    }
+    if !self.author.isEmpty {
+      try visitor.visitSingularStringField(value: self.author, fieldNumber: 5)
+    }
+    if !self.quote.isEmpty {
+      try visitor.visitSingularStringField(value: self.quote, fieldNumber: 6)
+    }
+    if !self.url.isEmpty {
+      try visitor.visitSingularStringField(value: self.url, fieldNumber: 7)
+    }
+    if !self.body.isEmpty {
+      try visitor.visitSingularStringField(value: self.body, fieldNumber: 8)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_ReviewReply, rhs: Ghhud_V1_ReviewReply) -> Bool {
+    if lhs.thread != rhs.thread {return false}
+    if lhs.lastComment != rhs.lastComment {return false}
+    if lhs.path != rhs.path {return false}
+    if lhs.line != rhs.line {return false}
+    if lhs.author != rhs.author {return false}
+    if lhs.quote != rhs.quote {return false}
+    if lhs.url != rhs.url {return false}
+    if lhs.body != rhs.body {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

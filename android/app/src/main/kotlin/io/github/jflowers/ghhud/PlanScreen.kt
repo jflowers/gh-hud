@@ -246,7 +246,7 @@ private fun Heading(title: String) {
 private fun CaseView(c: CaseRow, enabled: Boolean, onApprove: () -> Unit, onReject: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp).testTag("case:" + c.id)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("⚑ ", color = Tone.WARN.color())
+            Text(if (c.isReview) "✎ " else "⚑ ", color = Tone.WARN.color())
             Text(c.title, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f, fill = false))
             Text("  " + c.scope, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -256,8 +256,17 @@ private fun CaseView(c: CaseRow, enabled: Boolean, onApprove: () -> Unit, onReje
                 Text(c.summary, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 4.dp))
             }
+            c.replies.forEachIndexed { i, r ->
+                Column(Modifier.padding(top = 6.dp, start = 12.dp).testTag("reply:${c.id}:$i")) {
+                    Text("${r.place}  @${r.author}: ${r.quote}", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(r.body, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
             Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onApprove, enabled = enabled, modifier = Modifier.testTag("approve-case:" + c.id)) { Text("Approve") }
+                Button(onClick = onApprove, enabled = enabled, modifier = Modifier.testTag("approve-case:" + c.id)) {
+                    Text(if (c.isReview) "Post as you" else "Approve")
+                }
                 OutlinedButton(onClick = onReject, enabled = enabled, modifier = Modifier.testTag("reject-case:" + c.id)) { Text("Reject") }
             }
         }

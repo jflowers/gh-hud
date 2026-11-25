@@ -472,6 +472,47 @@ public  final class Case extends
     bitField0_ = (bitField0_ & ~0x00000004);
   }
 
+  public static final int PR_FIELD_NUMBER = 9;
+  private long pr_;
+  /**
+   * <pre>
+   * pr: a review_reply case's PR, whose review threads wait on you; its
+   * proposal's decision (kind answer) carries the drafted replies.
+   * </pre>
+   *
+   * <code>int64 pr = 9 [json_name = "pr"];</code>
+   * @return The pr.
+   */
+  @java.lang.Override
+  public long getPr() {
+    return pr_;
+  }
+  /**
+   * <pre>
+   * pr: a review_reply case's PR, whose review threads wait on you; its
+   * proposal's decision (kind answer) carries the drafted replies.
+   * </pre>
+   *
+   * <code>int64 pr = 9 [json_name = "pr"];</code>
+   * @param value The pr to set.
+   */
+  private void setPr(long value) {
+    
+    pr_ = value;
+  }
+  /**
+   * <pre>
+   * pr: a review_reply case's PR, whose review threads wait on you; its
+   * proposal's decision (kind answer) carries the drafted replies.
+   * </pre>
+   *
+   * <code>int64 pr = 9 [json_name = "pr"];</code>
+   */
+  private void clearPr() {
+
+    pr_ = 0L;
+  }
+
   public static io.github.jflowers.ghhud.api.v1.Case parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1038,6 +1079,49 @@ public  final class Case extends
       return this;
     }
 
+    /**
+     * <pre>
+     * pr: a review_reply case's PR, whose review threads wait on you; its
+     * proposal's decision (kind answer) carries the drafted replies.
+     * </pre>
+     *
+     * <code>int64 pr = 9 [json_name = "pr"];</code>
+     * @return The pr.
+     */
+    @java.lang.Override
+    public long getPr() {
+      return instance.getPr();
+    }
+    /**
+     * <pre>
+     * pr: a review_reply case's PR, whose review threads wait on you; its
+     * proposal's decision (kind answer) carries the drafted replies.
+     * </pre>
+     *
+     * <code>int64 pr = 9 [json_name = "pr"];</code>
+     * @param value The pr to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPr(long value) {
+      copyOnWrite();
+      instance.setPr(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * pr: a review_reply case's PR, whose review threads wait on you; its
+     * proposal's decision (kind answer) carries the drafted replies.
+     * </pre>
+     *
+     * <code>int64 pr = 9 [json_name = "pr"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPr() {
+      copyOnWrite();
+      instance.clearPr();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.Case)
   }
   @java.lang.Override
@@ -1063,10 +1147,12 @@ public  final class Case extends
             "decision_",
             "supervising_",
             "proposal_",
+            "pr_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
-              "\u0004\u0208\u0005\u1009\u0000\u0006\u1009\u0001\u0007\u0007\b\u1009\u0002";
+              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
+              "\u0004\u0208\u0005\u1009\u0000\u0006\u1009\u0001\u0007\u0007\b\u1009\u0002\t\u0002" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

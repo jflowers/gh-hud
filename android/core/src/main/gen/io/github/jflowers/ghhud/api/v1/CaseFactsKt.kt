@@ -131,6 +131,31 @@ public object CaseFactsKt {
     public fun clearBaseOid() {
       _builder.clearBaseOid()
     }
+
+    /**
+     * ```
+     * review_reply: the PR's head, updated time and open threads
+     * ```
+     *
+     * `string stamp = 4 [json_name = "stamp"];`
+     */
+    public var stamp: kotlin.String
+      @kotlin.jvm.JvmName("getStamp")
+        get() = _builder.stamp
+      @kotlin.jvm.JvmName("setStamp")
+        set(value) {
+        _builder.stamp = value
+      }
+    /**
+     * ```
+     * review_reply: the PR's head, updated time and open threads
+     * ```
+     *
+     * `string stamp = 4 [json_name = "stamp"];`
+     */
+    public fun clearStamp() {
+      _builder.clearStamp()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.CaseFacts.copy(block: `io.github.jflowers.ghhud.api.v1`.CaseFactsKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.CaseFacts =

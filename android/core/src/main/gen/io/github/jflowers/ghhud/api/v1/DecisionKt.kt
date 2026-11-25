@@ -52,7 +52,7 @@ public object DecisionKt {
 
     /**
      * ```
-     * open set: link_fix, escalate
+     * open set: link_fix, escalate, answer
      * ```
      *
      * `string kind = 2 [json_name = "kind"];`
@@ -66,7 +66,7 @@ public object DecisionKt {
       }
     /**
      * ```
-     * open set: link_fix, escalate
+     * open set: link_fix, escalate, answer
      * ```
      *
      * `string kind = 2 [json_name = "kind"];`
@@ -249,6 +249,105 @@ public object DecisionKt {
 
     public val DecisionKt.Dsl.decidedOrNull: com.google.protobuf.Timestamp?
       get() = _builder.decidedOrNull
+
+    /**
+     * An uninstantiable, behaviorless type to represent the field in
+     * generics.
+     */
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+    public class RepliesProxy private constructor() : com.google.protobuf.kotlin.DslProxy()
+    /**
+     * ```
+     * answer: the drafted replies
+     * ```
+     *
+     * `repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];`
+     */
+     public val replies: com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ReviewReply, RepliesProxy>
+      @kotlin.jvm.JvmSynthetic
+  get() = com.google.protobuf.kotlin.DslList(
+        _builder.repliesList
+      )
+    /**
+     * ```
+     * answer: the drafted replies
+     * ```
+     *
+     * `repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];`
+     * @param value The replies to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addReplies")
+    public fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ReviewReply, RepliesProxy>.add(value: io.github.jflowers.ghhud.api.v1.ReviewReply) {
+      _builder.addReplies(value)
+    }
+    /**
+     * ```
+     * answer: the drafted replies
+     * ```
+     *
+     * `repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];`
+     * @param value The replies to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignReplies")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ReviewReply, RepliesProxy>.plusAssign(value: io.github.jflowers.ghhud.api.v1.ReviewReply) {
+      add(value)
+    }
+    /**
+     * ```
+     * answer: the drafted replies
+     * ```
+     *
+     * `repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];`
+     * @param values The replies to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addAllReplies")
+    public fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ReviewReply, RepliesProxy>.addAll(values: kotlin.collections.Iterable<io.github.jflowers.ghhud.api.v1.ReviewReply>) {
+      _builder.addAllReplies(values)
+    }
+    /**
+     * ```
+     * answer: the drafted replies
+     * ```
+     *
+     * `repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];`
+     * @param values The replies to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignAllReplies")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ReviewReply, RepliesProxy>.plusAssign(values: kotlin.collections.Iterable<io.github.jflowers.ghhud.api.v1.ReviewReply>) {
+      addAll(values)
+    }
+    /**
+     * ```
+     * answer: the drafted replies
+     * ```
+     *
+     * `repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];`
+     * @param index The index to set the value at.
+     * @param value The replies to set.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setReplies")
+    public operator fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ReviewReply, RepliesProxy>.set(index: kotlin.Int, value: io.github.jflowers.ghhud.api.v1.ReviewReply) {
+      _builder.setReplies(index, value)
+    }
+    /**
+     * ```
+     * answer: the drafted replies
+     * ```
+     *
+     * `repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];`
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("clearReplies")
+    public fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ReviewReply, RepliesProxy>.clear() {
+      _builder.clearReplies()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.Decision.copy(block: `io.github.jflowers.ghhud.api.v1`.DecisionKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.Decision =

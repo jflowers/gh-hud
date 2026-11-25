@@ -24,6 +24,7 @@ public  final class Decision extends
     summary_ = "";
     options_ = emptyProtobufList();
     by_ = "";
+    replies_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int CASE_ID_FIELD_NUMBER = 1;
@@ -77,7 +78,7 @@ public  final class Decision extends
   private java.lang.String kind_;
   /**
    * <pre>
-   * open set: link_fix, escalate
+   * open set: link_fix, escalate, answer
    * </pre>
    *
    * <code>string kind = 2 [json_name = "kind"];</code>
@@ -89,7 +90,7 @@ public  final class Decision extends
   }
   /**
    * <pre>
-   * open set: link_fix, escalate
+   * open set: link_fix, escalate, answer
    * </pre>
    *
    * <code>string kind = 2 [json_name = "kind"];</code>
@@ -102,7 +103,7 @@ public  final class Decision extends
   }
   /**
    * <pre>
-   * open set: link_fix, escalate
+   * open set: link_fix, escalate, answer
    * </pre>
    *
    * <code>string kind = 2 [json_name = "kind"];</code>
@@ -116,7 +117,7 @@ public  final class Decision extends
   }
   /**
    * <pre>
-   * open set: link_fix, escalate
+   * open set: link_fix, escalate, answer
    * </pre>
    *
    * <code>string kind = 2 [json_name = "kind"];</code>
@@ -127,7 +128,7 @@ public  final class Decision extends
   }
   /**
    * <pre>
-   * open set: link_fix, escalate
+   * open set: link_fix, escalate, answer
    * </pre>
    *
    * <code>string kind = 2 [json_name = "kind"];</code>
@@ -447,6 +448,144 @@ public  final class Decision extends
     bitField0_ = (bitField0_ & ~0x00000002);
   }
 
+  public static final int REPLIES_FIELD_NUMBER = 9;
+  private com.google.protobuf.Internal.ProtobufList<io.github.jflowers.ghhud.api.v1.ReviewReply> replies_;
+  /**
+   * <pre>
+   * answer: the drafted replies
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.jflowers.ghhud.api.v1.ReviewReply> getRepliesList() {
+    return replies_;
+  }
+  /**
+   * <pre>
+   * answer: the drafted replies
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+   */
+  public java.util.List<? extends io.github.jflowers.ghhud.api.v1.ReviewReplyOrBuilder> 
+      getRepliesOrBuilderList() {
+    return replies_;
+  }
+  /**
+   * <pre>
+   * answer: the drafted replies
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+   */
+  @java.lang.Override
+  public int getRepliesCount() {
+    return replies_.size();
+  }
+  /**
+   * <pre>
+   * answer: the drafted replies
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+   */
+  @java.lang.Override
+  public io.github.jflowers.ghhud.api.v1.ReviewReply getReplies(int index) {
+    return replies_.get(index);
+  }
+  /**
+   * <pre>
+   * answer: the drafted replies
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+   */
+  public io.github.jflowers.ghhud.api.v1.ReviewReplyOrBuilder getRepliesOrBuilder(
+      int index) {
+    return replies_.get(index);
+  }
+  private void ensureRepliesIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.jflowers.ghhud.api.v1.ReviewReply> tmp = replies_;
+    if (!tmp.isModifiable()) {
+      replies_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <pre>
+   * answer: the drafted replies
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+   */
+  private void setReplies(
+      int index, io.github.jflowers.ghhud.api.v1.ReviewReply value) {
+    java.util.Objects.requireNonNull(value);
+    ensureRepliesIsMutable();
+    replies_.set(index, value);
+  }
+  /**
+   * <pre>
+   * answer: the drafted replies
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+   */
+  private void addReplies(io.github.jflowers.ghhud.api.v1.ReviewReply value) {
+    java.util.Objects.requireNonNull(value);
+    ensureRepliesIsMutable();
+    replies_.add(value);
+  }
+  /**
+   * <pre>
+   * answer: the drafted replies
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+   */
+  private void addReplies(
+      int index, io.github.jflowers.ghhud.api.v1.ReviewReply value) {
+    java.util.Objects.requireNonNull(value);
+    ensureRepliesIsMutable();
+    replies_.add(index, value);
+  }
+  /**
+   * <pre>
+   * answer: the drafted replies
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+   */
+  private void addAllReplies(
+      java.lang.Iterable<? extends io.github.jflowers.ghhud.api.v1.ReviewReply> values) {
+    ensureRepliesIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, replies_);
+  }
+  /**
+   * <pre>
+   * answer: the drafted replies
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+   */
+  private void clearReplies() {
+    replies_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * answer: the drafted replies
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+   */
+  private void removeReplies(int index) {
+    ensureRepliesIsMutable();
+    replies_.remove(index);
+  }
+
   public static io.github.jflowers.ghhud.api.v1.Decision parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -599,7 +738,7 @@ public  final class Decision extends
 
     /**
      * <pre>
-     * open set: link_fix, escalate
+     * open set: link_fix, escalate, answer
      * </pre>
      *
      * <code>string kind = 2 [json_name = "kind"];</code>
@@ -611,7 +750,7 @@ public  final class Decision extends
     }
     /**
      * <pre>
-     * open set: link_fix, escalate
+     * open set: link_fix, escalate, answer
      * </pre>
      *
      * <code>string kind = 2 [json_name = "kind"];</code>
@@ -624,7 +763,7 @@ public  final class Decision extends
     }
     /**
      * <pre>
-     * open set: link_fix, escalate
+     * open set: link_fix, escalate, answer
      * </pre>
      *
      * <code>string kind = 2 [json_name = "kind"];</code>
@@ -639,7 +778,7 @@ public  final class Decision extends
     }
     /**
      * <pre>
-     * open set: link_fix, escalate
+     * open set: link_fix, escalate, answer
      * </pre>
      *
      * <code>string kind = 2 [json_name = "kind"];</code>
@@ -652,7 +791,7 @@ public  final class Decision extends
     }
     /**
      * <pre>
-     * open set: link_fix, escalate
+     * open set: link_fix, escalate, answer
      * </pre>
      *
      * <code>string kind = 2 [json_name = "kind"];</code>
@@ -978,6 +1117,156 @@ public  final class Decision extends
       return this;
     }
 
+    /**
+     * <pre>
+     * answer: the drafted replies
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.jflowers.ghhud.api.v1.ReviewReply> getRepliesList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getRepliesList());
+    }
+    /**
+     * <pre>
+     * answer: the drafted replies
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+     */
+    @java.lang.Override
+    public int getRepliesCount() {
+      return instance.getRepliesCount();
+    }/**
+     * <pre>
+     * answer: the drafted replies
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+     */
+    @java.lang.Override
+    public io.github.jflowers.ghhud.api.v1.ReviewReply getReplies(int index) {
+      return instance.getReplies(index);
+    }
+    /**
+     * <pre>
+     * answer: the drafted replies
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+     */
+    public Builder setReplies(
+        int index, io.github.jflowers.ghhud.api.v1.ReviewReply value) {
+      copyOnWrite();
+      instance.setReplies(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * answer: the drafted replies
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+     */
+    public Builder setReplies(
+        int index, io.github.jflowers.ghhud.api.v1.ReviewReply.Builder builderForValue) {
+      copyOnWrite();
+      instance.setReplies(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * answer: the drafted replies
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+     */
+    public Builder addReplies(io.github.jflowers.ghhud.api.v1.ReviewReply value) {
+      copyOnWrite();
+      instance.addReplies(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * answer: the drafted replies
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+     */
+    public Builder addReplies(
+        int index, io.github.jflowers.ghhud.api.v1.ReviewReply value) {
+      copyOnWrite();
+      instance.addReplies(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * answer: the drafted replies
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+     */
+    public Builder addReplies(
+        io.github.jflowers.ghhud.api.v1.ReviewReply.Builder builderForValue) {
+      copyOnWrite();
+      instance.addReplies(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * answer: the drafted replies
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+     */
+    public Builder addReplies(
+        int index, io.github.jflowers.ghhud.api.v1.ReviewReply.Builder builderForValue) {
+      copyOnWrite();
+      instance.addReplies(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * answer: the drafted replies
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+     */
+    public Builder addAllReplies(
+        java.lang.Iterable<? extends io.github.jflowers.ghhud.api.v1.ReviewReply> values) {
+      copyOnWrite();
+      instance.addAllReplies(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * answer: the drafted replies
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+     */
+    public Builder clearReplies() {
+      copyOnWrite();
+      instance.clearReplies();
+      return this;
+    }
+    /**
+     * <pre>
+     * answer: the drafted replies
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+     */
+    public Builder removeReplies(int index) {
+      copyOnWrite();
+      instance.removeReplies(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.Decision)
   }
   @java.lang.Override
@@ -1003,10 +1292,12 @@ public  final class Decision extends
             "by_",
             "facts_",
             "decided_",
+            "replies_",
+            io.github.jflowers.ghhud.api.v1.ReviewReply.class,
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0002" +
-              "\u0004\u0208\u0005\u021a\u0006\u0208\u0007\u1009\u0000\b\u1009\u0001";
+              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0002\u0000\u0001\u0208\u0002\u0208\u0003\u0002" +
+              "\u0004\u0208\u0005\u021a\u0006\u0208\u0007\u1009\u0000\b\u1009\u0001\t\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

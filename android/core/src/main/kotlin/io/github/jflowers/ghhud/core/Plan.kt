@@ -108,40 +108,58 @@ public data class PlanGroup(val title: String, val rows: List<PlanItem>)
 /** A check failing on several of your PRs, and what the supervisor does about it. */
 public data class CaseRow(
     val id: String,
-    val title: String, // "acme/r lint"
-    val scope: String, // "2 PRs, main too"
+    val title: String, // "acme/r lint", "acme/r#12 review threads"
+    val scope: String, // "2 PRs, main too"; "" for review threads
     val status: String,
     val tone: Tone,
     /** The proposal's summary, on one line. */
     val summary: String,
     /** Set when a proposal waits for you. */
     val proposal: String?,
+    /** The drafted replies a review_reply proposal posts, as you. */
+    val replies: List<Reply> = emptyList(),
 ) {
+    /** A drafted reply to a review thread, under the comment it answers. */
+    public data class Reply(val place: String, val author: String, val quote: String, val body: String)
+
+    val isReview: Boolean get() = id.startsWith("review_reply|")
+
     public companion object {
         public fun of(c: Case): CaseRow {
             val prs = c.facts.prsCount
+            val review = c.kind == "review_reply"
             val waiting = c.hasProposal() && c.proposal.id.isNotEmpty() &&
                 (c.proposal.status.isEmpty() || c.proposal.status == "pending")
             val (status, tone) = when {
-                waiting -> "supervisor proposes " + reason(c.proposal.decision) to Tone.WARN
+                waiting -> (if (review) "supervisor drafted " else "supervisor proposes ") + reason(c.proposal.decision) to Tone.WARN
                 c.hasDecision() ->
                     reason(c.decision) + (if (c.decision.by.isEmpty()) "" else " (${c.decision.by})") to Tone.MUTED
-                c.supervising -> "supervisor looking…" to Tone.PENDING
+                c.supervising -> (if (review) "supervisor drafting replies…" else "supervisor looking…") to Tone.PENDING
                 else -> "needs you" to Tone.WARN
             }
             return CaseRow(
                 id = c.id,
-                title = "${c.repo} ${c.check}",
-                scope = "$prs PR${if (prs == 1) "" else "s"}" + if (c.facts.onBase) ", main too" else "",
+                title = if (review) "${c.repo}#${c.pr} review threads" else "${c.repo} ${c.check}",
+                scope = if (review) "" else "$prs PR${if (prs == 1) "" else "s"}" + if (c.facts.onBase) ", main too" else "",
                 status = status,
                 tone = tone,
                 summary = if (waiting) oneLine(c.proposal.decision.summary) else "",
                 proposal = if (waiting) c.proposal.id else null,
+                replies = if (waiting) {
+                    c.proposal.decision.repliesList.map {
+                        Reply(if (it.line > 0) "${it.path}:${it.line}" else it.path, it.author, oneLine(it.quote), it.body)
+                    }
+                } else {
+                    emptyList()
+                },
             )
         }
 
-        internal fun reason(d: Decision): String =
-            if (d.kind == "link_fix") "fix in #${d.fixPr}" else "escalated: " + oneLine(d.summary)
+        internal fun reason(d: Decision): String = when (d.kind) {
+            "answer" -> if (d.repliesCount == 1) "1 reply" else "${d.repliesCount} replies"
+            "link_fix" -> "fix in #${d.fixPr}"
+            else -> "escalated: " + oneLine(d.summary)
+        }
     }
 }
 

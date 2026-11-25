@@ -347,7 +347,11 @@ func (m *Model) handlePlanKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.flash("approve failed: " + err.Error())
 			} else {
 				m.sync()
-				m.flash("approved: " + c.Proposal.Decision.Summary)
+				if c.Kind == dispatch.CaseReviewReply {
+					m.flash(fmt.Sprintf("approved: %s posted to %s#%d as you", caseReason(c.Proposal.Decision), c.Repo, c.PR))
+				} else {
+					m.flash("approved: " + c.Proposal.Decision.Summary)
+				}
 			}
 			break
 		}
@@ -355,7 +359,7 @@ func (m *Model) handlePlanKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.flash("reject failed: " + err.Error())
 		} else {
 			m.sync()
-			m.flash("rejected; " + c.Repo + " " + c.Check + " stays with you")
+			m.flash("rejected; " + caseTitle(c) + " stays with you")
 		}
 	case "E":
 		e := m.epicWaiting()
@@ -469,12 +473,49 @@ func (m *Model) caseLines(w int) []string {
 		if c.OnBase {
 			where += ", main too"
 		}
-		head := "  ⚑ " + truncatePlain(c.Repo+" "+c.Check, 44) + "  " + where
+		head := "  ⚑ " + truncatePlain(caseTitle(c), 44) + "  " + where
+		if c.Kind == dispatch.CaseReviewReply {
+			head = "  ✎ " + truncatePlain(caseTitle(c), 44)
+		}
 		status, color := caseStatus(c)
 		room := max(w-width(head)-3, 10)
 		out = append(out, fg.Render(head)+"   "+lipgloss.NewStyle().Foreground(color).Render(truncatePlain(status, room)))
 		if c.Proposal != nil && c.Proposal.Decision.Summary != "" {
 			out = append(out, dim.Render("      "+truncatePlain(strings.Join(strings.Fields(c.Proposal.Decision.Summary), " "), max(w-8, 10))))
+		}
+		if c.Proposal != nil {
+			out = append(out, replyLines(c.Proposal.Decision.Replies, w)...)
+		}
+	}
+	return out
+}
+
+// caseTitle names a case: "acme/r lint", or "acme/r#12 review threads".
+func caseTitle(c dispatch.Case) string {
+	if c.Kind == dispatch.CaseReviewReply {
+		return fmt.Sprintf("%s#%d review threads", c.Repo, c.PR)
+	}
+	return c.Repo + " " + c.Check
+}
+
+// replyLines shows drafted replies in full, each under the comment it
+// answers: what Y would post.
+func replyLines(rs []dispatch.Reply, w int) []string {
+	dim := lipgloss.NewStyle().Foreground(cDim)
+	fg := lipgloss.NewStyle().Foreground(cFg)
+	var out []string
+	for _, r := range rs {
+		where := r.Path
+		if r.Line > 0 {
+			where = fmt.Sprintf("%s:%d", r.Path, r.Line)
+		}
+		out = append(out, dim.Render("      "+truncatePlain(fmt.Sprintf("%s  @%s: %s", where, r.Author, strings.Join(strings.Fields(r.Quote), " ")), max(w-8, 10))))
+		for i, l := range wrapText(r.Body, max(w-12, 20)) {
+			lead := "        "
+			if i == 0 {
+				lead = "      → "
+			}
+			out = append(out, fg.Render(lead+l))
 		}
 	}
 	return out
@@ -483,10 +524,14 @@ func (m *Model) caseLines(w int) []string {
 // caseStatus is what a case's supervisor line says.
 func caseStatus(c dispatch.Case) (string, lipgloss.Color) {
 	switch {
+	case c.Proposal != nil && c.Kind == dispatch.CaseReviewReply:
+		return "supervisor drafted " + caseReason(c.Proposal.Decision) + ": Y post as you · N reject", cOrange
 	case c.Proposal != nil:
 		return "supervisor proposes " + caseReason(c.Proposal.Decision) + ": Y approve · N reject", cOrange
 	case c.Decision != nil:
 		return caseReason(*c.Decision) + " (" + c.Decision.By + ")", cDim
+	case c.Supervising && c.Kind == dispatch.CaseReviewReply:
+		return "supervisor drafting replies…", cTeal
 	case c.Supervising:
 		return "supervisor looking…", cTeal
 	}
@@ -494,6 +539,12 @@ func caseStatus(c dispatch.Case) (string, lipgloss.Color) {
 }
 
 func caseReason(d dispatch.Decision) string {
+	if d.Kind == dispatch.DecideAnswer {
+		if len(d.Replies) == 1 {
+			return "1 reply"
+		}
+		return fmt.Sprintf("%d replies", len(d.Replies))
+	}
 	if d.Kind == dispatch.DecideLinkFix {
 		return fmt.Sprintf("fix in #%d", d.FixPR)
 	}

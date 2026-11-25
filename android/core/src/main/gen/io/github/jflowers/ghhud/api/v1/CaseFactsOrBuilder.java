@@ -44,4 +44,24 @@ public interface CaseFactsOrBuilder extends
    */
   com.google.protobuf.ByteString
       getBaseOidBytes();
+
+  /**
+   * <pre>
+   * review_reply: the PR's head, updated time and open threads
+   * </pre>
+   *
+   * <code>string stamp = 4 [json_name = "stamp"];</code>
+   * @return The stamp.
+   */
+  java.lang.String getStamp();
+  /**
+   * <pre>
+   * review_reply: the PR's head, updated time and open threads
+   * </pre>
+   *
+   * <code>string stamp = 4 [json_name = "stamp"];</code>
+   * @return The bytes for stamp.
+   */
+  com.google.protobuf.ByteString
+      getStampBytes();
 }
