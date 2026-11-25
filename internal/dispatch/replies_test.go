@@ -12,8 +12,8 @@ import (
 )
 
 // reviewPR is a PR of yours with a review thread waiting on you.
-func reviewPR(num int) model.Item {
-	it := trainPR(num)
+func reviewPR() model.Item {
+	it := trainPR(1)
 	it.Title = "feat: cache the index"
 	it.Thread, it.ThreadOpen, it.WaitingOn = 2, 1, "me"
 	it.ReviewDecision = "REVIEW_REQUIRED"
@@ -122,7 +122,7 @@ func reviewCases(d *Dispatcher) []Case {
 // threads to you, or when feedback isn't an auto task.
 func TestReviewCaseOpensWhenFeedbackStops(t *testing.T) {
 	d := repliesDispatcher(t, "propose", &fakeSupervisor{}, &fakeThreads{})
-	pr := reviewPR(1)
+	pr := reviewPR()
 	d.updateTrain([]model.Item{pr})
 	if cs := reviewCases(d); len(cs) != 0 {
 		t.Fatalf("feedback still to run, but a case opened: %+v", cs)
@@ -193,7 +193,7 @@ func TestDraftedRepliesWaitForYouThenPost(t *testing.T) {
 	gh := &fakeThreads{}
 	gh.set(waitingThreads()...)
 	d := repliesDispatcher(t, "act", f, gh)
-	pr := reviewPR(1)
+	pr := reviewPR()
 	feedbackStopped(d, pr)
 	d.updateTrain([]model.Item{pr})
 	d.superviseRuns()
@@ -249,7 +249,7 @@ func TestApproveSkipsMovedThreads(t *testing.T) {
 	gh := &fakeThreads{}
 	gh.set(waitingThreads()...)
 	d := repliesDispatcher(t, "propose", f, gh)
-	pr := reviewPR(1)
+	pr := reviewPR()
 	feedbackStopped(d, pr)
 	d.updateTrain([]model.Item{pr})
 	d.superviseRuns()
@@ -275,7 +275,7 @@ func TestRejectAndNothingDrafted(t *testing.T) {
 	gh := &fakeThreads{}
 	gh.set(waitingThreads()...)
 	d := repliesDispatcher(t, "propose", f, gh)
-	pr := reviewPR(1)
+	pr := reviewPR()
 	feedbackStopped(d, pr)
 	d.updateTrain([]model.Item{pr})
 	d.superviseRuns()
