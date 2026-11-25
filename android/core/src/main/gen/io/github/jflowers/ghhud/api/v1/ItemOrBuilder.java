@@ -690,4 +690,26 @@ public interface ItemOrBuilder extends
    */
   com.google.protobuf.ByteString
       getCancelledChecksBytes(int index);
+
+  /**
+   * <pre>
+   * Who turned auto-merge on: "github-actions" when ship's deps-automerge
+   * workflow armed a Dependabot PR, which is what lets the bot review it.
+   * </pre>
+   *
+   * <code>string auto_merge_by = 47 [json_name = "autoMergeBy"];</code>
+   * @return The autoMergeBy.
+   */
+  java.lang.String getAutoMergeBy();
+  /**
+   * <pre>
+   * Who turned auto-merge on: "github-actions" when ship's deps-automerge
+   * workflow armed a Dependabot PR, which is what lets the bot review it.
+   * </pre>
+   *
+   * <code>string auto_merge_by = 47 [json_name = "autoMergeBy"];</code>
+   * @return The bytes for autoMergeBy.
+   */
+  com.google.protobuf.ByteString
+      getAutoMergeByBytes();
 }

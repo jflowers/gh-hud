@@ -155,6 +155,7 @@ type Item struct {
 	ReviewDecision   string   // APPROVED, CHANGES_REQUESTED, REVIEW_REQUIRED or ""
 	RequiredReviews  int      // approvals the base branch rules demand
 	AutoMergeOn      bool     // auto-merge is enabled on this PR
+	AutoMergeBy      string   // login that enabled auto-merge
 	AutoMergeAllowed bool     // the repo allows auto-merge
 	Labels           []string // label names
 
@@ -218,9 +219,24 @@ var choreTitle = regexp.MustCompile(`(?i)^chore(\([^)]*\))?!?:`)
 
 // IsChore reports whether the item is a chore PR, which never dispatches
 // on its own. A Dependabot PR isn't one, whatever its title: it has a path
-// of its own (a bot review, then auto-merge).
+// of its own (ship arms it, then a bot review where the rules need one).
 func (i Item) IsChore() bool {
 	return i.Kind == KindPR && choreTitle.MatchString(i.Title) && !i.Dependabot()
+}
+
+// ShipArmed reports whether ship's deps-automerge workflow turned on
+// auto-merge: it runs as github-actions, which GraphQL names
+// "github-actions" and REST "github-actions[bot]" or "app/github-actions".
+// A PR I armed by hand isn't one, whatever it updates.
+func (i Item) ShipArmed() bool {
+	if !i.AutoMergeOn {
+		return false
+	}
+	switch strings.ToLower(i.AutoMergeBy) {
+	case "github-actions", "github-actions[bot]", "app/github-actions":
+		return true
+	}
+	return false
 }
 
 // Dependabot reports whether the item is a PR Dependabot opened. GraphQL
@@ -244,17 +260,34 @@ func (i Item) Dependabot() bool {
 // reviewed since their latest activity). My own PR only qualifies in
 // BotOrg, where BotLogin can review it, until BotLogin has reviewed the
 // head commit (again, when it asked for changes and I've answered since).
-// A Dependabot PR is treated like my own: in BotOrg, until BotLogin has
-// reviewed its head, so its approval can let auto-merge land it.
+// A Dependabot PR is treated like my own once ship has armed it: in
+// BotOrg, until BotLogin has reviewed its head, so its approval can let
+// auto-merge land it. One ship didn't arm (third-party, major, or armed
+// by hand) waits for me: the bot's approval would satisfy the code-owner
+// rule and merge it unreviewed.
 func (i Item) ReviewQueueReady(me string, window time.Duration, bots *BotFilter) bool {
 	if i.Kind != KindPR || me == "" || i.Draft || !ciSettled(i.CI) ||
 		i.IsChore() || i.Merge == "⚠️" || time.Since(i.UpdatedAt) > window {
 		return false
 	}
-	if i.Author == me || i.Dependabot() {
+	if i.Dependabot() {
+		return i.ShipArmed() && i.InBotOrg() && i.BotReviewDue
+	}
+	if i.Author == me {
 		return i.InBotOrg() && i.BotReviewDue
 	}
 	return !bots.IsBot(i.Author) && i.WaitingOn == "them"
+}
+
+// DependabotSettled reports whether a Dependabot PR is on its way in
+// without me: ship armed it, the base needs no approval it lacks, and its
+// checks haven't failed. One that isn't armed (a third-party or major
+// update, or a repo ship doesn't cover) still needs me.
+func (i Item) DependabotSettled() bool {
+	if !i.Dependabot() || !i.AutoMergeOn || i.CI == CIFail || i.Merge == "⚠️" {
+		return false
+	}
+	return i.RequiredReviews < 1 || i.ReviewDecision == "APPROVED"
 }
 
 // Score ranks attention-worthiness (higher first).

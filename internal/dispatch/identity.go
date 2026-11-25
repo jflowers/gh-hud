@@ -52,10 +52,12 @@ const (
 var errBotToken = errors.New(botTokenVar + " is missing or empty")
 
 // runsAsBot reports whether the task runs as the bot account: a review of
-// my own PR or a Dependabot PR in model.BotOrg. Other people's PRs are
-// reviewed as me.
+// my own PR, or of a Dependabot PR that ship has armed, in model.BotOrg.
+// The bot's approval satisfies the code-owner rule there, so it must only
+// speed up updates ship already judged safe; a third-party or major bump
+// waits for me, even when I armed it by hand. Other people's PRs are reviewed as me.
 func runsAsBot(task Task, it model.Item) bool {
-	return task == TaskReview && (mine(it) || it.Dependabot()) && it.InBotOrg()
+	return task == TaskReview && (mine(it) || (it.Dependabot() && it.ShipArmed())) && it.InBotOrg()
 }
 
 // botGuard is the gh first on PATH in a bot dispatch. It refuses merges,

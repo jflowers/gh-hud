@@ -37,7 +37,7 @@ const prFields = `
         mergeable
         mergeStateStatus
         reviewDecision
-        autoMergeRequest { enabledAt }
+        autoMergeRequest { enabledAt enabledBy { login } }
         labels(first: 20) { nodes { name } }
         headRefName
         headRefOid
@@ -122,6 +122,9 @@ type prNode struct {
 	Decision   string `json:"reviewDecision"`
 	AutoMerge  *struct {
 		EnabledAt time.Time `json:"enabledAt"`
+		EnabledBy *struct {
+			Login string `json:"login"`
+		} `json:"enabledBy"`
 	} `json:"autoMergeRequest"`
 	Labels struct {
 		Nodes []struct {
@@ -363,6 +366,7 @@ func BuildPRItem(n prNode, me string, bots *BotFilter) Item {
 		ReviewDecision:   n.Decision,
 		RequiredReviews:  requiredReviews(n),
 		AutoMergeOn:      n.AutoMerge != nil,
+		AutoMergeBy:      autoMergeBy(n),
 		AutoMergeAllowed: n.Repo.AutoMergeOK,
 		Size:             n.Additions + n.Deletions,
 	}
@@ -476,4 +480,12 @@ func BuildPRItem(n prNode, me string, bots *BotFilter) Item {
 		it.Cats |= CatCI
 	}
 	return it
+}
+
+// autoMergeBy is the login that turned auto-merge on, or "".
+func autoMergeBy(n prNode) string {
+	if n.AutoMerge == nil || n.AutoMerge.EnabledBy == nil {
+		return ""
+	}
+	return n.AutoMerge.EnabledBy.Login
 }

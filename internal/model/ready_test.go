@@ -248,7 +248,7 @@ func TestReviewQueueReadyDependabot(t *testing.T) {
 	dep := Item{
 		Kind: KindPR, Author: "dependabot", Repo: "unbound-force/unbound-force",
 		Title: "chore(deps): bump x from 1.0.0 to 2.0.0", CI: CIOK, Merge: " ",
-		BotReviewDue: true, UpdatedAt: time.Now().Add(-time.Hour),
+		BotReviewDue: true, AutoMergeOn: true, AutoMergeBy: "github-actions", UpdatedAt: time.Now().Add(-time.Hour),
 	}
 	cases := []struct {
 		name  string
@@ -256,6 +256,9 @@ func TestReviewQueueReadyDependabot(t *testing.T) {
 		want  bool
 	}{
 		{"dependabot in bot org", func(*Item) {}, true},
+		{"not armed", func(i *Item) { i.AutoMergeOn = false }, false},
+		{"armed by hand", func(i *Item) { i.AutoMergeBy = "jflowers" }, false},
+		{"armed by ship, rest login", func(i *Item) { i.AutoMergeBy = "app/github-actions" }, true},
 		{"rest login", func(i *Item) { i.Author = "dependabot[bot]" }, true},
 		{"ci title", func(i *Item) { i.Title = "ci(deps): bump actions/setup-go" }, true},
 		{"bot reviewed head", func(i *Item) { i.BotReviewDue = false }, false},
@@ -276,5 +279,37 @@ func TestReviewQueueReadyDependabot(t *testing.T) {
 	}
 	if !(Item{Kind: KindPR, Author: "me", Title: dep.Title}).IsChore() {
 		t.Error("my chore(deps) PR is still a chore")
+	}
+}
+
+func TestDependabotSettled(t *testing.T) {
+	dep := Item{
+		Kind: KindPR, Author: "dependabot[bot]", Repo: "jflowers/gh-hud",
+		AutoMergeOn: true, CI: CIPending, Merge: " ", Cats: CatRQ,
+	}
+	cases := []struct {
+		name   string
+		mutate func(*Item)
+		want   bool
+	}{
+		{"armed, no review needed", func(*Item) {}, true},
+		{"not armed", func(i *Item) { i.AutoMergeOn = false }, false},
+		{"ci failed", func(i *Item) { i.CI = CIFail }, false},
+		{"conflict", func(i *Item) { i.Merge = "⚠️" }, false},
+		{"needs approval", func(i *Item) { i.RequiredReviews = 1; i.ReviewDecision = "REVIEW_REQUIRED" }, false},
+		{"approved", func(i *Item) { i.RequiredReviews = 1; i.ReviewDecision = "APPROVED" }, true},
+		{"not dependabot", func(i *Item) { i.Author = "someone" }, false},
+	}
+	for _, tc := range cases {
+		it := dep
+		tc.mutate(&it)
+		if got := it.DependabotSettled(); got != tc.want {
+			t.Errorf("%s: got %v want %v", tc.name, got, tc.want)
+		}
+	}
+	items := []Item{dep}
+	markReady(items, "me", time.Hour, NewBotFilter(nil))
+	if items[0].Cats&CatRQ != 0 {
+		t.Error("a settled Dependabot PR should leave review-requested")
 	}
 }

@@ -9,8 +9,9 @@ package dispatch
 // learning: no agent reads markdown that agents wrote. The approval names
 // the head commit checked, so a later push needs a new one.
 //
-// Dependabot PRs (issue #19) get a real bot review through the Queue and
-// then auto-merge like mine (automerge.go). Pushing to Dependabot's branch
+// Dependabot PRs (issue #19) are armed by ship's deps-automerge workflow,
+// never by gh-hud (automerge.go); armed ones in the bot org get a bot
+// review through the Queue. Pushing to Dependabot's branch
 // would stop Dependabot managing it, so they stay out of the merge train;
 // when the branch rules require an up-to-date branch, gh-hud asks
 // Dependabot to rebase instead.

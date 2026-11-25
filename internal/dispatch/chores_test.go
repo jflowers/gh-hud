@@ -116,16 +116,31 @@ func TestDependabotAutoMerge(t *testing.T) {
 		Merge: " ", CI: model.CIOK, ReviewDecision: "REVIEW_REQUIRED", RequiredReviews: 1,
 		MergeState: "BLOCKED", AutoMergeAllowed: true,
 	}
-	if got := autoMergeAction(dep, cfg); got != mergeEnable {
-		t.Errorf("dependabot PR: %q, want enable", got)
+	if got := autoMergeAction(dep, cfg); got != mergeNone {
+		t.Errorf("dependabot PR: %q, want none: ship arms it, not gh-hud", got)
 	}
+	dep.Labels = []string{cfg.HoldLabel}
+	dep.AutoMergeOn = true
+	if got := autoMergeAction(dep, cfg); got != mergeDisable {
+		t.Errorf("held armed dependabot PR: %q, want disable", got)
+	}
+	dep.Labels = nil
+	dep.AutoMergeOn = false
 	other := dep
 	other.Author = "someone"
 	if got := autoMergeAction(other, cfg); got != mergeNone {
 		t.Errorf("someone else's PR: %q, want none", got)
 	}
+	if runsAsBot(TaskReview, dep) {
+		t.Error("an unarmed Dependabot PR waits for me, not the bot")
+	}
+	dep.AutoMergeOn, dep.AutoMergeBy = true, "jflowers"
+	if runsAsBot(TaskReview, dep) {
+		t.Error("a Dependabot PR I armed by hand waits for me, not the bot")
+	}
+	dep.AutoMergeBy = "github-actions"
 	if !runsAsBot(TaskReview, dep) {
-		t.Error("a Dependabot review in the bot org should run as the bot")
+		t.Error("a ship-armed Dependabot review in the bot org should run as the bot")
 	}
 	dep.Repo = "fullsend-ai/coverport"
 	if runsAsBot(TaskReview, dep) {

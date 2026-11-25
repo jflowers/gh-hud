@@ -604,6 +604,9 @@ message Item {
   // The head's cancelled check runs: CI shows them as passing, but GitHub
   // blocks the merge on them (#186).
   repeated string cancelled_checks = 46;
+  // Who turned auto-merge on: "github-actions" when ship's deps-automerge
+  // workflow armed a Dependabot PR, which is what lets the bot review it.
+  string auto_merge_by = 47;
 }
 
 // Session is an agent session on some machine.
