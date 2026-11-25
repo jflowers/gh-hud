@@ -281,6 +281,22 @@ public class HubServiceClient(
 
 
   /**
+   *  FinishEpic posts a finished epic's summary on it, as you, and closes
+   *  it as completed (gh-hud#22). Every piece must be done or dropped.
+   */
+  override suspend fun finishEpic(request: FinishEpicRequest, headers: Headers): ResponseMessage<FinishEpicResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "ghhud.v1.HubService/FinishEpic",
+      io.github.jflowers.ghhud.api.v1.FinishEpicRequest::class,
+      io.github.jflowers.ghhud.api.v1.FinishEpicResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  /**
    *  Viewers. They open a terminal window on the hub's machine.
    */
   override suspend fun watch(request: WatchRequest, headers: Headers): ResponseMessage<WatchResponse> = client.unary(

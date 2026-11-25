@@ -1063,12 +1063,14 @@ gh-hud epic list                                     # plans, pieces and status
 gh-hud epic approve acme/app#100                     # approve the current plan
 gh-hud epic reread acme/app#100                      # read it again
 gh-hud epic clear acme/app#100 #103                  # clear a piece's gate
+gh-hud epic finish acme/app#100 [-y]                 # show a finished epic's summary; -y posts it and closes it
 gh-hud epic drop acme/app#100                        # stop tracking it
 ```
 
 These talk to the running hub. The Plan tab shows each epic, its pieces
 still to do (running and ready first). `E` approves the plan that waits
-for you, and `C` clears the gate of the selected piece.
+for you, `C` clears the gate of the selected piece, and `D` (twice)
+finishes an epic whose pieces are all closed.
 
 - **Reading.** gh-hud doesn't count on one format. It merges what it finds:
   - **Prose.** The read-only supervisor agent (see "The supervisor
@@ -1170,6 +1172,20 @@ auto pass starts them like any other step:
   of runs it's yours (`epic: 2 runs, still no PR`). Gated and blocked
   pieces need you too. A piece that can't start says why once:
   `epic acme/app#100: acme/app#2 didn't start: …`.
+
+**Finishing.** When every piece of the approved plan is done or dropped,
+the epic is finished: nothing is left to run. A piece blocked by a dropped
+one isn't finished; it needs you. gh-hud says so once (`epic acme/app#100:
+all 4 pieces are finished`) and drafts the comment it would close the epic
+with: the tally, each piece done with the PR that did it, and each piece
+dropped with why. The Plan tab, `gh-hud epic finish <ref>` and the apps
+show that draft. Finishing posts it as you and closes the epic as
+completed, so it waits for you: `D` twice in the Plan tab, `-y` on the
+command, or Finish Epic in the apps, each for the plan you saw. The agent
+token can't. A finish whose close fails can be retried without posting the
+summary twice. An epic closed on GitHub stops the same way, without a
+summary (`closed on GitHub`). A closed epic stays listed, starts nothing
+and isn't checked again; `gh-hud epic drop` removes it.
 
 ```toml
 [epics]

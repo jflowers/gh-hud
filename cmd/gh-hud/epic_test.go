@@ -2,11 +2,13 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/jflowers/gh-hud/internal/epic"
+	"github.com/jflowers/gh-hud/internal/hub"
 )
 
 func TestPrintEpics(t *testing.T) {
@@ -56,6 +58,56 @@ func TestPrintReport(t *testing.T) {
 	} {
 		if !strings.Contains(b.String(), want) {
 			t.Errorf("missing %q in:\n%s", want, b.String())
+		}
+	}
+}
+
+type fakeFinisher struct {
+	snap  hub.Snapshot
+	calls []string
+}
+
+func (f *fakeFinisher) Fetch(context.Context) (hub.Snapshot, error) { return f.snap, nil }
+
+func (f *fakeFinisher) FinishEpic(_ context.Context, ref, planID string) error {
+	f.calls = append(f.calls, ref+" "+planID)
+	return nil
+}
+
+// gh-hud epic finish shows the summary first; only -y posts it, for the
+// plan shown.
+func TestEpicFinish(t *testing.T) {
+	done := time.Date(2026, 11, 25, 9, 0, 0, 0, time.Local)
+	f := &fakeFinisher{snap: hub.Snapshot{Epics: []epic.Epic{
+		{Ref: "acme/app#100", State: epic.StateApproved, Complete: &done, Summary: "**Epic finished.** All 1 pieces…\n",
+			Plan: &epic.Plan{ID: "p1"}},
+		{Ref: "acme/app#200", State: epic.StateApproved, Plan: &epic.Plan{ID: "p2"}},
+		{Ref: "acme/app#300", State: epic.StateClosed, ClosedNote: "closed on GitHub", Plan: &epic.Plan{ID: "p3"}},
+	}}}
+	var out, errb bytes.Buffer
+	if code := epicFinish(context.Background(), f, "acme/app#100", false, &out, &errb); code != 0 || len(f.calls) != 0 ||
+		!strings.Contains(out.String(), "**Epic finished.**") || !strings.Contains(out.String(), "-y posts it") {
+		t.Fatalf("preview: code %d calls %v out %q", code, f.calls, out.String())
+	}
+	out.Reset()
+	if code := epicFinish(context.Background(), f, "acme/app#100", true, &out, &errb); code != 0 || strings.Join(f.calls, ",") != "acme/app#100 p1" {
+		t.Fatalf("finish: code %d calls %v", code, f.calls)
+	}
+	for ref, want := range map[string]string{
+		"acme/app#200": "isn't finished",
+		"acme/app#300": "already closed (closed on GitHub)",
+		"acme/app#9":   "isn't enrolled",
+	} {
+		errb.Reset()
+		if code := epicFinish(context.Background(), f, ref, true, &out, &errb); code != 1 || !strings.Contains(errb.String(), want) {
+			t.Errorf("%s: code %d, %q", ref, code, errb.String())
+		}
+	}
+	var b bytes.Buffer
+	printEpics(&b, f.snap.Epics)
+	for _, want := range []string{"every piece is finished: gh-hud epic finish acme/app#100", "closed: closed on GitHub"} {
+		if !strings.Contains(b.String(), want) {
+			t.Errorf("list missing %q:\n%s", want, b.String())
 		}
 	}
 }

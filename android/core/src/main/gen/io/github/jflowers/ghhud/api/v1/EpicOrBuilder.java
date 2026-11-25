@@ -59,7 +59,7 @@ public interface EpicOrBuilder extends
 
   /**
    * <pre>
-   * open set: reading, planned, approved, error
+   * open set: reading, planned, approved, error, closed
    * </pre>
    *
    * <code>string state = 5 [json_name = "state"];</code>
@@ -68,7 +68,7 @@ public interface EpicOrBuilder extends
   java.lang.String getState();
   /**
    * <pre>
-   * open set: reading, planned, approved, error
+   * open set: reading, planned, approved, error, closed
    * </pre>
    *
    * <code>string state = 5 [json_name = "state"];</code>
@@ -283,4 +283,92 @@ public interface EpicOrBuilder extends
    */
   com.google.protobuf.ByteString
       getStatusHashBytes();
+
+  /**
+   * <pre>
+   * Every piece of the approved plan is done or dropped (gh-hud#22): when
+   * that was first seen (unset while one isn't), and the comment
+   * FinishEpic posts as it closes the epic. Show it next to Finish Epic.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp complete = 17 [json_name = "complete"];</code>
+   * @return Whether the complete field is set.
+   */
+  boolean hasComplete();
+  /**
+   * <pre>
+   * Every piece of the approved plan is done or dropped (gh-hud#22): when
+   * that was first seen (unset while one isn't), and the comment
+   * FinishEpic posts as it closes the epic. Show it next to Finish Epic.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp complete = 17 [json_name = "complete"];</code>
+   * @return The complete.
+   */
+  com.google.protobuf.Timestamp getComplete();
+
+  /**
+   * <code>string summary = 18 [json_name = "summary"];</code>
+   * @return The summary.
+   */
+  java.lang.String getSummary();
+  /**
+   * <code>string summary = 18 [json_name = "summary"];</code>
+   * @return The bytes for summary.
+   */
+  com.google.protobuf.ByteString
+      getSummaryBytes();
+
+  /**
+   * <pre>
+   * node ID of the summary once posted
+   * </pre>
+   *
+   * <code>string summary_comment = 19 [json_name = "summaryComment"];</code>
+   * @return The summaryComment.
+   */
+  java.lang.String getSummaryComment();
+  /**
+   * <pre>
+   * node ID of the summary once posted
+   * </pre>
+   *
+   * <code>string summary_comment = 19 [json_name = "summaryComment"];</code>
+   * @return The bytes for summaryComment.
+   */
+  com.google.protobuf.ByteString
+      getSummaryCommentBytes();
+
+  /**
+   * <pre>
+   * When gh-hud saw the epic issue closed (state "closed"), and how:
+   * "finished by gh-hud" or "closed on GitHub".
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp closed = 20 [json_name = "closed"];</code>
+   * @return Whether the closed field is set.
+   */
+  boolean hasClosed();
+  /**
+   * <pre>
+   * When gh-hud saw the epic issue closed (state "closed"), and how:
+   * "finished by gh-hud" or "closed on GitHub".
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp closed = 20 [json_name = "closed"];</code>
+   * @return The closed.
+   */
+  com.google.protobuf.Timestamp getClosed();
+
+  /**
+   * <code>string closed_note = 21 [json_name = "closedNote"];</code>
+   * @return The closedNote.
+   */
+  java.lang.String getClosedNote();
+  /**
+   * <code>string closed_note = 21 [json_name = "closedNote"];</code>
+   * @return The bytes for closedNote.
+   */
+  com.google.protobuf.ByteString
+      getClosedNoteBytes();
 }

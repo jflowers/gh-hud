@@ -159,6 +159,12 @@ public data class EpicRow(
      * set only when it waits for you again.
      */
     val changes: List<String> = emptyList(),
+    /**
+     * The plan whose pieces are all finished, when the epic can be finished
+     * (gh-hud#22), and the comment finishing it posts as you.
+     */
+    val planToFinish: String? = null,
+    val summary: String = "",
     /** Pieces still to do, running and ready first. */
     val open: List<Piece>,
     val done: Int,
@@ -193,9 +199,11 @@ public data class EpicRow(
             val (status, tone) = when {
                 e.state == "reading" -> "reading the plan…" to Tone.PENDING
                 e.state == "error" -> "can't read it: ${e.error}" to Tone.BAD
+                e.state == "closed" -> (e.closedNote + if (e.hasPlan()) " · $counts" else "") to Tone.MUTED
                 !e.hasPlan() -> "no plan yet" to Tone.MUTED
                 e.plan.stale -> "the epic changed: reread it · $counts" to Tone.WARN
                 e.state == "planned" -> "plan waits for you · $counts" to Tone.WARN
+                e.hasComplete() -> "every piece finished · $counts" to Tone.WARN
                 else -> "approved · $counts" to Tone.GOOD
             }
             val repo = e.ref.split("#", limit = 2).first()
@@ -215,6 +223,7 @@ public data class EpicRow(
                     )
                 }
             val toApprove = if (e.state == "planned" && e.hasPlan() && !e.plan.stale && e.plan.id.isNotEmpty()) e.plan.id else null
+            val toFinish = if (e.state == "approved" && e.hasComplete() && e.hasPlan() && !e.plan.stale && e.summary.isNotEmpty()) e.plan.id else null
             return EpicRow(
                 ref = e.ref,
                 title = e.title,
@@ -223,6 +232,8 @@ public data class EpicRow(
                 tone = tone,
                 planToApprove = toApprove,
                 changes = if (toApprove == null) emptyList() else e.changesList,
+                planToFinish = toFinish,
+                summary = if (toFinish == null) "" else e.summary,
                 open = open,
                 done = done,
                 total = nodes.size,

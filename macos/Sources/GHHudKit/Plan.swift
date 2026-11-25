@@ -155,6 +155,10 @@ public struct EpicRow: Identifiable, Equatable, Sendable {
     /// What that plan changed since you last approved one, a line each:
     /// set only when it waits for you again.
     public let changes: [String]
+    /// The plan whose pieces are all finished, when the epic can be
+    /// finished (gh-hud#22), and the comment finishing it posts as you.
+    public let planToFinish: String?
+    public let summary: String
     /// Pieces still to do, running and ready first.
     public let open: [Piece]
     public let done: Int
@@ -176,6 +180,8 @@ public struct EpicRow: Identifiable, Equatable, Sendable {
             (status, tone) = ("reading the plan…", .pending)
         case "error":
             (status, tone) = ("can't read it: \(e.error)", .bad)
+        case "closed":
+            (status, tone) = (e.closedNote + (e.hasPlan ? " · " + counts : ""), .muted)
         default:
             if !e.hasPlan {
                 (status, tone) = ("no plan yet", .muted)
@@ -183,12 +189,16 @@ public struct EpicRow: Identifiable, Equatable, Sendable {
                 (status, tone) = ("the epic changed: reread it · " + counts, .warn)
             } else if e.state == "planned" {
                 (status, tone) = ("plan waits for you · " + counts, .warn)
+            } else if e.hasComplete {
+                (status, tone) = ("every piece finished · " + counts, .warn)
             } else {
                 (status, tone) = ("approved · " + counts, .good)
             }
         }
         planToApprove = e.state == "planned" && e.hasPlan && !e.plan.stale && !e.plan.id.isEmpty ? e.plan.id : nil
         changes = planToApprove == nil ? [] : e.changes
+        planToFinish = e.state == "approved" && e.hasComplete && e.hasPlan && !e.plan.stale && !e.summary.isEmpty ? e.plan.id : nil
+        summary = planToFinish == nil ? "" : e.summary
         let repo = e.ref.split(separator: "#", maxSplits: 1).first.map(String.init) ?? e.ref
         let rank = ["running": 0, "ready": 1, "in_progress": 2, "gated": 3, "blocked": 4, "waiting": 5, "unknown": 6]
         let approved = e.state == "approved"

@@ -180,6 +180,93 @@ func (d *Dispatcher) ApproveEpic(ref, planID string) error {
 	return nil
 }
 
+// noteFinishedLocked keeps e.Complete and e.Summary in step with whether
+// every piece is finished, and says so once when it first is.
+func (d *Dispatcher) noteFinishedLocked(e *epic.Epic) {
+	if !e.Finished() {
+		e.Complete, e.Summary = nil, ""
+		return
+	}
+	e.Summary = epic.FinishSummary(*e)
+	if e.Complete == nil {
+		now := time.Now()
+		e.Complete = &now
+		d.epicNotes = append(d.epicNotes, fmt.Sprintf("epic %s: all %d pieces are finished. Finish it to post a summary and close it (gh-hud epic finish %s)", e.Ref, len(e.Plan.Nodes), e.Ref))
+	}
+}
+
+// FinishEpic posts a finished epic's summary on it, as you, and closes it
+// as completed. planID must be the plan you saw finished ("" for the
+// current one). A finish retried after the close failed doesn't post the
+// summary again.
+func (d *Dispatcher) FinishEpic(ref, planID string) error {
+	if !d.owns() {
+		return d.followerErr()
+	}
+	d.mu.Lock()
+	i := slices.IndexFunc(d.epics, func(e epic.Epic) bool { return e.Ref == ref })
+	if i < 0 {
+		d.mu.Unlock()
+		return fmt.Errorf("%s isn't enrolled", ref)
+	}
+	e := d.epics[i]
+	d.mu.Unlock()
+	switch {
+	case e.State == epic.StateClosed:
+		return fmt.Errorf("%s is already closed", ref)
+	case e.Plan == nil:
+		return fmt.Errorf("%s has no plan yet", ref)
+	case planID != "" && planID != e.Plan.ID:
+		return fmt.Errorf("%s's plan changed (now %s): look at it again", ref, e.Plan.ID)
+	case !e.Finished() || e.Complete == nil || e.Summary == "":
+		return fmt.Errorf("%s isn't finished: every piece of its approved plan must be done or dropped", ref)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	issueID, err := d.epicIssueID(ctx, ref)
+	if err != nil {
+		return err
+	}
+	comment := e.SummaryComment
+	if comment == "" {
+		var out struct {
+			AddComment struct {
+				CommentEdge struct {
+					Node struct {
+						ID string `json:"id"`
+					} `json:"node"`
+				} `json:"commentEdge"`
+			} `json:"addComment"`
+		}
+		if err := d.mutate(ctx, addCommentMutation, map[string]any{"id": issueID, "body": e.Summary}, &out); err != nil {
+			return fmt.Errorf("posting the summary: %w", err)
+		}
+		comment = out.AddComment.CommentEdge.Node.ID
+		if comment == "" {
+			comment = "posted"
+		}
+		d.setEpic(ref, func(e *epic.Epic) { e.SummaryComment = comment })
+	}
+	if err := d.mutate(ctx, closeIssueMutation, map[string]any{"id": issueID}, nil); err != nil {
+		return fmt.Errorf("the summary is posted, but closing %s failed (finish again to retry the close): %w", ref, err)
+	}
+	d.setEpic(ref, func(e *epic.Epic) {
+		now := time.Now()
+		e.State, e.Closed, e.ClosedNote = epic.StateClosed, &now, "finished by gh-hud"
+	})
+	return nil
+}
+
+// setEpic edits an enrolled epic and saves; a dropped one is left alone.
+func (d *Dispatcher) setEpic(ref string, f func(*epic.Epic)) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if i := slices.IndexFunc(d.epics, func(e epic.Epic) bool { return e.Ref == ref }); i >= 0 {
+		f(&d.epics[i])
+		d.saveEpicsLocked()
+	}
+}
+
 // ClearEpicGate clears a piece's gate: you say the condition holds. piece
 // is owner/repo#N, or #N in the epic's repo.
 func (d *Dispatcher) ClearEpicGate(ref, piece string) error {
@@ -233,7 +320,7 @@ func (d *Dispatcher) epicPass() []string {
 		switch {
 		case e.State == epic.StateReading && !d.epicReading[e.Ref]:
 			d.startEpicReadLocked(e.Ref) // e.g. after a restart
-		case e.Plan != nil && time.Since(e.CheckedAt) >= epicCheckEvery:
+		case e.Plan != nil && e.State != epic.StateClosed && time.Since(e.CheckedAt) >= epicCheckEvery:
 			due = true
 		}
 	}
@@ -271,6 +358,7 @@ func (d *Dispatcher) goEpic(f func()) {
 // epicFact is what the epic issue itself says.
 type epicIssue struct {
 	Title, URL, Body string
+	State            string // OPEN or CLOSED
 }
 
 // readEpic reads one epic into a plan.
@@ -545,27 +633,29 @@ func (d *Dispatcher) checkEpics() {
 	d.mu.Lock()
 	var todo []epic.Epic
 	for _, e := range d.epics {
-		if e.Plan != nil {
+		if e.Plan != nil && e.State != epic.StateClosed {
 			todo = append(todo, cloneEpic(e))
 		}
 	}
 	d.mu.Unlock()
 
 	type result struct {
-		plan  *epic.Plan
-		stale bool
+		plan   *epic.Plan
+		stale  bool
+		closed bool // the epic issue is closed on GitHub
 	}
 	results := map[string]result{}
 	for _, e := range todo {
 		repo, _, _ := epic.ParseRef(e.Ref)
 		facts := d.fetchFacts(ctx, e.Plan.Refs())
 		epic.Refresh(e.Plan, repo, facts)
-		stale := e.Plan.Stale
+		stale, closed := e.Plan.Stale, false
 		if iss, err := d.fetchEpicIssue(ctx, e.Ref); err == nil {
 			// A raw hash is what plans read before bodyHash existed hold.
 			stale = !bodyMatches(iss.Body, e.Plan.BodyHash)
+			closed = iss.State == "CLOSED"
 		}
-		results[e.Ref] = result{e.Plan, stale}
+		results[e.Ref] = result{e.Plan, stale, closed}
 	}
 
 	d.mu.Lock()
@@ -577,9 +667,21 @@ func (d *Dispatcher) checkEpics() {
 		if !ok || e.Plan == nil || e.Plan.ID != r.plan.ID {
 			continue // reread or dropped meanwhile
 		}
+		if e.State == epic.StateClosed {
+			continue // finished meanwhile
+		}
 		fresh := r.stale && !e.Plan.Stale
 		r.plan.Stale = r.stale
 		e.Plan, e.CheckedAt = r.plan, time.Now()
+		if r.closed {
+			// Closed on GitHub: nothing more starts, and it's no longer
+			// checked. Its plan and progress stay as they were.
+			now := time.Now()
+			e.State, e.Closed, e.ClosedNote = epic.StateClosed, &now, "closed on GitHub"
+			d.epicNotes = append(d.epicNotes, fmt.Sprintf("epic %s was closed on GitHub: gh-hud stopped working on it", e.Ref))
+			continue
+		}
+		d.noteFinishedLocked(e)
 		if fresh && !d.epicReading[e.Ref] {
 			// Read it again now; its pieces wait until the read ends.
 			d.epicNotes = append(d.epicNotes, fmt.Sprintf("epic %s changed since its plan was read: reading it again", e.Ref))
@@ -706,13 +808,14 @@ func (d *Dispatcher) fetchEpicIssue(ctx context.Context, ref string) (epicIssue,
 		return epicIssue{}, fmt.Errorf("bad ref %q", ref)
 	}
 	owner, name, _ := strings.Cut(repo, "/")
-	q := fmt.Sprintf("query { repository(owner: %q, name: %q) { issue(number: %d) { title url body } } }", owner, name, num)
+	q := fmt.Sprintf("query { repository(owner: %q, name: %q) { issue(number: %d) { title url body state } } }", owner, name, num)
 	var data struct {
 		Repository *struct {
 			Issue *struct {
 				Title string `json:"title"`
 				URL   string `json:"url"`
 				Body  string `json:"body"`
+				State string `json:"state"`
 			} `json:"issue"`
 		} `json:"repository"`
 	}
@@ -725,7 +828,7 @@ func (d *Dispatcher) fetchEpicIssue(ctx context.Context, ref string) (epicIssue,
 	i := data.Repository.Issue
 	// The progress block isn't plan: editing it neither changes the hash
 	// nor reaches the planner (gh-hud#118).
-	return epicIssue{Title: i.Title, URL: i.URL, Body: epic.StripStatus(i.Body)}, nil
+	return epicIssue{Title: i.Title, URL: i.URL, Body: epic.StripStatus(i.Body), State: i.State}, nil
 }
 
 // ---------------------------------------------------------------------------

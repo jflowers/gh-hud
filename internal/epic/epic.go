@@ -40,6 +40,10 @@ const (
 	StatePlanned  State = "planned"  // a plan waits for your approval
 	StateApproved State = "approved" // you approved the plan
 	StateError    State = "error"    // the last read failed (Error says why)
+	// StateClosed: the epic issue is closed, by you through gh-hud's
+	// finish or on GitHub. Nothing more starts or is checked; drop it to
+	// stop listing it.
+	StateClosed State = "closed"
 )
 
 // NodeState is where one piece of an epic stands.
@@ -122,6 +126,75 @@ type Epic struct {
 	// Reports are the latest run report of each piece whose run ended
 	// without a PR.
 	Reports []Report `json:"reports,omitempty"`
+	// Complete is when every piece of the approved plan was first seen
+	// finished (done or dropped); nil while one isn't. Summary is then the
+	// comment gh-hud offers to post as it closes the epic (FinishSummary).
+	Complete *time.Time `json:"complete,omitempty"`
+	Summary  string     `json:"summary,omitempty"`
+	// SummaryComment is the node ID of the summary once posted, so a
+	// finish retried after the close failed doesn't post it twice.
+	SummaryComment string `json:"summary_comment,omitempty"`
+	// Closed is when gh-hud saw the epic issue closed: by finishing it, or
+	// on GitHub (ClosedNote says which).
+	Closed     *time.Time `json:"closed,omitempty"`
+	ClosedNote string     `json:"closed_note,omitempty"`
+}
+
+// Finished reports whether every piece of the epic's approved, current
+// plan is done or dropped: nothing is left to run. A piece blocked by a
+// dropped one isn't finished; it needs you.
+func (e Epic) Finished() bool {
+	if e.State != StateApproved || e.Plan == nil || e.Plan.Stale || e.ApprovedPlan != e.Plan.ID || len(e.Plan.Nodes) == 0 {
+		return false
+	}
+	for _, n := range e.Plan.Nodes {
+		if n.State != NodeDone && n.State != NodeDropped {
+			return false
+		}
+	}
+	return true
+}
+
+// FinishSummary is the comment that closes a finished epic: the tally,
+// then each piece with the PR that did it or why it was dropped. It
+// carries no clock, so it reads the same until a piece changes.
+func FinishSummary(e Epic) string {
+	if e.Plan == nil {
+		return ""
+	}
+	repo, _, _ := ParseRef(e.Ref)
+	c := e.Counts()
+	var b strings.Builder
+	fmt.Fprintf(&b, "**Epic finished.** All %d pieces of plan `%s` are closed: %d done", len(e.Plan.Nodes), e.Plan.ID, c[NodeDone])
+	if c[NodeDropped] > 0 {
+		fmt.Fprintf(&b, ", %d dropped", c[NodeDropped])
+	}
+	b.WriteString(".\n")
+	for _, s := range []NodeState{NodeDone, NodeDropped} {
+		if c[s] == 0 {
+			continue
+		}
+		head := "Done"
+		if s == NodeDropped {
+			head = "Dropped"
+		}
+		fmt.Fprintf(&b, "\n%s:\n", head)
+		for _, n := range e.Plan.Nodes {
+			if n.State != s {
+				continue
+			}
+			line := "- " + Short(repo, n.Ref)
+			if t := strings.Join(strings.Fields(n.Title), " "); t != "" {
+				line += " " + t
+			}
+			if n.Note != "" {
+				line += " (" + n.Note + ")"
+			}
+			b.WriteString(line + "\n")
+		}
+	}
+	b.WriteString("\n<sub>Posted by gh-hud, which closes this epic with it.</sub>\n")
+	return b.String()
 }
 
 // Verdicts on a piece's run that left no PR.

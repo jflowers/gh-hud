@@ -20,6 +20,7 @@ type fakeGitHub struct {
 	body   string
 	nodes  map[string]map[string]any // ref → issueOrPullRequest
 	issues int                       // epic issue fetches
+	state  string                    // the epic issue's state ("" = OPEN)
 }
 
 var aliasRe = regexp.MustCompile(`r(\d+): repository\(owner: "([^"]+)", name: "([^"]+)"\) \{ issueOrPullRequest\(number: (\d+)\)`)
@@ -31,7 +32,7 @@ func (g *fakeGitHub) query(_ context.Context, q string, out any) error {
 	if strings.Contains(q, "issue(number:") {
 		g.issues++
 		data = map[string]any{"repository": map[string]any{"issue": map[string]any{
-			"title": "The epic", "url": "https://github.com/acme/app/issues/100", "body": g.body}}}
+			"title": "The epic", "url": "https://github.com/acme/app/issues/100", "body": g.body, "state": g.state}}}
 	} else {
 		m := map[string]any{}
 		for _, a := range aliasRe.FindAllStringSubmatch(q, -1) {

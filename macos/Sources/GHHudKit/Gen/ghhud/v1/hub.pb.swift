@@ -1084,6 +1084,31 @@ public nonisolated struct Ghhud_V1_ClearEpicGateResponse: Sendable {
   public init() {}
 }
 
+public nonisolated struct Ghhud_V1_FinishEpicRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var ref: String = String()
+
+  /// the plan seen finished; empty finishes the current one
+  public var planID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Ghhud_V1_FinishEpicResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public nonisolated struct Ghhud_V1_WatchRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -2531,7 +2556,7 @@ public nonisolated struct Ghhud_V1_Epic: @unchecked Sendable {
   /// Clears the value of `enrolled`. Subsequent reads from it will return its default value.
   public mutating func clearEnrolled() {_uniqueStorage()._enrolled = nil}
 
-  /// open set: reading, planned, approved, error
+  /// open set: reading, planned, approved, error, closed
   public var state: String {
     get {_storage._state}
     set {_uniqueStorage()._state = newValue}
@@ -2613,6 +2638,45 @@ public nonisolated struct Ghhud_V1_Epic: @unchecked Sendable {
   public var statusHash: String {
     get {_storage._statusHash}
     set {_uniqueStorage()._statusHash = newValue}
+  }
+
+  /// Every piece of the approved plan is done or dropped (gh-hud#22): when
+  /// that was first seen (unset while one isn't), and the comment
+  /// FinishEpic posts as it closes the epic. Show it next to Finish Epic.
+  public var complete: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_storage._complete ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_uniqueStorage()._complete = newValue}
+  }
+  /// Returns true if `complete` has been explicitly set.
+  public var hasComplete: Bool {_storage._complete != nil}
+  /// Clears the value of `complete`. Subsequent reads from it will return its default value.
+  public mutating func clearComplete() {_uniqueStorage()._complete = nil}
+
+  public var summary: String {
+    get {_storage._summary}
+    set {_uniqueStorage()._summary = newValue}
+  }
+
+  /// node ID of the summary once posted
+  public var summaryComment: String {
+    get {_storage._summaryComment}
+    set {_uniqueStorage()._summaryComment = newValue}
+  }
+
+  /// When gh-hud saw the epic issue closed (state "closed"), and how:
+  /// "finished by gh-hud" or "closed on GitHub".
+  public var closed: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_storage._closed ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_uniqueStorage()._closed = newValue}
+  }
+  /// Returns true if `closed` has been explicitly set.
+  public var hasClosed: Bool {_storage._closed != nil}
+  /// Clears the value of `closed`. Subsequent reads from it will return its default value.
+  public mutating func clearClosed() {_uniqueStorage()._closed = nil}
+
+  public var closedNote: String {
+    get {_storage._closedNote}
+    set {_uniqueStorage()._closedNote = newValue}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -4888,6 +4952,60 @@ nonisolated extension Ghhud_V1_ClearEpicGateResponse: SwiftProtobuf.Message, Swi
   }
 
   public static func ==(lhs: Ghhud_V1_ClearEpicGateResponse, rhs: Ghhud_V1_ClearEpicGateResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_FinishEpicRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".FinishEpicRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{3}plan_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.ref) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.planID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.ref.isEmpty {
+      try visitor.visitSingularStringField(value: self.ref, fieldNumber: 1)
+    }
+    if !self.planID.isEmpty {
+      try visitor.visitSingularStringField(value: self.planID, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_FinishEpicRequest, rhs: Ghhud_V1_FinishEpicRequest) -> Bool {
+    if lhs.ref != rhs.ref {return false}
+    if lhs.planID != rhs.planID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_FinishEpicResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".FinishEpicResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_FinishEpicResponse, rhs: Ghhud_V1_FinishEpicResponse) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -7314,7 +7432,7 @@ nonisolated extension Ghhud_V1_Proposal: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Epic"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}url\0\u{1}title\0\u{1}enrolled\0\u{1}state\0\u{1}error\0\u{1}plan\0\u{1}approved\0\u{3}approved_plan\0\u{3}checked_at\0\u{1}log\0\u{1}reports\0\u{3}approved_snapshot\0\u{1}changes\0\u{3}status_comment\0\u{3}status_hash\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}url\0\u{1}title\0\u{1}enrolled\0\u{1}state\0\u{1}error\0\u{1}plan\0\u{1}approved\0\u{3}approved_plan\0\u{3}checked_at\0\u{1}log\0\u{1}reports\0\u{3}approved_snapshot\0\u{1}changes\0\u{3}status_comment\0\u{3}status_hash\0\u{1}complete\0\u{1}summary\0\u{3}summary_comment\0\u{1}closed\0\u{3}closed_note\0")
 
   fileprivate class _StorageClass {
     var _ref: String = String()
@@ -7333,6 +7451,11 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _changes: [String] = []
     var _statusComment: String = String()
     var _statusHash: String = String()
+    var _complete: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+    var _summary: String = String()
+    var _summaryComment: String = String()
+    var _closed: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+    var _closedNote: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -7359,6 +7482,11 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _changes = source._changes
       _statusComment = source._statusComment
       _statusHash = source._statusHash
+      _complete = source._complete
+      _summary = source._summary
+      _summaryComment = source._summaryComment
+      _closed = source._closed
+      _closedNote = source._closedNote
     }
   }
 
@@ -7393,6 +7521,11 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 14: try { try decoder.decodeRepeatedStringField(value: &_storage._changes) }()
         case 15: try { try decoder.decodeSingularStringField(value: &_storage._statusComment) }()
         case 16: try { try decoder.decodeSingularStringField(value: &_storage._statusHash) }()
+        case 17: try { try decoder.decodeSingularMessageField(value: &_storage._complete) }()
+        case 18: try { try decoder.decodeSingularStringField(value: &_storage._summary) }()
+        case 19: try { try decoder.decodeSingularStringField(value: &_storage._summaryComment) }()
+        case 20: try { try decoder.decodeSingularMessageField(value: &_storage._closed) }()
+        case 21: try { try decoder.decodeSingularStringField(value: &_storage._closedNote) }()
         default: break
         }
       }
@@ -7453,6 +7586,21 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
       if !_storage._statusHash.isEmpty {
         try visitor.visitSingularStringField(value: _storage._statusHash, fieldNumber: 16)
       }
+      try { if let v = _storage._complete {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
+      } }()
+      if !_storage._summary.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._summary, fieldNumber: 18)
+      }
+      if !_storage._summaryComment.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._summaryComment, fieldNumber: 19)
+      }
+      try { if let v = _storage._closed {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 20)
+      } }()
+      if !_storage._closedNote.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._closedNote, fieldNumber: 21)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -7478,6 +7626,11 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._changes != rhs_storage._changes {return false}
         if _storage._statusComment != rhs_storage._statusComment {return false}
         if _storage._statusHash != rhs_storage._statusHash {return false}
+        if _storage._complete != rhs_storage._complete {return false}
+        if _storage._summary != rhs_storage._summary {return false}
+        if _storage._summaryComment != rhs_storage._summaryComment {return false}
+        if _storage._closed != rhs_storage._closed {return false}
+        if _storage._closedNote != rhs_storage._closedNote {return false}
         return true
       }
       if !storagesAreEqual {return false}

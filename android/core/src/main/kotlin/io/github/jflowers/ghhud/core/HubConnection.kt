@@ -30,6 +30,7 @@ import io.github.jflowers.ghhud.api.v1.enrollEpicRequest
 import io.github.jflowers.ghhud.api.v1.fleetControlRequest
 import io.github.jflowers.ghhud.api.v1.moveQueuedRequest
 import io.github.jflowers.ghhud.api.v1.rereadEpicRequest
+import io.github.jflowers.ghhud.api.v1.finishEpicRequest
 import io.github.jflowers.ghhud.api.v1.unqueueRequest
 import io.github.jflowers.ghhud.api.v1.enqueueRequest
 import io.github.jflowers.ghhud.api.v1.menuChoicesRequest
@@ -350,6 +351,10 @@ public class HubConnection(
     /** Reads an epic again. */
     public suspend fun rereadEpic(ref: String): Answer<Unit> =
         answer(hub.rereadEpic(rereadEpicRequest { this.ref = ref }, headers)) { }
+
+    /** Posts a finished epic's summary, as you, and closes it: the plan seen finished. */
+    public suspend fun finishEpic(ref: String, planID: String): Answer<Unit> =
+        answer(hub.finishEpic(finishEpicRequest { this.ref = ref; this.planId = planID }, headers)) { }
 
     /** Drives the fleet rollout: pause, resume, apply now, skip the drain wait, retry. */
     public suspend fun fleet(action: FleetAction): Answer<Unit> =

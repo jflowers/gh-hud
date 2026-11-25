@@ -236,6 +236,10 @@ func (s *Server) ClearEpicGate(ctx context.Context, req *connect.Request[pb.Clea
 	return reply(&pb.ClearEpicGateResponse{}, s.b.ClearEpicGate(ctx, req.Msg.GetRef(), req.Msg.GetPiece()))
 }
 
+func (s *Server) FinishEpic(ctx context.Context, req *connect.Request[pb.FinishEpicRequest]) (*connect.Response[pb.FinishEpicResponse], error) {
+	return reply(&pb.FinishEpicResponse{}, s.b.FinishEpic(ctx, req.Msg.GetRef(), req.Msg.GetPlanId()))
+}
+
 func (s *Server) MoveQueued(ctx context.Context, req *connect.Request[pb.MoveQueuedRequest]) (*connect.Response[pb.MoveQueuedResponse], error) {
 	i, err := s.b.MoveQueued(ctx, dispatch.Task(req.Msg.GetTask()), req.Msg.GetRef(), int(req.Msg.GetDelta()))
 	if err != nil {

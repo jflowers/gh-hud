@@ -87,6 +87,11 @@ public protocol Ghhud_V1_HubServiceClientInterface: Sendable {
     @available(iOS 13, *)
     func `clearEpicGate`(request: Ghhud_V1_ClearEpicGateRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_ClearEpicGateResponse>
 
+    /// FinishEpic posts a finished epic's summary on it, as you, and closes
+    /// it as completed (gh-hud#22). Every piece must be done or dropped.
+    @available(iOS 13, *)
+    func `finishEpic`(request: Ghhud_V1_FinishEpicRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_FinishEpicResponse>
+
     /// Viewers. They open a terminal window on the hub's machine.
     @available(iOS 13, *)
     func `watch`(request: Ghhud_V1_WatchRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_WatchResponse>
@@ -246,6 +251,11 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
     }
 
     @available(iOS 13, *)
+    public func `finishEpic`(request: Ghhud_V1_FinishEpicRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_FinishEpicResponse> {
+        return await self.client.unary(path: "/ghhud.v1.HubService/FinishEpic", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `watch`(request: Ghhud_V1_WatchRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_WatchResponse> {
         return await self.client.unary(path: "/ghhud.v1.HubService/Watch", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -316,6 +326,7 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
             public static let dropEpic = Connect.MethodSpec(name: "DropEpic", service: "ghhud.v1.HubService", type: .unary)
             public static let rereadEpic = Connect.MethodSpec(name: "RereadEpic", service: "ghhud.v1.HubService", type: .unary)
             public static let clearEpicGate = Connect.MethodSpec(name: "ClearEpicGate", service: "ghhud.v1.HubService", type: .unary)
+            public static let finishEpic = Connect.MethodSpec(name: "FinishEpic", service: "ghhud.v1.HubService", type: .unary)
             public static let watch = Connect.MethodSpec(name: "Watch", service: "ghhud.v1.HubService", type: .unary)
             public static let watchRun = Connect.MethodSpec(name: "WatchRun", service: "ghhud.v1.HubService", type: .unary)
             public static let openTranscript = Connect.MethodSpec(name: "OpenTranscript", service: "ghhud.v1.HubService", type: .unary)

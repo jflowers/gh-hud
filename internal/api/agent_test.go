@@ -26,6 +26,7 @@ var agentDenied = map[string]bool{
 	ghhudv1connect.HubServiceApproveProposalProcedure: true,
 	ghhudv1connect.HubServiceRejectProposalProcedure:  true,
 	ghhudv1connect.HubServiceApproveEpicProcedure:     true,
+	ghhudv1connect.HubServiceFinishEpicProcedure:      true, // posts and closes on GitHub as you
 	ghhudv1connect.HubServiceClearEpicGateProcedure:   true,
 	ghhudv1connect.HubServiceWatchProcedure:           true,
 	ghhudv1connect.HubServiceWatchRunProcedure:        true,

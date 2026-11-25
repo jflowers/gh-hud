@@ -3,11 +3,17 @@ package io.github.jflowers.ghhud.core
 import com.google.protobuf.MessageLite
 import io.github.jflowers.ghhud.api.v1.ApproveEpicRequest
 import io.github.jflowers.ghhud.api.v1.ClearEpicGateRequest
+import io.github.jflowers.ghhud.api.v1.FinishEpicRequest
 import io.github.jflowers.ghhud.api.v1.MoveQueuedRequest
 import io.github.jflowers.ghhud.api.v1.Snapshot
 import io.github.jflowers.ghhud.api.v1.approveEpicResponse
 import io.github.jflowers.ghhud.api.v1.clearEpicGateResponse
 import io.github.jflowers.ghhud.api.v1.enrollEpicResponse
+import io.github.jflowers.ghhud.api.v1.epic
+import io.github.jflowers.ghhud.api.v1.epicNode
+import io.github.jflowers.ghhud.api.v1.epicPlan
+import io.github.jflowers.ghhud.api.v1.finishEpicResponse
+import com.google.protobuf.timestamp
 import io.github.jflowers.ghhud.api.v1.moveQueuedResponse
 import io.github.jflowers.ghhud.api.v1.unqueueResponse
 import kotlinx.coroutines.CoroutineScope
@@ -88,5 +94,33 @@ class PlanCommandsTest {
         assertEquals(Answer.Ok("Enrolled acme/docs#8; its plan shows here once it's read"), cmds.enroll("  acme/docs#8 "))
         refused("not an issue")
         assertEquals(Answer.No("not an issue"), cmds.enroll("nope"))
+    }
+
+    @Test
+    fun finishAnEpic() = runBlocking {
+        val finished = epic {
+            ref = "acme/docs#8"
+            state = "approved"
+            plan = epicPlan {
+                id = "plan-8"
+                nodes += epicNode { ref = "acme/docs#9"; state = "done" }
+                nodes += epicNode { ref = "acme/docs#10"; state = "dropped" }
+            }
+            complete = timestamp { seconds = 1 }
+            summary = "**Epic finished.** All 2 pieces…"
+        }
+        val row = EpicRow.of(finished)
+        assertEquals("plan-8" to "**Epic finished.** All 2 pieces…", row.planToFinish to row.summary)
+        assertEquals("every piece finished · 1/2 done, 0 ready, 0 in progress" to Tone.WARN, row.status to row.tone)
+        ok(finishEpicResponse {})
+        assertEquals(Answer.Ok("Posted the summary and closed acme/docs#8"), cmds.finish(row))
+        val req = FinishEpicRequest.parseFrom(server.takeRequest().body!!.toByteArray())
+        assertEquals("acme/docs#8" to "plan-8", req.ref to req.planId)
+
+        val closed = EpicRow.of(finished.toBuilder().setState("closed").setClosedNote("closed on GitHub").build())
+        assertEquals(null, closed.planToFinish)
+        assertEquals("closed on GitHub · 1/2 done, 0 ready, 0 in progress", closed.status)
+        assertEquals(Answer.No("acme/docs#8 isn't finished"), cmds.finish(closed))
+        assertEquals(null, EpicRow.of(finished.toBuilder().clearComplete().build()).planToFinish)
     }
 }

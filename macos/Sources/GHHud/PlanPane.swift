@@ -59,6 +59,15 @@ struct PlanPane: View {
         } message: { e in
             Text("gh-hud stops reading \(e.ref) and starts none of its pieces. Pieces already running carry on; you can enroll it again later.")
         }
+        .confirmationDialog(
+            "Finish \(ui.finishing?.ref ?? "")?",
+            isPresented: Binding(get: { ui.finishing != nil }, set: { if !$0 { ui.finishing = nil } }),
+            presenting: ui.finishing
+        ) { e in
+            Button("Post Summary and Close") { cmds.finish(e) }
+        } message: { e in
+            Text("gh-hud posts the summary shown under \(e.ref) as you, then closes the epic as completed.")
+        }
         .sheet(isPresented: $ui.enrolling) {
             EnrollSheet(conn: conn, ui: ui)
         }
@@ -213,6 +222,17 @@ struct PlanCommands {
         }
     }
 
+    func finish(_ e: EpicRow) {
+        guard let plan = e.planToFinish else { return }
+        Task {
+            if let why = await conn.finishEpic(e.ref, planID: plan) {
+                ui.say("Can't finish \(e.ref): \(why)", bad: true)
+            } else {
+                ui.say("Posted the summary and closed \(e.ref)")
+            }
+        }
+    }
+
     func reread(_ e: EpicRow) {
         Task {
             if let why = await conn.rereadEpic(e.ref) {
@@ -342,6 +362,18 @@ struct EpicView: View {
                 Button("Approve Plan") { cmds.approve(row) }
                     .controlSize(.small)
                     .disabled(cmds.off != nil)
+            }
+            if row.planToFinish != nil {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Closes with this comment, posted as you:").font(.caption).foregroundStyle(.secondary)
+                    Text(row.summary.trimmingCharacters(in: .whitespacesAndNewlines))
+                        .font(.caption.monospaced())
+                        .textSelection(.enabled)
+                    Button("Finish Epic…") { cmds.ui.finishing = row }
+                        .controlSize(.small)
+                        .disabled(cmds.off != nil)
+                }
+                .padding(.leading, 22)
             }
             ForEach(row.open.prefix(shown)) { p in
                 HStack(spacing: 6) {

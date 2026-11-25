@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -181,6 +182,36 @@ func TestPlanShowsEpicsAndApproves(t *testing.T) {
 	key("E")
 	if fake.Called("ApproveEpic acme/app#100 p7") != 1 {
 		t.Error("E didn't approve the plan")
+	}
+}
+
+// gh-hud#22: a finished epic shows the summary it closes with; D arms,
+// a second D finishes it with the plan shown.
+func TestPlanFinishesAnEpic(t *testing.T) {
+	done := time.Now()
+	fake := &hubtest.Fake{}
+	fake.SetSnap(hub.Snapshot{Seq: 1, Dispatch: true, Res: &model.FetchResult{},
+		Epics: []epic.Epic{{Ref: "acme/app#100", Title: "The epic", State: epic.StateApproved, ApprovedPlan: "p7",
+			Complete: &done, Summary: "**Epic finished.** All 1 pieces of plan `p7` are closed: 1 done.\n\nDone:\n- #101 first (PR #9)\n",
+			Plan: &epic.Plan{ID: "p7", Nodes: []epic.Node{{Ref: "acme/app#101", Title: "first", State: epic.NodeDone}}}}}})
+	m := New(config.Default(), fake)
+	m.width, m.height = 160, 30
+	key := func(k string) { m.handleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)}) }
+	key("p")
+	view := ansiRe.ReplaceAllString(m.View(), "")
+	for _, want := range []string{"every piece finished: D posts the summary and closes it · 1/1 done",
+		"closes with this comment, posted as you:", "- #101 first (PR #9)", "D finish epic"} {
+		if !strings.Contains(view, want) {
+			t.Errorf("plan view missing %q:\n%s", want, view)
+		}
+	}
+	key("D")
+	if fake.Called("FinishEpic acme/app#100 p7") != 0 {
+		t.Fatal("one D finished the epic")
+	}
+	key("D")
+	if fake.Called("FinishEpic acme/app#100 p7") != 1 {
+		t.Error("D twice didn't finish the epic")
 	}
 }
 

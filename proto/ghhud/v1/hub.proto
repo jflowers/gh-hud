@@ -65,6 +65,9 @@ service HubService {
   rpc RereadEpic(RereadEpicRequest) returns (RereadEpicResponse);
   // ClearEpicGate says a piece's gate holds: it no longer waits on it.
   rpc ClearEpicGate(ClearEpicGateRequest) returns (ClearEpicGateResponse);
+  // FinishEpic posts a finished epic's summary on it, as you, and closes
+  // it as completed (gh-hud#22). Every piece must be done or dropped.
+  rpc FinishEpic(FinishEpicRequest) returns (FinishEpicResponse);
 
   // Viewers. They open a terminal window on the hub's machine.
   rpc Watch(WatchRequest) returns (WatchResponse);
@@ -315,6 +318,13 @@ message ClearEpicGateRequest {
 }
 
 message ClearEpicGateResponse {}
+
+message FinishEpicRequest {
+  string ref = 1;
+  string plan_id = 2; // the plan seen finished; empty finishes the current one
+}
+
+message FinishEpicResponse {}
 
 message WatchRequest {
   string session_id = 1;
@@ -741,7 +751,7 @@ message Epic {
   string url = 2;
   string title = 3;
   google.protobuf.Timestamp enrolled = 4;
-  string state = 5; // open set: reading, planned, approved, error
+  string state = 5; // open set: reading, planned, approved, error, closed
   string error = 6;
   EpicPlan plan = 7;
   google.protobuf.Timestamp approved = 8; // unset until approved
@@ -755,6 +765,16 @@ message Epic {
   repeated string changes = 14;
   string status_comment = 15; // node ID of gh-hud's progress comment on the epic
   string status_hash = 16;
+  // Every piece of the approved plan is done or dropped (gh-hud#22): when
+  // that was first seen (unset while one isn't), and the comment
+  // FinishEpic posts as it closes the epic. Show it next to Finish Epic.
+  google.protobuf.Timestamp complete = 17;
+  string summary = 18;
+  string summary_comment = 19; // node ID of the summary once posted
+  // When gh-hud saw the epic issue closed (state "closed"), and how:
+  // "finished by gh-hud" or "closed on GitHub".
+  google.protobuf.Timestamp closed = 20;
+  string closed_note = 21;
 }
 
 // EpicReport is what a piece's run that left no PR did, and the
