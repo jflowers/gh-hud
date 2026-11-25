@@ -5985,15 +5985,18 @@ func (x *EpicReport) GetLog() string {
 
 // EpicPlan is an epic read as a graph.
 type EpicPlan struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Sources       []string               `protobuf:"bytes,2,rep,name=sources,proto3" json:"sources,omitempty"` // open set: prose, blocked_by
-	Nodes         []*EpicNode            `protobuf:"bytes,3,rep,name=nodes,proto3" json:"nodes,omitempty"`
-	Rules         []string               `protobuf:"bytes,4,rep,name=rules,proto3" json:"rules,omitempty"`
-	Skipped       []string               `protobuf:"bytes,5,rep,name=skipped,proto3" json:"skipped,omitempty"`
-	Created       *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created,proto3" json:"created,omitempty"`
-	BodyHash      string                 `protobuf:"bytes,7,opt,name=body_hash,json=bodyHash,proto3" json:"body_hash,omitempty"`
-	Stale         bool                   `protobuf:"varint,8,opt,name=stale,proto3" json:"stale,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Id       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Sources  []string               `protobuf:"bytes,2,rep,name=sources,proto3" json:"sources,omitempty"` // open set: prose, blocked_by, sub_issues
+	Nodes    []*EpicNode            `protobuf:"bytes,3,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	Rules    []string               `protobuf:"bytes,4,rep,name=rules,proto3" json:"rules,omitempty"`
+	Skipped  []string               `protobuf:"bytes,5,rep,name=skipped,proto3" json:"skipped,omitempty"`
+	Created  *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created,proto3" json:"created,omitempty"`
+	BodyHash string                 `protobuf:"bytes,7,opt,name=body_hash,json=bodyHash,proto3" json:"body_hash,omitempty"`
+	Stale    bool                   `protobuf:"varint,8,opt,name=stale,proto3" json:"stale,omitempty"`
+	// The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+	// each a piece (gh-hud#22); a change to them makes the plan stale.
+	SubIssues     []string `protobuf:"bytes,9,rep,name=sub_issues,json=subIssues,proto3" json:"sub_issues,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6082,6 +6085,13 @@ func (x *EpicPlan) GetStale() bool {
 		return x.Stale
 	}
 	return false
+}
+
+func (x *EpicPlan) GetSubIssues() []string {
+	if x != nil {
+		return x.SubIssues
+	}
+	return nil
 }
 
 // EpicNode is one piece of an epic.
@@ -8219,7 +8229,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x03why\x18\t \x01(\tR\x03why\x12\x12\n" +
 	"\x04hint\x18\n" +
 	" \x01(\tR\x04hint\x12\x10\n" +
-	"\x03log\x18\v \x01(\tR\x03log\"\xf7\x01\n" +
+	"\x03log\x18\v \x01(\tR\x03log\"\x96\x02\n" +
 	"\bEpicPlan\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\asources\x18\x02 \x03(\tR\asources\x12(\n" +
@@ -8228,7 +8238,9 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\askipped\x18\x05 \x03(\tR\askipped\x124\n" +
 	"\acreated\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\acreated\x12\x1b\n" +
 	"\tbody_hash\x18\a \x01(\tR\bbodyHash\x12\x14\n" +
-	"\x05stale\x18\b \x01(\bR\x05stale\"\x99\x02\n" +
+	"\x05stale\x18\b \x01(\bR\x05stale\x12\x1d\n" +
+	"\n" +
+	"sub_issues\x18\t \x03(\tR\tsubIssues\"\x99\x02\n" +
 	"\bEpicNode\x12\x10\n" +
 	"\x03ref\x18\x01 \x01(\tR\x03ref\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x14\n" +

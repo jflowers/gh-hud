@@ -58,7 +58,7 @@ public object EpicPlanKt {
     public class SourcesProxy private constructor() : com.google.protobuf.kotlin.DslProxy()
     /**
      * ```
-     * open set: prose, blocked_by
+     * open set: prose, blocked_by, sub_issues
      * ```
      *
      * `repeated string sources = 2 [json_name = "sources"];`
@@ -71,7 +71,7 @@ public object EpicPlanKt {
       )
     /**
      * ```
-     * open set: prose, blocked_by
+     * open set: prose, blocked_by, sub_issues
      * ```
      *
      * `repeated string sources = 2 [json_name = "sources"];`
@@ -84,7 +84,7 @@ public object EpicPlanKt {
     }
     /**
      * ```
-     * open set: prose, blocked_by
+     * open set: prose, blocked_by, sub_issues
      * ```
      *
      * `repeated string sources = 2 [json_name = "sources"];`
@@ -98,7 +98,7 @@ public object EpicPlanKt {
     }
     /**
      * ```
-     * open set: prose, blocked_by
+     * open set: prose, blocked_by, sub_issues
      * ```
      *
      * `repeated string sources = 2 [json_name = "sources"];`
@@ -111,7 +111,7 @@ public object EpicPlanKt {
     }
     /**
      * ```
-     * open set: prose, blocked_by
+     * open set: prose, blocked_by, sub_issues
      * ```
      *
      * `repeated string sources = 2 [json_name = "sources"];`
@@ -125,7 +125,7 @@ public object EpicPlanKt {
     }
     /**
      * ```
-     * open set: prose, blocked_by
+     * open set: prose, blocked_by, sub_issues
      * ```
      *
      * `repeated string sources = 2 [json_name = "sources"];`
@@ -138,7 +138,7 @@ public object EpicPlanKt {
       _builder.setSources(index, value)
     }/**
      * ```
-     * open set: prose, blocked_by
+     * open set: prose, blocked_by, sub_issues
      * ```
      *
      * `repeated string sources = 2 [json_name = "sources"];`
@@ -419,7 +419,112 @@ public object EpicPlanKt {
     public fun clearStale() {
       _builder.clearStale()
     }
-  }
+
+    /**
+     * An uninstantiable, behaviorless type to represent the field in
+     * generics.
+     */
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+    public class SubIssuesProxy private constructor() : com.google.protobuf.kotlin.DslProxy()
+    /**
+     * ```
+     * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+     * each a piece (gh-hud#22); a change to them makes the plan stale.
+     * ```
+     *
+     * `repeated string sub_issues = 9 [json_name = "subIssues"];`
+     * @return A list containing the subIssues.
+     */
+    public val subIssues: com.google.protobuf.kotlin.DslList<kotlin.String, SubIssuesProxy>
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+      get() = com.google.protobuf.kotlin.DslList(
+        _builder.subIssuesList
+      )
+    /**
+     * ```
+     * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+     * each a piece (gh-hud#22); a change to them makes the plan stale.
+     * ```
+     *
+     * `repeated string sub_issues = 9 [json_name = "subIssues"];`
+     * @param value The subIssues to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addSubIssues")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, SubIssuesProxy>.add(value: kotlin.String) {
+      _builder.addSubIssues(value)
+    }
+    /**
+     * ```
+     * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+     * each a piece (gh-hud#22); a change to them makes the plan stale.
+     * ```
+     *
+     * `repeated string sub_issues = 9 [json_name = "subIssues"];`
+     * @param value The subIssues to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignSubIssues")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, SubIssuesProxy>.plusAssign(value: kotlin.String) {
+      add(value)
+    }
+    /**
+     * ```
+     * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+     * each a piece (gh-hud#22); a change to them makes the plan stale.
+     * ```
+     *
+     * `repeated string sub_issues = 9 [json_name = "subIssues"];`
+     * @param values The subIssues to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addAllSubIssues")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, SubIssuesProxy>.addAll(values: kotlin.collections.Iterable<kotlin.String>) {
+      _builder.addAllSubIssues(values)
+    }
+    /**
+     * ```
+     * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+     * each a piece (gh-hud#22); a change to them makes the plan stale.
+     * ```
+     *
+     * `repeated string sub_issues = 9 [json_name = "subIssues"];`
+     * @param values The subIssues to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignAllSubIssues")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, SubIssuesProxy>.plusAssign(values: kotlin.collections.Iterable<kotlin.String>) {
+      addAll(values)
+    }
+    /**
+     * ```
+     * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+     * each a piece (gh-hud#22); a change to them makes the plan stale.
+     * ```
+     *
+     * `repeated string sub_issues = 9 [json_name = "subIssues"];`
+     * @param index The index to set the value at.
+     * @param value The subIssues to set.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setSubIssues")
+    public operator fun com.google.protobuf.kotlin.DslList<kotlin.String, SubIssuesProxy>.set(index: kotlin.Int, value: kotlin.String) {
+      _builder.setSubIssues(index, value)
+    }/**
+     * ```
+     * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+     * each a piece (gh-hud#22); a change to them makes the plan stale.
+     * ```
+     *
+     * `repeated string sub_issues = 9 [json_name = "subIssues"];`
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setSubIssues")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, SubIssuesProxy>.clear() {
+      _builder.clearSubIssues()
+    }}
 }
 public inline fun io.github.jflowers.ghhud.api.v1.EpicPlan.copy(block: `io.github.jflowers.ghhud.api.v1`.EpicPlanKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.EpicPlan =
   `io.github.jflowers.ghhud.api.v1`.EpicPlanKt.Dsl._create(this.toBuilder()).apply { block() }._build()

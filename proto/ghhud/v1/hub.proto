@@ -796,13 +796,16 @@ message EpicReport {
 // EpicPlan is an epic read as a graph.
 message EpicPlan {
   string id = 1;
-  repeated string sources = 2; // open set: prose, blocked_by
+  repeated string sources = 2; // open set: prose, blocked_by, sub_issues
   repeated EpicNode nodes = 3;
   repeated string rules = 4;
   repeated string skipped = 5;
   google.protobuf.Timestamp created = 6;
   string body_hash = 7;
   bool stale = 8;
+  // The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+  // each a piece (gh-hud#22); a change to them makes the plan stale.
+  repeated string sub_issues = 9;
 }
 
 // EpicNode is one piece of an epic.

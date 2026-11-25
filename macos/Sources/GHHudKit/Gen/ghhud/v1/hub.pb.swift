@@ -2742,7 +2742,7 @@ public nonisolated struct Ghhud_V1_EpicPlan: Sendable {
 
   public var id: String = String()
 
-  /// open set: prose, blocked_by
+  /// open set: prose, blocked_by, sub_issues
   public var sources: [String] = []
 
   public var nodes: [Ghhud_V1_EpicNode] = []
@@ -2763,6 +2763,10 @@ public nonisolated struct Ghhud_V1_EpicPlan: Sendable {
   public var bodyHash: String = String()
 
   public var stale: Bool = false
+
+  /// The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+  /// each a piece (gh-hud#22); a change to them makes the plan stale.
+  public var subIssues: [String] = []
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -7726,7 +7730,7 @@ nonisolated extension Ghhud_V1_EpicReport: SwiftProtobuf.Message, SwiftProtobuf.
 
 nonisolated extension Ghhud_V1_EpicPlan: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EpicPlan"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}sources\0\u{1}nodes\0\u{1}rules\0\u{1}skipped\0\u{1}created\0\u{3}body_hash\0\u{1}stale\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}sources\0\u{1}nodes\0\u{1}rules\0\u{1}skipped\0\u{1}created\0\u{3}body_hash\0\u{1}stale\0\u{3}sub_issues\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -7742,6 +7746,7 @@ nonisolated extension Ghhud_V1_EpicPlan: SwiftProtobuf.Message, SwiftProtobuf._M
       case 6: try { try decoder.decodeSingularMessageField(value: &self._created) }()
       case 7: try { try decoder.decodeSingularStringField(value: &self.bodyHash) }()
       case 8: try { try decoder.decodeSingularBoolField(value: &self.stale) }()
+      case 9: try { try decoder.decodeRepeatedStringField(value: &self.subIssues) }()
       default: break
       }
     }
@@ -7776,6 +7781,9 @@ nonisolated extension Ghhud_V1_EpicPlan: SwiftProtobuf.Message, SwiftProtobuf._M
     if self.stale != false {
       try visitor.visitSingularBoolField(value: self.stale, fieldNumber: 8)
     }
+    if !self.subIssues.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.subIssues, fieldNumber: 9)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -7788,6 +7796,7 @@ nonisolated extension Ghhud_V1_EpicPlan: SwiftProtobuf.Message, SwiftProtobuf._M
     if lhs._created != rhs._created {return false}
     if lhs.bodyHash != rhs.bodyHash {return false}
     if lhs.stale != rhs.stale {return false}
+    if lhs.subIssues != rhs.subIssues {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

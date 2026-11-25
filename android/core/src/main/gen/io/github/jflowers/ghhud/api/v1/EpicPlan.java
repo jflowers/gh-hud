@@ -25,6 +25,7 @@ public  final class EpicPlan extends
     rules_ = emptyProtobufList();
     skipped_ = emptyProtobufList();
     bodyHash_ = "";
+    subIssues_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int ID_FIELD_NUMBER = 1;
@@ -78,7 +79,7 @@ public  final class EpicPlan extends
   private com.google.protobuf.Internal.ProtobufList<java.lang.String> sources_;
   /**
    * <pre>
-   * open set: prose, blocked_by
+   * open set: prose, blocked_by, sub_issues
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -90,7 +91,7 @@ public  final class EpicPlan extends
   }
   /**
    * <pre>
-   * open set: prose, blocked_by
+   * open set: prose, blocked_by, sub_issues
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -102,7 +103,7 @@ public  final class EpicPlan extends
   }
   /**
    * <pre>
-   * open set: prose, blocked_by
+   * open set: prose, blocked_by, sub_issues
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -115,7 +116,7 @@ public  final class EpicPlan extends
   }
   /**
    * <pre>
-   * open set: prose, blocked_by
+   * open set: prose, blocked_by, sub_issues
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -137,7 +138,7 @@ public  final class EpicPlan extends
   }
   /**
    * <pre>
-   * open set: prose, blocked_by
+   * open set: prose, blocked_by, sub_issues
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -152,7 +153,7 @@ public  final class EpicPlan extends
   }
   /**
    * <pre>
-   * open set: prose, blocked_by
+   * open set: prose, blocked_by, sub_issues
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -166,7 +167,7 @@ public  final class EpicPlan extends
   }
   /**
    * <pre>
-   * open set: prose, blocked_by
+   * open set: prose, blocked_by, sub_issues
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -180,7 +181,7 @@ public  final class EpicPlan extends
   }
   /**
    * <pre>
-   * open set: prose, blocked_by
+   * open set: prose, blocked_by, sub_issues
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -190,7 +191,7 @@ public  final class EpicPlan extends
   }
   /**
    * <pre>
-   * open set: prose, blocked_by
+   * open set: prose, blocked_by, sub_issues
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -603,6 +604,144 @@ public  final class EpicPlan extends
     stale_ = false;
   }
 
+  public static final int SUB_ISSUES_FIELD_NUMBER = 9;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> subIssues_;
+  /**
+   * <pre>
+   * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+   * each a piece (gh-hud#22); a change to them makes the plan stale.
+   * </pre>
+   *
+   * <code>repeated string sub_issues = 9 [json_name = "subIssues"];</code>
+   * @return A list containing the subIssues.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getSubIssuesList() {
+    return subIssues_;
+  }
+  /**
+   * <pre>
+   * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+   * each a piece (gh-hud#22); a change to them makes the plan stale.
+   * </pre>
+   *
+   * <code>repeated string sub_issues = 9 [json_name = "subIssues"];</code>
+   * @return The count of subIssues.
+   */
+  @java.lang.Override
+  public int getSubIssuesCount() {
+    return subIssues_.size();
+  }
+  /**
+   * <pre>
+   * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+   * each a piece (gh-hud#22); a change to them makes the plan stale.
+   * </pre>
+   *
+   * <code>repeated string sub_issues = 9 [json_name = "subIssues"];</code>
+   * @param index The index of the element to return.
+   * @return The subIssues at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getSubIssues(int index) {
+    return subIssues_.get(index);
+  }
+  /**
+   * <pre>
+   * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+   * each a piece (gh-hud#22); a change to them makes the plan stale.
+   * </pre>
+   *
+   * <code>repeated string sub_issues = 9 [json_name = "subIssues"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the subIssues at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getSubIssuesBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        subIssues_.get(index));
+  }
+  private void ensureSubIssuesIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        subIssues_;  if (!tmp.isModifiable()) {
+      subIssues_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <pre>
+   * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+   * each a piece (gh-hud#22); a change to them makes the plan stale.
+   * </pre>
+   *
+   * <code>repeated string sub_issues = 9 [json_name = "subIssues"];</code>
+   * @param index The index to set the value at.
+   * @param value The subIssues to set.
+   */
+  private void setSubIssues(
+      int index, java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureSubIssuesIsMutable();
+    subIssues_.set(index, value);
+  }
+  /**
+   * <pre>
+   * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+   * each a piece (gh-hud#22); a change to them makes the plan stale.
+   * </pre>
+   *
+   * <code>repeated string sub_issues = 9 [json_name = "subIssues"];</code>
+   * @param value The subIssues to add.
+   */
+  private void addSubIssues(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureSubIssuesIsMutable();
+    subIssues_.add(value);
+  }
+  /**
+   * <pre>
+   * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+   * each a piece (gh-hud#22); a change to them makes the plan stale.
+   * </pre>
+   *
+   * <code>repeated string sub_issues = 9 [json_name = "subIssues"];</code>
+   * @param values The subIssues to add.
+   */
+  private void addAllSubIssues(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureSubIssuesIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, subIssues_);
+  }
+  /**
+   * <pre>
+   * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+   * each a piece (gh-hud#22); a change to them makes the plan stale.
+   * </pre>
+   *
+   * <code>repeated string sub_issues = 9 [json_name = "subIssues"];</code>
+   */
+  private void clearSubIssues() {
+    subIssues_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+   * each a piece (gh-hud#22); a change to them makes the plan stale.
+   * </pre>
+   *
+   * <code>repeated string sub_issues = 9 [json_name = "subIssues"];</code>
+   * @param value The bytes of the subIssues to add.
+   */
+  private void addSubIssuesBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureSubIssuesIsMutable();
+    subIssues_.add(value.toStringUtf8());
+  }
+
   public static io.github.jflowers.ghhud.api.v1.EpicPlan parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -755,7 +894,7 @@ public  final class EpicPlan extends
 
     /**
      * <pre>
-     * open set: prose, blocked_by
+     * open set: prose, blocked_by, sub_issues
      * </pre>
      *
      * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -769,7 +908,7 @@ public  final class EpicPlan extends
     }
     /**
      * <pre>
-     * open set: prose, blocked_by
+     * open set: prose, blocked_by, sub_issues
      * </pre>
      *
      * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -781,7 +920,7 @@ public  final class EpicPlan extends
     }
     /**
      * <pre>
-     * open set: prose, blocked_by
+     * open set: prose, blocked_by, sub_issues
      * </pre>
      *
      * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -794,7 +933,7 @@ public  final class EpicPlan extends
     }
     /**
      * <pre>
-     * open set: prose, blocked_by
+     * open set: prose, blocked_by, sub_issues
      * </pre>
      *
      * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -808,7 +947,7 @@ public  final class EpicPlan extends
     }
     /**
      * <pre>
-     * open set: prose, blocked_by
+     * open set: prose, blocked_by, sub_issues
      * </pre>
      *
      * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -824,7 +963,7 @@ public  final class EpicPlan extends
     }
     /**
      * <pre>
-     * open set: prose, blocked_by
+     * open set: prose, blocked_by, sub_issues
      * </pre>
      *
      * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -839,7 +978,7 @@ public  final class EpicPlan extends
     }
     /**
      * <pre>
-     * open set: prose, blocked_by
+     * open set: prose, blocked_by, sub_issues
      * </pre>
      *
      * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -854,7 +993,7 @@ public  final class EpicPlan extends
     }
     /**
      * <pre>
-     * open set: prose, blocked_by
+     * open set: prose, blocked_by, sub_issues
      * </pre>
      *
      * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -867,7 +1006,7 @@ public  final class EpicPlan extends
     }
     /**
      * <pre>
-     * open set: prose, blocked_by
+     * open set: prose, blocked_by, sub_issues
      * </pre>
      *
      * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -1291,6 +1430,143 @@ public  final class EpicPlan extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+     * each a piece (gh-hud#22); a change to them makes the plan stale.
+     * </pre>
+     *
+     * <code>repeated string sub_issues = 9 [json_name = "subIssues"];</code>
+     * @return A list containing the subIssues.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getSubIssuesList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getSubIssuesList());
+    }
+    /**
+     * <pre>
+     * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+     * each a piece (gh-hud#22); a change to them makes the plan stale.
+     * </pre>
+     *
+     * <code>repeated string sub_issues = 9 [json_name = "subIssues"];</code>
+     * @return The count of subIssues.
+     */
+    @java.lang.Override
+    public int getSubIssuesCount() {
+      return instance.getSubIssuesCount();
+    }
+    /**
+     * <pre>
+     * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+     * each a piece (gh-hud#22); a change to them makes the plan stale.
+     * </pre>
+     *
+     * <code>repeated string sub_issues = 9 [json_name = "subIssues"];</code>
+     * @param index The index of the element to return.
+     * @return The subIssues at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getSubIssues(int index) {
+      return instance.getSubIssues(index);
+    }
+    /**
+     * <pre>
+     * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+     * each a piece (gh-hud#22); a change to them makes the plan stale.
+     * </pre>
+     *
+     * <code>repeated string sub_issues = 9 [json_name = "subIssues"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the subIssues at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getSubIssuesBytes(int index) {
+      return instance.getSubIssuesBytes(index);
+    }
+    /**
+     * <pre>
+     * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+     * each a piece (gh-hud#22); a change to them makes the plan stale.
+     * </pre>
+     *
+     * <code>repeated string sub_issues = 9 [json_name = "subIssues"];</code>
+     * @param index The index to set the value at.
+     * @param value The subIssues to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSubIssues(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setSubIssues(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+     * each a piece (gh-hud#22); a change to them makes the plan stale.
+     * </pre>
+     *
+     * <code>repeated string sub_issues = 9 [json_name = "subIssues"];</code>
+     * @param value The subIssues to add.
+     * @return This builder for chaining.
+     */
+    public Builder addSubIssues(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addSubIssues(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+     * each a piece (gh-hud#22); a change to them makes the plan stale.
+     * </pre>
+     *
+     * <code>repeated string sub_issues = 9 [json_name = "subIssues"];</code>
+     * @param values The subIssues to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllSubIssues(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllSubIssues(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+     * each a piece (gh-hud#22); a change to them makes the plan stale.
+     * </pre>
+     *
+     * <code>repeated string sub_issues = 9 [json_name = "subIssues"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSubIssues() {
+      copyOnWrite();
+      instance.clearSubIssues();
+      return this;
+    }
+    /**
+     * <pre>
+     * The epic's GitHub sub-issues the plan was read with (owner/repo#N),
+     * each a piece (gh-hud#22); a change to them makes the plan stale.
+     * </pre>
+     *
+     * <code>repeated string sub_issues = 9 [json_name = "subIssues"];</code>
+     * @param value The bytes of the subIssues to add.
+     * @return This builder for chaining.
+     */
+    public Builder addSubIssuesBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addSubIssuesBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.EpicPlan)
   }
   @java.lang.Override
@@ -1317,10 +1593,11 @@ public  final class EpicPlan extends
             "created_",
             "bodyHash_",
             "stale_",
+            "subIssues_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0004\u0000\u0001\u0208\u0002\u021a\u0003\u001b" +
-              "\u0004\u021a\u0005\u021a\u0006\u1009\u0000\u0007\u0208\b\u0007";
+              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0005\u0000\u0001\u0208\u0002\u021a\u0003\u001b" +
+              "\u0004\u021a\u0005\u021a\u0006\u1009\u0000\u0007\u0208\b\u0007\t\u021a";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

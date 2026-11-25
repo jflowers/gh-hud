@@ -8,8 +8,12 @@
 //     edges, non-code gates and the rules every child must respect. Only
 //     refs the body mentions are accepted, and the graph must have no cycle.
 //   - blocked_by: GitHub's blocked-by links between the nodes, added as edges.
+//   - sub_issues: the epic's GitHub sub-issues, each a node. An epic whose
+//     body mentions nothing but its sub-issues is planned from them alone,
+//     without the planner (FromSubIssues); otherwise the planner places
+//     them and any it leaves out are added (MergeSubIssues).
 //
-// Sub-issues and task lists are the next sources to add.
+// Task lists are the next source to add.
 //
 // Status always comes from GitHub (issue and PR state), never from the
 // body's checkboxes. Everything here is pure: the dispatcher fetches facts
@@ -30,6 +34,7 @@ import (
 const (
 	SourceProse     = "prose"
 	SourceBlockedBy = "blocked_by"
+	SourceSubIssues = "sub_issues"
 )
 
 // State is where an epic stands.
@@ -95,6 +100,9 @@ type Plan struct {
 	// body has changed since.
 	BodyHash string `json:"body_hash"`
 	Stale    bool   `json:"stale,omitempty"`
+	// SubIssues are the epic's sub-issues the plan was read with, in
+	// GitHub's order; a change to them makes the plan stale, like an edit.
+	SubIssues []string `json:"sub_issues,omitempty"`
 }
 
 // Epic is an enrolled epic.
@@ -428,6 +436,47 @@ func BuildPlan(epicRef string, ans Answer, mentioned []string, facts map[string]
 		return nil, fmt.Errorf("the plan has a cycle through %s", c)
 	}
 	return p, nil
+}
+
+// FromSubIssues plans an epic from its sub-issues alone, in GitHub's
+// order: each one a node, none waiting on another (MergeBlockedBy adds
+// GitHub's links). Only issues can be pieces.
+func FromSubIssues(epicRef string, subs []string, facts map[string]Fact) (*Plan, error) {
+	if len(subs) == 0 {
+		return nil, errors.New("the epic has no sub-issues")
+	}
+	if len(subs) > maxNodes {
+		return nil, fmt.Errorf("the epic has %d sub-issues, more than %d", len(subs), maxNodes)
+	}
+	p := &Plan{Sources: []string{SourceSubIssues}}
+	MergeSubIssues(p, subs, facts)
+	if len(p.Nodes) == 0 {
+		return nil, errors.New("none of the epic's sub-issues is an issue GitHub knows")
+	}
+	return p, nil
+}
+
+// MergeSubIssues adds the epic's sub-issues that the plan lacks as nodes,
+// and records the sub-issues it was read with. It reports whether it
+// added any. A sub-issue GitHub doesn't know as an issue is left out.
+func MergeSubIssues(p *Plan, subs []string, facts map[string]Fact) bool {
+	p.SubIssues = slices.Clone(subs)
+	added := false
+	for _, r := range subs {
+		if slices.ContainsFunc(p.Nodes, func(n Node) bool { return n.Ref == r }) {
+			continue
+		}
+		f, ok := facts[r]
+		if !ok || f.Kind != "Issue" || len(p.Nodes) >= maxNodes {
+			continue
+		}
+		p.Nodes = append(p.Nodes, Node{Ref: r, Title: f.Title, Source: SourceSubIssues})
+		added = true
+	}
+	if added && !slices.Contains(p.Sources, SourceSubIssues) {
+		p.Sources = append(p.Sources, SourceSubIssues)
+	}
+	return added
 }
 
 // MergeBlockedBy adds GitHub's blocked-by links between a plan's nodes as
