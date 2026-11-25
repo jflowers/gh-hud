@@ -315,7 +315,7 @@ and Open Transcript, which open a terminal on the hub's Mac, so they're
 off there. The hub on the other Mac keeps posting its own notifications
 while this app is connected.
 
-Each release (a `v*` tag) publishes the app, notarized and built for Apple
+Each release publishes the app, notarized and built for Apple
 silicon and Intel, to the GitHub release and to the Homebrew tap:
 
 ```
@@ -323,9 +323,11 @@ brew install --cask jflowers/tools/gh-hud
 brew upgrade --cask gh-hud                 # after a new release
 ```
 
-To cut a release, tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
-The release workflow (`.github/workflows/release.yml`) lists the secrets it
-needs. To build it yourself:
+To cut a release, run the Release workflow from master with the tag
+(`gh workflow run release.yml -f tag=v0.4.0`); don't push tags yourself.
+It runs through [jflowers/ship](https://github.com/jflowers/ship)'s shared
+workflows, which check the tag and that CI passed before creating it, and
+lists the secrets it needs. To build it yourself:
 
 ```
 make mac                                   # build/gh-hud.app, signed ad hoc
