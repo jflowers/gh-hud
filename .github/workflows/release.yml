@@ -1,138 +1,103 @@
 name: Release
 
-# Pushing a tag (v0.2.0) makes a GitHub release with the apps:
+# Run from master with the version tag (don't push tags yourself):
 #
-# - The Mac app, built for Apple silicon and Intel, signed with the
-#   Developer ID, notarized and stapled, and published to the Homebrew tap,
-#   so any Mac installs and upgrades it with:
+#   gh workflow run release.yml -f tag=v0.4.0
+#
+# The tag, the checks before it and the Mac app come from jflowers/ship's
+# shared workflows:
+#
+# - tag-release.yml: the run is on master; org-infra's preflight checks the
+#   tag (semver, new, newer than the last), that CI passed on HEAD and that
+#   there are unreleased commits, then creates the tag; the GitHub release
+#   is created with generated notes.
+#
+# - mac-app-release.yml: the Mac app, built for Apple silicon and Intel,
+#   signed with the Developer ID, notarized and stapled, uploaded as
+#   gh-hud-app_VERSION.zip, and published to the Homebrew tap (not for a
+#   prerelease tag), so any Mac installs and upgrades it with:
 #
 #     brew install --cask jflowers/tools/gh-hud
 #     brew upgrade --cask gh-hud
 #
-# - The Android app, gh-hud-VERSION.apk, signed with the release key, for
-#   any phone or tablet (Android 10 or later) to download and install.
-#   Every release has the same key, so installing a newer APK updates it.
+# - The Android app, built here: gh-hud-VERSION.apk, signed with the release
+#   key, for any phone or tablet (Android 10 or later). Every release has
+#   the same key, so installing a newer APK updates it.
 #
-# Secrets for the Mac app (the same ones get-out's release uses):
+# Secrets (ship's scripts/secrets-sync.sh sets them):
 #   MACOS_SIGN_P12, MACOS_SIGN_PASSWORD   the Developer ID Application
 #                                         certificate and key, base64 .p12
 #   MACOS_NOTARY_KEY, MACOS_NOTARY_KEY_ID, MACOS_NOTARY_ISSUER_ID
 #                                         an App Store Connect API key
 #                                         (base64 .p8) for notarytool
 #   HOMEBREW_TAP_TOKEN                    can push to jflowers/homebrew-tools
-# and for the Android app:
 #   ANDROID_KEYSTORE                      the release key's keystore, base64 .jks
 #   ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
 on:
-  push:
-    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag (e.g. v0.4.0)
+        required: true
+        type: string
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: release
+  cancel-in-progress: false
 
 jobs:
-  # The release itself, so each app's job only adds its download.
   release:
     name: Release
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    uses: jflowers/ship/.github/workflows/tag-release.yml@74ed8075d5c25389bf4d2b775fa52214bed8d5b7 # v0.7.0
+    with:
+      tag: ${{ inputs.tag }}
+      # The required checks. Mac app, Android app and the macOS test run
+      # only on some changes, or queue too long on hosted macOS runners.
+      ci_checks: '["Lint", "Test (ubuntu-latest)", "Vulnerabilities"]'
     permissions:
-      contents: write # creates the release
-    steps:
-      - name: Create the release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ github.ref_name }}
-        run: |
-          gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||
-            gh release create "$VERSION" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
+      contents: write
+      checks: read
 
   mac-app:
     name: Mac app
     needs: release
-    runs-on: macos-latest
-    # The limit counts time spent waiting for a runner and for notarizing.
-    timeout-minutes: 60
+    if: needs.release.outputs.tag != ''
+    uses: jflowers/ship/.github/workflows/mac-app-release.yml@74ed8075d5c25389bf4d2b775fa52214bed8d5b7 # v0.7.0
+    with:
+      tag: ${{ needs.release.outputs.tag }}
+      checks: make mac-check
+      # Ad hoc signed; ship signs it with the Developer ID.
+      build: make mac MAC_VERSION="$VERSION" MAC_ARCHS="arm64 x86_64"
+      app: build/gh-hud.app
+      tap: jflowers/homebrew-tools
+      cask_desc: Dashboard for GitHub work and coding agents, a client of the gh-hud hub
+      macos: sonoma
+    secrets:
+      MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
+      MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
+      MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+      MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+      MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
     permissions:
-      contents: write # uploads to the release
-    env:
-      VERSION: ${{ github.ref_name }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Checks
-        run: make mac-check
-
-      - name: Import the Developer ID
-        env:
-          MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
-          MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
-          MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
-        run: |
-          test -n "$MACOS_SIGN_P12" || { echo "::error::MACOS_SIGN_P12 isn't set; see the top of release.yml"; exit 1; }
-          keychain=$RUNNER_TEMP/signing.keychain-db
-          password=$(openssl rand -base64 32)
-          echo -n "$MACOS_SIGN_P12" | base64 --decode -o "$RUNNER_TEMP/cert.p12"
-          security create-keychain -p "$password" "$keychain"
-          security set-keychain-settings -lut 21600 "$keychain"
-          security unlock-keychain -p "$password" "$keychain"
-          security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_SIGN_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
-          security set-key-partition-list -S apple-tool:,apple: -k "$password" "$keychain"
-          security list-keychain -d user -s "$keychain"
-          rm "$RUNNER_TEMP/cert.p12"
-          id=$(security find-identity -v -p codesigning "$keychain" | sed -n 's/.*"\(Developer ID Application: .*\)"/\1/p' | head -1)
-          test -n "$id" || { echo "::error::no Developer ID Application identity in MACOS_SIGN_P12"; exit 1; }
-          echo "SIGN_ID=$id" >> "$GITHUB_ENV"
-          echo -n "$MACOS_NOTARY_KEY" | base64 --decode -o "$RUNNER_TEMP/notary.p8"
-
-      - name: Build, sign and notarize
-        env:
-          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
-          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
-        run: |
-          make mac-notarize MAC_SIGN_ID="$SIGN_ID" MAC_VERSION="${VERSION#v}" MAC_ARCHS="arm64 x86_64" \
-            MAC_NOTARY_ARGS="--key $RUNNER_TEMP/notary.p8 --key-id $MACOS_NOTARY_KEY_ID --issuer $MACOS_NOTARY_ISSUER_ID"
-          lipo -info build/gh-hud.app/Contents/MacOS/GHHud
-
-      - name: Upload to the release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$VERSION" "build/gh-hud-app_${VERSION#v}.zip" --repo "$GITHUB_REPOSITORY" --clobber
-
-      - name: Publish the cask
-        env:
-          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-        run: |
-          test -n "$HOMEBREW_TAP_TOKEN" || { echo "::error::HOMEBREW_TAP_TOKEN isn't set; see the top of release.yml"; exit 1; }
-          sha=$(shasum -a 256 "build/gh-hud-app_${VERSION#v}.zip" | cut -d' ' -f1)
-          git clone --depth 1 "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/jflowers/homebrew-tools.git" "$RUNNER_TEMP/tap"
-          mkdir -p "$RUNNER_TEMP/tap/Casks"
-          macos/cask.sh "${VERSION#v}" "$sha" > "$RUNNER_TEMP/tap/Casks/gh-hud.rb"
-          cd "$RUNNER_TEMP/tap"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Casks/gh-hud.rb
-          git diff --cached --quiet && { echo "the cask is already up to date"; exit 0; }
-          git commit -m "gh-hud ${VERSION#v}"
-          git push
+      contents: write
 
   android-app:
     name: Android app
     needs: release
+    if: needs.release.outputs.tag != ''
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       contents: write # uploads to the release
     env:
-      VERSION: ${{ github.ref_name }}
+      TAG: ${{ needs.release.outputs.tag }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: refs/tags/${{ needs.release.outputs.tag }}
           persist-credentials: false
       # The JDK and SDK command-line tools pinned in mise.toml, as locally.
       - uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
@@ -156,10 +121,10 @@ jobs:
           test -n "$ANDROID_KEYSTORE_B64" || { echo "::error::ANDROID_KEYSTORE isn't set; see the top of release.yml"; exit 1; }
           export ANDROID_KEYSTORE=$RUNNER_TEMP/release.jks
           echo -n "$ANDROID_KEYSTORE_B64" | base64 --decode > "$ANDROID_KEYSTORE"
-          make android-release ANDROID_VERSION="${VERSION#v}"
+          make android-release ANDROID_VERSION="${TAG#v}"
           rm "$ANDROID_KEYSTORE"
 
       - name: Upload to the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$VERSION" "build/gh-hud-${VERSION#v}.apk" --repo "$GITHUB_REPOSITORY" --clobber
+        run: gh release upload "$TAG" "build/gh-hud-${TAG#v}.apk" --repo "$GITHUB_REPOSITORY" --clobber
