@@ -50,7 +50,7 @@ concurrency:
 jobs:
   release:
     name: Release
-    uses: jflowers/ship/.github/workflows/tag-release.yml@74ed8075d5c25389bf4d2b775fa52214bed8d5b7 # v0.7.0
+    uses: jflowers/ship/.github/workflows/tag-release.yml@cf5f4cc67fe86298e5b680bd550b657b073a4198 # v0.8.0
     with:
       tag: ${{ inputs.tag }}
       # The required checks. Mac app, Android app and the macOS test run
@@ -64,7 +64,7 @@ jobs:
     name: Mac app
     needs: release
     if: needs.release.outputs.tag != ''
-    uses: jflowers/ship/.github/workflows/mac-app-release.yml@74ed8075d5c25389bf4d2b775fa52214bed8d5b7 # v0.7.0
+    uses: jflowers/ship/.github/workflows/mac-app-release.yml@cf5f4cc67fe86298e5b680bd550b657b073a4198 # v0.8.0
     with:
       tag: ${{ needs.release.outputs.tag }}
       checks: make mac-check
