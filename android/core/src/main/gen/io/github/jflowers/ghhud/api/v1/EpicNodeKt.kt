@@ -393,7 +393,112 @@ public object EpicNodeKt {
     public fun clearLabelsKnown() {
       _builder.clearLabelsKnown()
     }
-  }
+
+    /**
+     * An uninstantiable, behaviorless type to represent the field in
+     * generics.
+     */
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+    public class AreaProxy private constructor() : com.google.protobuf.kotlin.DslProxy()
+    /**
+     * ```
+     * area: the paths (in its repo) the planner expects the piece to change;
+     * pieces whose areas overlap run one at a time.
+     * ```
+     *
+     * `repeated string area = 13 [json_name = "area"];`
+     * @return A list containing the area.
+     */
+    public val area: com.google.protobuf.kotlin.DslList<kotlin.String, AreaProxy>
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+      get() = com.google.protobuf.kotlin.DslList(
+        _builder.areaList
+      )
+    /**
+     * ```
+     * area: the paths (in its repo) the planner expects the piece to change;
+     * pieces whose areas overlap run one at a time.
+     * ```
+     *
+     * `repeated string area = 13 [json_name = "area"];`
+     * @param value The area to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addArea")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, AreaProxy>.add(value: kotlin.String) {
+      _builder.addArea(value)
+    }
+    /**
+     * ```
+     * area: the paths (in its repo) the planner expects the piece to change;
+     * pieces whose areas overlap run one at a time.
+     * ```
+     *
+     * `repeated string area = 13 [json_name = "area"];`
+     * @param value The area to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignArea")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, AreaProxy>.plusAssign(value: kotlin.String) {
+      add(value)
+    }
+    /**
+     * ```
+     * area: the paths (in its repo) the planner expects the piece to change;
+     * pieces whose areas overlap run one at a time.
+     * ```
+     *
+     * `repeated string area = 13 [json_name = "area"];`
+     * @param values The area to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addAllArea")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, AreaProxy>.addAll(values: kotlin.collections.Iterable<kotlin.String>) {
+      _builder.addAllArea(values)
+    }
+    /**
+     * ```
+     * area: the paths (in its repo) the planner expects the piece to change;
+     * pieces whose areas overlap run one at a time.
+     * ```
+     *
+     * `repeated string area = 13 [json_name = "area"];`
+     * @param values The area to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignAllArea")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<kotlin.String, AreaProxy>.plusAssign(values: kotlin.collections.Iterable<kotlin.String>) {
+      addAll(values)
+    }
+    /**
+     * ```
+     * area: the paths (in its repo) the planner expects the piece to change;
+     * pieces whose areas overlap run one at a time.
+     * ```
+     *
+     * `repeated string area = 13 [json_name = "area"];`
+     * @param index The index to set the value at.
+     * @param value The area to set.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setArea")
+    public operator fun com.google.protobuf.kotlin.DslList<kotlin.String, AreaProxy>.set(index: kotlin.Int, value: kotlin.String) {
+      _builder.setArea(index, value)
+    }/**
+     * ```
+     * area: the paths (in its repo) the planner expects the piece to change;
+     * pieces whose areas overlap run one at a time.
+     * ```
+     *
+     * `repeated string area = 13 [json_name = "area"];`
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setArea")
+    public fun com.google.protobuf.kotlin.DslList<kotlin.String, AreaProxy>.clear() {
+      _builder.clearArea()
+    }}
 }
 public inline fun io.github.jflowers.ghhud.api.v1.EpicNode.copy(block: `io.github.jflowers.ghhud.api.v1`.EpicNodeKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.EpicNode =
   `io.github.jflowers.ghhud.api.v1`.EpicNodeKt.Dsl._create(this.toBuilder()).apply { block() }._build()

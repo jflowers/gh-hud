@@ -193,4 +193,49 @@ public interface EpicNodeOrBuilder extends
    * @return The labelsKnown.
    */
   boolean getLabelsKnown();
+
+  /**
+   * <pre>
+   * area: the paths (in its repo) the planner expects the piece to change;
+   * pieces whose areas overlap run one at a time.
+   * </pre>
+   *
+   * <code>repeated string area = 13 [json_name = "area"];</code>
+   * @return A list containing the area.
+   */
+  java.util.List<java.lang.String>
+      getAreaList();
+  /**
+   * <pre>
+   * area: the paths (in its repo) the planner expects the piece to change;
+   * pieces whose areas overlap run one at a time.
+   * </pre>
+   *
+   * <code>repeated string area = 13 [json_name = "area"];</code>
+   * @return The count of area.
+   */
+  int getAreaCount();
+  /**
+   * <pre>
+   * area: the paths (in its repo) the planner expects the piece to change;
+   * pieces whose areas overlap run one at a time.
+   * </pre>
+   *
+   * <code>repeated string area = 13 [json_name = "area"];</code>
+   * @param index The index of the element to return.
+   * @return The area at the given index.
+   */
+  java.lang.String getArea(int index);
+  /**
+   * <pre>
+   * area: the paths (in its repo) the planner expects the piece to change;
+   * pieces whose areas overlap run one at a time.
+   * </pre>
+   *
+   * <code>repeated string area = 13 [json_name = "area"];</code>
+   * @param index The index of the element to return.
+   * @return The area at the given index.
+   */
+  com.google.protobuf.ByteString
+      getAreaBytes(int index);
 }

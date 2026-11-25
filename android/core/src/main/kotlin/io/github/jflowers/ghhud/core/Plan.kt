@@ -239,7 +239,8 @@ public data class EpicRow(
                         short = short(repo, n.ref),
                         title = n.title,
                         state = n.state,
-                        note = n.note,
+                        note = listOf(n.note, if (n.areaCount > 0) n.areaList.joinToString(", ", "[", "]") else "")
+                            .filter { it.isNotEmpty() }.joinToString("  "),
                         active = n.state in setOf("ready", "in_progress", "running"),
                         clearable = approved && n.state == "gated" && n.gate.isNotEmpty() && !n.cleared,
                     )

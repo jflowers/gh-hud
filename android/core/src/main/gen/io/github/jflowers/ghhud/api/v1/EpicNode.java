@@ -28,6 +28,7 @@ public  final class EpicNode extends
     state_ = "";
     note_ = "";
     labels_ = emptyProtobufList();
+    area_ = emptyProtobufList();
   }
   public static final int REF_FIELD_NUMBER = 1;
   private java.lang.String ref_;
@@ -697,6 +698,144 @@ public  final class EpicNode extends
   private void clearLabelsKnown() {
 
     labelsKnown_ = false;
+  }
+
+  public static final int AREA_FIELD_NUMBER = 13;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> area_;
+  /**
+   * <pre>
+   * area: the paths (in its repo) the planner expects the piece to change;
+   * pieces whose areas overlap run one at a time.
+   * </pre>
+   *
+   * <code>repeated string area = 13 [json_name = "area"];</code>
+   * @return A list containing the area.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getAreaList() {
+    return area_;
+  }
+  /**
+   * <pre>
+   * area: the paths (in its repo) the planner expects the piece to change;
+   * pieces whose areas overlap run one at a time.
+   * </pre>
+   *
+   * <code>repeated string area = 13 [json_name = "area"];</code>
+   * @return The count of area.
+   */
+  @java.lang.Override
+  public int getAreaCount() {
+    return area_.size();
+  }
+  /**
+   * <pre>
+   * area: the paths (in its repo) the planner expects the piece to change;
+   * pieces whose areas overlap run one at a time.
+   * </pre>
+   *
+   * <code>repeated string area = 13 [json_name = "area"];</code>
+   * @param index The index of the element to return.
+   * @return The area at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getArea(int index) {
+    return area_.get(index);
+  }
+  /**
+   * <pre>
+   * area: the paths (in its repo) the planner expects the piece to change;
+   * pieces whose areas overlap run one at a time.
+   * </pre>
+   *
+   * <code>repeated string area = 13 [json_name = "area"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the area at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getAreaBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        area_.get(index));
+  }
+  private void ensureAreaIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        area_;  if (!tmp.isModifiable()) {
+      area_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <pre>
+   * area: the paths (in its repo) the planner expects the piece to change;
+   * pieces whose areas overlap run one at a time.
+   * </pre>
+   *
+   * <code>repeated string area = 13 [json_name = "area"];</code>
+   * @param index The index to set the value at.
+   * @param value The area to set.
+   */
+  private void setArea(
+      int index, java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureAreaIsMutable();
+    area_.set(index, value);
+  }
+  /**
+   * <pre>
+   * area: the paths (in its repo) the planner expects the piece to change;
+   * pieces whose areas overlap run one at a time.
+   * </pre>
+   *
+   * <code>repeated string area = 13 [json_name = "area"];</code>
+   * @param value The area to add.
+   */
+  private void addArea(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+    ensureAreaIsMutable();
+    area_.add(value);
+  }
+  /**
+   * <pre>
+   * area: the paths (in its repo) the planner expects the piece to change;
+   * pieces whose areas overlap run one at a time.
+   * </pre>
+   *
+   * <code>repeated string area = 13 [json_name = "area"];</code>
+   * @param values The area to add.
+   */
+  private void addAllArea(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureAreaIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, area_);
+  }
+  /**
+   * <pre>
+   * area: the paths (in its repo) the planner expects the piece to change;
+   * pieces whose areas overlap run one at a time.
+   * </pre>
+   *
+   * <code>repeated string area = 13 [json_name = "area"];</code>
+   */
+  private void clearArea() {
+    area_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * area: the paths (in its repo) the planner expects the piece to change;
+   * pieces whose areas overlap run one at a time.
+   * </pre>
+   *
+   * <code>repeated string area = 13 [json_name = "area"];</code>
+   * @param value The bytes of the area to add.
+   */
+  private void addAreaBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureAreaIsMutable();
+    area_.add(value.toStringUtf8());
   }
 
   public static io.github.jflowers.ghhud.api.v1.EpicNode parseFrom(
@@ -1488,6 +1627,143 @@ public  final class EpicNode extends
       return this;
     }
 
+    /**
+     * <pre>
+     * area: the paths (in its repo) the planner expects the piece to change;
+     * pieces whose areas overlap run one at a time.
+     * </pre>
+     *
+     * <code>repeated string area = 13 [json_name = "area"];</code>
+     * @return A list containing the area.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getAreaList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getAreaList());
+    }
+    /**
+     * <pre>
+     * area: the paths (in its repo) the planner expects the piece to change;
+     * pieces whose areas overlap run one at a time.
+     * </pre>
+     *
+     * <code>repeated string area = 13 [json_name = "area"];</code>
+     * @return The count of area.
+     */
+    @java.lang.Override
+    public int getAreaCount() {
+      return instance.getAreaCount();
+    }
+    /**
+     * <pre>
+     * area: the paths (in its repo) the planner expects the piece to change;
+     * pieces whose areas overlap run one at a time.
+     * </pre>
+     *
+     * <code>repeated string area = 13 [json_name = "area"];</code>
+     * @param index The index of the element to return.
+     * @return The area at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getArea(int index) {
+      return instance.getArea(index);
+    }
+    /**
+     * <pre>
+     * area: the paths (in its repo) the planner expects the piece to change;
+     * pieces whose areas overlap run one at a time.
+     * </pre>
+     *
+     * <code>repeated string area = 13 [json_name = "area"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the area at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getAreaBytes(int index) {
+      return instance.getAreaBytes(index);
+    }
+    /**
+     * <pre>
+     * area: the paths (in its repo) the planner expects the piece to change;
+     * pieces whose areas overlap run one at a time.
+     * </pre>
+     *
+     * <code>repeated string area = 13 [json_name = "area"];</code>
+     * @param index The index to set the value at.
+     * @param value The area to set.
+     * @return This builder for chaining.
+     */
+    public Builder setArea(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setArea(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * area: the paths (in its repo) the planner expects the piece to change;
+     * pieces whose areas overlap run one at a time.
+     * </pre>
+     *
+     * <code>repeated string area = 13 [json_name = "area"];</code>
+     * @param value The area to add.
+     * @return This builder for chaining.
+     */
+    public Builder addArea(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addArea(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * area: the paths (in its repo) the planner expects the piece to change;
+     * pieces whose areas overlap run one at a time.
+     * </pre>
+     *
+     * <code>repeated string area = 13 [json_name = "area"];</code>
+     * @param values The area to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllArea(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllArea(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * area: the paths (in its repo) the planner expects the piece to change;
+     * pieces whose areas overlap run one at a time.
+     * </pre>
+     *
+     * <code>repeated string area = 13 [json_name = "area"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearArea() {
+      copyOnWrite();
+      instance.clearArea();
+      return this;
+    }
+    /**
+     * <pre>
+     * area: the paths (in its repo) the planner expects the piece to change;
+     * pieces whose areas overlap run one at a time.
+     * </pre>
+     *
+     * <code>repeated string area = 13 [json_name = "area"];</code>
+     * @param value The bytes of the area to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAreaBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addAreaBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.EpicNode)
   }
   @java.lang.Override
@@ -1516,11 +1792,12 @@ public  final class EpicNode extends
             "cleared_",
             "labels_",
             "labelsKnown_",
+            "area_",
           };
           java.lang.String info =
-              "\u0000\f\u0000\u0000\u0001\f\f\u0000\u0002\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
+              "\u0000\r\u0000\u0000\u0001\r\r\u0000\u0003\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
               "\u0004\u021a\u0005\u0208\u0006\u0208\u0007\u0208\b\u0208\t\u0002\n\u0007\u000b\u021a" +
-              "\f\u0007";
+              "\f\u0007\r\u021a";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

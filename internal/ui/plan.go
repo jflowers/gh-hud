@@ -635,6 +635,9 @@ func (m *Model) epicLines(w int) []string {
 			if n.Note != "" {
 				line += "  · " + n.Note
 			}
+			if len(n.Area) > 0 {
+				line += "  [" + strings.Join(n.Area, ", ") + "]"
+			}
 			style := dim
 			if n.State == epic.NodeReady || n.State == epic.NodeInProgress || n.State == epic.NodeRunning {
 				style = fg

@@ -6400,8 +6400,11 @@ type EpicNode struct {
 	Cleared bool                   `protobuf:"varint,10,opt,name=cleared,proto3" json:"cleared,omitempty"` // you cleared its gate
 	// labels: the piece's GitHub labels as of the epic's last status check;
 	// labels_known says that check read them (placement by label).
-	Labels        []string `protobuf:"bytes,11,rep,name=labels,proto3" json:"labels,omitempty"`
-	LabelsKnown   bool     `protobuf:"varint,12,opt,name=labels_known,json=labelsKnown,proto3" json:"labels_known,omitempty"`
+	Labels      []string `protobuf:"bytes,11,rep,name=labels,proto3" json:"labels,omitempty"`
+	LabelsKnown bool     `protobuf:"varint,12,opt,name=labels_known,json=labelsKnown,proto3" json:"labels_known,omitempty"`
+	// area: the paths (in its repo) the planner expects the piece to change;
+	// pieces whose areas overlap run one at a time.
+	Area          []string `protobuf:"bytes,13,rep,name=area,proto3" json:"area,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6518,6 +6521,13 @@ func (x *EpicNode) GetLabelsKnown() bool {
 		return x.LabelsKnown
 	}
 	return false
+}
+
+func (x *EpicNode) GetArea() []string {
+	if x != nil {
+		return x.Area
+	}
+	return nil
 }
 
 // CheckoutHealth is whether a ghws checkout can take a dispatch.
@@ -8559,7 +8569,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\tbody_hash\x18\a \x01(\tR\bbodyHash\x12\x14\n" +
 	"\x05stale\x18\b \x01(\bR\x05stale\x12\x1d\n" +
 	"\n" +
-	"sub_issues\x18\t \x03(\tR\tsubIssues\"\x99\x02\n" +
+	"sub_issues\x18\t \x03(\tR\tsubIssues\"\xad\x02\n" +
 	"\bEpicNode\x12\x10\n" +
 	"\x03ref\x18\x01 \x01(\tR\x03ref\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x14\n" +
@@ -8573,7 +8583,8 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\acleared\x18\n" +
 	" \x01(\bR\acleared\x12\x16\n" +
 	"\x06labels\x18\v \x03(\tR\x06labels\x12!\n" +
-	"\flabels_known\x18\f \x01(\bR\vlabelsKnown\"\x83\b\n" +
+	"\flabels_known\x18\f \x01(\bR\vlabelsKnown\x12\x12\n" +
+	"\x04area\x18\r \x03(\tR\x04area\"\x83\b\n" +
 	"\x0eCheckoutHealth\x12\x18\n" +
 	"\amachine\x18\x01 \x01(\tR\amachine\x12\x1c\n" +
 	"\tworkspace\x18\x02 \x01(\tR\tworkspace\x12\x12\n" +

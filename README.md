@@ -1268,6 +1268,16 @@ auto pass starts them like any other step:
   of runs it's yours (`epic: 2 runs, still no PR`). Gated and blocked
   pieces need you too. A piece that can't start says why once:
   `epic acme/app#100: acme/app#2 didn't start: …`.
+- **One at a time in the same area.** The planner gives each piece the
+  files or directories it expects the piece to change, when the epic or
+  the issue makes that plain (`gh-hud epic list` shows them in brackets). A
+  ready piece waits while another piece of the epic is working in an
+  overlapping area: one is running, or has an open PR. The row says
+  `epic: same area as #12 (internal/index)`. Paths overlap when they're
+  equal or one is inside the other, and only within one repo. Once a piece
+  has a PR, the PR's changed files replace its expected area. A piece with
+  no area never waits. Areas aren't part of the plan you approve, so a
+  reread that only changes them keeps your approval.
 - **The run budget.** All of an epic's pieces together get
   `max_total_runs` runs after approval (default 20). Once those are used,
   no piece starts. The ready ones need you
