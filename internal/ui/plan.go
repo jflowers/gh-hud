@@ -650,6 +650,8 @@ func epicStatus(e epic.Epic) (string, lipgloss.Color) {
 		return e.ClosedNote + " · " + counts, cDim
 	case e.Complete != nil:
 		return "every piece finished: D posts the summary and closes it · " + counts, cOrange
+	case e.Held != "" && e.State == epic.StateApproved:
+		return "held by the " + e.Held + " label: nothing starts · " + counts, cOrange
 	case e.Plan.Stale:
 		return "the epic changed: reread it · " + counts, cOrange
 	case e.State == epic.StatePlanned:

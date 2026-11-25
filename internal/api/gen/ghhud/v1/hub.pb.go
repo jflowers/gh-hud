@@ -5674,8 +5674,11 @@ type Epic struct {
 	SummaryComment string                 `protobuf:"bytes,19,opt,name=summary_comment,json=summaryComment,proto3" json:"summary_comment,omitempty"` // node ID of the summary once posted
 	// When gh-hud saw the epic issue closed (state "closed"), and how:
 	// "finished by gh-hud" or "closed on GitHub".
-	Closed        *timestamppb.Timestamp `protobuf:"bytes,20,opt,name=closed,proto3" json:"closed,omitempty"`
-	ClosedNote    string                 `protobuf:"bytes,21,opt,name=closed_note,json=closedNote,proto3" json:"closed_note,omitempty"`
+	Closed     *timestamppb.Timestamp `protobuf:"bytes,20,opt,name=closed,proto3" json:"closed,omitempty"`
+	ClosedNote string                 `protobuf:"bytes,21,opt,name=closed_note,json=closedNote,proto3" json:"closed_note,omitempty"`
+	// The label holding the whole epic (the hold or human-gate label on the
+	// epic issue): none of its pieces start while it's there. "" for none.
+	Held          string `protobuf:"bytes,22,opt,name=held,proto3" json:"held,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5853,6 +5856,13 @@ func (x *Epic) GetClosed() *timestamppb.Timestamp {
 func (x *Epic) GetClosedNote() string {
 	if x != nil {
 		return x.ClosedNote
+	}
+	return ""
+}
+
+func (x *Epic) GetHeld() string {
+	if x != nil {
+		return x.Held
 	}
 	return ""
 }
@@ -8189,7 +8199,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\acreated\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\acreated\x12\x1b\n" +
 	"\tno_answer\x18\x05 \x01(\bR\bnoAnswer\x12\x12\n" +
 	"\x04note\x18\x06 \x01(\tR\x04note\x12\x10\n" +
-	"\x03log\x18\a \x01(\tR\x03log\"\x99\x06\n" +
+	"\x03log\x18\a \x01(\tR\x03log\"\xad\x06\n" +
 	"\x04Epic\x12\x10\n" +
 	"\x03ref\x18\x01 \x01(\tR\x03ref\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x14\n" +
@@ -8215,7 +8225,8 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x0fsummary_comment\x18\x13 \x01(\tR\x0esummaryComment\x122\n" +
 	"\x06closed\x18\x14 \x01(\v2\x1a.google.protobuf.TimestampR\x06closed\x12\x1f\n" +
 	"\vclosed_note\x18\x15 \x01(\tR\n" +
-	"closedNote\"\x9d\x02\n" +
+	"closedNote\x12\x12\n" +
+	"\x04held\x18\x16 \x01(\tR\x04held\"\x9d\x02\n" +
 	"\n" +
 	"EpicReport\x12\x14\n" +
 	"\x05piece\x18\x01 \x01(\tR\x05piece\x12\x15\n" +

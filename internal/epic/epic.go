@@ -146,6 +146,10 @@ type Epic struct {
 	// on GitHub (ClosedNote says which).
 	Closed     *time.Time `json:"closed,omitempty"`
 	ClosedNote string     `json:"closed_note,omitempty"`
+	// Held is the label holding the whole epic (the hold or human-gate
+	// label on the epic issue, as of the last check): none of its pieces
+	// start while it's there. "" when none is.
+	Held string `json:"held,omitempty"`
 }
 
 // Finished reports whether every piece of the epic's approved, current

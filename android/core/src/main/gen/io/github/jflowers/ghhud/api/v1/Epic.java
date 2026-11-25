@@ -33,6 +33,7 @@ public  final class Epic extends
     summary_ = "";
     summaryComment_ = "";
     closedNote_ = "";
+    held_ = "";
   }
   private int bitField0_;
   public static final int REF_FIELD_NUMBER = 1;
@@ -1376,6 +1377,78 @@ public  final class Epic extends
       com.google.protobuf.ByteString value) {
     checkByteStringIsUtf8(value);
     closedNote_ = value.toStringUtf8();
+
+  }
+
+  public static final int HELD_FIELD_NUMBER = 22;
+  private java.lang.String held_;
+  /**
+   * <pre>
+   * The label holding the whole epic (the hold or human-gate label on the
+   * epic issue): none of its pieces start while it's there. "" for none.
+   * </pre>
+   *
+   * <code>string held = 22 [json_name = "held"];</code>
+   * @return The held.
+   */
+  @java.lang.Override
+  public java.lang.String getHeld() {
+    return held_;
+  }
+  /**
+   * <pre>
+   * The label holding the whole epic (the hold or human-gate label on the
+   * epic issue): none of its pieces start while it's there. "" for none.
+   * </pre>
+   *
+   * <code>string held = 22 [json_name = "held"];</code>
+   * @return The bytes for held.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getHeldBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(held_);
+  }
+  /**
+   * <pre>
+   * The label holding the whole epic (the hold or human-gate label on the
+   * epic issue): none of its pieces start while it's there. "" for none.
+   * </pre>
+   *
+   * <code>string held = 22 [json_name = "held"];</code>
+   * @param value The held to set.
+   */
+  private void setHeld(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    held_ = value;
+  }
+  /**
+   * <pre>
+   * The label holding the whole epic (the hold or human-gate label on the
+   * epic issue): none of its pieces start while it's there. "" for none.
+   * </pre>
+   *
+   * <code>string held = 22 [json_name = "held"];</code>
+   */
+  private void clearHeld() {
+
+    held_ = getDefaultInstance().getHeld();
+  }
+  /**
+   * <pre>
+   * The label holding the whole epic (the hold or human-gate label on the
+   * epic issue): none of its pieces start while it's there. "" for none.
+   * </pre>
+   *
+   * <code>string held = 22 [json_name = "held"];</code>
+   * @param value The bytes for held to set.
+   */
+  private void setHeldBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    held_ = value.toStringUtf8();
 
   }
 
@@ -2878,6 +2951,80 @@ public  final class Epic extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The label holding the whole epic (the hold or human-gate label on the
+     * epic issue): none of its pieces start while it's there. "" for none.
+     * </pre>
+     *
+     * <code>string held = 22 [json_name = "held"];</code>
+     * @return The held.
+     */
+    @java.lang.Override
+    public java.lang.String getHeld() {
+      return instance.getHeld();
+    }
+    /**
+     * <pre>
+     * The label holding the whole epic (the hold or human-gate label on the
+     * epic issue): none of its pieces start while it's there. "" for none.
+     * </pre>
+     *
+     * <code>string held = 22 [json_name = "held"];</code>
+     * @return The bytes for held.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getHeldBytes() {
+      return instance.getHeldBytes();
+    }
+    /**
+     * <pre>
+     * The label holding the whole epic (the hold or human-gate label on the
+     * epic issue): none of its pieces start while it's there. "" for none.
+     * </pre>
+     *
+     * <code>string held = 22 [json_name = "held"];</code>
+     * @param value The held to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHeld(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setHeld(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The label holding the whole epic (the hold or human-gate label on the
+     * epic issue): none of its pieces start while it's there. "" for none.
+     * </pre>
+     *
+     * <code>string held = 22 [json_name = "held"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearHeld() {
+      copyOnWrite();
+      instance.clearHeld();
+      return this;
+    }
+    /**
+     * <pre>
+     * The label holding the whole epic (the hold or human-gate label on the
+     * epic issue): none of its pieces start while it's there. "" for none.
+     * </pre>
+     *
+     * <code>string held = 22 [json_name = "held"];</code>
+     * @param value The bytes for held to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHeldBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setHeldBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.Epic)
   }
   @java.lang.Override
@@ -2917,13 +3064,14 @@ public  final class Epic extends
             "summaryComment_",
             "closed_",
             "closedNote_",
+            "held_",
           };
           java.lang.String info =
-              "\u0000\u0015\u0000\u0001\u0001\u0015\u0015\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0016\u0000\u0001\u0001\u0016\u0016\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\u1009\u0000\u0005\u0208\u0006\u0208\u0007\u1009\u0001\b\u1009" +
               "\u0002\t\u0208\n\u1009\u0003\u000b\u0208\f\u001b\r\u1009\u0004\u000e\u021a\u000f" +
               "\u0208\u0010\u0208\u0011\u1009\u0005\u0012\u0208\u0013\u0208\u0014\u1009\u0006\u0015" +
-              "\u0208";
+              "\u0208\u0016\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

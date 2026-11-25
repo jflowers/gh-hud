@@ -105,6 +105,13 @@ func TestEpicFinish(t *testing.T) {
 	}
 	var b bytes.Buffer
 	printEpics(&b, f.snap.Epics)
+	b.Reset()
+	printEpics(&b, []epic.Epic{{Ref: "acme/app#400", State: epic.StateApproved, Held: "human-gate", Plan: &epic.Plan{ID: "p4"}}})
+	if !strings.Contains(b.String(), "held by the human-gate label on the epic") {
+		t.Errorf("held epic:\n%s", b.String())
+	}
+	b.Reset()
+	printEpics(&b, f.snap.Epics)
 	for _, want := range []string{"every piece is finished: gh-hud epic finish acme/app#100", "closed: closed on GitHub"} {
 		if !strings.Contains(b.String(), want) {
 			t.Errorf("list missing %q:\n%s", want, b.String())

@@ -122,5 +122,7 @@ class PlanCommandsTest {
         assertEquals("closed on GitHub · 1/2 done, 0 ready, 0 in progress", closed.status)
         assertEquals(Answer.No("acme/docs#8 isn't finished"), cmds.finish(closed))
         assertEquals(null, EpicRow.of(finished.toBuilder().clearComplete().build()).planToFinish)
+        val held = EpicRow.of(finished.toBuilder().clearComplete().setHeld("hold").build())
+        assertEquals("held by the hold label · 1/2 done, 0 ready, 0 in progress" to Tone.WARN, held.status to held.tone)
     }
 }

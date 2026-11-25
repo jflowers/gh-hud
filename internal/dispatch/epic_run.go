@@ -153,6 +153,12 @@ func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool, byRef ma
 				row.Stage = Stage{Kind: StageNeedsYou, Task: TaskIssue, Reason: n.Note}
 			case n.State != epic.NodeReady:
 				continue // done, dropped, in progress (its PR has rows), waiting
+			case d.holdLabel(it.Labels) != "":
+				// A person holds this piece; Dispatch would refuse a
+				// human-gated one anyway.
+				row.Stage = Stage{Kind: StageNeedsYou, Task: TaskIssue, Reason: "held: the " + d.holdLabel(it.Labels) + " label"}
+			case e.Held != "":
+				row.Stage = Stage{Kind: StageWait, Task: TaskIssue, Reason: "epic held: the " + e.Held + " label on " + e.Ref}
 			case reported && rep.Verdict == epic.VerdictHuman:
 				row.Stage = Stage{Kind: StageNeedsYou, Task: TaskIssue, Reason: "epic: " + rep.Why}
 			case len(p.runs) >= maxRuns:

@@ -215,6 +215,13 @@ func TestPlanFinishesAnEpic(t *testing.T) {
 	}
 }
 
+func TestEpicStatusHeld(t *testing.T) {
+	e := epic.Epic{State: epic.StateApproved, Held: "hold", Plan: &epic.Plan{Nodes: []epic.Node{{State: epic.NodeReady}}}}
+	if s, c := epicStatus(e); s != "held by the hold label: nothing starts · 0/1 done, 1 ready, 0 in progress" || c != cOrange {
+		t.Errorf("epicStatus = %q", s)
+	}
+}
+
 func TestPlanEpicRowStatus(t *testing.T) {
 	row := dispatch.PlanRow{Item: model.Item{Kind: model.KindIssue, Repo: "acme/app", Num: 2}, Task: dispatch.TaskIssue,
 		Stage: dispatch.Stage{Kind: dispatch.StageNext, Task: dispatch.TaskIssue}, Epic: "acme/app#100"}

@@ -251,6 +251,8 @@ func printEpics(w io.Writer, epics []epic.Epic) {
 				when = " " + e.Closed.Local().Format("Jan 2 15:04")
 			}
 			fmt.Fprintf(w, "  closed%s: %s\n", when, e.ClosedNote)
+		case e.Held != "" && e.State == epic.StateApproved:
+			fmt.Fprintf(w, "  held by the %s label on the epic: none of its pieces start until it's removed\n", e.Held)
 		case e.Complete != nil:
 			fmt.Fprintf(w, "  every piece is finished: gh-hud epic finish %s shows the summary it closes with\n", e.Ref)
 		case e.ApprovedPlan == p.ID:
