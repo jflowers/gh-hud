@@ -24,7 +24,7 @@ type Config struct {
 	// Orgs limits PR/issue searches to these orgs; empty searches all of GitHub.
 	Orgs            []string `toml:"orgs"`
 	RefreshSecs     int      `toml:"refresh_secs"`
-	Limit           int      `toml:"limit"`
+	Limit           int      `toml:"limit"` // how many queue-sweep PRs to read (others' PRs, the costly search); default 100
 	MyPRsEverywhere bool     `toml:"my_prs_everywhere"`
 	WatchRepos      []string `toml:"watch_repos"`
 	// KnownBots are login prefixes considered bots for review/actor logic.
@@ -166,7 +166,7 @@ func Default() *Config {
 	return &Config{
 		Orgs:            []string{},
 		RefreshSecs:     120,
-		Limit:           30,
+		Limit:           100,
 		MyPRsEverywhere: false,
 		WatchRepos:      []string{},
 		KnownBots: []string{
@@ -657,7 +657,7 @@ func Load(path string) (*Config, error) {
 		cfg.RefreshSecs = 10
 	}
 	if cfg.Limit < 1 {
-		cfg.Limit = 30
+		cfg.Limit = 100
 	}
 	if cfg.FetchTimeoutSecs < 5 {
 		cfg.FetchTimeoutSecs = 5

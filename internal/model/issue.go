@@ -8,9 +8,10 @@ import (
 )
 
 const issueSearchQuery = `
-query($searchQuery: String!, $limit: Int!) {
-  search(query: $searchQuery, type: ISSUE, first: $limit) {
+query($searchQuery: String!, $limit: Int!, $after: String) {
+  search(query: $searchQuery, type: ISSUE, first: $limit, after: $after) {
     issueCount
+    pageInfo { hasNextPage endCursor }
     nodes {
       ... on Issue {
 ` + issueFields + `
@@ -39,6 +40,7 @@ const issueFields = `
 type issueSearchResult struct {
 	Search struct {
 		IssueCount int         `json:"issueCount"`
+		PageInfo   pageInfo    `json:"pageInfo"`
 		Nodes      []issueNode `json:"nodes"`
 	} `json:"search"`
 }
@@ -69,18 +71,27 @@ type issueNode struct {
 	} `json:"labels"`
 }
 
-// fetchIssueSearch runs a GitHub search restricted to open issues, one
-// page of limit, and returns its nodes and how many issues match in all.
-func fetchIssueSearch(ctx context.Context, c *gh.Client, search string, limit int) ([]issueNode, int, error) {
-	var res issueSearchResult
-	vars := map[string]any{
-		"searchQuery": search + " is:issue is:open sort:updated-desc",
-		"limit":       limit,
-	}
-	if err := c.Graphql(ctx, issueSearchQuery, vars, &res); err != nil {
-		return nil, 0, err
-	}
-	return res.Search.Nodes, res.Search.IssueCount, nil
+// fetchIssueSearch runs a GitHub search restricted to open issues and
+// returns up to upTo nodes, most recently updated first, and how many
+// issues match in all. It reads them issuePage at a time, each page
+// bounded by pageTimeout.
+func fetchIssueSearch(ctx context.Context, c *gh.Client, search string, upTo int, pageTimeout time.Duration) ([]issueNode, int, error) {
+	return searchPages(upTo, func(after string) ([]issueNode, int, pageInfo, error) {
+		pctx, cancel := context.WithTimeout(ctx, pageTimeout)
+		defer cancel()
+		var res issueSearchResult
+		vars := map[string]any{
+			"searchQuery": search + " is:issue is:open sort:updated-desc",
+			"limit":       min(issuePage, upTo),
+		}
+		if after != "" {
+			vars["after"] = after
+		}
+		if err := c.Graphql(pctx, issueSearchQuery, vars, &res); err != nil {
+			return nil, 0, pageInfo{}, err
+		}
+		return res.Search.Nodes, res.Search.IssueCount, res.Search.PageInfo, nil
+	})
 }
 
 // BuildIssueItem converts an issue node into an Item.
