@@ -24,6 +24,10 @@ public struct FleetRow: Identifiable, Equatable, Sendable {
     /// ("reindexing 3/12"), else the latest one's summary.
     public let dewey: String
     public let deweyTone: Tone
+    /// What pruning unused tool versions did after the last verified
+    /// apply ("" before one ran), and how it reads.
+    public let pruned: String
+    public let prunedTone: Tone
     /// The machine as the hub sent it, for the detail.
     public let machine: Ghhud_V1_FleetMachine
 
@@ -49,6 +53,8 @@ public struct FleetRow: Identifiable, Equatable, Sendable {
         waited = m.state == "draining" && secs > 0 ? secs : nil
         error = m.lastError.split(whereSeparator: \.isNewline).joined(separator: " ")
         (dewey, deweyTone) = DeweyFleet.column(m)
+        pruned = m.pruneNote
+        prunedTone = FleetList.pruneTone(m.pruneNote)
         machine = m
     }
 }
@@ -68,6 +74,11 @@ public enum FleetList {
         case "failed": return .bad
         default: return .warn // unreachable, skipped
         }
+    }
+
+    /// How a prune note reads: bad when the prune failed.
+    public static func pruneTone(_ note: String) -> Tone {
+        note.contains("failed") ? .bad : .muted
     }
 
     /// How the target's CI reads.

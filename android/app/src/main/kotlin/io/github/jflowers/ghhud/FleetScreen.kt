@@ -326,6 +326,11 @@ private fun MachineRow(
                         maxLines = if (whole) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.testTag("machine-error:" + r.name))
                 }
+                if (r.pruned.isNotEmpty()) {
+                    Text(r.pruned, style = MaterialTheme.typography.bodySmall, color = r.prunedTone.color(),
+                        maxLines = if (whole) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.testTag("machine-pruned:" + r.name))
+                }
                 if (m != null) {
                     for ((i, l) in (DeweyFleet.rolloutLines(m) + DeweyFleet.passLines(m, now)).withIndex()) {
                         Text(l.text, style = MaterialTheme.typography.bodySmall, color = l.tone.color(),

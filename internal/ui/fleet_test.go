@@ -103,6 +103,16 @@ func TestFleetViewReindexing(t *testing.T) {
 	}
 }
 
+// A machine shows what pruning its tool versions did under its row.
+func TestFleetViewPruned(t *testing.T) {
+	snap := fleetTestSnapshot()
+	snap.Machines[0].Pruned = "mise prune: removed 12 versions, freed 2.7 GB"
+	m := &Model{cfg: config.Default(), width: 120, height: 30, fleetMode: true, fleetSnap: snap}
+	if out := m.fleetView(); !strings.Contains(out, "mise prune: removed 12 versions, freed 2.7 GB") {
+		t.Errorf("fleet view missing the prune note:\n%s", out)
+	}
+}
+
 func TestFleetIndicatorText(t *testing.T) {
 	p := paint{}
 	if got := fleetIndicatorText(p, fleet.Snapshot{}); got != "" {

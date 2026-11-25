@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/jflowers/gh-hud/internal/dispatch"
+	"github.com/jflowers/gh-hud/internal/fleet"
 	"github.com/jflowers/gh-hud/internal/hub"
 	"github.com/jflowers/gh-hud/internal/model"
 )
@@ -217,5 +218,19 @@ func TestSectionCutRoundTrip(t *testing.T) {
 	got := SnapshotFromPB(SnapshotToPB(s))
 	if len(got.Res.CutShort) != 1 || got.Res.CutShort[0] != cut {
 		t.Errorf("cut short = %+v", got.Res.CutShort)
+	}
+}
+
+// A machine's prune note survives the trip to the apps and back (#86).
+func TestFleetPruneNoteRoundTrip(t *testing.T) {
+	in := fleet.Snapshot{Machines: []fleet.MachineStatus{
+		{Name: "lap1", State: fleet.StateCurrent, Pruned: "mise prune: removed 12 versions, freed 2.7 GB"},
+	}}
+	pbs := fleetToPB(in)
+	if got := pbs.GetMachines()[0].GetPruneNote(); got != in.Machines[0].Pruned {
+		t.Fatalf("prune_note = %q", got)
+	}
+	if got := fleetFromPB(pbs).Machines[0].Pruned; got != in.Machines[0].Pruned {
+		t.Errorf("Pruned back = %q", got)
 	}
 }

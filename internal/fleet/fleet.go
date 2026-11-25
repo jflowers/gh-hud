@@ -120,6 +120,9 @@ type machineState struct {
 	// (deweypass.go); passCancel stops it while it runs.
 	Pass       DeweyPass
 	passCancel context.CancelFunc
+	// Pruned is what pruning unused tool versions after the machine's
+	// last verified apply did (prune.go); "" before one ran.
+	Pruned string
 }
 
 // New builds a Coordinator, defaulting unset options and loading
@@ -494,6 +497,12 @@ func (c *Coordinator) doVerify(ctx context.Context, name, target string) bool {
 	defer cancel()
 	checkOut, _, checkErr := c.opts.Runner.Run(vctx, name, "fleet-apply", "--check")
 	statusOut, _, statusErr := c.opts.Runner.Run(vctx, name, "fleet-apply", "--status")
+	verified := checkErr == nil && statusErr == nil && applyOKLine(checkOut, target) && parseStatus(statusOut) == target
+	pruned := ""
+	if verified {
+		// Still drained: no agent starts while versions are removed.
+		pruned = c.pruneTools(ctx, name)
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	ms := c.machineLocked(name)
@@ -502,7 +511,7 @@ func (c *Coordinator) doVerify(ctx context.Context, name, target string) bool {
 	}
 	ms.Applied = parseStatus(statusOut)
 	ms.AppliedAt = c.opts.Clock.Now()
-	if checkErr != nil || statusErr != nil || !applyOKLine(checkOut, target) || ms.Applied != target {
+	if !verified {
 		ms.State = StateFailed
 		ms.LastErr = failureDetail(checkOut+statusOut, "", firstErr(checkErr, statusErr))
 		c.paused = true
@@ -515,6 +524,7 @@ func (c *Coordinator) doVerify(ctx context.Context, name, target string) bool {
 	ms.Reachable = true
 	ms.LastErr = ""
 	ms.DeweyBefore = ""
+	ms.Pruned = pruned
 	c.skipWait = false
 	if c.isLocal[name] {
 		// Only when the apply changed gh-hud itself: tools the agents run
@@ -645,6 +655,7 @@ type MachineStatus struct {
 	LastErr      string
 	Reindex      ReindexProgress // Dewey reindex after a pin change (dewey.go)
 	Pass         DeweyPass       // the latest Dewey reindex pass you asked for (deweypass.go)
+	Pruned       string          // unused tool versions pruned after the last verified apply (prune.go)
 }
 
 // StateText is the state as the fleet view shows it: "reindexing 7/15"
@@ -695,6 +706,7 @@ func (c *Coordinator) Snapshot() Snapshot {
 			LastErr:      ms.LastErr,
 			Reindex:      ms.Reindex.clone(),
 			Pass:         ms.Pass.clone(),
+			Pruned:       ms.Pruned,
 		}
 		if ms.State == StateDraining && !ms.DrainStart.IsZero() {
 			st.Waited = c.opts.Clock.Now().Sub(ms.DrainStart)

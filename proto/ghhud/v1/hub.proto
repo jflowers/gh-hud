@@ -919,6 +919,10 @@ message FleetMachine {
   // The vaults the rollout's check found up to date (#138): nothing to
   // reindex.
   repeated string reindex_current = 13;
+  // What pruning unused tool versions did after the machine's last
+  // verified apply (gh-hud#86): "mise prune: removed 12 versions, freed
+  // 2.7 GB"; "" when none ran since the hub started.
+  string prune_note = 14;
 }
 
 // DeweyPass is a machine's latest "reindex the vaults now" pass (#139).

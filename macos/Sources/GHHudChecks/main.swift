@@ -817,6 +817,12 @@ do {
     m.state = "current"
     m.reindexNote = "reindexed 14/15, 1 failed"
     check(DeweyFleet.column(m) == ("reindexed 14/15, 1 failed", .bad), "rollout summary")
+    check(FleetRow(m, target: "", usage: []).pruned.isEmpty, "no prune yet, nothing shown")
+    m.pruneNote = "mise prune: removed 12 versions, freed 2.7 GB"
+    check(FleetRow(m, target: "", usage: []).pruned == m.pruneNote && FleetRow(m, target: "", usage: []).prunedTone == .muted, "prune note")
+    m.pruneNote = "mise prune failed: ssh: connection reset"
+    check(FleetRow(m, target: "", usage: []).prunedTone == .bad, "failed prune reads bad")
+    m.pruneNote = ""
 
     var p = Ghhud_V1_DeweyPass()
     p.running = true

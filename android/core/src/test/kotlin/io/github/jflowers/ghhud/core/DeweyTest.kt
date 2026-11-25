@@ -204,6 +204,11 @@ class DeweyTest {
         assertEquals(ToneLine("dewey: reindexed 6/15, 1 failed", Tone.MUTED), lines[0])
         assertEquals(ToneLine("✗ 2 more", Tone.BAD), lines.last())
         assertEquals(7, lines.size)
+        assertEquals("", FleetRow.of(rolling, "", emptyList()).pruned)
+        val pruned = fleetMachine { name = "oak"; state = "current"; pruneNote = "mise prune failed: ssh: connection reset" }
+        assertEquals("mise prune failed: ssh: connection reset", FleetRow.of(pruned, "", emptyList()).pruned)
+        assertEquals(Tone.BAD, FleetRow.of(pruned, "", emptyList()).prunedTone)
+        assertEquals(Tone.MUTED, FleetList.pruneTone("mise prune: removed 2 versions, freed 1.1 GB"))
 
         val running = fleetMachine {
             name = "chai"

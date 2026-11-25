@@ -214,4 +214,28 @@ public interface FleetMachineOrBuilder extends
    */
   com.google.protobuf.ByteString
       getReindexCurrentBytes(int index);
+
+  /**
+   * <pre>
+   * What pruning unused tool versions did after the machine's last
+   * verified apply (gh-hud#86): "mise prune: removed 12 versions, freed
+   * 2.7 GB"; "" when none ran since the hub started.
+   * </pre>
+   *
+   * <code>string prune_note = 14 [json_name = "pruneNote"];</code>
+   * @return The pruneNote.
+   */
+  java.lang.String getPruneNote();
+  /**
+   * <pre>
+   * What pruning unused tool versions did after the machine's last
+   * verified apply (gh-hud#86): "mise prune: removed 12 versions, freed
+   * 2.7 GB"; "" when none ran since the hub started.
+   * </pre>
+   *
+   * <code>string prune_note = 14 [json_name = "pruneNote"];</code>
+   * @return The bytes for pruneNote.
+   */
+  com.google.protobuf.ByteString
+      getPruneNoteBytes();
 }

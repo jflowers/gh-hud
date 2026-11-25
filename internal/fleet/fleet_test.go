@@ -50,6 +50,9 @@ type fakeRunner struct {
 	checkErr   map[string]error  // machine → --check failure
 	applyCalls []string          // "machine sha"
 	checkCalls int
+	pruneOut   map[string]string // machine → prune script report (default nothing to prune)
+	pruneErr   map[string]error  // machine → prune exec failure
+	pruneCalls []string          // machines pruned, in order
 }
 
 func newFakeRunner(applied map[string]string) *fakeRunner {
@@ -63,6 +66,16 @@ func newFakeRunner(applied map[string]string) *fakeRunner {
 }
 
 func (f *fakeRunner) Run(ctx context.Context, machine string, argv ...string) (string, string, error) {
+	if len(argv) == 3 && argv[0] == "bash" && argv[1] == "-c" && argv[2] == pruneScript {
+		f.pruneCalls = append(f.pruneCalls, machine)
+		if err := f.pruneErr[machine]; err != nil {
+			return "", "ssh: connection reset\n", err
+		}
+		if out, ok := f.pruneOut[machine]; ok {
+			return out, "", nil
+		}
+		return "MP 0 100 100\n", "", nil
+	}
 	if len(argv) != 2 || argv[0] != "fleet-apply" {
 		return "", "", fmt.Errorf("unexpected argv %v", argv)
 	}

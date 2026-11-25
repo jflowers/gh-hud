@@ -3164,6 +3164,14 @@ public nonisolated struct Ghhud_V1_FleetMachine: @unchecked Sendable {
     set {_uniqueStorage()._reindexCurrent = newValue}
   }
 
+  /// What pruning unused tool versions did after the machine's last
+  /// verified apply (gh-hud#86): "mise prune: removed 12 versions, freed
+  /// 2.7 GB"; "" when none ran since the hub started.
+  public var pruneNote: String {
+    get {_storage._pruneNote}
+    set {_uniqueStorage()._pruneNote = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -8215,7 +8223,7 @@ nonisolated extension Ghhud_V1_FleetSnapshot: SwiftProtobuf.Message, SwiftProtob
 
 nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".FleetMachine"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}state\0\u{1}reachable\0\u{1}applied\0\u{3}applied_short\0\u{1}waited\0\u{3}last_error\0\u{3}reindex_done\0\u{3}reindex_total\0\u{3}reindex_failures\0\u{3}reindex_note\0\u{3}dewey_pass\0\u{3}reindex_current\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}state\0\u{1}reachable\0\u{1}applied\0\u{3}applied_short\0\u{1}waited\0\u{3}last_error\0\u{3}reindex_done\0\u{3}reindex_total\0\u{3}reindex_failures\0\u{3}reindex_note\0\u{3}dewey_pass\0\u{3}reindex_current\0\u{3}prune_note\0")
 
   fileprivate class _StorageClass {
     var _name: String = String()
@@ -8231,6 +8239,7 @@ nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobu
     var _reindexNote: String = String()
     var _deweyPass: Ghhud_V1_DeweyPass? = nil
     var _reindexCurrent: [String] = []
+    var _pruneNote: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -8254,6 +8263,7 @@ nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobu
       _reindexNote = source._reindexNote
       _deweyPass = source._deweyPass
       _reindexCurrent = source._reindexCurrent
+      _pruneNote = source._pruneNote
     }
   }
 
@@ -8285,6 +8295,7 @@ nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobu
         case 11: try { try decoder.decodeSingularStringField(value: &_storage._reindexNote) }()
         case 12: try { try decoder.decodeSingularMessageField(value: &_storage._deweyPass) }()
         case 13: try { try decoder.decodeRepeatedStringField(value: &_storage._reindexCurrent) }()
+        case 14: try { try decoder.decodeSingularStringField(value: &_storage._pruneNote) }()
         default: break
         }
       }
@@ -8336,6 +8347,9 @@ nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobu
       if !_storage._reindexCurrent.isEmpty {
         try visitor.visitRepeatedStringField(value: _storage._reindexCurrent, fieldNumber: 13)
       }
+      if !_storage._pruneNote.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._pruneNote, fieldNumber: 14)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -8358,6 +8372,7 @@ nonisolated extension Ghhud_V1_FleetMachine: SwiftProtobuf.Message, SwiftProtobu
         if _storage._reindexNote != rhs_storage._reindexNote {return false}
         if _storage._deweyPass != rhs_storage._deweyPass {return false}
         if _storage._reindexCurrent != rhs_storage._reindexCurrent {return false}
+        if _storage._pruneNote != rhs_storage._pruneNote {return false}
         return true
       }
       if !storagesAreEqual {return false}
