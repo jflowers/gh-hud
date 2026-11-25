@@ -55,6 +55,14 @@ public enum CheckoutActionKind
    * <code>CHECKOUT_ACTION_KIND_REINDEX = 5;</code>
    */
   CHECKOUT_ACTION_KIND_REINDEX(5),
+  /**
+   * <pre>
+   * throw the uncommitted changes away
+   * </pre>
+   *
+   * <code>CHECKOUT_ACTION_KIND_DISCARD = 6;</code>
+   */
+  CHECKOUT_ACTION_KIND_DISCARD(6),
   UNRECOGNIZED(-1),
   ;
 
@@ -102,6 +110,14 @@ public enum CheckoutActionKind
    * <code>CHECKOUT_ACTION_KIND_REINDEX = 5;</code>
    */
   public static final int CHECKOUT_ACTION_KIND_REINDEX_VALUE = 5;
+  /**
+   * <pre>
+   * throw the uncommitted changes away
+   * </pre>
+   *
+   * <code>CHECKOUT_ACTION_KIND_DISCARD = 6;</code>
+   */
+  public static final int CHECKOUT_ACTION_KIND_DISCARD_VALUE = 6;
 
 
   @java.lang.Override
@@ -130,6 +146,7 @@ public enum CheckoutActionKind
       case 3: return CHECKOUT_ACTION_KIND_SAVE;
       case 4: return CHECKOUT_ACTION_KIND_UPKEEP;
       case 5: return CHECKOUT_ACTION_KIND_REINDEX;
+      case 6: return CHECKOUT_ACTION_KIND_DISCARD;
       default: return null;
     }
   }

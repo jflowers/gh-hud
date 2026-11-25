@@ -181,11 +181,11 @@ type HubServiceClient interface {
 	DeweyReindex(context.Context, *connect.Request[v1.DeweyReindexRequest]) (*connect.Response[v1.DeweyReindexResponse], error)
 	// CheckoutAction starts one action on one fleet checkout from the
 	// Workspaces list (#172): fast-forward it, open its learnings PRs, save
-	// its leftover work to a draft PR, keep it up now, or reindex its Dewey
-	// vault. It runs in the background; the outcome is the checkout's last
-	// upkeep or reindex and an event. Refused when this hub doesn't own
-	// dispatch, the checkout isn't a fleet checkout in the last Workspaces
-	// read, or its machine's slot is taken.
+	// its leftover work to a draft PR, keep it up now, reindex its Dewey
+	// vault, or discard its uncommitted changes. It runs in the background;
+	// the outcome is the checkout's last upkeep or reindex and an event.
+	// Refused when this hub doesn't own dispatch, the checkout isn't a fleet
+	// checkout in the last Workspaces read, or its machine's slot is taken.
 	CheckoutAction(context.Context, *connect.Request[v1.CheckoutActionRequest]) (*connect.Response[v1.CheckoutActionResponse], error)
 	// ToolkitRollout starts rolling a tool release out (issue #75);
 	// ToolkitControl drives rollouts. FAILED_PRECONDITION when the toolkit
@@ -638,11 +638,11 @@ type HubServiceHandler interface {
 	DeweyReindex(context.Context, *connect.Request[v1.DeweyReindexRequest]) (*connect.Response[v1.DeweyReindexResponse], error)
 	// CheckoutAction starts one action on one fleet checkout from the
 	// Workspaces list (#172): fast-forward it, open its learnings PRs, save
-	// its leftover work to a draft PR, keep it up now, or reindex its Dewey
-	// vault. It runs in the background; the outcome is the checkout's last
-	// upkeep or reindex and an event. Refused when this hub doesn't own
-	// dispatch, the checkout isn't a fleet checkout in the last Workspaces
-	// read, or its machine's slot is taken.
+	// its leftover work to a draft PR, keep it up now, reindex its Dewey
+	// vault, or discard its uncommitted changes. It runs in the background;
+	// the outcome is the checkout's last upkeep or reindex and an event.
+	// Refused when this hub doesn't own dispatch, the checkout isn't a fleet
+	// checkout in the last Workspaces read, or its machine's slot is taken.
 	CheckoutAction(context.Context, *connect.Request[v1.CheckoutActionRequest]) (*connect.Response[v1.CheckoutActionResponse], error)
 	// ToolkitRollout starts rolling a tool release out (issue #75);
 	// ToolkitControl drives rollouts. FAILED_PRECONDITION when the toolkit

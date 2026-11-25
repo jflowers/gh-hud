@@ -250,8 +250,10 @@ public enum WorkspaceActions {
         public let kind: Ghhud_V1_CheckoutActionKind
         public let title: String
         public let enabled: Bool
-        /// Pushes or opens a PR: the menu asks first.
+        /// Pushes, opens a PR or throws work away: the menu asks first.
         public let confirm: Bool
+        /// Throws work away: the confirmation's button is destructive.
+        public var destructive: Bool { kind == .discard }
     }
 
     /// The actions for a checkout, in menu order. A busy checkout (an
@@ -273,6 +275,8 @@ public enum WorkspaceActions {
                               enabled: idle && h.learnings > 0 && h.dirty.isEmpty && onDefault, confirm: true))
             out.append(Action(kind: .save, title: "Save Work to a Draft PR…",
                               enabled: idle && work && !h.noUpstream, confirm: true))
+            out.append(Action(kind: .discard, title: "Discard Uncommitted Changes…",
+                              enabled: idle && !h.dirty.isEmpty, confirm: true))
         }
         out.append(Action(kind: .upkeep, title: "Keep Up Now", enabled: idle, confirm: false))
         if !h.upkeepOnly {
@@ -288,6 +292,10 @@ public enum WorkspaceActions {
             return "Commits everything in \(h.workspace)/\(h.repo.split(separator: "/").last.map(String.init) ?? h.repo) "
                 + "(but untracked learnings) on a wip branch, pushes it to your fork, opens a draft PR from it, "
                 + "and puts the checkout back on \(h.defaultBranch)."
+        case .discard:
+            return "Throws away the \(h.dirty.count) uncommitted change(s) in \(h.workspace)/"
+                + "\(h.repo.split(separator: "/").last.map(String.init) ?? h.repo): edits are reset and untracked "
+                + "files deleted. Commits and untracked learnings stay. This can't be undone."
         case .learnings:
             return "Commits the \(h.learnings) untracked learning(s) on the day's learnings branch, pushes it to "
                 + "your fork and opens the PR."

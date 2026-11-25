@@ -14,6 +14,9 @@ package dispatch
 //   - upkeep: a full upkeep now, acting even when [upkeep] mode only
 //     reports.
 //   - reindex: reindex the checkout's Dewey vault.
+//   - discard: throw the checkout's uncommitted changes away (tracked
+//     edits reset, untracked files removed), keeping untracked learnings,
+//     Dewey's cache and ignored files. Commits are left alone.
 //
 // Each takes the machine's one slot, as upkeep and reindexes do, and
 // refuses a checkout with a live agent. It runs in the background; its
@@ -40,6 +43,7 @@ const (
 	CheckoutSave      CheckoutAction = "save"
 	CheckoutUpkeep    CheckoutAction = "upkeep"
 	CheckoutReindex   CheckoutAction = "reindex"
+	CheckoutDiscard   CheckoutAction = "discard"
 )
 
 // manualReason is the reason a reindex asked for by hand records.
@@ -58,6 +62,8 @@ func (a CheckoutAction) verb() string {
 		return "keeping up"
 	case CheckoutReindex:
 		return "reindexing"
+	case CheckoutDiscard:
+		return "discarding the uncommitted changes in"
 	}
 	return ""
 }
@@ -133,6 +139,8 @@ func (d *Dispatcher) checkoutAction(ctx context.Context, m Machine, dir string, 
 		return d.learningsNow(ctx, m, dir)
 	case CheckoutSave:
 		return d.saveWork(ctx, m, dir)
+	case CheckoutDiscard:
+		return d.discardWork(ctx, m, dir)
 	}
 	return "", fmt.Errorf("unknown checkout action %q", a)
 }
@@ -255,6 +263,43 @@ func (d *Dispatcher) saveWork(ctx context.Context, m Machine, dir string) (strin
 		return u.String(), errors.New(u.Err)
 	}
 	return u.String(), nil
+}
+
+// discardWork throws dir's uncommitted changes away: tracked files (and
+// submodules) back to HEAD, untracked files removed. Untracked learnings,
+// Dewey's cache, the reindex pid file and ignored files stay; so do
+// commits, local-only or not. The outcome is recorded as its last upkeep.
+func (d *Dispatcher) discardWork(ctx context.Context, m Machine, dir string) (string, error) {
+	u, f, err := d.readCheckout(ctx, m, dir)
+	if err != nil {
+		return "not started: " + err.Error(), err
+	}
+	if f.dirty == 0 {
+		return "nothing to discard", nil
+	}
+	if _, err := m.shell(ctx, discardScript(dir)); err != nil {
+		u.Err = "discard: " + err.Error()
+	} else {
+		u.Did = append(u.Did, fmt.Sprintf("discard %d uncommitted file(s)", f.dirty))
+	}
+	d.recordUpkeep(m.key(), dir, u)
+	if u.Err != "" {
+		return u.String(), errors.New(u.Err)
+	}
+	return u.String(), nil
+}
+
+// discardScript resets dir's tracked files and submodules to HEAD and
+// removes untracked files, sparing what churnGrep says is nobody's work.
+func discardScript(dir string) string {
+	keep := " -e " + shellQuote("/"+learningsDir) + " -e " + shellQuote("/"+deweyCacheDir) +
+		" -e " + shellQuote("/"+reindexPidPath)
+	return "cd -- " + shellQuoteTilde(dir) + " || exit 1\n" +
+		"set -e\n" +
+		"git reset -q --hard HEAD\n" +
+		"git clean -q -f -d" + keep + "\n" +
+		"git submodule -q update --recursive --force\n" +
+		"git submodule -q foreach --recursive 'git reset -q --hard && git clean -q -f -d'\n"
 }
 
 // draftPRScript opens a draft PR on repo from the fork's (origin's)
