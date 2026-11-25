@@ -552,7 +552,7 @@ func epicPlanToPB(p *epic.Plan) *pb.EpicPlan {
 		return nil
 	}
 	return &pb.EpicPlan{Id: p.ID, Sources: p.Sources, Nodes: mapSlice(p.Nodes, epicNodeToPB), Rules: p.Rules,
-		Skipped: p.Skipped, Created: ts(p.Created), BodyHash: p.BodyHash, Stale: p.Stale}
+		Skipped: p.Skipped, Created: ts(p.Created), BodyHash: p.BodyHash, Stale: p.Stale, SubIssues: p.SubIssues}
 }
 
 func epicPlanFromPB(pp *pb.EpicPlan) *epic.Plan {
@@ -560,7 +560,8 @@ func epicPlanFromPB(pp *pb.EpicPlan) *epic.Plan {
 		return nil
 	}
 	return &epic.Plan{ID: pp.GetId(), Sources: pp.GetSources(), Nodes: mapSlice(pp.GetNodes(), epicNodeFromPB),
-		Rules: pp.GetRules(), Skipped: pp.GetSkipped(), Created: fromTS(pp.GetCreated()), BodyHash: pp.GetBodyHash(), Stale: pp.GetStale()}
+		Rules: pp.GetRules(), Skipped: pp.GetSkipped(), Created: fromTS(pp.GetCreated()), BodyHash: pp.GetBodyHash(), Stale: pp.GetStale(),
+		SubIssues: pp.GetSubIssues()}
 }
 
 func epicToPB(e epic.Epic) *pb.Epic {

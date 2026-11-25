@@ -1083,8 +1083,15 @@ finishes an epic whose pieces are all closed.
     as pieces, and cycles. A refused answer is retried once, in the same
     agent session, with the reason.
   - **Blocked-by links** between the pieces, from GitHub.
+  - **Sub-issues.** Every GitHub sub-issue of the epic is a piece. When
+    the body mentions nothing but its sub-issues, the plan is built from
+    them and their blocked-by links alone, in GitHub's order, without the
+    supervisor (so it works with the supervisor off). When the body
+    mentions other issues too, the supervisor reads it as above, is told
+    the sub-issues are pieces, and any it leaves out are added. Adding or
+    removing a sub-issue counts as an edit (see Edits).
 
-  Sub-issues and task lists are the next sources to add.
+  Task lists are the next source to add.
 - **Status** comes from GitHub on every refresh, never from the body's
   checkboxes:
 
@@ -1100,8 +1107,8 @@ finishes an epic whose pieces are all closed.
   | ! | blocked | It waits on a piece that was dropped. |
 - **Approving** a plan is consent to start its ready pieces, within the
   epic's caps. A plan has an ID, so you approve the plan you saw.
-- **Edits.** When the epic's body changes, nothing more starts and gh-hud
-  reads it again on its own. The reader gets its previous plan and keeps
+- **Edits.** When the epic's body or its sub-issues change, nothing more
+  starts and gh-hud reads it again on its own. The reader gets its previous plan and keeps
   what the edit didn't touch as it was. Then gh-hud compares the new plan
   with the one you approved:
   - **The same,** or **only reworded:** a gate's or a rule's text changed,

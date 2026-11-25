@@ -11,6 +11,9 @@ package dispatch
 //     every piece must respect. gh-hud refuses refs the body doesn't
 //     mention, PRs as pieces, and cycles; a refused answer gets one retry.
 //   - blocked_by: GitHub's blocked-by links of the pieces.
+//   - sub_issues: the epic's GitHub sub-issues, each a piece. When the
+//     body mentions nothing else, the plan is built from them and the
+//     blocked-by links alone, without the supervisor.
 //
 // Status comes from GitHub on every refresh, never from the body's
 // checkboxes. Approving a plan is consent to start its ready pieces within
@@ -357,9 +360,13 @@ func (d *Dispatcher) goEpic(f func()) {
 
 // epicFact is what the epic issue itself says.
 type epicIssue struct {
-	Title, URL, Body string
-	State            string // OPEN or CLOSED
+	Ref, Title, URL, Body string
+	State                 string   // OPEN or CLOSED
+	SubIssues             []string // its sub-issues, owner/repo#N, in GitHub's order
 }
+
+// epicSubIssuesMax bounds the sub-issues read: a plan has at most 60 pieces.
+const epicSubIssuesMax = 60
 
 // readEpic reads one epic into a plan.
 func (d *Dispatcher) readEpic(ref string) {
@@ -448,14 +455,26 @@ func (d *Dispatcher) planEpic(ctx context.Context, ref string, prev *epic.Plan) 
 	}
 	repo, _, _ := epic.ParseRef(ref)
 	mentioned := slices.DeleteFunc(epic.MentionedRefs(repo, iss.Body), func(r string) bool { return r == ref })
-	if len(mentioned) == 0 {
-		return nil, iss, "", errors.New("the epic mentions no issues or PRs")
+	if len(mentioned) == 0 && len(iss.SubIssues) == 0 {
+		return nil, iss, "", errors.New("the epic mentions no issues or PRs and has no sub-issues")
 	}
 	if len(mentioned) > epicMaxMentions {
 		mentioned = mentioned[:epicMaxMentions]
 	}
-	facts := d.fetchFacts(ctx, mentioned)
-	brief := epicBrief(ref, iss, mentioned, facts, prev)
+	facts := d.fetchFacts(ctx, append(slices.Clone(iss.SubIssues), mentioned...))
+	others := slices.DeleteFunc(slices.Clone(mentioned), func(r string) bool { return slices.Contains(iss.SubIssues, r) })
+	if len(others) == 0 {
+		// Structured: its sub-issues are the plan. No supervisor read.
+		plan, err := epic.FromSubIssues(ref, iss.SubIssues, facts)
+		if err != nil {
+			return nil, iss, "", err
+		}
+		return d.finishPlan(ctx, plan, iss, prev, facts), iss, "", nil
+	}
+	// The planner may place the sub-issues even where the body doesn't
+	// mention them.
+	allowed := append(slices.Clone(iss.SubIssues), others...)
+	brief := epicBrief(ref, iss, allowed, facts, prev)
 	var plan *epic.Plan
 	log, err := d.askAgent(ctx, "gh-hud epic: "+ref, brief, "epic-"+shortHash(ref), func(out []byte) error {
 		block, err := agentJSON(out)
@@ -466,12 +485,21 @@ func (d *Dispatcher) planEpic(ctx context.Context, ref string, prev *epic.Plan) 
 		if err := json.Unmarshal([]byte(block), &ans); err != nil {
 			return fmt.Errorf("the json block doesn't parse: %w", err)
 		}
-		plan, err = epic.BuildPlan(ref, ans, mentioned, facts)
+		plan, err = epic.BuildPlan(ref, ans, allowed, facts)
 		return err
 	})
 	if err != nil {
 		return nil, iss, log, err
 	}
+	// Every sub-issue is a piece, placed by the planner or not.
+	epic.MergeSubIssues(plan, iss.SubIssues, facts)
+	return d.finishPlan(ctx, plan, iss, prev, facts), iss, log, nil
+}
+
+// finishPlan adds GitHub's blocked-by links and the gates you cleared to
+// a plan, works out its status and names it.
+func (d *Dispatcher) finishPlan(ctx context.Context, plan *epic.Plan, iss epicIssue, prev *epic.Plan, facts map[string]epic.Fact) *epic.Plan {
+	repo, _, _ := epic.ParseRef(iss.Ref)
 	// Blocked-by links can point outside what the body mentions.
 	epic.MergeBlockedBy(plan, facts)
 	epic.CarryCleared(prev, plan)
@@ -486,8 +514,9 @@ func (d *Dispatcher) planEpic(ctx context.Context, ref string, prev *epic.Plan) 
 	}
 	epic.Refresh(plan, repo, facts)
 	plan.Created, plan.BodyHash = time.Now(), planHash(iss.Body)
+	plan.SubIssues = slices.Clone(iss.SubIssues)
 	plan.ID = planID(plan)
-	return plan, iss, log, nil
+	return plan
 }
 
 // checkbox matches a task-list box, ticked or not.
@@ -546,7 +575,17 @@ func epicBrief(ref string, iss epicIssue, mentioned []string, facts map[string]e
 		body = body[:epicBodyMax] + "\n[… cut]"
 	}
 	b.WriteString("````markdown\n" + body + "\n````\n\n")
-	b.WriteString("## The issues and PRs it mentions (from GitHub, now)\n")
+	if len(iss.SubIssues) > 0 {
+		b.WriteString("## Its GitHub sub-issues\n" +
+			"These are pieces whatever the text says: GitHub records them as the\n" +
+			"epic's children. Give each its phase, after and gate as the text says;\n" +
+			"don't list them in skipped. They are in the list below with the rest.\n")
+		for _, r := range iss.SubIssues {
+			b.WriteString("- " + r + "\n")
+		}
+		b.WriteString("\n")
+	}
+	b.WriteString("## The issues and PRs it mentions or has as sub-issues (from GitHub, now)\n")
 	for _, r := range mentioned {
 		f := facts[r]
 		kind := "?"
@@ -652,7 +691,7 @@ func (d *Dispatcher) checkEpics() {
 		stale, closed := e.Plan.Stale, false
 		if iss, err := d.fetchEpicIssue(ctx, e.Ref); err == nil {
 			// A raw hash is what plans read before bodyHash existed hold.
-			stale = !bodyMatches(iss.Body, e.Plan.BodyHash)
+			stale = !bodyMatches(iss.Body, e.Plan.BodyHash) || !slices.Equal(iss.SubIssues, e.Plan.SubIssues)
 			closed = iss.State == "CLOSED"
 		}
 		results[e.Ref] = result{e.Plan, stale, closed}
@@ -808,14 +847,22 @@ func (d *Dispatcher) fetchEpicIssue(ctx context.Context, ref string) (epicIssue,
 		return epicIssue{}, fmt.Errorf("bad ref %q", ref)
 	}
 	owner, name, _ := strings.Cut(repo, "/")
-	q := fmt.Sprintf("query { repository(owner: %q, name: %q) { issue(number: %d) { title url body state } } }", owner, name, num)
+	q := fmt.Sprintf("query { repository(owner: %q, name: %q) { issue(number: %d) { title url body state subIssues(first: %d) { nodes { number repository { nameWithOwner } } } } } }", owner, name, num, epicSubIssuesMax)
 	var data struct {
 		Repository *struct {
 			Issue *struct {
-				Title string `json:"title"`
-				URL   string `json:"url"`
-				Body  string `json:"body"`
-				State string `json:"state"`
+				Title     string `json:"title"`
+				URL       string `json:"url"`
+				Body      string `json:"body"`
+				State     string `json:"state"`
+				SubIssues struct {
+					Nodes []struct {
+						Number     int `json:"number"`
+						Repository struct {
+							NameWithOwner string `json:"nameWithOwner"`
+						} `json:"repository"`
+					} `json:"nodes"`
+				} `json:"subIssues"`
 			} `json:"issue"`
 		} `json:"repository"`
 	}
@@ -828,7 +875,11 @@ func (d *Dispatcher) fetchEpicIssue(ctx context.Context, ref string) (epicIssue,
 	i := data.Repository.Issue
 	// The progress block isn't plan: editing it neither changes the hash
 	// nor reaches the planner (gh-hud#118).
-	return epicIssue{Title: i.Title, URL: i.URL, Body: epic.StripStatus(i.Body), State: i.State}, nil
+	out := epicIssue{Ref: ref, Title: i.Title, URL: i.URL, Body: epic.StripStatus(i.Body), State: i.State}
+	for _, s := range i.SubIssues.Nodes {
+		out.SubIssues = append(out.SubIssues, epic.Ref(s.Repository.NameWithOwner, s.Number))
+	}
+	return out, nil
 }
 
 // ---------------------------------------------------------------------------

@@ -252,3 +252,43 @@ func TestFinished(t *testing.T) {
 		}
 	}
 }
+
+func TestSubIssues(t *testing.T) {
+	facts := map[string]Fact{
+		"acme/app#2": {Kind: "Issue", Title: "two"},
+		"acme/lib#3": {Kind: "Issue", Title: "three"},
+		"acme/app#4": {Kind: "PullRequest", Title: "a PR"},
+	}
+	p, err := FromSubIssues("acme/app#1", []string{"acme/app#2", "acme/lib#3", "acme/app#4", "acme/app#9"}, facts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var refs []string
+	for _, n := range p.Nodes {
+		refs = append(refs, n.Ref+" "+n.Title+" "+n.Source)
+	}
+	if want := []string{"acme/app#2 two sub_issues", "acme/lib#3 three sub_issues"}; !slices.Equal(refs, want) {
+		t.Errorf("nodes = %q, want %q (no PRs, nothing GitHub doesn't know)", refs, want)
+	}
+	if !slices.Equal(p.Sources, []string{SourceSubIssues}) || len(p.SubIssues) != 4 {
+		t.Errorf("sources %v, sub-issues %v", p.Sources, p.SubIssues)
+	}
+	if _, err := FromSubIssues("acme/app#1", nil, facts); err == nil {
+		t.Error("planned an epic with no sub-issues")
+	}
+	if _, err := FromSubIssues("acme/app#1", []string{"acme/app#4"}, facts); err == nil {
+		t.Error("planned an epic whose only sub-issue is a PR")
+	}
+
+	prose := &Plan{Sources: []string{SourceProse}, Nodes: []Node{{Ref: "acme/lib#3", Phase: "Phase 1", Source: SourceProse}}}
+	if !MergeSubIssues(prose, []string{"acme/lib#3", "acme/app#2"}, facts) {
+		t.Fatal("added nothing")
+	}
+	if len(prose.Nodes) != 2 || prose.Nodes[0].Phase != "Phase 1" || prose.Nodes[1].Ref != "acme/app#2" ||
+		!slices.Equal(prose.Sources, []string{SourceProse, SourceSubIssues}) {
+		t.Errorf("merged = %+v", prose)
+	}
+	if MergeSubIssues(prose, []string{"acme/lib#3", "acme/app#2"}, facts) {
+		t.Error("added a sub-issue twice")
+	}
+}
