@@ -23,11 +23,19 @@ import (
 // would, and returns the flags that reach it.
 func lanHub(t *testing.T, f *hubtest.Fake) []string {
 	t.Helper()
+	flags, _ := lanHubInfo(t, f)
+	return flags
+}
+
+// lanHubInfo is lanHub with ServeLAN's options, also returning what
+// ServeLAN told.
+func lanHubInfo(t *testing.T, f *hubtest.Fake, opts ...api.LANOption) ([]string, api.LANInfo) {
+	t.Helper()
 	dir := t.TempDir()
 	ctx, cancel := context.WithCancel(context.Background())
 	ready := make(chan api.LANInfo, 1)
 	done := make(chan error, 1)
-	go func() { done <- api.ServeLAN(ctx, "127.0.0.1:0", dir, f, func(i api.LANInfo) { ready <- i }) }()
+	go func() { done <- api.ServeLAN(ctx, "127.0.0.1:0", dir, f, func(i api.LANInfo) { ready <- i }, opts...) }()
 	t.Cleanup(func() {
 		cancel()
 		if err := <-done; err != nil && !errors.Is(err, context.Canceled) {
@@ -44,7 +52,7 @@ func lanHub(t *testing.T, f *hubtest.Fake) []string {
 	}
 	url := info.URLs[0]
 	port := url[strings.LastIndex(url, ":"):]
-	return []string{"-hub", "127.0.0.1" + port, "-token-file", info.TokenFile}
+	return []string{"-hub", "127.0.0.1" + port, "-token-file", info.TokenFile}, info
 }
 
 func ctl(t *testing.T, cmd string, args ...string) (code int, out, errOut string) {

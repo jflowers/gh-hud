@@ -82,6 +82,12 @@ func run() int {
 	if len(args) > 0 && args[0] == "dewey" {
 		return runDewey(args[1:], os.Stdout, os.Stderr)
 	}
+	if len(args) > 0 && args[0] == "workspaces" {
+		return runWorkspaces(args[1:], os.Stdout, os.Stderr)
+	}
+	if len(args) > 0 && args[0] == "checkout" {
+		return runCheckout(args[1:], os.Stdout, os.Stderr)
+	}
 	serve := len(args) > 0 && args[0] == "serve"
 	if serve {
 		args = args[1:]
@@ -96,7 +102,7 @@ func run() int {
 		inProcess  = flag.Bool("no-attach", false, "run a hub in this process even when one is serving (it then only follows)")
 	)
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "usage: gh-hud [flags]        the dashboard\n       gh-hud serve [flags]  the hub alone, on its socket\n       gh-hud epic …         enroll and manage epics (gh-hud epic for help)\n       gh-hud branches [-apply]  prune branches whose PR is done\n       gh-hud toolkit …      re-scaffold repos with the fleet's tools (gh-hud toolkit for help)\n       gh-hud dewey reindex <machine>|-all  reindex every Dewey vault there now (gh-hud dewey for help)\n       gh-hud status|runs|choices|dispatch|queue|transcript|pane …\n                             read and drive the hub, here or on another machine (gh-hud status -h)\n\nflags:\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "usage: gh-hud [flags]        the dashboard\n       gh-hud serve [flags]  the hub alone, on its socket\n       gh-hud epic …         enroll and manage epics (gh-hud epic for help)\n       gh-hud branches [-apply]  prune branches whose PR is done\n       gh-hud toolkit …      re-scaffold repos with the fleet's tools (gh-hud toolkit for help)\n       gh-hud dewey reindex <machine>|-all  reindex every Dewey vault there now (gh-hud dewey for help)\n       gh-hud workspaces     every fleet checkout's problem and leftovers (gh-hud workspaces -h)\n       gh-hud checkout pull|learnings|save|upkeep|reindex <machine> <checkout>\n                             act on one checkout now (gh-hud checkout for help)\n       gh-hud status|runs|choices|dispatch|queue|transcript|pane …\n                             read and drive the hub, here or on another machine (gh-hud status -h)\n\nflags:\n")
 		flag.PrintDefaults()
 	}
 	if err := flag.CommandLine.Parse(args); err != nil {
