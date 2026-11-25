@@ -58,7 +58,7 @@ public object EpicPlanKt {
     public class SourcesProxy private constructor() : com.google.protobuf.kotlin.DslProxy()
     /**
      * ```
-     * open set: prose, blocked_by, sub_issues
+     * open set: prose, blocked_by, sub_issues, task_list
      * ```
      *
      * `repeated string sources = 2 [json_name = "sources"];`
@@ -71,7 +71,7 @@ public object EpicPlanKt {
       )
     /**
      * ```
-     * open set: prose, blocked_by, sub_issues
+     * open set: prose, blocked_by, sub_issues, task_list
      * ```
      *
      * `repeated string sources = 2 [json_name = "sources"];`
@@ -84,7 +84,7 @@ public object EpicPlanKt {
     }
     /**
      * ```
-     * open set: prose, blocked_by, sub_issues
+     * open set: prose, blocked_by, sub_issues, task_list
      * ```
      *
      * `repeated string sources = 2 [json_name = "sources"];`
@@ -98,7 +98,7 @@ public object EpicPlanKt {
     }
     /**
      * ```
-     * open set: prose, blocked_by, sub_issues
+     * open set: prose, blocked_by, sub_issues, task_list
      * ```
      *
      * `repeated string sources = 2 [json_name = "sources"];`
@@ -111,7 +111,7 @@ public object EpicPlanKt {
     }
     /**
      * ```
-     * open set: prose, blocked_by, sub_issues
+     * open set: prose, blocked_by, sub_issues, task_list
      * ```
      *
      * `repeated string sources = 2 [json_name = "sources"];`
@@ -125,7 +125,7 @@ public object EpicPlanKt {
     }
     /**
      * ```
-     * open set: prose, blocked_by, sub_issues
+     * open set: prose, blocked_by, sub_issues, task_list
      * ```
      *
      * `repeated string sources = 2 [json_name = "sources"];`
@@ -138,7 +138,7 @@ public object EpicPlanKt {
       _builder.setSources(index, value)
     }/**
      * ```
-     * open set: prose, blocked_by, sub_issues
+     * open set: prose, blocked_by, sub_issues, task_list
      * ```
      *
      * `repeated string sources = 2 [json_name = "sources"];`

@@ -1169,8 +1169,15 @@ finishes an epic whose pieces are all closed.
     mentions other issues too, the supervisor reads it as above, is told
     the sub-issues are pieces, and any it leaves out are added. Adding or
     removing a sub-issue counts as an edit (see Edits).
-
-  Task lists are the next source to add.
+  - **Task lists.** Each checkbox line in the body (`- [ ] #12 the parser`,
+    `- [x] acme/lib#4`, nested or not) names a piece: the first issue on
+    the line. Lines whose first ref is a PR aren't pieces. When the body
+    mentions nothing but its task-list issues and sub-issues, the plan is
+    built from them alone, sub-issues first and then the list in order,
+    with no supervisor read. Otherwise the supervisor reads the body as
+    above, and any task-list issue it neither placed nor skipped on purpose
+    is added. The boxes don't matter: a ticked box is still a piece, and
+    its status comes from GitHub.
 - **Status** comes from GitHub on every refresh, never from the body's
   checkboxes:
 

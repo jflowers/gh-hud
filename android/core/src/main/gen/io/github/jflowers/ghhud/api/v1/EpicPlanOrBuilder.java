@@ -24,7 +24,7 @@ public interface EpicPlanOrBuilder extends
 
   /**
    * <pre>
-   * open set: prose, blocked_by, sub_issues
+   * open set: prose, blocked_by, sub_issues, task_list
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -34,7 +34,7 @@ public interface EpicPlanOrBuilder extends
       getSourcesList();
   /**
    * <pre>
-   * open set: prose, blocked_by, sub_issues
+   * open set: prose, blocked_by, sub_issues, task_list
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -43,7 +43,7 @@ public interface EpicPlanOrBuilder extends
   int getSourcesCount();
   /**
    * <pre>
-   * open set: prose, blocked_by, sub_issues
+   * open set: prose, blocked_by, sub_issues, task_list
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -53,7 +53,7 @@ public interface EpicPlanOrBuilder extends
   java.lang.String getSources(int index);
   /**
    * <pre>
-   * open set: prose, blocked_by, sub_issues
+   * open set: prose, blocked_by, sub_issues, task_list
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>

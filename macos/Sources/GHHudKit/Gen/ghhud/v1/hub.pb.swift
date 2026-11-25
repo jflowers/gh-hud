@@ -2878,7 +2878,7 @@ public nonisolated struct Ghhud_V1_EpicPlan: Sendable {
 
   public var id: String = String()
 
-  /// open set: prose, blocked_by, sub_issues
+  /// open set: prose, blocked_by, sub_issues, task_list
   public var sources: [String] = []
 
   public var nodes: [Ghhud_V1_EpicNode] = []
