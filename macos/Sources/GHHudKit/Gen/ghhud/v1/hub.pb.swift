@@ -2938,6 +2938,10 @@ public nonisolated struct Ghhud_V1_EpicNode: Sendable {
 
   public var labelsKnown: Bool = false
 
+  /// area: the paths (in its repo) the planner expects the piece to change;
+  /// pieces whose areas overlap run one at a time.
+  public var area: [String] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -8122,7 +8126,7 @@ nonisolated extension Ghhud_V1_EpicPlan: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".EpicNode"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}title\0\u{1}phase\0\u{1}after\0\u{1}gate\0\u{1}source\0\u{1}state\0\u{1}note\0\u{1}pr\0\u{1}cleared\0\u{1}labels\0\u{3}labels_known\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}title\0\u{1}phase\0\u{1}after\0\u{1}gate\0\u{1}source\0\u{1}state\0\u{1}note\0\u{1}pr\0\u{1}cleared\0\u{1}labels\0\u{3}labels_known\0\u{1}area\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -8142,6 +8146,7 @@ nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._M
       case 10: try { try decoder.decodeSingularBoolField(value: &self.cleared) }()
       case 11: try { try decoder.decodeRepeatedStringField(value: &self.labels) }()
       case 12: try { try decoder.decodeSingularBoolField(value: &self.labelsKnown) }()
+      case 13: try { try decoder.decodeRepeatedStringField(value: &self.area) }()
       default: break
       }
     }
@@ -8184,6 +8189,9 @@ nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._M
     if self.labelsKnown != false {
       try visitor.visitSingularBoolField(value: self.labelsKnown, fieldNumber: 12)
     }
+    if !self.area.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.area, fieldNumber: 13)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -8200,6 +8208,7 @@ nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._M
     if lhs.cleared != rhs.cleared {return false}
     if lhs.labels != rhs.labels {return false}
     if lhs.labelsKnown != rhs.labelsKnown {return false}
+    if lhs.area != rhs.area {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

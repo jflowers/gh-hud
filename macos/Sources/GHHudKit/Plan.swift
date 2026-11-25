@@ -239,7 +239,8 @@ public struct EpicRow: Identifiable, Equatable, Sendable {
             .filter { $0.element.state != "done" && $0.element.state != "dropped" }
             .sorted { (rank[$0.element.state] ?? 7, $0.offset) < (rank[$1.element.state] ?? 7, $1.offset) }
             .map { _, n in
-                Piece(ref: n.ref, short: Self.short(repo, n.ref), title: n.title, state: n.state, note: n.note,
+                Piece(ref: n.ref, short: Self.short(repo, n.ref), title: n.title, state: n.state,
+                      note: [n.note, n.area.isEmpty ? "" : "[" + n.area.joined(separator: ", ") + "]"].filter { !$0.isEmpty }.joined(separator: "  "),
                       active: ["ready", "in_progress", "running"].contains(n.state),
                       clearable: approved && n.state == "gated" && !n.gate.isEmpty && !n.cleared)
             }

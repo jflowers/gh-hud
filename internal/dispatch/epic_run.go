@@ -12,6 +12,10 @@ package dispatch
 //     of the bare ref: the item carries the epic's goal and rules, which a
 //     bare ref can't.
 //   - A piece gets [epics] max_runs runs after approval; then it's yours.
+//   - Pieces whose areas overlap run one at a time (epic/area.go): a
+//     ready piece waits while a piece of the same epic working in its area
+//     (running, or with an open PR, whose changed files then stand in for
+//     its area) is in the same repo. A piece with no area never waits.
 //   - The epic gets [epics] max_total_runs runs after approval, all its
 //     pieces together (its run budget). Once they're used, no piece
 //     starts: the ready ones need you, and approving the plan again grants
@@ -137,11 +141,19 @@ func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool, byRef ma
 				active++
 			}
 		}
+		var working []epic.Node // running, or with an open PR
+		for _, p := range pieces {
+			if p.live || p.n.State == epic.NodeInProgress {
+				working = append(working, p.n)
+			}
+		}
+		claims := areaClaims(working, byRef)
 		for _, p := range pieces {
 			n := p.n
 			if queued[n.Ref] || skip[n.Ref] {
 				continue
 			}
+			other, shared := claims.overlap(n)
 			it, known := pieceItem(n, byRef)
 			row := PlanRow{Item: it, Task: TaskIssue, Epic: e.Ref, labelsUnknown: !known}
 			var last *Run
@@ -179,6 +191,9 @@ func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool, byRef ma
 			case budget > 0 && used >= budget:
 				row.Stage = Stage{Kind: StageNeedsYou, Task: TaskIssue, Reason: fmt.Sprintf("epic: run budget spent (%d/%d runs)", used, budget)}
 				d.noteBudgetSpent(e, budget)
+			case other != "":
+				repo, _, _ := epic.ParseRef(e.Ref)
+				row.Stage = Stage{Kind: StageWait, Task: TaskIssue, Reason: fmt.Sprintf("epic: same area as %s (%s)", epic.Short(repo, other), shared)}
 			case active >= maxActive:
 				row.Stage = Stage{Kind: StageWait, Task: TaskIssue, Reason: fmt.Sprintf("epic: %d active (max %d)", active, maxActive)}
 			case !known && d.placesByLabel():
@@ -188,7 +203,8 @@ func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool, byRef ma
 			default:
 				row.Stage = Stage{Kind: StageNext, Task: TaskIssue}
 				active++ // the next ready pieces wait for this one's slot
-				used++   // and for this one's run
+				claims = claims.add(n.Ref, n.Area)
+				used++ // and for this one's run
 			}
 			if row.Note == "" {
 				row.Note = "epic " + e.Ref
@@ -197,6 +213,54 @@ func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool, byRef ma
 		}
 	}
 	return rows
+}
+
+// areaClaim is a piece working in an area: running, or with an open PR.
+type areaClaim struct {
+	ref, repo string
+	area      []string
+}
+
+type areaClaimList []areaClaim
+
+// areaClaims are the working pieces' areas: a piece's open PR's changed
+// files when the refresh lists them, else its expected area.
+func areaClaims(working []epic.Node, byRef map[string]model.Item) areaClaimList {
+	var out areaClaimList
+	for _, n := range working {
+		repo, _, _ := epic.ParseRef(n.Ref)
+		area := n.Area
+		if n.PR > 0 {
+			if pr, ok := byRef[epic.Ref(repo, n.PR)]; ok && pr.Files != nil {
+				area = pr.Files
+			}
+		}
+		out = out.add(n.Ref, area)
+	}
+	return out
+}
+
+func (cs areaClaimList) add(ref string, area []string) areaClaimList {
+	if len(area) == 0 {
+		return cs
+	}
+	repo, _, _ := epic.ParseRef(ref)
+	return append(cs, areaClaim{ref: ref, repo: repo, area: area})
+}
+
+// overlap is another working piece in the same repo whose area overlaps
+// n's, and the path they share; "" when none does.
+func (cs areaClaimList) overlap(n epic.Node) (ref, shared string) {
+	repo, _, _ := epic.ParseRef(n.Ref)
+	for _, c := range cs {
+		if c.ref == n.Ref || c.repo != repo {
+			continue
+		}
+		if s := epic.SharedPath(n.Area, c.area); s != "" {
+			return c.ref, s
+		}
+	}
+	return "", ""
 }
 
 // noteBudgetSpent tells you once per approval that an epic's run budget

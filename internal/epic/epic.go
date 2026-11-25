@@ -73,6 +73,11 @@ type Node struct {
 	Phase string   `json:"phase,omitempty"`
 	After []string `json:"after,omitempty"` // refs it waits on: nodes, or other issues and PRs
 	Gate  string   `json:"gate,omitempty"`  // a condition that isn't an issue or PR
+	// Area is the paths (files or directories, in the piece's repo) the
+	// planner expects the piece to change. Pieces whose areas overlap run
+	// one at a time (area.go). Not part of the plan's identity: changing
+	// it never asks for approval again.
+	Area []string `json:"area,omitempty"`
 	// Cleared says you cleared the gate; it no longer holds the piece.
 	Cleared bool   `json:"cleared,omitempty"`
 	Source  string `json:"source,omitempty"`
@@ -339,6 +344,7 @@ type AnswerNode struct {
 	Phase string   `json:"phase"`
 	After []string `json:"after"`
 	Gate  string   `json:"gate"`
+	Area  []string `json:"area,omitempty"`
 }
 
 // Fact is what GitHub says about one ref.
@@ -416,8 +422,12 @@ func BuildPlan(epicRef string, ans Answer, mentioned []string, facts map[string]
 			return nil, fmt.Errorf("%s: gate is over %d characters", ref, maxGateLen)
 		}
 		have[ref] = true
+		area, err := CleanArea(an.Area)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", ref, err)
+		}
 		n := Node{Ref: ref, Title: facts[ref].Title, Phase: strings.TrimSpace(an.Phase),
-			Gate: strings.TrimSpace(an.Gate), Source: SourceProse}
+			Gate: strings.TrimSpace(an.Gate), Source: SourceProse, Area: area}
 		for _, a := range an.After {
 			ar, err := norm(a)
 			if err != nil {

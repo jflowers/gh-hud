@@ -665,6 +665,9 @@ do {
     check(er.status == "approved · 1/6 done, 1 running, 1 ready, 0 in progress", "epic status \(er.status)")
     check(er.open.map(\.short) == ["other/x#1", "lib#4", "#53", "#52"], "open pieces, running first: \(er.open.map(\.short))")
     check(er.open[2].clearable && !er.open[3].clearable && er.planToApprove == nil, "approved: gates clear, no plan to approve")
+    var areaEpic = e
+    areaEpic.plan.nodes[3].area = ["internal/index", "go.mod"]
+    check(EpicRow(areaEpic).open[1].note == "[internal/index, go.mod]", "piece area \(EpicRow(areaEpic).open[1].note)")
     check(er.planToFinish == nil && er.summary.isEmpty, "unfinished: nothing to finish")
     var heldEpic = e
     heldEpic.held = "hold"

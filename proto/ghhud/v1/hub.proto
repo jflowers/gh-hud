@@ -872,6 +872,9 @@ message EpicNode {
   // labels_known says that check read them (placement by label).
   repeated string labels = 11;
   bool labels_known = 12;
+  // area: the paths (in its repo) the planner expects the piece to change;
+  // pieces whose areas overlap run one at a time.
+  repeated string area = 13;
 }
 
 // CheckoutHealth is whether a ghws checkout can take a dispatch.

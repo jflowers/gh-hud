@@ -283,6 +283,9 @@ func printEpics(w io.Writer, epics []epic.Epic) {
 			if n.Note != "" {
 				line += "  (" + n.Note + ")"
 			}
+			if len(n.Area) > 0 {
+				line += "  [" + strings.Join(n.Area, ", ") + "]"
+			}
 			if n.State == epic.NodeGated {
 				line += fmt.Sprintf("  → gh-hud epic clear %s %s", e.Ref, epic.Short(repo, n.Ref))
 			}

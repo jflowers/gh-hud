@@ -96,6 +96,7 @@ func clonePlan(in *epic.Plan) *epic.Plan {
 	p.Nodes = slices.Clone(p.Nodes)
 	for i := range p.Nodes {
 		p.Nodes[i].After = slices.Clone(p.Nodes[i].After)
+		p.Nodes[i].Area = slices.Clone(p.Nodes[i].Area)
 	}
 	p.Sources, p.Rules, p.Skipped = slices.Clone(p.Sources), slices.Clone(p.Rules), slices.Clone(p.Skipped)
 	return &p
@@ -661,6 +662,13 @@ func epicBrief(ref string, iss epicIssue, mentioned []string, facts map[string]e
 - "gate" is a condition that isn't an issue or PR and that only a person can
   clear, e.g. "a second refresh proves repetition". Put it on the pieces it
   holds back. Leave it empty otherwise.
+- "area" is the files or directories, in the piece's own repo, the piece
+  is expected to change, when the epic or the issue says or makes it plain
+  (e.g. ["internal/index", "cmd/dewey/reindex.go"]). gh-hud runs pieces
+  whose areas overlap one at a time, so their PRs don't conflict. At most 8
+  paths, no globs; name a directory rather than every file in it. Leave it
+  empty when you can't tell: a wrong area only delays a piece, a missing
+  one lets it run alongside the others. You may open an issue to find it.
 - "rules" are the epic's constraints every piece must respect: non-goals,
   principles, things never to do (e.g. "never weaken a guard in a repo's
   committed config"). Keep each one sentence under 300 characters, and
@@ -671,7 +679,7 @@ func epicBrief(ref string, iss epicIssue, mentioned []string, facts map[string]e
 %s
 ## Answer
 End with exactly one fenced json block:
-{"nodes": [{"ref": "owner/repo#N", "phase": "<short phase name, e.g. Phase 2, or empty>", "after": ["owner/repo#M"], "gate": "<condition or empty>"}],
+{"nodes": [{"ref": "owner/repo#N", "phase": "<short phase name, e.g. Phase 2, or empty>", "after": ["owner/repo#M"], "gate": "<condition or empty>", "area": ["<path>"]}],
  "rules": ["<rule>"],
  "skipped": [{"ref": "owner/repo#N", "why": "<a few words>"}]}
 `, prevSection(prev, mentioned))
@@ -693,7 +701,7 @@ func prevSection(prev *epic.Plan, mentioned []string) string {
 		// Edges from blocked-by links come back on their own; the planner
 		// may only name refs the body mentions.
 		after := slices.DeleteFunc(slices.Clone(n.After), func(r string) bool { return !slices.Contains(mentioned, r) })
-		ans.Nodes = append(ans.Nodes, epic.AnswerNode{Ref: n.Ref, Phase: n.Phase, After: after, Gate: n.Gate})
+		ans.Nodes = append(ans.Nodes, epic.AnswerNode{Ref: n.Ref, Phase: n.Phase, After: after, Gate: n.Gate, Area: n.Area})
 	}
 	ans.Rules = prev.Rules
 	b, _ := json.MarshalIndent(ans, "", " ")
