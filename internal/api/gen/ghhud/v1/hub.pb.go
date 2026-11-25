@@ -6278,7 +6278,7 @@ func (x *EpicReport) GetLog() string {
 type EpicPlan struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Id       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Sources  []string               `protobuf:"bytes,2,rep,name=sources,proto3" json:"sources,omitempty"` // open set: prose, blocked_by, sub_issues
+	Sources  []string               `protobuf:"bytes,2,rep,name=sources,proto3" json:"sources,omitempty"` // open set: prose, blocked_by, sub_issues, task_list
 	Nodes    []*EpicNode            `protobuf:"bytes,3,rep,name=nodes,proto3" json:"nodes,omitempty"`
 	Rules    []string               `protobuf:"bytes,4,rep,name=rules,proto3" json:"rules,omitempty"`
 	Skipped  []string               `protobuf:"bytes,5,rep,name=skipped,proto3" json:"skipped,omitempty"`

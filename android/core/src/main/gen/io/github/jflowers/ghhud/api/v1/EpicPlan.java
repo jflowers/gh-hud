@@ -79,7 +79,7 @@ public  final class EpicPlan extends
   private com.google.protobuf.Internal.ProtobufList<java.lang.String> sources_;
   /**
    * <pre>
-   * open set: prose, blocked_by, sub_issues
+   * open set: prose, blocked_by, sub_issues, task_list
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -91,7 +91,7 @@ public  final class EpicPlan extends
   }
   /**
    * <pre>
-   * open set: prose, blocked_by, sub_issues
+   * open set: prose, blocked_by, sub_issues, task_list
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -103,7 +103,7 @@ public  final class EpicPlan extends
   }
   /**
    * <pre>
-   * open set: prose, blocked_by, sub_issues
+   * open set: prose, blocked_by, sub_issues, task_list
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -116,7 +116,7 @@ public  final class EpicPlan extends
   }
   /**
    * <pre>
-   * open set: prose, blocked_by, sub_issues
+   * open set: prose, blocked_by, sub_issues, task_list
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -138,7 +138,7 @@ public  final class EpicPlan extends
   }
   /**
    * <pre>
-   * open set: prose, blocked_by, sub_issues
+   * open set: prose, blocked_by, sub_issues, task_list
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -153,7 +153,7 @@ public  final class EpicPlan extends
   }
   /**
    * <pre>
-   * open set: prose, blocked_by, sub_issues
+   * open set: prose, blocked_by, sub_issues, task_list
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -167,7 +167,7 @@ public  final class EpicPlan extends
   }
   /**
    * <pre>
-   * open set: prose, blocked_by, sub_issues
+   * open set: prose, blocked_by, sub_issues, task_list
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -181,7 +181,7 @@ public  final class EpicPlan extends
   }
   /**
    * <pre>
-   * open set: prose, blocked_by, sub_issues
+   * open set: prose, blocked_by, sub_issues, task_list
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -191,7 +191,7 @@ public  final class EpicPlan extends
   }
   /**
    * <pre>
-   * open set: prose, blocked_by, sub_issues
+   * open set: prose, blocked_by, sub_issues, task_list
    * </pre>
    *
    * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -894,7 +894,7 @@ public  final class EpicPlan extends
 
     /**
      * <pre>
-     * open set: prose, blocked_by, sub_issues
+     * open set: prose, blocked_by, sub_issues, task_list
      * </pre>
      *
      * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -908,7 +908,7 @@ public  final class EpicPlan extends
     }
     /**
      * <pre>
-     * open set: prose, blocked_by, sub_issues
+     * open set: prose, blocked_by, sub_issues, task_list
      * </pre>
      *
      * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -920,7 +920,7 @@ public  final class EpicPlan extends
     }
     /**
      * <pre>
-     * open set: prose, blocked_by, sub_issues
+     * open set: prose, blocked_by, sub_issues, task_list
      * </pre>
      *
      * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -933,7 +933,7 @@ public  final class EpicPlan extends
     }
     /**
      * <pre>
-     * open set: prose, blocked_by, sub_issues
+     * open set: prose, blocked_by, sub_issues, task_list
      * </pre>
      *
      * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -947,7 +947,7 @@ public  final class EpicPlan extends
     }
     /**
      * <pre>
-     * open set: prose, blocked_by, sub_issues
+     * open set: prose, blocked_by, sub_issues, task_list
      * </pre>
      *
      * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -963,7 +963,7 @@ public  final class EpicPlan extends
     }
     /**
      * <pre>
-     * open set: prose, blocked_by, sub_issues
+     * open set: prose, blocked_by, sub_issues, task_list
      * </pre>
      *
      * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -978,7 +978,7 @@ public  final class EpicPlan extends
     }
     /**
      * <pre>
-     * open set: prose, blocked_by, sub_issues
+     * open set: prose, blocked_by, sub_issues, task_list
      * </pre>
      *
      * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -993,7 +993,7 @@ public  final class EpicPlan extends
     }
     /**
      * <pre>
-     * open set: prose, blocked_by, sub_issues
+     * open set: prose, blocked_by, sub_issues, task_list
      * </pre>
      *
      * <code>repeated string sources = 2 [json_name = "sources"];</code>
@@ -1006,7 +1006,7 @@ public  final class EpicPlan extends
     }
     /**
      * <pre>
-     * open set: prose, blocked_by, sub_issues
+     * open set: prose, blocked_by, sub_issues, task_list
      * </pre>
      *
      * <code>repeated string sources = 2 [json_name = "sources"];</code>

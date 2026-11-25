@@ -35,6 +35,7 @@ const (
 	SourceProse     = "prose"
 	SourceBlockedBy = "blocked_by"
 	SourceSubIssues = "sub_issues"
+	SourceTaskList  = "task_list"
 )
 
 // State is where an epic stands.

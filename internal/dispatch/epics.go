@@ -11,9 +11,13 @@ package dispatch
 //     every piece must respect. gh-hud refuses refs the body doesn't
 //     mention, PRs as pieces, and cycles; a refused answer gets one retry.
 //   - blocked_by: GitHub's blocked-by links of the pieces.
-//   - sub_issues: the epic's GitHub sub-issues, each a piece. When the
-//     body mentions nothing else, the plan is built from them and the
-//     blocked-by links alone, without the supervisor.
+//   - sub_issues: the epic's GitHub sub-issues, each a piece.
+//   - task_list: the first issue on each checkbox line of the body, each a
+//     piece, unless the supervisor skipped it on purpose.
+//
+// When the body mentions nothing but sub-issues and task-list issues, the
+// plan is built from them and the blocked-by links alone, without the
+// supervisor.
 //
 // Status comes from GitHub on every refresh, never from the body's
 // checkboxes. Approving a plan is consent to start its ready pieces within
@@ -505,10 +509,14 @@ func (d *Dispatcher) planEpic(ctx context.Context, ref string, prev *epic.Plan) 
 		mentioned = mentioned[:epicMaxMentions]
 	}
 	facts := d.fetchFacts(ctx, append(slices.Clone(iss.SubIssues), mentioned...))
-	others := slices.DeleteFunc(slices.Clone(mentioned), func(r string) bool { return slices.Contains(iss.SubIssues, r) })
+	tasks := epic.TaskListIssues(slices.DeleteFunc(epic.TaskListRefs(repo, iss.Body), func(r string) bool { return r == ref }), facts)
+	others := slices.DeleteFunc(slices.Clone(mentioned), func(r string) bool {
+		return slices.Contains(iss.SubIssues, r) || slices.Contains(tasks, r)
+	})
 	if len(others) == 0 {
-		// Structured: its sub-issues are the plan. No supervisor read.
-		plan, err := epic.FromSubIssues(ref, iss.SubIssues, facts)
+		// Structured: its sub-issues and task list are the plan. No
+		// supervisor read.
+		plan, err := epic.FromStructure(iss.SubIssues, tasks, facts)
 		if err != nil {
 			return nil, iss, "", err
 		}
@@ -534,8 +542,10 @@ func (d *Dispatcher) planEpic(ctx context.Context, ref string, prev *epic.Plan) 
 	if err != nil {
 		return nil, iss, log, err
 	}
-	// Every sub-issue is a piece, placed by the planner or not.
+	// Every sub-issue is a piece, placed by the planner or not; so is every
+	// task-list issue the planner didn't skip on purpose.
 	epic.MergeSubIssues(plan, iss.SubIssues, facts)
+	epic.MergeTaskList(plan, tasks, facts)
 	return d.finishPlan(ctx, plan, iss, prev, facts), iss, log, nil
 }
 

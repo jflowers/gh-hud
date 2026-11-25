@@ -844,7 +844,7 @@ message EpicReport {
 // EpicPlan is an epic read as a graph.
 message EpicPlan {
   string id = 1;
-  repeated string sources = 2; // open set: prose, blocked_by, sub_issues
+  repeated string sources = 2; // open set: prose, blocked_by, sub_issues, task_list
   repeated EpicNode nodes = 3;
   repeated string rules = 4;
   repeated string skipped = 5;
