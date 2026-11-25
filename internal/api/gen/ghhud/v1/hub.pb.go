@@ -4178,8 +4178,11 @@ type Item struct {
 	// The head's cancelled check runs: CI shows them as passing, but GitHub
 	// blocks the merge on them (#186).
 	CancelledChecks []string `protobuf:"bytes,46,rep,name=cancelled_checks,json=cancelledChecks,proto3" json:"cancelled_checks,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Who turned auto-merge on: "github-actions" when ship's deps-automerge
+	// workflow armed a Dependabot PR, which is what lets the bot review it.
+	AutoMergeBy   string `protobuf:"bytes,47,opt,name=auto_merge_by,json=autoMergeBy,proto3" json:"auto_merge_by,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Item) Reset() {
@@ -4532,6 +4535,13 @@ func (x *Item) GetCancelledChecks() []string {
 		return x.CancelledChecks
 	}
 	return nil
+}
+
+func (x *Item) GetAutoMergeBy() string {
+	if x != nil {
+		return x.AutoMergeBy
+	}
+	return ""
 }
 
 // Session is an agent session on some machine.
@@ -8320,7 +8330,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x05total\x18\x03 \x01(\x03R\x05total\"B\n" +
 	"\fSectionError\x12\x18\n" +
 	"\asection\x18\x01 \x01(\tR\asection\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\xd9\v\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\xfd\v\n" +
 	"\x04Item\x12&\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x12.ghhud.v1.ItemKindR\x04kind\x12\x1e\n" +
 	"\n" +
@@ -8380,7 +8390,8 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\n" +
 	"run_branch\x18* \x01(\tR\trunBranch\x12\x1b\n" +
 	"\trun_event\x18+ \x01(\tR\brunEvent\x12)\n" +
-	"\x10cancelled_checks\x18. \x03(\tR\x0fcancelledChecks\"\x8e\x04\n" +
+	"\x10cancelled_checks\x18. \x03(\tR\x0fcancelledChecks\x12\"\n" +
+	"\rauto_merge_by\x18/ \x01(\tR\vautoMergeBy\"\x8e\x04\n" +
 	"\aSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1c\n" +

@@ -298,9 +298,14 @@ func FetchAll(ctx context.Context, c *gh.Client, cfg *config.Config) *FetchResul
 }
 
 // markReady sets the derived section bits: CatReady for my PRs waiting only
-// on a human maintainer, CatQueue for PRs ready for an agent review.
+// on a human maintainer, CatQueue for PRs ready for an agent review. A
+// Dependabot PR merging itself leaves review-requested: it needs nothing
+// from me.
 func markReady(items []Item, me string, window time.Duration, bots *BotFilter) {
 	for i := range items {
+		if items[i].DependabotSettled() {
+			items[i].Cats &^= CatRQ
+		}
 		if items[i].MyMaintainerReady() {
 			items[i].Cats |= CatReady
 		}

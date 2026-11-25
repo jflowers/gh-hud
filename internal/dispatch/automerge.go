@@ -45,9 +45,11 @@ const (
 )
 
 // mergeOwned reports whether auto-merge may act on a PR: one I opened, or
-// one Dependabot opened (issue #19). Dependabot's PRs reach the Queue for
-// a bot review in model.BotOrg, and that approval is what the branch rules
-// wait for.
+// one Dependabot opened (issue #19). gh-hud never arms a Dependabot PR:
+// ship's deps-automerge workflow decides which updates merge themselves
+// (patch and minor bumps of our own dependencies) and leaves third-party
+// and major updates for a person. Once ship has armed one, gh-hud still
+// holds, re-runs and tracks it like mine.
 func mergeOwned(it model.Item) bool {
 	return mine(it) || it.Dependabot()
 }
@@ -67,6 +69,9 @@ func autoMergeAction(it model.Item, cfg config.AutoMergeConfig) mergeAction {
 			return mergeDisable
 		}
 		return mergeNone
+	}
+	if it.Dependabot() {
+		return mergeNone // ship arms Dependabot PRs, never gh-hud
 	}
 	if held || !it.AutoMergeAllowed || it.RequiredReviews < 1 || it.Merge == "⚠️" || it.HeadOID == "" {
 		return mergeNone

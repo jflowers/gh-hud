@@ -1471,7 +1471,34 @@ public object ItemKt {
 @kotlin.jvm.JvmName("setCancelledChecks")
     public fun com.google.protobuf.kotlin.DslList<kotlin.String, CancelledChecksProxy>.clear() {
       _builder.clearCancelledChecks()
-    }}
+    }
+    /**
+     * ```
+     * Who turned auto-merge on: "github-actions" when ship's deps-automerge
+     * workflow armed a Dependabot PR, which is what lets the bot review it.
+     * ```
+     *
+     * `string auto_merge_by = 47 [json_name = "autoMergeBy"];`
+     */
+    public var autoMergeBy: kotlin.String
+      @kotlin.jvm.JvmName("getAutoMergeBy")
+        get() = _builder.autoMergeBy
+      @kotlin.jvm.JvmName("setAutoMergeBy")
+        set(value) {
+        _builder.autoMergeBy = value
+      }
+    /**
+     * ```
+     * Who turned auto-merge on: "github-actions" when ship's deps-automerge
+     * workflow armed a Dependabot PR, which is what lets the bot review it.
+     * ```
+     *
+     * `string auto_merge_by = 47 [json_name = "autoMergeBy"];`
+     */
+    public fun clearAutoMergeBy() {
+      _builder.clearAutoMergeBy()
+    }
+  }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.Item.copy(block: `io.github.jflowers.ghhud.api.v1`.ItemKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.Item =
   `io.github.jflowers.ghhud.api.v1`.ItemKt.Dsl._create(this.toBuilder()).apply { block() }._build()

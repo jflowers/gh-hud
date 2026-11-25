@@ -1941,6 +1941,13 @@ public nonisolated struct Ghhud_V1_Item: @unchecked Sendable {
     set {_uniqueStorage()._cancelledChecks = newValue}
   }
 
+  /// Who turned auto-merge on: "github-actions" when ship's deps-automerge
+  /// workflow armed a Dependabot PR, which is what lets the bot review it.
+  public var autoMergeBy: String {
+    get {_storage._autoMergeBy}
+    set {_uniqueStorage()._autoMergeBy = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -6190,7 +6197,7 @@ nonisolated extension Ghhud_V1_SectionError: SwiftProtobuf.Message, SwiftProtobu
 
 nonisolated extension Ghhud_V1_Item: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Item"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{1}categories\0\u{1}url\0\u{1}repo\0\u{1}num\0\u{1}title\0\u{1}author\0\u{1}draft\0\u{3}created_at\0\u{3}updated_at\0\u{1}ci\0\u{1}codecov\0\u{1}review\0\u{3}bot_review\0\u{1}merge\0\u{1}threads\0\u{3}bot_threads\0\u{3}last_actor\0\u{3}waiting_on\0\u{1}tagged\0\u{3}other_approved\0\u{3}my_approval\0\u{3}bot_review_due\0\u{1}reasons\0\u{3}node_id\0\u{3}head_oid\0\u{3}merge_state\0\u{3}review_decision\0\u{3}required_reviews\0\u{3}auto_merge_on\0\u{3}auto_merge_allowed\0\u{1}labels\0\u{3}failing_checks\0\u{3}checks_required\0\u{3}required_fails\0\u{3}base_failing\0\u{3}base_passing\0\u{3}base_oid\0\u{1}size\0\u{1}files\0\u{3}head_branch\0\u{3}run_branch\0\u{3}run_event\0\u{3}threads_open\0\u{3}threads_more\0\u{3}cancelled_checks\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{1}categories\0\u{1}url\0\u{1}repo\0\u{1}num\0\u{1}title\0\u{1}author\0\u{1}draft\0\u{3}created_at\0\u{3}updated_at\0\u{1}ci\0\u{1}codecov\0\u{1}review\0\u{3}bot_review\0\u{1}merge\0\u{1}threads\0\u{3}bot_threads\0\u{3}last_actor\0\u{3}waiting_on\0\u{1}tagged\0\u{3}other_approved\0\u{3}my_approval\0\u{3}bot_review_due\0\u{1}reasons\0\u{3}node_id\0\u{3}head_oid\0\u{3}merge_state\0\u{3}review_decision\0\u{3}required_reviews\0\u{3}auto_merge_on\0\u{3}auto_merge_allowed\0\u{1}labels\0\u{3}failing_checks\0\u{3}checks_required\0\u{3}required_fails\0\u{3}base_failing\0\u{3}base_passing\0\u{3}base_oid\0\u{1}size\0\u{1}files\0\u{3}head_branch\0\u{3}run_branch\0\u{3}run_event\0\u{3}threads_open\0\u{3}threads_more\0\u{3}cancelled_checks\0\u{3}auto_merge_by\0")
 
   fileprivate class _StorageClass {
     var _kind: Ghhud_V1_ItemKind = .unspecified
@@ -6239,6 +6246,7 @@ nonisolated extension Ghhud_V1_Item: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _runBranch: String = String()
     var _runEvent: String = String()
     var _cancelledChecks: [String] = []
+    var _autoMergeBy: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -6295,6 +6303,7 @@ nonisolated extension Ghhud_V1_Item: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _runBranch = source._runBranch
       _runEvent = source._runEvent
       _cancelledChecks = source._cancelledChecks
+      _autoMergeBy = source._autoMergeBy
     }
   }
 
@@ -6359,6 +6368,7 @@ nonisolated extension Ghhud_V1_Item: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 44: try { try decoder.decodeSingularInt64Field(value: &_storage._threadsOpen) }()
         case 45: try { try decoder.decodeSingularBoolField(value: &_storage._threadsMore) }()
         case 46: try { try decoder.decodeRepeatedStringField(value: &_storage._cancelledChecks) }()
+        case 47: try { try decoder.decodeSingularStringField(value: &_storage._autoMergeBy) }()
         default: break
         }
       }
@@ -6509,6 +6519,9 @@ nonisolated extension Ghhud_V1_Item: SwiftProtobuf.Message, SwiftProtobuf._Messa
       if !_storage._cancelledChecks.isEmpty {
         try visitor.visitRepeatedStringField(value: _storage._cancelledChecks, fieldNumber: 46)
       }
+      if !_storage._autoMergeBy.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._autoMergeBy, fieldNumber: 47)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -6564,6 +6577,7 @@ nonisolated extension Ghhud_V1_Item: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._runBranch != rhs_storage._runBranch {return false}
         if _storage._runEvent != rhs_storage._runEvent {return false}
         if _storage._cancelledChecks != rhs_storage._cancelledChecks {return false}
+        if _storage._autoMergeBy != rhs_storage._autoMergeBy {return false}
         return true
       }
       if !storagesAreEqual {return false}

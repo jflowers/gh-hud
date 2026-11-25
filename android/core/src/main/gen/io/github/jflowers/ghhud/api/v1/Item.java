@@ -45,6 +45,7 @@ public  final class Item extends
     runBranch_ = "";
     runEvent_ = "";
     cancelledChecks_ = emptyProtobufList();
+    autoMergeBy_ = "";
   }
   private int bitField0_;
   public static final int KIND_FIELD_NUMBER = 1;
@@ -2552,6 +2553,78 @@ public  final class Item extends
     checkByteStringIsUtf8(value);
     ensureCancelledChecksIsMutable();
     cancelledChecks_.add(value.toStringUtf8());
+  }
+
+  public static final int AUTO_MERGE_BY_FIELD_NUMBER = 47;
+  private java.lang.String autoMergeBy_;
+  /**
+   * <pre>
+   * Who turned auto-merge on: "github-actions" when ship's deps-automerge
+   * workflow armed a Dependabot PR, which is what lets the bot review it.
+   * </pre>
+   *
+   * <code>string auto_merge_by = 47 [json_name = "autoMergeBy"];</code>
+   * @return The autoMergeBy.
+   */
+  @java.lang.Override
+  public java.lang.String getAutoMergeBy() {
+    return autoMergeBy_;
+  }
+  /**
+   * <pre>
+   * Who turned auto-merge on: "github-actions" when ship's deps-automerge
+   * workflow armed a Dependabot PR, which is what lets the bot review it.
+   * </pre>
+   *
+   * <code>string auto_merge_by = 47 [json_name = "autoMergeBy"];</code>
+   * @return The bytes for autoMergeBy.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getAutoMergeByBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(autoMergeBy_);
+  }
+  /**
+   * <pre>
+   * Who turned auto-merge on: "github-actions" when ship's deps-automerge
+   * workflow armed a Dependabot PR, which is what lets the bot review it.
+   * </pre>
+   *
+   * <code>string auto_merge_by = 47 [json_name = "autoMergeBy"];</code>
+   * @param value The autoMergeBy to set.
+   */
+  private void setAutoMergeBy(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    autoMergeBy_ = value;
+  }
+  /**
+   * <pre>
+   * Who turned auto-merge on: "github-actions" when ship's deps-automerge
+   * workflow armed a Dependabot PR, which is what lets the bot review it.
+   * </pre>
+   *
+   * <code>string auto_merge_by = 47 [json_name = "autoMergeBy"];</code>
+   */
+  private void clearAutoMergeBy() {
+
+    autoMergeBy_ = getDefaultInstance().getAutoMergeBy();
+  }
+  /**
+   * <pre>
+   * Who turned auto-merge on: "github-actions" when ship's deps-automerge
+   * workflow armed a Dependabot PR, which is what lets the bot review it.
+   * </pre>
+   *
+   * <code>string auto_merge_by = 47 [json_name = "autoMergeBy"];</code>
+   * @param value The bytes for autoMergeBy to set.
+   */
+  private void setAutoMergeByBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    autoMergeBy_ = value.toStringUtf8();
+
   }
 
   public static io.github.jflowers.ghhud.api.v1.Item parseFrom(
@@ -5233,6 +5306,80 @@ public  final class Item extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Who turned auto-merge on: "github-actions" when ship's deps-automerge
+     * workflow armed a Dependabot PR, which is what lets the bot review it.
+     * </pre>
+     *
+     * <code>string auto_merge_by = 47 [json_name = "autoMergeBy"];</code>
+     * @return The autoMergeBy.
+     */
+    @java.lang.Override
+    public java.lang.String getAutoMergeBy() {
+      return instance.getAutoMergeBy();
+    }
+    /**
+     * <pre>
+     * Who turned auto-merge on: "github-actions" when ship's deps-automerge
+     * workflow armed a Dependabot PR, which is what lets the bot review it.
+     * </pre>
+     *
+     * <code>string auto_merge_by = 47 [json_name = "autoMergeBy"];</code>
+     * @return The bytes for autoMergeBy.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getAutoMergeByBytes() {
+      return instance.getAutoMergeByBytes();
+    }
+    /**
+     * <pre>
+     * Who turned auto-merge on: "github-actions" when ship's deps-automerge
+     * workflow armed a Dependabot PR, which is what lets the bot review it.
+     * </pre>
+     *
+     * <code>string auto_merge_by = 47 [json_name = "autoMergeBy"];</code>
+     * @param value The autoMergeBy to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAutoMergeBy(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setAutoMergeBy(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Who turned auto-merge on: "github-actions" when ship's deps-automerge
+     * workflow armed a Dependabot PR, which is what lets the bot review it.
+     * </pre>
+     *
+     * <code>string auto_merge_by = 47 [json_name = "autoMergeBy"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearAutoMergeBy() {
+      copyOnWrite();
+      instance.clearAutoMergeBy();
+      return this;
+    }
+    /**
+     * <pre>
+     * Who turned auto-merge on: "github-actions" when ship's deps-automerge
+     * workflow armed a Dependabot PR, which is what lets the bot review it.
+     * </pre>
+     *
+     * <code>string auto_merge_by = 47 [json_name = "autoMergeBy"];</code>
+     * @param value The bytes for autoMergeBy to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAutoMergeByBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setAutoMergeByBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.Item)
   }
   @java.lang.Override
@@ -5296,15 +5443,16 @@ public  final class Item extends
             "threadsOpen_",
             "threadsMore_",
             "cancelledChecks_",
+            "autoMergeBy_",
           };
           java.lang.String info =
-              "\u0000.\u0000\u0001\u0001..\u0000\b\u0000\u0001\f\u0002\u000b\u0003\u0208\u0004\u0208" +
+              "\u0000/\u0000\u0001\u0001//\u0000\b\u0000\u0001\f\u0002\u000b\u0003\u0208\u0004\u0208" +
               "\u0005\u0002\u0006\u0208\u0007\u0208\b\u0007\t\u1009\u0000\n\u1009\u0001\u000b\f" +
               "\f\f\r\u0208\u000e\u0208\u000f\u0208\u0010\u0002\u0011\u0002\u0012\u0208\u0013\u0208" +
               "\u0014\u0007\u0015\u0007\u0016\u0007\u0017\u0007\u0018\u021a\u0019\u0208\u001a\u0208" +
               "\u001b\u0208\u001c\u0208\u001d\u0002\u001e\u0007\u001f\u0007 \u021a!\u021a\"\u0007" +
               "#\u021a$\u021a%\u021a&\u0208\'\u0002(\u021a)\u0208*\u0208+\u0208,\u0002-\u0007.\u021a" +
-              "";
+              "/\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
