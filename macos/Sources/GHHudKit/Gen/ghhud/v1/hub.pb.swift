@@ -142,6 +142,9 @@ public nonisolated enum Ghhud_V1_CheckoutActionKind: SwiftProtobuf.Enum, Swift.C
 
   /// reindex the checkout's Dewey vault
   case reindex // = 5
+
+  /// throw the uncommitted changes away
+  case discard // = 6
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -156,6 +159,7 @@ public nonisolated enum Ghhud_V1_CheckoutActionKind: SwiftProtobuf.Enum, Swift.C
     case 3: self = .save
     case 4: self = .upkeep
     case 5: self = .reindex
+    case 6: self = .discard
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -168,6 +172,7 @@ public nonisolated enum Ghhud_V1_CheckoutActionKind: SwiftProtobuf.Enum, Swift.C
     case .save: return 3
     case .upkeep: return 4
     case .reindex: return 5
+    case .discard: return 6
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -180,6 +185,7 @@ public nonisolated enum Ghhud_V1_CheckoutActionKind: SwiftProtobuf.Enum, Swift.C
     .save,
     .upkeep,
     .reindex,
+    .discard,
   ]
 
 }
@@ -3600,7 +3606,7 @@ nonisolated extension Ghhud_V1_FleetAction: SwiftProtobuf._ProtoNameProviding {
 }
 
 nonisolated extension Ghhud_V1_CheckoutActionKind: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0CHECKOUT_ACTION_KIND_UNSPECIFIED\0\u{1}CHECKOUT_ACTION_KIND_PULL\0\u{1}CHECKOUT_ACTION_KIND_LEARNINGS\0\u{1}CHECKOUT_ACTION_KIND_SAVE\0\u{1}CHECKOUT_ACTION_KIND_UPKEEP\0\u{1}CHECKOUT_ACTION_KIND_REINDEX\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0CHECKOUT_ACTION_KIND_UNSPECIFIED\0\u{1}CHECKOUT_ACTION_KIND_PULL\0\u{1}CHECKOUT_ACTION_KIND_LEARNINGS\0\u{1}CHECKOUT_ACTION_KIND_SAVE\0\u{1}CHECKOUT_ACTION_KIND_UPKEEP\0\u{1}CHECKOUT_ACTION_KIND_REINDEX\0\u{1}CHECKOUT_ACTION_KIND_DISCARD\0")
 }
 
 nonisolated extension Ghhud_V1_ToolkitAction: SwiftProtobuf._ProtoNameProviding {

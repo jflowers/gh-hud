@@ -486,7 +486,7 @@ do {
     func on(_ h: Ghhud_V1_CheckoutHealth) -> [Ghhud_V1_CheckoutActionKind] {
         WorkspaceActions.actions(h).filter(\.enabled).map(\.kind)
     }
-    check(kinds(h) == [.pull, .learnings, .save, .upkeep, .reindex], "workspace actions: menu order \(kinds(h))")
+    check(kinds(h) == [.pull, .learnings, .save, .discard, .upkeep, .reindex], "workspace actions: menu order \(kinds(h))")
     check(on(h) == [.pull, .upkeep, .reindex], "workspace actions: a clean vault behind upstream \(on(h))")
     check(WorkspaceActions.actions(h)[0].title == "Fast-Forward main (3 behind)", "workspace actions: pull title")
 
@@ -502,12 +502,18 @@ do {
     lo.noUpstream = true
     check(!on(lo).contains(.save) && !on(lo).contains(.pull), "workspace actions: no fork to save to without upstream")
     check(WorkspaceActions.actions(w).first { $0.kind == .save }?.confirm == true, "workspace actions: save asks first")
+    check(on(w).contains(.discard) && !on(h).contains(.discard) && !on(lo).contains(.discard),
+          "workspace actions: discard only uncommitted changes")
+    let disc = WorkspaceActions.actions(w).first { $0.kind == .discard }
+    check(disc?.confirm == true && disc?.destructive == true, "workspace actions: discard asks first, destructively")
+    check(WorkspaceActions.confirmation(.discard, w).contains("1 uncommitted change(s) in acme@lap1/widgets"),
+          "workspace actions: discard confirmation \(WorkspaceActions.confirmation(.discard, w))")
 
     var d = h; d.ahead = 1
     check(!on(d).contains(.pull) && on(d).contains(.save), "workspace actions: diverged can't fast-forward, can save")
 
     var busy = w; busy.busy = "acme/widgets#7"
-    check(on(busy).isEmpty && kinds(busy).count == 5, "workspace actions: a busy checkout offers all, disabled")
+    check(on(busy).isEmpty && kinds(busy).count == 6, "workspace actions: a busy checkout offers all, disabled")
     var up = h; up.upkeeping = true
     check(on(up).isEmpty, "workspace actions: nothing while upkeep runs")
 

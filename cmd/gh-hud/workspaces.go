@@ -32,6 +32,8 @@ const checkoutUsage = `usage: gh-hud checkout pull <machine> <checkout>        f
                                                         open a draft PR and go back to the default branch
        gh-hud checkout upkeep <machine> <checkout>      a full upkeep now, acting even when upkeep only reports
        gh-hud checkout reindex <machine> <checkout>     reindex the checkout's Dewey vault
+       gh-hud checkout discard <machine> <checkout>     throw the uncommitted changes away (keeps
+                                                        commits and untracked learnings)
 
 <machine> is a fleet machine's name, local for the hub. <checkout> is the
 checkout's directory, its workspace name or the directory's last element,
@@ -47,7 +49,7 @@ machine.
 // checkoutActions are the actions gh-hud checkout takes, in usage order.
 var checkoutActions = []dispatch.CheckoutAction{
 	dispatch.CheckoutPull, dispatch.CheckoutLearnings, dispatch.CheckoutSave,
-	dispatch.CheckoutUpkeep, dispatch.CheckoutReindex,
+	dispatch.CheckoutUpkeep, dispatch.CheckoutReindex, dispatch.CheckoutDiscard,
 }
 
 // outcomeView is a checkout's last upkeep or reindex.

@@ -327,7 +327,8 @@ struct WorkspacesPane: View {
             .confirmationDialog(confirming.map { "\($0.action.title.replacingOccurrences(of: "…", with: "")) in \($0.row.place)?" } ?? "",
                                 isPresented: Binding(get: { confirming != nil }, set: { if !$0 { confirming = nil } }),
                                 titleVisibility: .visible, presenting: confirming) { c in
-                Button(c.action.title.replacingOccurrences(of: "…", with: "")) { start(c.action.kind, on: c.row) }
+                Button(c.action.title.replacingOccurrences(of: "…", with: ""),
+                       role: c.action.destructive ? .destructive : nil) { start(c.action.kind, on: c.row) }
                 Button("Cancel", role: .cancel) {}
             } message: { c in
                 Text(WorkspaceActions.confirmation(c.action.kind, c.row.health))

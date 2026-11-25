@@ -131,11 +131,11 @@ public interface HubServiceClientInterface {
   /**
    *  CheckoutAction starts one action on one fleet checkout from the
    *  Workspaces list (#172): fast-forward it, open its learnings PRs, save
-   *  its leftover work to a draft PR, keep it up now, or reindex its Dewey
-   *  vault. It runs in the background; the outcome is the checkout's last
-   *  upkeep or reindex and an event. Refused when this hub doesn't own
-   *  dispatch, the checkout isn't a fleet checkout in the last Workspaces
-   *  read, or its machine's slot is taken.
+   *  its leftover work to a draft PR, keep it up now, reindex its Dewey
+   *  vault, or discard its uncommitted changes. It runs in the background;
+   *  the outcome is the checkout's last upkeep or reindex and an event.
+   *  Refused when this hub doesn't own dispatch, the checkout isn't a fleet
+   *  checkout in the last Workspaces read, or its machine's slot is taken.
    */
   public suspend fun checkoutAction(request: CheckoutActionRequest, headers: Headers = emptyMap()): ResponseMessage<CheckoutActionResponse>
 

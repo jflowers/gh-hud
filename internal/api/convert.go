@@ -954,6 +954,7 @@ var checkoutActions = map[dispatch.CheckoutAction]pb.CheckoutActionKind{
 	dispatch.CheckoutSave:      pb.CheckoutActionKind_CHECKOUT_ACTION_KIND_SAVE,
 	dispatch.CheckoutUpkeep:    pb.CheckoutActionKind_CHECKOUT_ACTION_KIND_UPKEEP,
 	dispatch.CheckoutReindex:   pb.CheckoutActionKind_CHECKOUT_ACTION_KIND_REINDEX,
+	dispatch.CheckoutDiscard:   pb.CheckoutActionKind_CHECKOUT_ACTION_KIND_DISCARD,
 }
 
 func checkoutActionToPB(a dispatch.CheckoutAction) pb.CheckoutActionKind {

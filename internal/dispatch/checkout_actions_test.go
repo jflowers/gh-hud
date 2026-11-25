@@ -2,6 +2,7 @@ package dispatch
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -132,6 +133,40 @@ func TestCheckoutSaveRunLeftovers(t *testing.T) {
 	}
 	if r, ok := d.backedUp(run.Ref); !ok || r.Backup != "origin/"+want {
 		t.Errorf("run record = %+v %v", r, ok)
+	}
+}
+
+// Discard throws the uncommitted changes away and keeps the commits,
+// untracked learnings and ignored files.
+func TestCheckoutDiscard(t *testing.T) {
+	d, _, work := upkeepTest(t, config.UpkeepReport)
+	leaveWork(t, work)
+	writeFile(t, filepath.Join(work, ".gitignore"), "*.log\n")
+	gitRun(t, work, "add", ".gitignore")
+	gitRun(t, work, "commit", "-q", "-m", "ignore logs")
+	writeFile(t, filepath.Join(work, "x.log"), "ignored\n")
+	if err := os.MkdirAll(filepath.Join(work, "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(work, "sub", "deep.txt"), "new\n")
+
+	line, err := runAction(t, d, work, CheckoutDiscard)
+	if err != nil || !strings.HasSuffix(line, ": discard 3 uncommitted file(s)") {
+		t.Fatalf("discard = %q, %v", line, err)
+	}
+	if st := porcelain(t, work); strings.Contains(st, "a.txt") || strings.Contains(st, "new.txt") || strings.Contains(st, "sub/") {
+		t.Errorf("checkout after discard: %q", st)
+	}
+	for _, f := range []string{"half.txt", "x.log", ".uf/dewey/learnings/keep.md"} {
+		if !fileExists(filepath.Join(work, f)) {
+			t.Errorf("discard removed %s", f)
+		}
+	}
+	if got := strings.TrimSpace(gitRun(t, work, "branch", "--show-current")); got != "opsx/thing" {
+		t.Errorf("checkout on %q, want opsx/thing", got)
+	}
+	if line, err := runAction(t, d, work, CheckoutDiscard); err != nil || !strings.HasSuffix(line, ": nothing to discard") {
+		t.Errorf("second discard = %q, %v", line, err)
 	}
 }
 

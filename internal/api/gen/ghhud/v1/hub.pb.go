@@ -155,6 +155,7 @@ const (
 	CheckoutActionKind_CHECKOUT_ACTION_KIND_SAVE        CheckoutActionKind = 3 // leftover work to a draft PR from the fork
 	CheckoutActionKind_CHECKOUT_ACTION_KIND_UPKEEP      CheckoutActionKind = 4 // a full upkeep now, acting
 	CheckoutActionKind_CHECKOUT_ACTION_KIND_REINDEX     CheckoutActionKind = 5 // reindex the checkout's Dewey vault
+	CheckoutActionKind_CHECKOUT_ACTION_KIND_DISCARD     CheckoutActionKind = 6 // throw the uncommitted changes away
 )
 
 // Enum value maps for CheckoutActionKind.
@@ -166,6 +167,7 @@ var (
 		3: "CHECKOUT_ACTION_KIND_SAVE",
 		4: "CHECKOUT_ACTION_KIND_UPKEEP",
 		5: "CHECKOUT_ACTION_KIND_REINDEX",
+		6: "CHECKOUT_ACTION_KIND_DISCARD",
 	}
 	CheckoutActionKind_value = map[string]int32{
 		"CHECKOUT_ACTION_KIND_UNSPECIFIED": 0,
@@ -174,6 +176,7 @@ var (
 		"CHECKOUT_ACTION_KIND_SAVE":        3,
 		"CHECKOUT_ACTION_KIND_UPKEEP":      4,
 		"CHECKOUT_ACTION_KIND_REINDEX":     5,
+		"CHECKOUT_ACTION_KIND_DISCARD":     6,
 	}
 )
 
@@ -8442,14 +8445,15 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x13FLEET_ACTION_RESUME\x10\x02\x12\x1a\n" +
 	"\x16FLEET_ACTION_APPLY_NOW\x10\x03\x12\x1a\n" +
 	"\x16FLEET_ACTION_SKIP_WAIT\x10\x04\x12\x16\n" +
-	"\x12FLEET_ACTION_RETRY\x10\x05*\xdf\x01\n" +
+	"\x12FLEET_ACTION_RETRY\x10\x05*\x81\x02\n" +
 	"\x12CheckoutActionKind\x12$\n" +
 	" CHECKOUT_ACTION_KIND_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19CHECKOUT_ACTION_KIND_PULL\x10\x01\x12\"\n" +
 	"\x1eCHECKOUT_ACTION_KIND_LEARNINGS\x10\x02\x12\x1d\n" +
 	"\x19CHECKOUT_ACTION_KIND_SAVE\x10\x03\x12\x1f\n" +
 	"\x1bCHECKOUT_ACTION_KIND_UPKEEP\x10\x04\x12 \n" +
-	"\x1cCHECKOUT_ACTION_KIND_REINDEX\x10\x05*\x9a\x01\n" +
+	"\x1cCHECKOUT_ACTION_KIND_REINDEX\x10\x05\x12 \n" +
+	"\x1cCHECKOUT_ACTION_KIND_DISCARD\x10\x06*\x9a\x01\n" +
 	"\rToolkitAction\x12\x1e\n" +
 	"\x1aTOOLKIT_ACTION_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15TOOLKIT_ACTION_CANCEL\x10\x01\x12\x18\n" +

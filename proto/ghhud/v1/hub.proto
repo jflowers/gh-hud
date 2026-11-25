@@ -95,11 +95,11 @@ service HubService {
 
   // CheckoutAction starts one action on one fleet checkout from the
   // Workspaces list (#172): fast-forward it, open its learnings PRs, save
-  // its leftover work to a draft PR, keep it up now, or reindex its Dewey
-  // vault. It runs in the background; the outcome is the checkout's last
-  // upkeep or reindex and an event. Refused when this hub doesn't own
-  // dispatch, the checkout isn't a fleet checkout in the last Workspaces
-  // read, or its machine's slot is taken.
+  // its leftover work to a draft PR, keep it up now, reindex its Dewey
+  // vault, or discard its uncommitted changes. It runs in the background;
+  // the outcome is the checkout's last upkeep or reindex and an event.
+  // Refused when this hub doesn't own dispatch, the checkout isn't a fleet
+  // checkout in the last Workspaces read, or its machine's slot is taken.
   rpc CheckoutAction(CheckoutActionRequest) returns (CheckoutActionResponse);
 
   // ToolkitRollout starts rolling a tool release out (issue #75);
@@ -423,6 +423,7 @@ enum CheckoutActionKind {
   CHECKOUT_ACTION_KIND_SAVE = 3; // leftover work to a draft PR from the fork
   CHECKOUT_ACTION_KIND_UPKEEP = 4; // a full upkeep now, acting
   CHECKOUT_ACTION_KIND_REINDEX = 5; // reindex the checkout's Dewey vault
+  CHECKOUT_ACTION_KIND_DISCARD = 6; // throw the uncommitted changes away
 }
 
 message CheckoutActionResponse {
