@@ -120,6 +120,26 @@ public class HubServiceClient(
 
 
   /**
+   *  CancelRun stops a live run (Snapshot.runs) by its id: its herdr pane
+   *  is closed, or its local process stopped. It finishes in the
+   *  background as failed, "cancelled from gh-hud", with its checkout's
+   *  uncommitted changes discarded and the checkout back on its default
+   *  branch when no commits were left. FAILED_PRECONDITION when the run
+   *  already finished.
+   */
+  override suspend fun cancelRun(request: CancelRunRequest, headers: Headers): ResponseMessage<CancelRunResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "ghhud.v1.HubService/CancelRun",
+      io.github.jflowers.ghhud.api.v1.CancelRunRequest::class,
+      io.github.jflowers.ghhud.api.v1.CancelRunResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  /**
    *  PruneBranches finds the dispatch checkouts' branches whose PR is
    *  merged or closed, and your forks' (gh-hud branches); with apply it
    *  deletes them and fast-forwards the forks' default branches.
@@ -182,6 +202,22 @@ public class HubServiceClient(
     "ghhud.v1.HubService/MoveQueued",
       io.github.jflowers.ghhud.api.v1.MoveQueuedRequest::class,
       io.github.jflowers.ghhud.api.v1.MoveQueuedResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  /**
+   *  SkipAuto takes a due auto step off the plan until the item changes
+   *  (its stage becomes "you", "skipped by you"); undo lets it run again.
+   */
+  override suspend fun skipAuto(request: SkipAutoRequest, headers: Headers): ResponseMessage<SkipAutoResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "ghhud.v1.HubService/SkipAuto",
+      io.github.jflowers.ghhud.api.v1.SkipAutoRequest::class,
+      io.github.jflowers.ghhud.api.v1.SkipAutoResponse::class,
       StreamType.UNARY,
     ),
   )

@@ -30,6 +30,8 @@ final class DashboardState: ObservableObject {
     @Published var planSelection: PlanItem.ID?
     @Published var dropping: EpicRow?
     @Published var finishing: EpicRow?
+    /// The live run waiting for you to confirm its cancel.
+    @Published var cancelling: CancelAsk?
     @Published var enrolling = false
     @Published var confirmSkipWait = false
     @Published var toolSelection: ToolRow.ID?
@@ -234,6 +236,16 @@ struct DashboardView: View {
                     if let n = ui.notice {
                         NoticeBar(notice: n) { ui.notice = nil }
                     }
+                }
+                .confirmationDialog(
+                    "Cancel \(ui.cancelling?.label ?? "")?",
+                    isPresented: Binding(get: { ui.cancelling != nil }, set: { if !$0 { ui.cancelling = nil } }),
+                    presenting: ui.cancelling
+                ) { a in
+                    Button("Cancel Run", role: .destructive) { ItemCommands(conn: conn, ui: ui).cancel(a) }
+                    Button("Keep Running", role: .cancel) {}
+                } message: { _ in
+                    Text("The agent is stopped and its checkout's uncommitted changes are thrown away. Commits it made stay on its branch. The run counts as failed, so auto-dispatch waits until the PR changes.")
                 }
         }
     }

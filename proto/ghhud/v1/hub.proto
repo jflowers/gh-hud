@@ -43,6 +43,13 @@ service HubService {
   // an issue or PR.
   rpc ItemChoices(ItemChoicesRequest) returns (ItemChoicesResponse);
   rpc Reinspect(ReinspectRequest) returns (ReinspectResponse);
+  // CancelRun stops a live run (Snapshot.runs) by its id: its herdr pane
+  // is closed, or its local process stopped. It finishes in the
+  // background as failed, "cancelled from gh-hud", with its checkout's
+  // uncommitted changes discarded and the checkout back on its default
+  // branch when no commits were left. FAILED_PRECONDITION when the run
+  // already finished.
+  rpc CancelRun(CancelRunRequest) returns (CancelRunResponse);
   // PruneBranches finds the dispatch checkouts' branches whose PR is
   // merged or closed, and your forks' (gh-hud branches); with apply it
   // deletes them and fast-forwards the forks' default branches.
@@ -53,6 +60,9 @@ service HubService {
   rpc Enqueue(EnqueueRequest) returns (EnqueueResponse);
   rpc Unqueue(UnqueueRequest) returns (UnqueueResponse);
   rpc MoveQueued(MoveQueuedRequest) returns (MoveQueuedResponse);
+  // SkipAuto takes a due auto step off the plan until the item changes
+  // (its stage becomes "you", "skipped by you"); undo lets it run again.
+  rpc SkipAuto(SkipAutoRequest) returns (SkipAutoResponse);
 
   // Supervisor proposals (Snapshot.cases), by proposal id.
   rpc ApproveProposal(ApproveProposalRequest) returns (ApproveProposalResponse);
@@ -204,6 +214,12 @@ message ReinspectResponse {
   Run run = 1;
 }
 
+message CancelRunRequest {
+  string run_id = 1;
+}
+
+message CancelRunResponse {}
+
 message PruneBranchesRequest {
   bool apply = 1;
 }
@@ -272,6 +288,14 @@ message MoveQueuedRequest {
 message MoveQueuedResponse {
   int64 index = 1; // 0 is first
 }
+
+message SkipAutoRequest {
+  string task = 1;
+  string url = 2; // the item's URL, as Dispatch takes it
+  bool undo = 3; // resume the step instead
+}
+
+message SkipAutoResponse {}
 
 message ApproveProposalRequest {
   string id = 1;

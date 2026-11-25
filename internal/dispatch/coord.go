@@ -85,6 +85,7 @@ func (d *Dispatcher) owns() bool {
 	d.mu.Lock()
 	d.loadState()
 	d.loadQueueLocked()
+	d.loadSkipsLocked()
 	d.loadDecisionsLocked()
 	d.loadProposalsLocked()
 	d.loadEpicsLocked()
@@ -134,6 +135,9 @@ func (d *Dispatcher) refreshFollowerLocked() {
 	}
 	if st, err := os.Stat(filepath.Join(d.o().StateDir, queueName)); err == nil && !st.ModTime().Equal(d.queueMod) {
 		d.loadQueueLocked()
+	}
+	if st, err := os.Stat(filepath.Join(d.o().StateDir, skipsName)); err == nil && !st.ModTime().Equal(d.skipsMod) {
+		d.loadSkipsLocked()
 	}
 	if st, err := os.Stat(filepath.Join(d.o().StateDir, decisionsName)); err == nil && !st.ModTime().Equal(d.decisionsMod) {
 		d.loadDecisionsLocked()
@@ -345,6 +349,9 @@ func (d *Dispatcher) Stage(it model.Item, runs []Run) Stage {
 	st := tp.reviewOverlay(it, stageOf(it, runs, d.o().Tasks, d.o().AutoMerge, tp, time.Now()))
 	if humanGated(it, d.o().HumanGate) && st.Kind != StageRunning && (it.Kind == model.KindPR || it.Kind == model.KindIssue) {
 		return Stage{Kind: StageNeedsYou, Reason: "human gate"}
+	}
+	if st.Kind == StageNext && d.skipped(st.Task, it) {
+		return Stage{Kind: StageNeedsYou, Task: st.Task, Reason: SkippedReason}
 	}
 	if st.Kind == StageNext {
 		if why := d.labelWhy(it); why != "" {

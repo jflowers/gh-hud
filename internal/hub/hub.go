@@ -45,6 +45,8 @@ type Dispatcher interface {
 	ItemChoicesWhy(it model.Item) ([]dispatch.MenuChoice, string)
 	Dispatch(ctx context.Context, task dispatch.Task, it model.Item, auto bool) (dispatch.Record, error)
 	Reinspect(ctx context.Context, id string) (dispatch.Run, error)
+	CancelRun(ctx context.Context, id string) error
+	SkipAuto(task dispatch.Task, it model.Item, undo bool) error
 	PruneBranches(ctx context.Context, apply bool) (dispatch.BranchSweep, error)
 	AutoPruneBranches(ctx context.Context) []string
 	StartCheckoutAction(machine, dir string, a dispatch.CheckoutAction, done func(string, error)) (string, error)
@@ -128,6 +130,9 @@ type Backend interface {
 	// item's URL after.
 	ItemChoices(ctx context.Context, ref string) (it model.Item, choices []dispatch.MenuChoice, why string, err error)
 	Reinspect(ctx context.Context, runID string) (dispatch.Run, error)
+	// CancelRun stops a live run; it finishes as cancelled in the
+	// background, its checkout's uncommitted changes discarded.
+	CancelRun(ctx context.Context, runID string) error
 	// PruneBranches sweeps for branches whose PR is done; apply deletes them.
 	PruneBranches(ctx context.Context, apply bool) (dispatch.BranchSweep, error)
 	// CheckoutAction starts an action on one fleet checkout of the last
@@ -141,6 +146,9 @@ type Backend interface {
 	Enqueue(ctx context.Context, task dispatch.Task, url string) (int, error)
 	Unqueue(ctx context.Context, task dispatch.Task, ref string) error
 	MoveQueued(ctx context.Context, task dispatch.Task, ref string, delta int) (int, error)
+	// SkipAuto skips a due auto step on the item at url until it changes;
+	// undo resumes it.
+	SkipAuto(ctx context.Context, task dispatch.Task, url string, undo bool) error
 
 	// Supervisor proposals, by proposal ID (Snapshot.Cases).
 	ApproveProposal(ctx context.Context, id string) error

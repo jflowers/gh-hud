@@ -179,6 +179,14 @@ func (f *Fake) ClearEpicGate(_ context.Context, ref, piece string) error {
 	return f.call("ClearEpicGate %s %s", ref, piece)
 }
 
+func (f *Fake) CancelRun(_ context.Context, runID string) error {
+	return f.call("CancelRun %s", runID)
+}
+
+func (f *Fake) SkipAuto(_ context.Context, task dispatch.Task, url string, undo bool) error {
+	return f.call("SkipAuto %s %s %v", task, url, undo)
+}
+
 func (f *Fake) Unqueue(_ context.Context, task dispatch.Task, ref string) error {
 	return f.call("Unqueue %s %s", task, ref)
 }

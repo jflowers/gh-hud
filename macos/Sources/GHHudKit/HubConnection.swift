@@ -202,6 +202,16 @@ public final class HubConnection {
         return Self.why(await client.unqueue(request: req, headers: hub.authHeaders))
     }
 
+    /// Skips a due auto step on an item until it changes; undo resumes it.
+    public func skipAuto(task: String, url: String, undo: Bool = false) async -> String? {
+        guard let hub, let client = commands else { return "not connected" }
+        var req = Ghhud_V1_SkipAutoRequest()
+        req.task = task
+        req.url = url
+        req.undo = undo
+        return Self.why(await client.skipAuto(request: req, headers: hub.authHeaders))
+    }
+
     /// Moves a queued task later (positive) or earlier; the result is its
     /// new index (0 first).
     public func moveQueued(task: String, ref: String, by delta: Int64) async -> Result<Int64, CommandError> {
@@ -327,6 +337,15 @@ public final class HubConnection {
         var req = Ghhud_V1_ReinspectRequest()
         req.runID = id
         return Self.result(await client.reinspect(request: req, headers: hub.authHeaders)).map(\.run)
+    }
+
+    /// Stops a live run; the hub finishes it as cancelled in the background,
+    /// discarding its checkout's uncommitted changes.
+    public func cancelRun(id: String) async -> String? {
+        guard let hub, let client = commands else { return "not connected" }
+        var req = Ghhud_V1_CancelRunRequest()
+        req.runID = id
+        return Self.why(await client.cancelRun(request: req, headers: hub.authHeaders))
     }
 
     /// Opens a run's opencode session in a terminal on its machine.

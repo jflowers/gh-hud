@@ -59,6 +59,8 @@ const (
 	HubServiceItemChoicesProcedure = "/ghhud.v1.HubService/ItemChoices"
 	// HubServiceReinspectProcedure is the fully-qualified name of the HubService's Reinspect RPC.
 	HubServiceReinspectProcedure = "/ghhud.v1.HubService/Reinspect"
+	// HubServiceCancelRunProcedure is the fully-qualified name of the HubService's CancelRun RPC.
+	HubServiceCancelRunProcedure = "/ghhud.v1.HubService/CancelRun"
 	// HubServicePruneBranchesProcedure is the fully-qualified name of the HubService's PruneBranches
 	// RPC.
 	HubServicePruneBranchesProcedure = "/ghhud.v1.HubService/PruneBranches"
@@ -70,6 +72,8 @@ const (
 	HubServiceUnqueueProcedure = "/ghhud.v1.HubService/Unqueue"
 	// HubServiceMoveQueuedProcedure is the fully-qualified name of the HubService's MoveQueued RPC.
 	HubServiceMoveQueuedProcedure = "/ghhud.v1.HubService/MoveQueued"
+	// HubServiceSkipAutoProcedure is the fully-qualified name of the HubService's SkipAuto RPC.
+	HubServiceSkipAutoProcedure = "/ghhud.v1.HubService/SkipAuto"
 	// HubServiceApproveProposalProcedure is the fully-qualified name of the HubService's
 	// ApproveProposal RPC.
 	HubServiceApproveProposalProcedure = "/ghhud.v1.HubService/ApproveProposal"
@@ -136,6 +140,13 @@ type HubServiceClient interface {
 	// an issue or PR.
 	ItemChoices(context.Context, *connect.Request[v1.ItemChoicesRequest]) (*connect.Response[v1.ItemChoicesResponse], error)
 	Reinspect(context.Context, *connect.Request[v1.ReinspectRequest]) (*connect.Response[v1.ReinspectResponse], error)
+	// CancelRun stops a live run (Snapshot.runs) by its id: its herdr pane
+	// is closed, or its local process stopped. It finishes in the
+	// background as failed, "cancelled from gh-hud", with its checkout's
+	// uncommitted changes discarded and the checkout back on its default
+	// branch when no commits were left. FAILED_PRECONDITION when the run
+	// already finished.
+	CancelRun(context.Context, *connect.Request[v1.CancelRunRequest]) (*connect.Response[v1.CancelRunResponse], error)
 	// PruneBranches finds the dispatch checkouts' branches whose PR is
 	// merged or closed, and your forks' (gh-hud branches); with apply it
 	// deletes them and fast-forwards the forks' default branches.
@@ -145,6 +156,9 @@ type HubServiceClient interface {
 	Enqueue(context.Context, *connect.Request[v1.EnqueueRequest]) (*connect.Response[v1.EnqueueResponse], error)
 	Unqueue(context.Context, *connect.Request[v1.UnqueueRequest]) (*connect.Response[v1.UnqueueResponse], error)
 	MoveQueued(context.Context, *connect.Request[v1.MoveQueuedRequest]) (*connect.Response[v1.MoveQueuedResponse], error)
+	// SkipAuto takes a due auto step off the plan until the item changes
+	// (its stage becomes "you", "skipped by you"); undo lets it run again.
+	SkipAuto(context.Context, *connect.Request[v1.SkipAutoRequest]) (*connect.Response[v1.SkipAutoResponse], error)
 	// Supervisor proposals (Snapshot.cases), by proposal id.
 	ApproveProposal(context.Context, *connect.Request[v1.ApproveProposalRequest]) (*connect.Response[v1.ApproveProposalResponse], error)
 	RejectProposal(context.Context, *connect.Request[v1.RejectProposalRequest]) (*connect.Response[v1.RejectProposalResponse], error)
@@ -247,6 +261,12 @@ func NewHubServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(hubServiceMethods.ByName("Reinspect")),
 			connect.WithClientOptions(opts...),
 		),
+		cancelRun: connect.NewClient[v1.CancelRunRequest, v1.CancelRunResponse](
+			httpClient,
+			baseURL+HubServiceCancelRunProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("CancelRun")),
+			connect.WithClientOptions(opts...),
+		),
 		pruneBranches: connect.NewClient[v1.PruneBranchesRequest, v1.PruneBranchesResponse](
 			httpClient,
 			baseURL+HubServicePruneBranchesProcedure,
@@ -275,6 +295,12 @@ func NewHubServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			httpClient,
 			baseURL+HubServiceMoveQueuedProcedure,
 			connect.WithSchema(hubServiceMethods.ByName("MoveQueued")),
+			connect.WithClientOptions(opts...),
+		),
+		skipAuto: connect.NewClient[v1.SkipAutoRequest, v1.SkipAutoResponse](
+			httpClient,
+			baseURL+HubServiceSkipAutoProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("SkipAuto")),
 			connect.WithClientOptions(opts...),
 		),
 		approveProposal: connect.NewClient[v1.ApproveProposalRequest, v1.ApproveProposalResponse](
@@ -397,11 +423,13 @@ type hubServiceClient struct {
 	dispatch        *connect.Client[v1.DispatchRequest, v1.DispatchResponse]
 	itemChoices     *connect.Client[v1.ItemChoicesRequest, v1.ItemChoicesResponse]
 	reinspect       *connect.Client[v1.ReinspectRequest, v1.ReinspectResponse]
+	cancelRun       *connect.Client[v1.CancelRunRequest, v1.CancelRunResponse]
 	pruneBranches   *connect.Client[v1.PruneBranchesRequest, v1.PruneBranchesResponse]
 	queueChoices    *connect.Client[v1.QueueChoicesRequest, v1.QueueChoicesResponse]
 	enqueue         *connect.Client[v1.EnqueueRequest, v1.EnqueueResponse]
 	unqueue         *connect.Client[v1.UnqueueRequest, v1.UnqueueResponse]
 	moveQueued      *connect.Client[v1.MoveQueuedRequest, v1.MoveQueuedResponse]
+	skipAuto        *connect.Client[v1.SkipAutoRequest, v1.SkipAutoResponse]
 	approveProposal *connect.Client[v1.ApproveProposalRequest, v1.ApproveProposalResponse]
 	rejectProposal  *connect.Client[v1.RejectProposalRequest, v1.RejectProposalResponse]
 	enrollEpic      *connect.Client[v1.EnrollEpicRequest, v1.EnrollEpicResponse]
@@ -457,6 +485,11 @@ func (c *hubServiceClient) Reinspect(ctx context.Context, req *connect.Request[v
 	return c.reinspect.CallUnary(ctx, req)
 }
 
+// CancelRun calls ghhud.v1.HubService.CancelRun.
+func (c *hubServiceClient) CancelRun(ctx context.Context, req *connect.Request[v1.CancelRunRequest]) (*connect.Response[v1.CancelRunResponse], error) {
+	return c.cancelRun.CallUnary(ctx, req)
+}
+
 // PruneBranches calls ghhud.v1.HubService.PruneBranches.
 func (c *hubServiceClient) PruneBranches(ctx context.Context, req *connect.Request[v1.PruneBranchesRequest]) (*connect.Response[v1.PruneBranchesResponse], error) {
 	return c.pruneBranches.CallUnary(ctx, req)
@@ -480,6 +513,11 @@ func (c *hubServiceClient) Unqueue(ctx context.Context, req *connect.Request[v1.
 // MoveQueued calls ghhud.v1.HubService.MoveQueued.
 func (c *hubServiceClient) MoveQueued(ctx context.Context, req *connect.Request[v1.MoveQueuedRequest]) (*connect.Response[v1.MoveQueuedResponse], error) {
 	return c.moveQueued.CallUnary(ctx, req)
+}
+
+// SkipAuto calls ghhud.v1.HubService.SkipAuto.
+func (c *hubServiceClient) SkipAuto(ctx context.Context, req *connect.Request[v1.SkipAutoRequest]) (*connect.Response[v1.SkipAutoResponse], error) {
+	return c.skipAuto.CallUnary(ctx, req)
 }
 
 // ApproveProposal calls ghhud.v1.HubService.ApproveProposal.
@@ -593,6 +631,13 @@ type HubServiceHandler interface {
 	// an issue or PR.
 	ItemChoices(context.Context, *connect.Request[v1.ItemChoicesRequest]) (*connect.Response[v1.ItemChoicesResponse], error)
 	Reinspect(context.Context, *connect.Request[v1.ReinspectRequest]) (*connect.Response[v1.ReinspectResponse], error)
+	// CancelRun stops a live run (Snapshot.runs) by its id: its herdr pane
+	// is closed, or its local process stopped. It finishes in the
+	// background as failed, "cancelled from gh-hud", with its checkout's
+	// uncommitted changes discarded and the checkout back on its default
+	// branch when no commits were left. FAILED_PRECONDITION when the run
+	// already finished.
+	CancelRun(context.Context, *connect.Request[v1.CancelRunRequest]) (*connect.Response[v1.CancelRunResponse], error)
 	// PruneBranches finds the dispatch checkouts' branches whose PR is
 	// merged or closed, and your forks' (gh-hud branches); with apply it
 	// deletes them and fast-forwards the forks' default branches.
@@ -602,6 +647,9 @@ type HubServiceHandler interface {
 	Enqueue(context.Context, *connect.Request[v1.EnqueueRequest]) (*connect.Response[v1.EnqueueResponse], error)
 	Unqueue(context.Context, *connect.Request[v1.UnqueueRequest]) (*connect.Response[v1.UnqueueResponse], error)
 	MoveQueued(context.Context, *connect.Request[v1.MoveQueuedRequest]) (*connect.Response[v1.MoveQueuedResponse], error)
+	// SkipAuto takes a due auto step off the plan until the item changes
+	// (its stage becomes "you", "skipped by you"); undo lets it run again.
+	SkipAuto(context.Context, *connect.Request[v1.SkipAutoRequest]) (*connect.Response[v1.SkipAutoResponse], error)
 	// Supervisor proposals (Snapshot.cases), by proposal id.
 	ApproveProposal(context.Context, *connect.Request[v1.ApproveProposalRequest]) (*connect.Response[v1.ApproveProposalResponse], error)
 	RejectProposal(context.Context, *connect.Request[v1.RejectProposalRequest]) (*connect.Response[v1.RejectProposalResponse], error)
@@ -700,6 +748,12 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(hubServiceMethods.ByName("Reinspect")),
 		connect.WithHandlerOptions(opts...),
 	)
+	hubServiceCancelRunHandler := connect.NewUnaryHandler(
+		HubServiceCancelRunProcedure,
+		svc.CancelRun,
+		connect.WithSchema(hubServiceMethods.ByName("CancelRun")),
+		connect.WithHandlerOptions(opts...),
+	)
 	hubServicePruneBranchesHandler := connect.NewUnaryHandler(
 		HubServicePruneBranchesProcedure,
 		svc.PruneBranches,
@@ -728,6 +782,12 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 		HubServiceMoveQueuedProcedure,
 		svc.MoveQueued,
 		connect.WithSchema(hubServiceMethods.ByName("MoveQueued")),
+		connect.WithHandlerOptions(opts...),
+	)
+	hubServiceSkipAutoHandler := connect.NewUnaryHandler(
+		HubServiceSkipAutoProcedure,
+		svc.SkipAuto,
+		connect.WithSchema(hubServiceMethods.ByName("SkipAuto")),
 		connect.WithHandlerOptions(opts...),
 	)
 	hubServiceApproveProposalHandler := connect.NewUnaryHandler(
@@ -854,6 +914,8 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 			hubServiceItemChoicesHandler.ServeHTTP(w, r)
 		case HubServiceReinspectProcedure:
 			hubServiceReinspectHandler.ServeHTTP(w, r)
+		case HubServiceCancelRunProcedure:
+			hubServiceCancelRunHandler.ServeHTTP(w, r)
 		case HubServicePruneBranchesProcedure:
 			hubServicePruneBranchesHandler.ServeHTTP(w, r)
 		case HubServiceQueueChoicesProcedure:
@@ -864,6 +926,8 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 			hubServiceUnqueueHandler.ServeHTTP(w, r)
 		case HubServiceMoveQueuedProcedure:
 			hubServiceMoveQueuedHandler.ServeHTTP(w, r)
+		case HubServiceSkipAutoProcedure:
+			hubServiceSkipAutoHandler.ServeHTTP(w, r)
 		case HubServiceApproveProposalProcedure:
 			hubServiceApproveProposalHandler.ServeHTTP(w, r)
 		case HubServiceRejectProposalProcedure:
@@ -937,6 +1001,10 @@ func (UnimplementedHubServiceHandler) Reinspect(context.Context, *connect.Reques
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.Reinspect is not implemented"))
 }
 
+func (UnimplementedHubServiceHandler) CancelRun(context.Context, *connect.Request[v1.CancelRunRequest]) (*connect.Response[v1.CancelRunResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.CancelRun is not implemented"))
+}
+
 func (UnimplementedHubServiceHandler) PruneBranches(context.Context, *connect.Request[v1.PruneBranchesRequest]) (*connect.Response[v1.PruneBranchesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.PruneBranches is not implemented"))
 }
@@ -955,6 +1023,10 @@ func (UnimplementedHubServiceHandler) Unqueue(context.Context, *connect.Request[
 
 func (UnimplementedHubServiceHandler) MoveQueued(context.Context, *connect.Request[v1.MoveQueuedRequest]) (*connect.Response[v1.MoveQueuedResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.MoveQueued is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) SkipAuto(context.Context, *connect.Request[v1.SkipAutoRequest]) (*connect.Response[v1.SkipAutoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.SkipAuto is not implemented"))
 }
 
 func (UnimplementedHubServiceHandler) ApproveProposal(context.Context, *connect.Request[v1.ApproveProposalRequest]) (*connect.Response[v1.ApproveProposalResponse], error) {
