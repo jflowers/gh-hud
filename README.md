@@ -849,9 +849,12 @@ them.
 From a shell, `gh-hud workspaces` lists the same rows (`-json` for a
 script), and `gh-hud checkout <action> <machine> <checkout>` starts one of
 these on a checkout: `pull`, `learnings`, `save`, `upkeep` or `reindex`.
-`<machine>` is `local` for the hub; `<checkout>` is its directory, its
-workspace name, or the directory's last element when that names one
-checkout. It doesn't ask first, and it needs the hub's LAN token, not the
+`<machine>` is `local` for the hub; `<checkout>` is its name as the list
+shows it (its directory's last two elements, like
+`unbound-force@chai/dewey` or `fullsend-ai/agents`), its directory, or its
+workspace name or the directory's last element when that names one
+checkout. The list cuts a long last upkeep or reindex short; `-json` has
+it whole. It doesn't ask first, and it needs the hub's LAN token, not the
 agent token.
 
 ### Coordination
