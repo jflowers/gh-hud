@@ -183,6 +183,8 @@ public data class EpicRow(
      */
     val planToFinish: String? = null,
     val summary: String = "",
+    /** Set when the run budget is spent: approving the plan again grants this many more runs. */
+    val budgetToGrant: Int? = null,
     /** Pieces still to do, running and ready first. */
     val open: List<Piece>,
     val done: Int,
@@ -223,7 +225,8 @@ public data class EpicRow(
                 e.state == "planned" -> "plan waits for you · $counts" to Tone.WARN
                 e.hasComplete() -> "every piece finished · $counts" to Tone.WARN
                 e.held.isNotEmpty() -> "held by the ${e.held} label · $counts" to Tone.WARN
-                else -> "approved · $counts" to Tone.GOOD
+                budgetSpent(e) -> "run budget spent (${e.runs}/${e.runBudget} runs) · $counts" to Tone.WARN
+                else -> "approved · $counts" + (if (e.runBudget > 0) " · ${e.runs}/${e.runBudget} runs" else "") to Tone.GOOD
             }
             val repo = e.ref.split("#", limit = 2).first()
             val approved = e.state == "approved"
@@ -241,7 +244,8 @@ public data class EpicRow(
                         clearable = approved && n.state == "gated" && n.gate.isNotEmpty() && !n.cleared,
                     )
                 }
-            val toApprove = if (e.state == "planned" && e.hasPlan() && !e.plan.stale && e.plan.id.isNotEmpty()) e.plan.id else null
+            val spent = budgetSpent(e) && e.hasPlan() && !e.plan.stale && e.plan.id.isNotEmpty()
+            val toApprove = if ((e.state == "planned" || spent) && e.hasPlan() && !e.plan.stale && e.plan.id.isNotEmpty()) e.plan.id else null
             val toFinish = if (e.state == "approved" && e.hasComplete() && e.hasPlan() && !e.plan.stale && e.summary.isNotEmpty()) e.plan.id else null
             return EpicRow(
                 ref = e.ref,
@@ -253,11 +257,15 @@ public data class EpicRow(
                 changes = if (toApprove == null) emptyList() else e.changesList,
                 planToFinish = toFinish,
                 summary = if (toFinish == null) "" else e.summary,
+                budgetToGrant = if (spent) e.runBudget.toInt() else null,
                 open = open,
                 done = done,
                 total = nodes.size,
             )
         }
+
+        /** The epic's pieces used its run budget: nothing starts until you approve the plan again. */
+        internal fun budgetSpent(e: Epic): Boolean = e.state == "approved" && e.runBudget > 0 && e.runs >= e.runBudget
 
         /** A piece's ref, shortened within the epic's repo and owner. */
         internal fun short(epicRepo: String, ref: String): String {

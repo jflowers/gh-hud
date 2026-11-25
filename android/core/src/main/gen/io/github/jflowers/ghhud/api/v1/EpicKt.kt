@@ -745,6 +745,54 @@ public object EpicKt {
     public fun clearHeld() {
       _builder.clearHeld()
     }
+
+    /**
+     * ```
+     * runs: how many runs its pieces started since the plan was approved;
+     * run_budget: how many they get ([epics] max_total_runs; 0: no limit).
+     * When runs reaches run_budget no piece starts until you approve the
+     * plan again.
+     * ```
+     *
+     * `int64 runs = 23 [json_name = "runs"];`
+     */
+    public var runs: kotlin.Long
+      @kotlin.jvm.JvmName("getRuns")
+        get() = _builder.runs
+      @kotlin.jvm.JvmName("setRuns")
+        set(value) {
+        _builder.runs = value
+      }
+    /**
+     * ```
+     * runs: how many runs its pieces started since the plan was approved;
+     * run_budget: how many they get ([epics] max_total_runs; 0: no limit).
+     * When runs reaches run_budget no piece starts until you approve the
+     * plan again.
+     * ```
+     *
+     * `int64 runs = 23 [json_name = "runs"];`
+     */
+    public fun clearRuns() {
+      _builder.clearRuns()
+    }
+
+    /**
+     * `int64 run_budget = 24 [json_name = "runBudget"];`
+     */
+    public var runBudget: kotlin.Long
+      @kotlin.jvm.JvmName("getRunBudget")
+        get() = _builder.runBudget
+      @kotlin.jvm.JvmName("setRunBudget")
+        set(value) {
+        _builder.runBudget = value
+      }
+    /**
+     * `int64 run_budget = 24 [json_name = "runBudget"];`
+     */
+    public fun clearRunBudget() {
+      _builder.clearRunBudget()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.Epic.copy(block: `io.github.jflowers.ghhud.api.v1`.EpicKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.Epic =

@@ -371,7 +371,11 @@ func (m *Model) handlePlanKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.flash("approve failed: " + err.Error())
 		} else {
 			m.sync()
-			m.flash("approved the plan for " + e.Ref)
+			if e.BudgetSpent() {
+				m.flash(fmt.Sprintf("approved %s again: %d more runs", e.Ref, e.RunBudget))
+			} else {
+				m.flash("approved the plan for " + e.Ref)
+			}
 		}
 	case "D":
 		e := m.epicFinished()
@@ -557,7 +561,7 @@ func (m *Model) epicWaiting() *epic.Epic {
 	var found *epic.Epic
 	for i := range m.epics {
 		e := &m.epics[i]
-		if e.State == epic.StatePlanned && e.Plan != nil && !e.Plan.Stale {
+		if (e.State == epic.StatePlanned || e.BudgetSpent()) && e.Plan != nil && !e.Plan.Stale {
 			if found != nil {
 				return nil
 			}
@@ -705,8 +709,13 @@ func epicStatus(e epic.Epic) (string, lipgloss.Color) {
 		return "held by the " + e.Held + " label: nothing starts · " + counts, cOrange
 	case e.Plan.Stale:
 		return "the epic changed: reread it · " + counts, cOrange
+	case e.BudgetSpent():
+		return fmt.Sprintf("run budget spent (%d/%d runs): E approves %d more · ", e.Runs, e.RunBudget, e.RunBudget) + counts, cOrange
 	case e.State == epic.StatePlanned:
 		return "plan waits for you: E approves · " + counts, cOrange
+	}
+	if e.RunBudget > 0 && e.State == epic.StateApproved {
+		counts += fmt.Sprintf(" · %d/%d runs", e.Runs, e.RunBudget)
 	}
 	return "approved · " + counts, cGreen
 }

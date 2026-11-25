@@ -1452,6 +1452,79 @@ public  final class Epic extends
 
   }
 
+  public static final int RUNS_FIELD_NUMBER = 23;
+  private long runs_;
+  /**
+   * <pre>
+   * runs: how many runs its pieces started since the plan was approved;
+   * run_budget: how many they get ([epics] max_total_runs; 0: no limit).
+   * When runs reaches run_budget no piece starts until you approve the
+   * plan again.
+   * </pre>
+   *
+   * <code>int64 runs = 23 [json_name = "runs"];</code>
+   * @return The runs.
+   */
+  @java.lang.Override
+  public long getRuns() {
+    return runs_;
+  }
+  /**
+   * <pre>
+   * runs: how many runs its pieces started since the plan was approved;
+   * run_budget: how many they get ([epics] max_total_runs; 0: no limit).
+   * When runs reaches run_budget no piece starts until you approve the
+   * plan again.
+   * </pre>
+   *
+   * <code>int64 runs = 23 [json_name = "runs"];</code>
+   * @param value The runs to set.
+   */
+  private void setRuns(long value) {
+    
+    runs_ = value;
+  }
+  /**
+   * <pre>
+   * runs: how many runs its pieces started since the plan was approved;
+   * run_budget: how many they get ([epics] max_total_runs; 0: no limit).
+   * When runs reaches run_budget no piece starts until you approve the
+   * plan again.
+   * </pre>
+   *
+   * <code>int64 runs = 23 [json_name = "runs"];</code>
+   */
+  private void clearRuns() {
+
+    runs_ = 0L;
+  }
+
+  public static final int RUN_BUDGET_FIELD_NUMBER = 24;
+  private long runBudget_;
+  /**
+   * <code>int64 run_budget = 24 [json_name = "runBudget"];</code>
+   * @return The runBudget.
+   */
+  @java.lang.Override
+  public long getRunBudget() {
+    return runBudget_;
+  }
+  /**
+   * <code>int64 run_budget = 24 [json_name = "runBudget"];</code>
+   * @param value The runBudget to set.
+   */
+  private void setRunBudget(long value) {
+    
+    runBudget_ = value;
+  }
+  /**
+   * <code>int64 run_budget = 24 [json_name = "runBudget"];</code>
+   */
+  private void clearRunBudget() {
+
+    runBudget_ = 0L;
+  }
+
   public static io.github.jflowers.ghhud.api.v1.Epic parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -3025,6 +3098,83 @@ public  final class Epic extends
       return this;
     }
 
+    /**
+     * <pre>
+     * runs: how many runs its pieces started since the plan was approved;
+     * run_budget: how many they get ([epics] max_total_runs; 0: no limit).
+     * When runs reaches run_budget no piece starts until you approve the
+     * plan again.
+     * </pre>
+     *
+     * <code>int64 runs = 23 [json_name = "runs"];</code>
+     * @return The runs.
+     */
+    @java.lang.Override
+    public long getRuns() {
+      return instance.getRuns();
+    }
+    /**
+     * <pre>
+     * runs: how many runs its pieces started since the plan was approved;
+     * run_budget: how many they get ([epics] max_total_runs; 0: no limit).
+     * When runs reaches run_budget no piece starts until you approve the
+     * plan again.
+     * </pre>
+     *
+     * <code>int64 runs = 23 [json_name = "runs"];</code>
+     * @param value The runs to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRuns(long value) {
+      copyOnWrite();
+      instance.setRuns(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * runs: how many runs its pieces started since the plan was approved;
+     * run_budget: how many they get ([epics] max_total_runs; 0: no limit).
+     * When runs reaches run_budget no piece starts until you approve the
+     * plan again.
+     * </pre>
+     *
+     * <code>int64 runs = 23 [json_name = "runs"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRuns() {
+      copyOnWrite();
+      instance.clearRuns();
+      return this;
+    }
+
+    /**
+     * <code>int64 run_budget = 24 [json_name = "runBudget"];</code>
+     * @return The runBudget.
+     */
+    @java.lang.Override
+    public long getRunBudget() {
+      return instance.getRunBudget();
+    }
+    /**
+     * <code>int64 run_budget = 24 [json_name = "runBudget"];</code>
+     * @param value The runBudget to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRunBudget(long value) {
+      copyOnWrite();
+      instance.setRunBudget(value);
+      return this;
+    }
+    /**
+     * <code>int64 run_budget = 24 [json_name = "runBudget"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRunBudget() {
+      copyOnWrite();
+      instance.clearRunBudget();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.Epic)
   }
   @java.lang.Override
@@ -3065,13 +3215,15 @@ public  final class Epic extends
             "closed_",
             "closedNote_",
             "held_",
+            "runs_",
+            "runBudget_",
           };
           java.lang.String info =
-              "\u0000\u0016\u0000\u0001\u0001\u0016\u0016\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0018\u0000\u0001\u0001\u0018\u0018\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\u1009\u0000\u0005\u0208\u0006\u0208\u0007\u1009\u0001\b\u1009" +
               "\u0002\t\u0208\n\u1009\u0003\u000b\u0208\f\u001b\r\u1009\u0004\u000e\u021a\u000f" +
               "\u0208\u0010\u0208\u0011\u1009\u0005\u0012\u0208\u0013\u0208\u0014\u1009\u0006\u0015" +
-              "\u0208\u0016\u0208";
+              "\u0208\u0016\u0208\u0017\u0002\u0018\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

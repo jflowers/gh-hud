@@ -1268,6 +1268,14 @@ auto pass starts them like any other step:
   of runs it's yours (`epic: 2 runs, still no PR`). Gated and blocked
   pieces need you too. A piece that can't start says why once:
   `epic acme/app#100: acme/app#2 didn't start: …`.
+- **The run budget.** All of an epic's pieces together get
+  `max_total_runs` runs after approval (default 20). Once those are used,
+  no piece starts. The ready ones need you
+  (`epic: run budget spent (20/20 runs)`), runs already going carry on, and
+  gh-hud says so once. To grant another budget, approve the plan again: `E`
+  in the Plan tab, `gh-hud epic approve <ref>`, or Approve Again in the
+  apps. As with any approval, the counts start over, per piece too. The
+  epic's line shows the runs used, for example `7/20 runs`.
 
 **Finishing.** When every piece of the approved plan is done or dropped,
 the epic is finished: nothing is left to run. A piece blocked by a dropped
@@ -1287,6 +1295,7 @@ and isn't checked again; `gh-hud epic drop` removes it.
 [epics]
 max_active = 2   # pieces of one epic active at once
 max_runs = 2     # runs per piece before it's left to you
+max_total_runs = 20  # runs for all of an epic's pieces; then approve again (negative: no limit)
 status_comment = true  # keep an approved epic's progress in a comment on it
 ```
 

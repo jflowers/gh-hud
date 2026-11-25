@@ -150,6 +150,17 @@ type Epic struct {
 	// label on the epic issue, as of the last check): none of its pieces
 	// start while it's there. "" when none is.
 	Held string `json:"held,omitempty"`
+	// Runs is how many runs the epic's pieces have started since the plan
+	// was approved, and RunBudget how many they get ([epics]
+	// max_total_runs; 0: no limit). Worked out from the runs, not stored.
+	Runs      int `json:"runs,omitempty"`
+	RunBudget int `json:"run_budget,omitempty"`
+}
+
+// BudgetSpent reports whether an approved epic has used its run budget:
+// nothing new starts until you approve the plan again.
+func (e Epic) BudgetSpent() bool {
+	return e.State == StateApproved && e.RunBudget > 0 && e.Runs >= e.RunBudget
 }
 
 // Finished reports whether every piece of the epic's approved, current

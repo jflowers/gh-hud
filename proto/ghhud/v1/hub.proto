@@ -817,6 +817,12 @@ message Epic {
   // The label holding the whole epic (the hold or human-gate label on the
   // epic issue): none of its pieces start while it's there. "" for none.
   string held = 22;
+  // runs: how many runs its pieces started since the plan was approved;
+  // run_budget: how many they get ([epics] max_total_runs; 0: no limit).
+  // When runs reaches run_budget no piece starts until you approve the
+  // plan again.
+  int64 runs = 23;
+  int64 run_budget = 24;
 }
 
 // EpicReport is what a piece's run that left no PR did, and the

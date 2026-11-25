@@ -12,6 +12,10 @@ package dispatch
 //     of the bare ref: the item carries the epic's goal and rules, which a
 //     bare ref can't.
 //   - A piece gets [epics] max_runs runs after approval; then it's yours.
+//   - The epic gets [epics] max_total_runs runs after approval, all its
+//     pieces together (its run budget). Once they're used, no piece
+//     starts: the ready ones need you, and approving the plan again grants
+//     another budget (the counts start over). Runs going on finish.
 //     A run that left no PR gets a report and the supervisor's verdict
 //     (epic_report.go): retry starts the next run with its hint, human
 //     makes the piece yours. Without a supervisor the next run waits
@@ -114,8 +118,10 @@ func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool, byRef ma
 		maxRuns = 2
 	}
 	sup := d.o().Supervisor.Enabled
+	budget := ep.RunBudget()
 	var rows []PlanRow
 	for _, e := range d.approvedEpics() {
+		used := 0 // runs started since approval, and the ones about to
 		type piece struct {
 			n    epic.Node
 			runs []Run
@@ -126,6 +132,7 @@ func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool, byRef ma
 		for _, n := range e.Plan.Nodes {
 			mine, live := pieceRuns(n.Ref, *e.Approved, runs, now)
 			pieces = append(pieces, piece{n, mine, live != nil})
+			used += len(mine)
 			if live != nil || n.State == epic.NodeInProgress {
 				active++
 			}
@@ -169,6 +176,9 @@ func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool, byRef ma
 				row.Stage = Stage{Kind: StageWait, Task: TaskIssue, Reason: "epic: ran, no PR yet"}
 			case d.reserved(n.Ref):
 				row.Stage = Stage{Kind: StageRunning, Task: TaskIssue}
+			case budget > 0 && used >= budget:
+				row.Stage = Stage{Kind: StageNeedsYou, Task: TaskIssue, Reason: fmt.Sprintf("epic: run budget spent (%d/%d runs)", used, budget)}
+				d.noteBudgetSpent(e, budget)
 			case active >= maxActive:
 				row.Stage = Stage{Kind: StageWait, Task: TaskIssue, Reason: fmt.Sprintf("epic: %d active (max %d)", active, maxActive)}
 			case !known && d.placesByLabel():
@@ -178,6 +188,7 @@ func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool, byRef ma
 			default:
 				row.Stage = Stage{Kind: StageNext, Task: TaskIssue}
 				active++ // the next ready pieces wait for this one's slot
+				used++   // and for this one's run
 			}
 			if row.Note == "" {
 				row.Note = "epic " + e.Ref
@@ -186,6 +197,22 @@ func (d *Dispatcher) epicRows(runs []Run, queued, skip map[string]bool, byRef ma
 		}
 	}
 	return rows
+}
+
+// noteBudgetSpent tells you once per approval that an epic's run budget
+// stopped its pieces.
+func (d *Dispatcher) noteBudgetSpent(e epic.Epic, budget int) {
+	key := e.Ref + "|" + e.Approved.Format(time.RFC3339Nano)
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.budgetNoted[key] {
+		return
+	}
+	if d.budgetNoted == nil {
+		d.budgetNoted = map[string]bool{}
+	}
+	d.budgetNoted[key] = true
+	d.epicNotes = append(d.epicNotes, fmt.Sprintf("epic %s: its run budget is spent (%d runs since approval), so no piece starts: approve it again for %d more (E in the Plan tab, or gh-hud epic approve %s)", e.Ref, budget, budget, e.Ref))
 }
 
 // startEpicPiece starts a piece's row, with its plan file when the issue

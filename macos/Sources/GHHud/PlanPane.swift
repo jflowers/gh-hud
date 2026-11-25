@@ -219,7 +219,7 @@ struct PlanCommands {
             if let why = await conn.approve(.epic(ref: e.ref, planID: plan)) {
                 ui.say("Can't approve the plan for \(e.ref): \(why)", bad: true)
             } else {
-                ui.say("Approved the plan for \(e.ref)")
+                ui.say(e.budgetToGrant.map { "Approved \(e.ref) again: \($0) more runs" } ?? "Approved the plan for \(e.ref)")
             }
         }
     }
@@ -368,7 +368,7 @@ struct EpicView: View {
                 .padding(.leading, 22)
             }
             if row.planToApprove != nil {
-                Button("Approve Plan") { cmds.approve(row) }
+                Button(row.budgetToGrant.map { "Approve Again (\($0) More Runs)" } ?? "Approve Plan") { cmds.approve(row) }
                     .controlSize(.small)
                     .disabled(cmds.off != nil)
             }
