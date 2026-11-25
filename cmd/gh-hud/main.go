@@ -288,19 +288,32 @@ func runServe(cfg *config.Config, cfgPath string, client *gh.Client, dir, sock s
 		log.Print(w)
 	}
 	restart := make(chan string, 1) // the binary to exec, once the hub has stopped
+	watch := selfrestart.New()
 	if selfRestart {
 		go func() {
-			path := selfrestart.Wait(ctx, selfrestart.Options{Watch: selfrestart.New(), Logf: log.Printf})
-			if path == "" {
+			o := selfrestart.Options{Watch: watch, Logf: log.Printf}
+			for {
+				path := selfrestart.Wait(ctx, o)
+				if path == "" {
+					return
+				}
+				quiet(ctx) // held until exec: no rollout step starts meanwhile
+				if ctx.Err() != nil {
+					return
+				}
+				// Waiting for idle can take hours: look again, since a later
+				// rollout may have replaced path and removed it.
+				if path = selfrestart.Recheck(ctx, o, path); path == "" {
+					if ctx.Err() != nil {
+						return
+					}
+					continue
+				}
+				log.Printf("restarting into %s", path)
+				restart <- path
+				stop()
 				return
 			}
-			quiet(ctx) // held until exec: no rollout step starts meanwhile
-			if ctx.Err() != nil {
-				return
-			}
-			log.Printf("restarting into %s", path)
-			restart <- path
-			stop()
 		}()
 	}
 	tcpReady := func(d api.Discovery) {
@@ -317,7 +330,15 @@ func runServe(cfg *config.Config, cfgPath string, client *gh.Client, dir, sock s
 		// The socket and the dispatch lock are released: the new binary
 		// claims them as a fresh start would.
 		err := syscall.Exec(restartTo, append([]string{restartTo}, os.Args[1:]...), os.Environ()) //nolint:gosec // gh-hud from PATH, just verified to run
-		log.Printf("restart into %s failed: %v; start gh-hud serve again", restartTo, err)
+		log.Printf("restart into %s failed: %v", restartTo, err)
+		// The hub has stopped already: bring one back from whatever gh-hud
+		// is still there rather than leave the fleet without a hub.
+		for _, p := range watch.Fallbacks(restartTo) {
+			log.Printf("restarting into %s instead", p)
+			err = syscall.Exec(p, append([]string{p}, os.Args[1:]...), os.Environ()) //nolint:gosec // gh-hud from PATH or the running binary
+			log.Printf("restart into %s failed: %v", p, err)
+		}
+		log.Print("no gh-hud to restart into; start gh-hud serve again")
 		return 1
 	default:
 	}

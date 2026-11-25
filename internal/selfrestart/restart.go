@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 )
 
@@ -115,4 +116,66 @@ func firstLine(b []byte) string {
 		}
 	}
 	return string(b)
+}
+
+// Recheck runs just before the exec, after the hub went idle, which can be
+// long after Wait chose chosen: a later rollout may have installed another
+// gh-hud and removed chosen meanwhile (mise keeps only the pinned
+// version). It returns the binary a fresh start would run now: chosen if it
+// is still the one, else the current one once it runs, else "" (nothing to
+// restart into; keep serving and wait again).
+func Recheck(ctx context.Context, o Options, chosen string) string {
+	if o.Verify == nil {
+		o.Verify = runsVersion
+	}
+	if o.Logf == nil {
+		o.Logf = func(string, ...any) {}
+	}
+	_, path := o.Watch.Changed()
+	if path == "" {
+		o.Logf("not restarting: %s is gone and no other gh-hud replaced the running one", chosen)
+		return ""
+	}
+	if path == chosen {
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+	if err := o.Verify(ctx, path); err != nil {
+		o.Logf("not restarting: %s -version failed (%v); still running the old gh-hud", path, err)
+		return ""
+	}
+	if path != chosen {
+		o.Logf("%s was replaced while the hub went idle: restarting into %s instead", chosen, path)
+	}
+	return path
+}
+
+// Fallbacks lists the binaries to exec, in order, when the exec into
+// failed fails: the gh-hud a fresh start would run now, then the one that
+// was running, so a failed restart still brings a hub back. Paths that are
+// gone or repeat are left out.
+func (w *Watch) Fallbacks(failed string) []string {
+	var out []string
+	add := func(p string) {
+		if p == "" || p == failed {
+			return
+		}
+		for _, q := range out {
+			if q == p {
+				return
+			}
+		}
+		if _, err := os.Stat(p); err == nil {
+			out = append(out, p)
+		}
+	}
+	if p, err := exec.LookPath("gh-hud"); err == nil {
+		if r, err := filepath.EvalSymlinks(p); err == nil {
+			p = r
+		}
+		add(p)
+	}
+	add(w.exe)
+	return out
 }

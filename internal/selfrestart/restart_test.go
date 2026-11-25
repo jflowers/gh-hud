@@ -178,3 +178,91 @@ func TestRunsVersion(t *testing.T) {
 		t.Error("runsVersion(bad) = nil, want an error")
 	}
 }
+
+// versionDir makes dir/<v>/gh-hud and points dir/gh-hud on PATH at it, the
+// way mise lays out installs.
+func versionDir(t *testing.T, dir, v string) string {
+	t.Helper()
+	bin := filepath.Join(dir, v, "gh-hud")
+	if err := os.MkdirAll(filepath.Dir(bin), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(bin, []byte(v), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "bin", "gh-hud")
+	_ = os.MkdirAll(filepath.Dir(link), 0o755)
+	_ = os.Remove(link)
+	if err := os.Symlink(bin, link); err != nil {
+		t.Fatal(err)
+	}
+	return bin
+}
+
+func TestRecheckFollowsARolloutThatLandedWhileWaiting(t *testing.T) {
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", filepath.Join(dir, "bin"))
+	running := versionDir(t, dir, "0.3.20")
+	fi, _ := os.Stat(running)
+	w := &Watch{exe: running, size: fi.Size(), modTime: fi.ModTime(), ok: true}
+	ok := func(context.Context, string) error { return nil }
+
+	// Wait chose 0.3.21; still there at exec time: keep it.
+	chosen := versionDir(t, dir, "0.3.21")
+	if got := Recheck(context.Background(), Options{Watch: w, Verify: ok}, chosen); got != chosen {
+		t.Errorf("Recheck = %q, want %q", got, chosen)
+	}
+
+	// 0.3.22 rolled out and 0.3.21 was pruned before the hub went idle.
+	newer := versionDir(t, dir, "0.3.22")
+	if err := os.RemoveAll(filepath.Dir(chosen)); err != nil {
+		t.Fatal(err)
+	}
+	if got := Recheck(context.Background(), Options{Watch: w, Verify: ok}, chosen); got != newer {
+		t.Errorf("Recheck = %q, want %q", got, newer)
+	}
+
+	// The newer one does not run: keep serving.
+	bad := func(context.Context, string) error { return errors.New("exec format error") }
+	if got := Recheck(context.Background(), Options{Watch: w, Verify: bad}, chosen); got != "" {
+		t.Errorf("Recheck with a broken binary = %q, want empty", got)
+	}
+
+	// Rolled back to the running one: nothing to restart into.
+	link := filepath.Join(dir, "bin", "gh-hud")
+	if err := os.Remove(link); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(running, link); err != nil {
+		t.Fatal(err)
+	}
+	if got := Recheck(context.Background(), Options{Watch: w, Verify: ok}, chosen); got != "" {
+		t.Errorf("Recheck after a rollback = %q, want empty", got)
+	}
+}
+
+func TestFallbacks(t *testing.T) {
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", filepath.Join(dir, "bin"))
+	running := versionDir(t, dir, "0.3.20")
+	w := &Watch{exe: running, ok: true}
+	newer := versionDir(t, dir, "0.3.22")
+
+	got := w.Fallbacks(filepath.Join(dir, "0.3.21", "gh-hud"))
+	if len(got) != 2 || got[0] != newer || got[1] != running {
+		t.Errorf("Fallbacks = %q, want [%s %s]", got, newer, running)
+	}
+	// The failed one and missing ones are left out.
+	if err := os.RemoveAll(filepath.Dir(running)); err != nil {
+		t.Fatal(err)
+	}
+	if got := w.Fallbacks(newer); len(got) != 0 {
+		t.Errorf("Fallbacks = %q, want none", got)
+	}
+}
