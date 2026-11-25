@@ -176,6 +176,7 @@ func (tp *trainPlan) applyDecisions(items []model.Item, decs []Decision) {
 	tp.live = map[string]Decision{}
 	tp.prio = map[string]bool{}
 	open := openPRs(items)
+	tp.open = open
 	bases := baseOIDs(tp)
 	for _, dec := range decs {
 		if tp.checkDecision(dec, open) != nil {

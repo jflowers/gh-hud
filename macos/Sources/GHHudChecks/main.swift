@@ -331,6 +331,22 @@ do {
     check(RunTag(run("x", "r", "blocked", started: 30 * 86400), now: now)?.tone == .warn, "a blocked run always shows")
     check(RunTag.words("left-work") == "left work behind" && RunTag.words("weird") == "outcome unknown", "run words")
 
+    var found = run("x", "r", "ok", started: 3600, finished: 1800)
+    check(RunFinding.text(found) == nil, "no finding: no section")
+    found.findingPending = true
+    check(RunFinding.text(found)?.0 == "the supervisor is reading the run", "finding pending")
+    var f = Ghhud_V1_Finding()
+    f.kind = "blocked_by_base"; f.check = "Build"; f.by = "agent"; f.why = "main fails it too"
+    found.finding = f
+    check(RunFinding.text(found)?.0 == "blocked by the base branch: Build fails there (agent): main fails it too"
+          && RunFinding.text(found)?.1 == .warn, "blocked_by_base finding \(RunFinding.text(found)?.0 ?? "nil")")
+    f.kind = "fixed_by"; f.pr = 9; f.why = ""; f.by = "supervisor"
+    found.finding = f
+    check(RunFinding.text(found)?.0 == "fixed by #9 (supervisor)", "fixed_by finding")
+    var noted = run("x", "r", "ok", started: 3600, finished: 1800)
+    noted.findingNote = "supervisor: nothing to record: its own test"
+    check(RunFinding.text(noted)?.0 == noted.findingNote && RunFinding.text(noted)?.1 == .muted, "finding note")
+
     var wait = Ghhud_V1_Stage()
     wait.kind = "wait"
     wait.task = "fix"

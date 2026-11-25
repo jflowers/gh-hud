@@ -226,6 +226,16 @@ func (m *Model) runLines(r dispatch.Run, w int) []string {
 			lines = append(lines, fg.Render("  "+truncatePlain(p, w-2)))
 		}
 	}
+	if f := r.FindingText(); f != "" {
+		st := fg
+		if r.Finding != nil {
+			st = lipgloss.NewStyle().Foreground(cOrange)
+		}
+		lines = append(lines, "", h.Render("Finding"))
+		for _, l := range wrapText(f, w-2) {
+			lines = append(lines, st.Render("  "+l))
+		}
+	}
 	if r.IndexHealth != "" {
 		st := fg
 		if r.IndexHealth != "ok" {

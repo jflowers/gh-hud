@@ -188,6 +188,29 @@ class DeweyTest {
     }
 
     @Test
+    fun aRunsFinding() {
+        assertNull(RunFinding.text(hubRun {}))
+        assertEquals("the supervisor is reading the run" to Tone.PENDING, RunFinding.text(hubRun { findingPending = true }))
+        assertEquals("supervisor: nothing to record: its own test" to Tone.MUTED, RunFinding.text(hubRun { findingNote = "supervisor: nothing to record: its own test" }))
+        val blocked = hubRun {
+            id = "r"
+            finding = io.github.jflowers.ghhud.api.v1.finding {
+                kind = "blocked_by_base"
+                check = "Build"
+                by = "agent"
+                why = "main fails it too"
+            }
+        }
+        assertEquals("blocked by the base branch: Build fails there (agent): main fails it too" to Tone.WARN, RunFinding.text(blocked))
+        assertEquals(
+            "fixed by #9 (supervisor)",
+            RunFinding.text(hubRun { finding = io.github.jflowers.ghhud.api.v1.finding { kind = "fixed_by"; pr = 9; by = "supervisor" } })?.first,
+        )
+        val r = AgentRow.of(io.github.jflowers.ghhud.api.v1.Session.newBuilder().setId("s").setRunId("r").build(), blocked, emptyList(), now)
+        assertEquals(FactList("Finding", null, listOf("blocked by the base branch: Build fails there (agent): main fails it too"), Tone.WARN), AgentDetail.lists(r).single())
+    }
+
+    @Test
     fun theFleet() {
         val rolling = fleetMachine {
             name = "oak"

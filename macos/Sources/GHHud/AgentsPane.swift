@@ -215,6 +215,9 @@ struct AgentDetail: View {
         if !r.pushed.isEmpty {
             section("Pushed", note: nil, lines: r.pushed, color: .primary)
         }
+        if let (text, tone) = RunFinding.text(r) {
+            section("Finding", note: nil, lines: [text], color: tone == .warn ? .orange : (tone == .muted ? .secondary : .primary))
+        }
         if let (lines, tone) = DeweyIndex.run(r.indexHealth) {
             section("Dewey index", note: tone == .good ? nil : "still dispatchable; Workspaces has the detail",
                     lines: lines, color: tone == .good ? .primary : tone.color)

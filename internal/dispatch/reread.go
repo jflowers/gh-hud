@@ -121,6 +121,7 @@ func (d *Dispatcher) rereadRecord(r Record, busyKey string) {
 		if insp != nil {
 			insp.apply(rec)
 		}
+		applyFinding(rec, o)
 	}
 	d.saveStateLocked()
 	if !o.unreachable {

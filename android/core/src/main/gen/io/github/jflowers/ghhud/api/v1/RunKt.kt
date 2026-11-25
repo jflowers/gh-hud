@@ -652,6 +652,88 @@ public object RunKt {
     public fun clearOpencode() {
       _builder.clearOpencode()
     }
+
+    /**
+     * ```
+     * finding: what a ci run found (blocked by the base branch, fixed by
+     * another PR) while it's recorded; finding_note says why there is none
+     * (refused, or the supervisor found nothing); finding_pending that the
+     * supervisor is reading the run (#180).
+     * ```
+     *
+     * `.ghhud.v1.Finding finding = 27 [json_name = "finding"];`
+     */
+    public var finding: io.github.jflowers.ghhud.api.v1.Finding
+      @kotlin.jvm.JvmName("getFinding")
+        get() = _builder.finding
+      @kotlin.jvm.JvmName("setFinding")
+        set(value) {
+        _builder.finding = value
+      }
+    /**
+     * ```
+     * finding: what a ci run found (blocked by the base branch, fixed by
+     * another PR) while it's recorded; finding_note says why there is none
+     * (refused, or the supervisor found nothing); finding_pending that the
+     * supervisor is reading the run (#180).
+     * ```
+     *
+     * `.ghhud.v1.Finding finding = 27 [json_name = "finding"];`
+     */
+    public fun clearFinding() {
+      _builder.clearFinding()
+    }
+    /**
+     * ```
+     * finding: what a ci run found (blocked by the base branch, fixed by
+     * another PR) while it's recorded; finding_note says why there is none
+     * (refused, or the supervisor found nothing); finding_pending that the
+     * supervisor is reading the run (#180).
+     * ```
+     *
+     * `.ghhud.v1.Finding finding = 27 [json_name = "finding"];`
+     * @return Whether the finding field is set.
+     */
+    public fun hasFinding(): kotlin.Boolean {
+      return _builder.hasFinding()
+    }
+
+    public val RunKt.Dsl.findingOrNull: io.github.jflowers.ghhud.api.v1.Finding?
+      get() = _builder.findingOrNull
+
+    /**
+     * `string finding_note = 28 [json_name = "findingNote"];`
+     */
+    public var findingNote: kotlin.String
+      @kotlin.jvm.JvmName("getFindingNote")
+        get() = _builder.findingNote
+      @kotlin.jvm.JvmName("setFindingNote")
+        set(value) {
+        _builder.findingNote = value
+      }
+    /**
+     * `string finding_note = 28 [json_name = "findingNote"];`
+     */
+    public fun clearFindingNote() {
+      _builder.clearFindingNote()
+    }
+
+    /**
+     * `bool finding_pending = 29 [json_name = "findingPending"];`
+     */
+    public var findingPending: kotlin.Boolean
+      @kotlin.jvm.JvmName("getFindingPending")
+        get() = _builder.findingPending
+      @kotlin.jvm.JvmName("setFindingPending")
+        set(value) {
+        _builder.findingPending = value
+      }
+    /**
+     * `bool finding_pending = 29 [json_name = "findingPending"];`
+     */
+    public fun clearFindingPending() {
+      _builder.clearFindingPending()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.Run.copy(block: `io.github.jflowers.ghhud.api.v1`.RunKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.Run =
@@ -662,4 +744,7 @@ public val io.github.jflowers.ghhud.api.v1.RunOrBuilder.startedAtOrNull: com.goo
 
 public val io.github.jflowers.ghhud.api.v1.RunOrBuilder.finishedAtOrNull: com.google.protobuf.Timestamp?
   get() = if (hasFinishedAt()) getFinishedAt() else null
+
+public val io.github.jflowers.ghhud.api.v1.RunOrBuilder.findingOrNull: io.github.jflowers.ghhud.api.v1.Finding?
+  get() = if (hasFinding()) getFinding() else null
 

@@ -157,6 +157,7 @@ func (d *Dispatcher) Proposals() []Proposal {
 func (d *Dispatcher) superviseRuns() []string {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	d.findingReviewsLocked()
 	notes := d.supNotes
 	d.supNotes = nil
 	if d.train == nil {

@@ -45,3 +45,16 @@ func (r Run) Where() string {
 	}
 	return mach + ":" + r.Workspace
 }
+
+// FindingText is what a ci run found, in words, for the run views: the
+// finding, the supervisor still reading the run, or why there is none.
+// "" when there's nothing to say.
+func (r Run) FindingText() string {
+	switch {
+	case r.Finding != nil:
+		return r.Finding.Text()
+	case r.FindingPending:
+		return "the supervisor is reading the run"
+	}
+	return r.FindingNote
+}
