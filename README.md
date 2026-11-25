@@ -161,6 +161,8 @@ gh-hud queue [add|rm] …           # your queue
 gh-hud transcript <run|ref>       # a run's conversation (a ref: its newest run)
 gh-hud pane <run|ref>             # the screen of a run's live pane
 gh-hud dewey reindex [-force] <machine>|-all   # reindex the Dewey vaults there that need it now (see "Reindex the vaults now")
+gh-hud workspaces [-machine M] [-problems]     # every fleet checkout: problem, uncommitted, local-only commits, last upkeep and reindex
+gh-hud checkout pull|learnings|save|upkeep|reindex <machine> <checkout>   # act on one checkout now (see the Workspaces tab)
 ```
 
 They, `gh-hud epic` and `gh-hud branches` use the hub on this machine's
@@ -838,6 +840,14 @@ last upkeep (or reindex) in the detail pane:
 
 The two that push and open PRs ask first. The agent token can't call
 them.
+
+From a shell, `gh-hud workspaces` lists the same rows (`-json` for a
+script), and `gh-hud checkout <action> <machine> <checkout>` starts one of
+these on a checkout: `pull`, `learnings`, `save`, `upkeep` or `reindex`.
+`<machine>` is `local` for the hub; `<checkout>` is its directory, its
+workspace name, or the directory's last element when that names one
+checkout. It doesn't ask first, and it needs the hub's LAN token, not the
+agent token.
 
 ### Coordination
 
