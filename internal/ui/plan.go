@@ -215,6 +215,13 @@ func (m *Model) planFooter() string {
 	if rows := m.planRows(); m.planSel < len(rows) && rows[m.planSel].Epic != "" && strings.HasPrefix(rows[m.planSel].Stage.Reason, "gate: ") {
 		return chips(m.width, "C", "clear gate", "j/k", "move", "+", "queue", "a", "agent", "enter", "open", "esc", "dashboard")
 	}
+	if e := m.epicFinished(); e != nil {
+		label := "finish epic: post its summary and close it"
+		if m.epicFinishArmed == e.Ref && time.Since(m.epicFinishAt) < epicFinishWindow {
+			label = "again to post the summary as you and close " + e.Ref
+		}
+		return chips(m.width, "D", label, "j/k", "move", "+", "queue", "a", "agent", "enter", "open", "esc", "dashboard")
+	}
 	if m.epicWaiting() != nil {
 		return chips(m.width, "E", "approve epic plan", "j/k", "move", "+", "queue", "x", "unqueue",
 			"a", "agent", "enter", "open", "esc", "dashboard")
@@ -362,6 +369,24 @@ func (m *Model) handlePlanKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.sync()
 			m.flash("approved the plan for " + e.Ref)
 		}
+	case "D":
+		e := m.epicFinished()
+		if e == nil {
+			m.flash("no finished epic to close (gh-hud epic finish <ref> picks among several)")
+			break
+		}
+		if m.epicFinishArmed != e.Ref || time.Since(m.epicFinishAt) >= epicFinishWindow {
+			m.epicFinishArmed, m.epicFinishAt = e.Ref, time.Now()
+			m.flash("D again posts the summary shown, as you, and closes " + e.Ref)
+			break
+		}
+		m.epicFinishArmed = ""
+		if err := m.backend.FinishEpic(ctx(), e.Ref, e.Plan.ID); err != nil {
+			m.flash("finish failed: " + err.Error())
+		} else {
+			m.sync()
+			m.flash("summary posted; closed " + e.Ref)
+		}
 	case "C":
 		if !have || cur.Epic == "" || !strings.HasPrefix(cur.Stage.Reason, "gate: ") {
 			m.flash("no gate to clear: select an epic piece that says gate")
@@ -491,6 +516,26 @@ func (m *Model) epicWaiting() *epic.Epic {
 	return found
 }
 
+// epicFinishWindow is how long a first D stays armed.
+const epicFinishWindow = 10 * time.Second
+
+// epicFinished is the one epic whose pieces are all finished and that
+// isn't closed yet, or nil when none or several are (gh-hud epic finish
+// picks among several).
+func (m *Model) epicFinished() *epic.Epic {
+	var found *epic.Epic
+	for i := range m.epics {
+		e := &m.epics[i]
+		if e.Complete != nil && e.State != epic.StateClosed && e.Plan != nil && e.Summary != "" {
+			if found != nil {
+				return nil
+			}
+			found = e
+		}
+	}
+	return found
+}
+
 // epicShown is how many open pieces an epic lists before "+N more".
 const epicShown = 6
 
@@ -516,6 +561,7 @@ func (m *Model) epicLines(w int) []string {
 			continue
 		}
 		out = append(out, epicChangeLines(e, w)...)
+		out = append(out, epicSummaryLines(e, w)...)
 		repo, _, _ := epic.ParseRef(e.Ref)
 		var open []epic.Node
 		for _, n := range e.Plan.Nodes {
@@ -540,6 +586,25 @@ func (m *Model) epicLines(w int) []string {
 			}
 			out = append(out, style.Render(truncatePlain(line, max(w-2, 10))))
 		}
+	}
+	return out
+}
+
+// epicSummaryLines show the comment a finished epic closes with, so D
+// posts what you read.
+func epicSummaryLines(e epic.Epic, w int) []string {
+	if e.Complete == nil || e.State == epic.StateClosed || e.Summary == "" {
+		return nil
+	}
+	dim := lipgloss.NewStyle().Foreground(cDim)
+	out := []string{dim.Render("      closes with this comment, posted as you:")}
+	lines := strings.Split(strings.TrimRight(e.Summary, "\n"), "\n")
+	for i, l := range lines {
+		if i == 2*epicShown {
+			out = append(out, dim.Render(fmt.Sprintf("        +%d more lines (gh-hud epic finish %s)", len(lines)-i, e.Ref)))
+			break
+		}
+		out = append(out, dim.Render(truncatePlain("        "+l, max(w-2, 10))))
 	}
 	return out
 }
@@ -571,6 +636,9 @@ func epicStatus(e epic.Epic) (string, lipgloss.Color) {
 	case epic.StateError:
 		return "can't read it: " + e.Error, cRed
 	}
+	if e.Plan == nil {
+		return string(e.State), cDim
+	}
 	c := e.Counts()
 	counts := fmt.Sprintf("%d/%d done, ", c[epic.NodeDone], len(e.Plan.Nodes))
 	if c[epic.NodeRunning] > 0 {
@@ -578,6 +646,10 @@ func epicStatus(e epic.Epic) (string, lipgloss.Color) {
 	}
 	counts += fmt.Sprintf("%d ready, %d in progress", c[epic.NodeReady], c[epic.NodeInProgress])
 	switch {
+	case e.State == epic.StateClosed:
+		return e.ClosedNote + " · " + counts, cDim
+	case e.Complete != nil:
+		return "every piece finished: D posts the summary and closes it · " + counts, cOrange
 	case e.Plan.Stale:
 		return "the epic changed: reread it · " + counts, cOrange
 	case e.State == epic.StatePlanned:

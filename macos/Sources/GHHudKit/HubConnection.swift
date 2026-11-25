@@ -237,6 +237,16 @@ public final class HubConnection {
         return Self.why(await client.rereadEpic(request: req, headers: hub.authHeaders))
     }
 
+    /// Posts a finished epic's summary, as you, and closes it: the plan
+    /// you saw finished, nothing newer.
+    public func finishEpic(_ ref: String, planID: String) async -> String? {
+        guard let hub, let client = commands else { return "not connected" }
+        var req = Ghhud_V1_FinishEpicRequest()
+        req.ref = ref
+        req.planID = planID
+        return Self.why(await client.finishEpic(request: req, headers: hub.authHeaders))
+    }
+
     /// Drives the fleet rollout: pause, resume, apply now, skip the drain
     /// wait, or retry the failed machine.
     public func fleet(_ action: Ghhud_V1_FleetAction) async -> String? {

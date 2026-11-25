@@ -167,6 +167,10 @@ func (f *Fake) ApproveEpic(_ context.Context, ref, planID string) error {
 	return f.call("ApproveEpic %s %s", ref, planID)
 }
 
+func (f *Fake) FinishEpic(_ context.Context, ref, planID string) error {
+	return f.call("FinishEpic %s %s", ref, planID)
+}
+
 func (f *Fake) DropEpic(_ context.Context, ref string) error { return f.call("DropEpic %s", ref) }
 
 func (f *Fake) RereadEpic(_ context.Context, ref string) error { return f.call("RereadEpic %s", ref) }

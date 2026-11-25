@@ -119,6 +119,8 @@ class MainActivity : ComponentActivity() {
 
         override suspend fun drop(e: EpicRow) = plan.drop(e)
 
+        override suspend fun finish(e: EpicRow) = plan.finish(e)
+
         override suspend fun clearGate(epic: String, piece: String) = plan.clearGate(epic, piece)
 
         override suspend fun enroll(target: String) = plan.enroll(target)

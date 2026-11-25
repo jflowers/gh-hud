@@ -36,6 +36,7 @@ type Dispatcher interface {
 	DropEpic(ref string) error
 	RereadEpic(ref string) error
 	ClearEpicGate(ref, piece string) error
+	FinishEpic(ref, planID string) error
 	Approve(id string) error
 	Reject(id string) error
 
@@ -153,6 +154,8 @@ type Backend interface {
 	DropEpic(ctx context.Context, ref string) error
 	RereadEpic(ctx context.Context, ref string) error
 	ClearEpicGate(ctx context.Context, ref, piece string) error
+	// FinishEpic posts a finished epic's summary and closes it, as you.
+	FinishEpic(ctx context.Context, ref, planID string) error
 
 	// Viewers. They open a terminal window on the hub's machine.
 	Watch(ctx context.Context, sessionID string) error

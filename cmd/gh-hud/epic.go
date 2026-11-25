@@ -8,10 +8,12 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/jflowers/gh-hud/internal/epic"
+	"github.com/jflowers/gh-hud/internal/hub"
 )
 
 const epicUsage = `usage: gh-hud epic <url | owner/repo#N>   enroll an epic and read its plan
@@ -19,6 +21,7 @@ const epicUsage = `usage: gh-hud epic <url | owner/repo#N>   enroll an epic and 
        gh-hud epic approve <ref>            approve an epic's current plan
        gh-hud epic reread <ref>             read an epic again (a changed plan needs approving)
        gh-hud epic clear <ref> <piece>      clear a piece's gate (piece: #N or owner/repo#N)
+       gh-hud epic finish <ref> [-y]        show a finished epic's summary; -y posts it as you and closes the epic
        gh-hud epic drop <ref>               stop tracking an epic
 
 -hub/-token-file reach a hub on another machine (see gh-hud status -h).
@@ -29,6 +32,7 @@ func runEpic(args []string, stdout, stderr io.Writer) int {
 	fs.SetOutput(stderr)
 	hf := addHubFlags(fs)
 	asJSON := fs.Bool("json", false, "list: print JSON")
+	yes := fs.Bool("y", false, "finish: post the summary and close the epic")
 	fs.Usage = func() { fmt.Fprint(stderr, epicUsage) }
 	args, err := parseInterleaved(fs, args)
 	if err != nil {
@@ -94,6 +98,12 @@ func runEpic(args []string, stdout, stderr io.Writer) int {
 		}
 		printEpics(stdout, snap.Epics)
 		return 0
+	case "finish":
+		ref, ok := needRef()
+		if !ok {
+			return 2
+		}
+		return epicFinish(ctx, c, ref, *yes, stdout, stderr)
 	case "approve", "reread", "drop":
 		ref, ok := needRef()
 		if !ok {
@@ -165,6 +175,45 @@ var epicMark = map[epic.NodeState]string{
 	epic.NodeWaiting: "◌", epic.NodeGated: "⏸", epic.NodeBlocked: "!", epic.NodeUnknown: "?",
 }
 
+// epicFinisher is what gh-hud epic finish needs from the hub.
+type epicFinisher interface {
+	Fetch(ctx context.Context) (hub.Snapshot, error)
+	FinishEpic(ctx context.Context, ref, planID string) error
+}
+
+// epicFinish shows the summary a finished epic would close with, and with
+// yes posts it and closes the epic: the plan you saw, nothing newer.
+func epicFinish(ctx context.Context, c epicFinisher, ref string, yes bool, stdout, stderr io.Writer) int {
+	snap, err := c.Fetch(ctx)
+	if err != nil {
+		fmt.Fprintf(stderr, "gh-hud epic finish: %v\n", err)
+		return 1
+	}
+	i := slices.IndexFunc(snap.Epics, func(e epic.Epic) bool { return e.Ref == ref })
+	switch {
+	case i < 0:
+		fmt.Fprintf(stderr, "gh-hud epic finish: %s isn't enrolled\n", ref)
+		return 1
+	case snap.Epics[i].State == epic.StateClosed:
+		fmt.Fprintf(stderr, "gh-hud epic finish: %s is already closed (%s)\n", ref, snap.Epics[i].ClosedNote)
+		return 1
+	case snap.Epics[i].Complete == nil || snap.Epics[i].Plan == nil:
+		fmt.Fprintf(stderr, "gh-hud epic finish: %s isn't finished: every piece of its approved plan must be done or dropped (gh-hud epic list)\n", ref)
+		return 1
+	}
+	e := snap.Epics[i]
+	if !yes {
+		fmt.Fprintf(stdout, "%s would close with this comment, posted as you:\n\n%s\ngh-hud epic finish %s -y posts it and closes the epic.\n", ref, e.Summary, ref)
+		return 0
+	}
+	if err := c.FinishEpic(ctx, ref, e.Plan.ID); err != nil {
+		fmt.Fprintf(stderr, "gh-hud epic finish: %v\n", err)
+		return 1
+	}
+	fmt.Fprintf(stdout, "%s: summary posted, epic closed\n", ref)
+	return 0
+}
+
 func printEpics(w io.Writer, epics []epic.Epic) {
 	if len(epics) == 0 {
 		fmt.Fprintln(w, "no epics enrolled (gh-hud epic <url> enrolls one)")
@@ -196,6 +245,14 @@ func printEpics(w io.Writer, epics []epic.Epic) {
 			fmt.Fprintf(w, "  the epic changed since this plan was read: gh-hud epic reread %s\n", e.Ref)
 		}
 		switch {
+		case e.State == epic.StateClosed:
+			when := ""
+			if e.Closed != nil {
+				when = " " + e.Closed.Local().Format("Jan 2 15:04")
+			}
+			fmt.Fprintf(w, "  closed%s: %s\n", when, e.ClosedNote)
+		case e.Complete != nil:
+			fmt.Fprintf(w, "  every piece is finished: gh-hud epic finish %s shows the summary it closes with\n", e.Ref)
 		case e.ApprovedPlan == p.ID:
 			fmt.Fprintf(w, "  approved %s\n", e.Approved.Local().Format("Jan 2 15:04"))
 		case e.State == epic.StatePlanned:

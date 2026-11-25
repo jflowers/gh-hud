@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,6 +67,7 @@ interface PlanActions {
     suspend fun approve(e: EpicRow): Answer<String>
     suspend fun reread(e: EpicRow): Answer<String>
     suspend fun drop(e: EpicRow): Answer<String>
+    suspend fun finish(e: EpicRow): Answer<String>
     suspend fun clearGate(epic: String, piece: String): Answer<String>
     suspend fun enroll(target: String): Answer<String>
 }
@@ -86,6 +88,7 @@ fun PlanScreen(ui: Ui, plan: PlanActions, items: ItemActions, say: Say, refresh:
     var busy by remember { mutableStateOf(setOf<String>()) }
     var enrolling by remember { mutableStateOf(false) }
     var dropping by remember { mutableStateOf<EpicRow?>(null) }
+    var finishing by remember { mutableStateOf<EpicRow?>(null) }
     var sheet by remember { mutableStateOf<Pair<ItemRow, Boolean>?>(null) }
 
     /** Runs a command once at a time per key, and says how it went. */
@@ -146,6 +149,7 @@ fun PlanScreen(ui: Ui, plan: PlanActions, items: ItemActions, say: Say, refresh:
                             onApprove = { go("epic:${e.ref}") { plan.approve(e) } },
                             onReread = { go("epic:${e.ref}") { plan.reread(e) } },
                             onDrop = { dropping = e },
+                            onFinish = { finishing = e },
                             onClear = { p -> go("gate:${e.ref} $p") { plan.clearGate(e.ref, p) } },
                         )
                         HorizontalDivider()
@@ -206,6 +210,20 @@ fun PlanScreen(ui: Ui, plan: PlanActions, items: ItemActions, say: Say, refresh:
             dismissButton = { TextButton(onClick = { dropping = null }) { Text("Cancel") } },
         )
     }
+    finishing?.let { e ->
+        AlertDialog(
+            onDismissRequest = { finishing = null },
+            title = { Text("Finish ${e.ref}?") },
+            text = { Text("gh-hud posts the summary shown under ${e.ref} as you, then closes the epic as completed.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    finishing = null
+                    go("epic:${e.ref}") { plan.finish(e) }
+                }, modifier = Modifier.testTag("finish-confirm")) { Text("Post summary and close") }
+            },
+            dismissButton = { TextButton(onClick = { finishing = null }) { Text("Cancel") } },
+        )
+    }
     sheet?.let { (row, queue) ->
         AgentSheet(row, queue, items, onDone = { said ->
             sheet = null
@@ -257,6 +275,7 @@ private fun EpicView(
     onApprove: () -> Unit,
     onReread: () -> Unit,
     onDrop: () -> Unit,
+    onFinish: () -> Unit,
     onClear: (piece: String) -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
@@ -299,6 +318,19 @@ private fun EpicView(
         if (e.planToApprove != null) {
             Button(onClick = onApprove, enabled = enabled, modifier = Modifier.padding(top = 6.dp).testTag("approve-epic:" + e.ref)) {
                 Text("Approve plan")
+            }
+        }
+        if (e.planToFinish != null) {
+            Column(Modifier.padding(top = 4.dp, end = 16.dp).testTag("summary:" + e.ref)) {
+                Text(
+                    "Closes with this comment, posted as you:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(e.summary.trim(), style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+            }
+            Button(onClick = onFinish, enabled = enabled, modifier = Modifier.padding(top = 6.dp).testTag("finish-epic:" + e.ref)) {
+                Text("Finish epic…")
             }
         }
         val pieces = if (all) e.open else e.open.take(SHOWN)

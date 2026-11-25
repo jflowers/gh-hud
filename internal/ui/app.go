@@ -124,7 +124,12 @@ type Model struct {
 	rolloutArmed           string // the tool a first u armed
 	rolloutAt              time.Time
 	skipWaitArmed          bool
-	skipWaitAt             time.Time
+	// epicFinishArmed is the epic a first D in the Plan tab armed for
+	// finishing, at epicFinishAt; a second D within epicFinishWindow
+	// posts its summary and closes it.
+	epicFinishArmed string
+	epicFinishAt    time.Time
+	skipWaitAt      time.Time
 	// fleetSel is the fleet view's selected machine row; deweyArmed the
 	// machine a first d armed a Dewey reindex pass for ("*" for D: all).
 	fleetSel     int

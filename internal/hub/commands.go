@@ -292,6 +292,11 @@ func (h *Hub) ClearEpicGate(_ context.Context, ref, piece string) error {
 	return h.epicCmd(func(d Dispatcher) error { return d.ClearEpicGate(ref, piece) })
 }
 
+// FinishEpic posts a finished epic's summary and closes it.
+func (h *Hub) FinishEpic(_ context.Context, ref, planID string) error {
+	return h.epicCmd(func(d Dispatcher) error { return d.FinishEpic(ref, planID) })
+}
+
 // RereadEpic reads an epic again.
 func (h *Hub) RereadEpic(_ context.Context, ref string) error {
 	return h.epicCmd(func(d Dispatcher) error { return d.RereadEpic(ref) })

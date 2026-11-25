@@ -360,6 +360,13 @@ func (c *Client) ClearEpicGate(ctx context.Context, ref, piece string) error {
 	return fromConnect(err)
 }
 
+func (c *Client) FinishEpic(ctx context.Context, ref, planID string) error {
+	ctx, cancel := withDeadline(ctx, 2*time.Minute) // posts and closes on GitHub
+	defer cancel()
+	_, err := c.rpc.FinishEpic(ctx, connect.NewRequest(&pb.FinishEpicRequest{Ref: ref, PlanId: planID}))
+	return fromConnect(err)
+}
+
 func (c *Client) Unqueue(ctx context.Context, task dispatch.Task, ref string) error {
 	ctx, cancel := withDeadline(ctx, callTimeout)
 	defer cancel()

@@ -25,6 +25,8 @@ const (
   addComment(input: {subjectId: $id, body: $body}) { commentEdge { node { id } } } }`
 	updateCommentMutation = `mutation($id: ID!, $body: String!) {
   updateIssueComment(input: {id: $id, body: $body}) { issueComment { id } } }`
+	closeIssueMutation = `mutation($id: ID!) {
+  closeIssue(input: {issueId: $id, stateReason: COMPLETED}) { issue { id } } }`
 )
 
 // statusOrder is the order a status comment lists node states in.

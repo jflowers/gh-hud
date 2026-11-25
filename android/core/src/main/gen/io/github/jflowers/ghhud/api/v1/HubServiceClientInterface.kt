@@ -87,6 +87,12 @@ public interface HubServiceClientInterface {
   public suspend fun clearEpicGate(request: ClearEpicGateRequest, headers: Headers = emptyMap()): ResponseMessage<ClearEpicGateResponse>
 
   /**
+   *  FinishEpic posts a finished epic's summary on it, as you, and closes
+   *  it as completed (gh-hud#22). Every piece must be done or dropped.
+   */
+  public suspend fun finishEpic(request: FinishEpicRequest, headers: Headers = emptyMap()): ResponseMessage<FinishEpicResponse>
+
+  /**
    *  Viewers. They open a terminal window on the hub's machine.
    */
   public suspend fun watch(request: WatchRequest, headers: Headers = emptyMap()): ResponseMessage<WatchResponse>

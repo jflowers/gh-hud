@@ -30,6 +30,9 @@ public  final class Epic extends
     changes_ = emptyProtobufList();
     statusComment_ = "";
     statusHash_ = "";
+    summary_ = "";
+    summaryComment_ = "";
+    closedNote_ = "";
   }
   private int bitField0_;
   public static final int REF_FIELD_NUMBER = 1;
@@ -224,7 +227,7 @@ public  final class Epic extends
   private java.lang.String state_;
   /**
    * <pre>
-   * open set: reading, planned, approved, error
+   * open set: reading, planned, approved, error, closed
    * </pre>
    *
    * <code>string state = 5 [json_name = "state"];</code>
@@ -236,7 +239,7 @@ public  final class Epic extends
   }
   /**
    * <pre>
-   * open set: reading, planned, approved, error
+   * open set: reading, planned, approved, error, closed
    * </pre>
    *
    * <code>string state = 5 [json_name = "state"];</code>
@@ -249,7 +252,7 @@ public  final class Epic extends
   }
   /**
    * <pre>
-   * open set: reading, planned, approved, error
+   * open set: reading, planned, approved, error, closed
    * </pre>
    *
    * <code>string state = 5 [json_name = "state"];</code>
@@ -263,7 +266,7 @@ public  final class Epic extends
   }
   /**
    * <pre>
-   * open set: reading, planned, approved, error
+   * open set: reading, planned, approved, error, closed
    * </pre>
    *
    * <code>string state = 5 [json_name = "state"];</code>
@@ -274,7 +277,7 @@ public  final class Epic extends
   }
   /**
    * <pre>
-   * open set: reading, planned, approved, error
+   * open set: reading, planned, approved, error, closed
    * </pre>
    *
    * <code>string state = 5 [json_name = "state"];</code>
@@ -1066,6 +1069,316 @@ public  final class Epic extends
 
   }
 
+  public static final int COMPLETE_FIELD_NUMBER = 17;
+  private com.google.protobuf.Timestamp complete_;
+  /**
+   * <pre>
+   * Every piece of the approved plan is done or dropped (gh-hud#22): when
+   * that was first seen (unset while one isn't), and the comment
+   * FinishEpic posts as it closes the epic. Show it next to Finish Epic.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp complete = 17 [json_name = "complete"];</code>
+   */
+  @java.lang.Override
+  public boolean hasComplete() {
+    return ((bitField0_ & 0x00000020) != 0);
+  }
+  /**
+   * <pre>
+   * Every piece of the approved plan is done or dropped (gh-hud#22): when
+   * that was first seen (unset while one isn't), and the comment
+   * FinishEpic posts as it closes the epic. Show it next to Finish Epic.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp complete = 17 [json_name = "complete"];</code>
+   */
+  @java.lang.Override
+  public com.google.protobuf.Timestamp getComplete() {
+    return complete_ == null ? com.google.protobuf.Timestamp.getDefaultInstance() : complete_;
+  }
+  /**
+   * <pre>
+   * Every piece of the approved plan is done or dropped (gh-hud#22): when
+   * that was first seen (unset while one isn't), and the comment
+   * FinishEpic posts as it closes the epic. Show it next to Finish Epic.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp complete = 17 [json_name = "complete"];</code>
+   */
+  private void setComplete(com.google.protobuf.Timestamp value) {
+    java.util.Objects.requireNonNull(value);
+    complete_ = value;
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <pre>
+   * Every piece of the approved plan is done or dropped (gh-hud#22): when
+   * that was first seen (unset while one isn't), and the comment
+   * FinishEpic posts as it closes the epic. Show it next to Finish Epic.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp complete = 17 [json_name = "complete"];</code>
+   */
+  @java.lang.SuppressWarnings("ReferenceEquality")
+  private void mergeComplete(com.google.protobuf.Timestamp value) {
+    java.util.Objects.requireNonNull(value);
+    if (complete_ != null &&
+        complete_ != com.google.protobuf.Timestamp.getDefaultInstance()) {
+      complete_ =
+        com.google.protobuf.Timestamp.newBuilder(complete_).mergeFrom(value).buildPartial();
+    } else {
+      complete_ = value;
+    }
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <pre>
+   * Every piece of the approved plan is done or dropped (gh-hud#22): when
+   * that was first seen (unset while one isn't), and the comment
+   * FinishEpic posts as it closes the epic. Show it next to Finish Epic.
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp complete = 17 [json_name = "complete"];</code>
+   */
+  private void clearComplete() {
+    complete_ = null;
+    bitField0_ = (bitField0_ & ~0x00000020);
+  }
+
+  public static final int SUMMARY_FIELD_NUMBER = 18;
+  private java.lang.String summary_;
+  /**
+   * <code>string summary = 18 [json_name = "summary"];</code>
+   * @return The summary.
+   */
+  @java.lang.Override
+  public java.lang.String getSummary() {
+    return summary_;
+  }
+  /**
+   * <code>string summary = 18 [json_name = "summary"];</code>
+   * @return The bytes for summary.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getSummaryBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(summary_);
+  }
+  /**
+   * <code>string summary = 18 [json_name = "summary"];</code>
+   * @param value The summary to set.
+   */
+  private void setSummary(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    summary_ = value;
+  }
+  /**
+   * <code>string summary = 18 [json_name = "summary"];</code>
+   */
+  private void clearSummary() {
+
+    summary_ = getDefaultInstance().getSummary();
+  }
+  /**
+   * <code>string summary = 18 [json_name = "summary"];</code>
+   * @param value The bytes for summary to set.
+   */
+  private void setSummaryBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    summary_ = value.toStringUtf8();
+
+  }
+
+  public static final int SUMMARY_COMMENT_FIELD_NUMBER = 19;
+  private java.lang.String summaryComment_;
+  /**
+   * <pre>
+   * node ID of the summary once posted
+   * </pre>
+   *
+   * <code>string summary_comment = 19 [json_name = "summaryComment"];</code>
+   * @return The summaryComment.
+   */
+  @java.lang.Override
+  public java.lang.String getSummaryComment() {
+    return summaryComment_;
+  }
+  /**
+   * <pre>
+   * node ID of the summary once posted
+   * </pre>
+   *
+   * <code>string summary_comment = 19 [json_name = "summaryComment"];</code>
+   * @return The bytes for summaryComment.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getSummaryCommentBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(summaryComment_);
+  }
+  /**
+   * <pre>
+   * node ID of the summary once posted
+   * </pre>
+   *
+   * <code>string summary_comment = 19 [json_name = "summaryComment"];</code>
+   * @param value The summaryComment to set.
+   */
+  private void setSummaryComment(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    summaryComment_ = value;
+  }
+  /**
+   * <pre>
+   * node ID of the summary once posted
+   * </pre>
+   *
+   * <code>string summary_comment = 19 [json_name = "summaryComment"];</code>
+   */
+  private void clearSummaryComment() {
+
+    summaryComment_ = getDefaultInstance().getSummaryComment();
+  }
+  /**
+   * <pre>
+   * node ID of the summary once posted
+   * </pre>
+   *
+   * <code>string summary_comment = 19 [json_name = "summaryComment"];</code>
+   * @param value The bytes for summaryComment to set.
+   */
+  private void setSummaryCommentBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    summaryComment_ = value.toStringUtf8();
+
+  }
+
+  public static final int CLOSED_FIELD_NUMBER = 20;
+  private com.google.protobuf.Timestamp closed_;
+  /**
+   * <pre>
+   * When gh-hud saw the epic issue closed (state "closed"), and how:
+   * "finished by gh-hud" or "closed on GitHub".
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp closed = 20 [json_name = "closed"];</code>
+   */
+  @java.lang.Override
+  public boolean hasClosed() {
+    return ((bitField0_ & 0x00000040) != 0);
+  }
+  /**
+   * <pre>
+   * When gh-hud saw the epic issue closed (state "closed"), and how:
+   * "finished by gh-hud" or "closed on GitHub".
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp closed = 20 [json_name = "closed"];</code>
+   */
+  @java.lang.Override
+  public com.google.protobuf.Timestamp getClosed() {
+    return closed_ == null ? com.google.protobuf.Timestamp.getDefaultInstance() : closed_;
+  }
+  /**
+   * <pre>
+   * When gh-hud saw the epic issue closed (state "closed"), and how:
+   * "finished by gh-hud" or "closed on GitHub".
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp closed = 20 [json_name = "closed"];</code>
+   */
+  private void setClosed(com.google.protobuf.Timestamp value) {
+    java.util.Objects.requireNonNull(value);
+    closed_ = value;
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <pre>
+   * When gh-hud saw the epic issue closed (state "closed"), and how:
+   * "finished by gh-hud" or "closed on GitHub".
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp closed = 20 [json_name = "closed"];</code>
+   */
+  @java.lang.SuppressWarnings("ReferenceEquality")
+  private void mergeClosed(com.google.protobuf.Timestamp value) {
+    java.util.Objects.requireNonNull(value);
+    if (closed_ != null &&
+        closed_ != com.google.protobuf.Timestamp.getDefaultInstance()) {
+      closed_ =
+        com.google.protobuf.Timestamp.newBuilder(closed_).mergeFrom(value).buildPartial();
+    } else {
+      closed_ = value;
+    }
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <pre>
+   * When gh-hud saw the epic issue closed (state "closed"), and how:
+   * "finished by gh-hud" or "closed on GitHub".
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp closed = 20 [json_name = "closed"];</code>
+   */
+  private void clearClosed() {
+    closed_ = null;
+    bitField0_ = (bitField0_ & ~0x00000040);
+  }
+
+  public static final int CLOSED_NOTE_FIELD_NUMBER = 21;
+  private java.lang.String closedNote_;
+  /**
+   * <code>string closed_note = 21 [json_name = "closedNote"];</code>
+   * @return The closedNote.
+   */
+  @java.lang.Override
+  public java.lang.String getClosedNote() {
+    return closedNote_;
+  }
+  /**
+   * <code>string closed_note = 21 [json_name = "closedNote"];</code>
+   * @return The bytes for closedNote.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getClosedNoteBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(closedNote_);
+  }
+  /**
+   * <code>string closed_note = 21 [json_name = "closedNote"];</code>
+   * @param value The closedNote to set.
+   */
+  private void setClosedNote(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    closedNote_ = value;
+  }
+  /**
+   * <code>string closed_note = 21 [json_name = "closedNote"];</code>
+   */
+  private void clearClosedNote() {
+
+    closedNote_ = getDefaultInstance().getClosedNote();
+  }
+  /**
+   * <code>string closed_note = 21 [json_name = "closedNote"];</code>
+   * @param value The bytes for closedNote to set.
+   */
+  private void setClosedNoteBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    closedNote_ = value.toStringUtf8();
+
+  }
+
   public static io.github.jflowers.ghhud.api.v1.Epic parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1363,7 +1676,7 @@ public  final class Epic extends
 
     /**
      * <pre>
-     * open set: reading, planned, approved, error
+     * open set: reading, planned, approved, error, closed
      * </pre>
      *
      * <code>string state = 5 [json_name = "state"];</code>
@@ -1375,7 +1688,7 @@ public  final class Epic extends
     }
     /**
      * <pre>
-     * open set: reading, planned, approved, error
+     * open set: reading, planned, approved, error, closed
      * </pre>
      *
      * <code>string state = 5 [json_name = "state"];</code>
@@ -1388,7 +1701,7 @@ public  final class Epic extends
     }
     /**
      * <pre>
-     * open set: reading, planned, approved, error
+     * open set: reading, planned, approved, error, closed
      * </pre>
      *
      * <code>string state = 5 [json_name = "state"];</code>
@@ -1403,7 +1716,7 @@ public  final class Epic extends
     }
     /**
      * <pre>
-     * open set: reading, planned, approved, error
+     * open set: reading, planned, approved, error, closed
      * </pre>
      *
      * <code>string state = 5 [json_name = "state"];</code>
@@ -1416,7 +1729,7 @@ public  final class Epic extends
     }
     /**
      * <pre>
-     * open set: reading, planned, approved, error
+     * open set: reading, planned, approved, error, closed
      * </pre>
      *
      * <code>string state = 5 [json_name = "state"];</code>
@@ -2238,6 +2551,333 @@ public  final class Epic extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Every piece of the approved plan is done or dropped (gh-hud#22): when
+     * that was first seen (unset while one isn't), and the comment
+     * FinishEpic posts as it closes the epic. Show it next to Finish Epic.
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp complete = 17 [json_name = "complete"];</code>
+     */
+    @java.lang.Override
+    public boolean hasComplete() {
+      return instance.hasComplete();
+    }
+    /**
+     * <pre>
+     * Every piece of the approved plan is done or dropped (gh-hud#22): when
+     * that was first seen (unset while one isn't), and the comment
+     * FinishEpic posts as it closes the epic. Show it next to Finish Epic.
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp complete = 17 [json_name = "complete"];</code>
+     */
+    @java.lang.Override
+    public com.google.protobuf.Timestamp getComplete() {
+      return instance.getComplete();
+    }
+    /**
+     * <pre>
+     * Every piece of the approved plan is done or dropped (gh-hud#22): when
+     * that was first seen (unset while one isn't), and the comment
+     * FinishEpic posts as it closes the epic. Show it next to Finish Epic.
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp complete = 17 [json_name = "complete"];</code>
+     */
+    public Builder setComplete(com.google.protobuf.Timestamp value) {
+      copyOnWrite();
+      instance.setComplete(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * Every piece of the approved plan is done or dropped (gh-hud#22): when
+     * that was first seen (unset while one isn't), and the comment
+     * FinishEpic posts as it closes the epic. Show it next to Finish Epic.
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp complete = 17 [json_name = "complete"];</code>
+     */
+    public Builder setComplete(
+        com.google.protobuf.Timestamp.Builder builderForValue) {
+      copyOnWrite();
+      instance.setComplete(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Every piece of the approved plan is done or dropped (gh-hud#22): when
+     * that was first seen (unset while one isn't), and the comment
+     * FinishEpic posts as it closes the epic. Show it next to Finish Epic.
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp complete = 17 [json_name = "complete"];</code>
+     */
+    public Builder mergeComplete(com.google.protobuf.Timestamp value) {
+      copyOnWrite();
+      instance.mergeComplete(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Every piece of the approved plan is done or dropped (gh-hud#22): when
+     * that was first seen (unset while one isn't), and the comment
+     * FinishEpic posts as it closes the epic. Show it next to Finish Epic.
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp complete = 17 [json_name = "complete"];</code>
+     */
+    public Builder clearComplete() {  copyOnWrite();
+      instance.clearComplete();
+      return this;
+    }
+
+    /**
+     * <code>string summary = 18 [json_name = "summary"];</code>
+     * @return The summary.
+     */
+    @java.lang.Override
+    public java.lang.String getSummary() {
+      return instance.getSummary();
+    }
+    /**
+     * <code>string summary = 18 [json_name = "summary"];</code>
+     * @return The bytes for summary.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getSummaryBytes() {
+      return instance.getSummaryBytes();
+    }
+    /**
+     * <code>string summary = 18 [json_name = "summary"];</code>
+     * @param value The summary to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSummary(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setSummary(value);
+      return this;
+    }
+    /**
+     * <code>string summary = 18 [json_name = "summary"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSummary() {
+      copyOnWrite();
+      instance.clearSummary();
+      return this;
+    }
+    /**
+     * <code>string summary = 18 [json_name = "summary"];</code>
+     * @param value The bytes for summary to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSummaryBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setSummaryBytes(value);
+      return this;
+    }
+
+    /**
+     * <pre>
+     * node ID of the summary once posted
+     * </pre>
+     *
+     * <code>string summary_comment = 19 [json_name = "summaryComment"];</code>
+     * @return The summaryComment.
+     */
+    @java.lang.Override
+    public java.lang.String getSummaryComment() {
+      return instance.getSummaryComment();
+    }
+    /**
+     * <pre>
+     * node ID of the summary once posted
+     * </pre>
+     *
+     * <code>string summary_comment = 19 [json_name = "summaryComment"];</code>
+     * @return The bytes for summaryComment.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getSummaryCommentBytes() {
+      return instance.getSummaryCommentBytes();
+    }
+    /**
+     * <pre>
+     * node ID of the summary once posted
+     * </pre>
+     *
+     * <code>string summary_comment = 19 [json_name = "summaryComment"];</code>
+     * @param value The summaryComment to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSummaryComment(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setSummaryComment(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * node ID of the summary once posted
+     * </pre>
+     *
+     * <code>string summary_comment = 19 [json_name = "summaryComment"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSummaryComment() {
+      copyOnWrite();
+      instance.clearSummaryComment();
+      return this;
+    }
+    /**
+     * <pre>
+     * node ID of the summary once posted
+     * </pre>
+     *
+     * <code>string summary_comment = 19 [json_name = "summaryComment"];</code>
+     * @param value The bytes for summaryComment to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSummaryCommentBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setSummaryCommentBytes(value);
+      return this;
+    }
+
+    /**
+     * <pre>
+     * When gh-hud saw the epic issue closed (state "closed"), and how:
+     * "finished by gh-hud" or "closed on GitHub".
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp closed = 20 [json_name = "closed"];</code>
+     */
+    @java.lang.Override
+    public boolean hasClosed() {
+      return instance.hasClosed();
+    }
+    /**
+     * <pre>
+     * When gh-hud saw the epic issue closed (state "closed"), and how:
+     * "finished by gh-hud" or "closed on GitHub".
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp closed = 20 [json_name = "closed"];</code>
+     */
+    @java.lang.Override
+    public com.google.protobuf.Timestamp getClosed() {
+      return instance.getClosed();
+    }
+    /**
+     * <pre>
+     * When gh-hud saw the epic issue closed (state "closed"), and how:
+     * "finished by gh-hud" or "closed on GitHub".
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp closed = 20 [json_name = "closed"];</code>
+     */
+    public Builder setClosed(com.google.protobuf.Timestamp value) {
+      copyOnWrite();
+      instance.setClosed(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * When gh-hud saw the epic issue closed (state "closed"), and how:
+     * "finished by gh-hud" or "closed on GitHub".
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp closed = 20 [json_name = "closed"];</code>
+     */
+    public Builder setClosed(
+        com.google.protobuf.Timestamp.Builder builderForValue) {
+      copyOnWrite();
+      instance.setClosed(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * When gh-hud saw the epic issue closed (state "closed"), and how:
+     * "finished by gh-hud" or "closed on GitHub".
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp closed = 20 [json_name = "closed"];</code>
+     */
+    public Builder mergeClosed(com.google.protobuf.Timestamp value) {
+      copyOnWrite();
+      instance.mergeClosed(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * When gh-hud saw the epic issue closed (state "closed"), and how:
+     * "finished by gh-hud" or "closed on GitHub".
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp closed = 20 [json_name = "closed"];</code>
+     */
+    public Builder clearClosed() {  copyOnWrite();
+      instance.clearClosed();
+      return this;
+    }
+
+    /**
+     * <code>string closed_note = 21 [json_name = "closedNote"];</code>
+     * @return The closedNote.
+     */
+    @java.lang.Override
+    public java.lang.String getClosedNote() {
+      return instance.getClosedNote();
+    }
+    /**
+     * <code>string closed_note = 21 [json_name = "closedNote"];</code>
+     * @return The bytes for closedNote.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getClosedNoteBytes() {
+      return instance.getClosedNoteBytes();
+    }
+    /**
+     * <code>string closed_note = 21 [json_name = "closedNote"];</code>
+     * @param value The closedNote to set.
+     * @return This builder for chaining.
+     */
+    public Builder setClosedNote(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setClosedNote(value);
+      return this;
+    }
+    /**
+     * <code>string closed_note = 21 [json_name = "closedNote"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearClosedNote() {
+      copyOnWrite();
+      instance.clearClosedNote();
+      return this;
+    }
+    /**
+     * <code>string closed_note = 21 [json_name = "closedNote"];</code>
+     * @param value The bytes for closedNote to set.
+     * @return This builder for chaining.
+     */
+    public Builder setClosedNoteBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setClosedNoteBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.Epic)
   }
   @java.lang.Override
@@ -2272,12 +2912,18 @@ public  final class Epic extends
             "changes_",
             "statusComment_",
             "statusHash_",
+            "complete_",
+            "summary_",
+            "summaryComment_",
+            "closed_",
+            "closedNote_",
           };
           java.lang.String info =
-              "\u0000\u0010\u0000\u0001\u0001\u0010\u0010\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0015\u0000\u0001\u0001\u0015\u0015\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\u1009\u0000\u0005\u0208\u0006\u0208\u0007\u1009\u0001\b\u1009" +
               "\u0002\t\u0208\n\u1009\u0003\u000b\u0208\f\u001b\r\u1009\u0004\u000e\u021a\u000f" +
-              "\u0208\u0010\u0208";
+              "\u0208\u0010\u0208\u0011\u1009\u0005\u0012\u0208\u0013\u0208\u0014\u1009\u0006\u0015" +
+              "\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

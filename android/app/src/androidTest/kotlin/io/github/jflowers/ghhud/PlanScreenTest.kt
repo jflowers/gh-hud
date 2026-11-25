@@ -51,6 +51,7 @@ class PlanScreenTest {
         override suspend fun approve(e: EpicRow) = ok("approve epic ${e.ref} ${e.planToApprove}")
         override suspend fun reread(e: EpicRow) = ok("reread ${e.ref}")
         override suspend fun drop(e: EpicRow) = ok("drop ${e.ref}")
+        override suspend fun finish(e: EpicRow) = ok("finish ${e.ref} ${e.planToFinish}")
         override suspend fun clearGate(epic: String, piece: String) = ok("clear $epic $piece")
         override suspend fun enroll(target: String): Answer<String> {
             asked += "enroll $target"

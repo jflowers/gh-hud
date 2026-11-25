@@ -29,6 +29,7 @@ final class DashboardState: ObservableObject {
     @Published var liveOnly = false
     @Published var planSelection: PlanItem.ID?
     @Published var dropping: EpicRow?
+    @Published var finishing: EpicRow?
     @Published var enrolling = false
     @Published var confirmSkipWait = false
     @Published var toolSelection: ToolRow.ID?

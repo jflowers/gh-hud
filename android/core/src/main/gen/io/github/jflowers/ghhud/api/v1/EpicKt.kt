@@ -113,7 +113,7 @@ public object EpicKt {
 
     /**
      * ```
-     * open set: reading, planned, approved, error
+     * open set: reading, planned, approved, error, closed
      * ```
      *
      * `string state = 5 [json_name = "state"];`
@@ -127,7 +127,7 @@ public object EpicKt {
       }
     /**
      * ```
-     * open set: reading, planned, approved, error
+     * open set: reading, planned, approved, error, closed
      * ```
      *
      * `string state = 5 [json_name = "state"];`
@@ -572,6 +572,152 @@ public object EpicKt {
     public fun clearStatusHash() {
       _builder.clearStatusHash()
     }
+
+    /**
+     * ```
+     * Every piece of the approved plan is done or dropped (gh-hud#22): when
+     * that was first seen (unset while one isn't), and the comment
+     * FinishEpic posts as it closes the epic. Show it next to Finish Epic.
+     * ```
+     *
+     * `.google.protobuf.Timestamp complete = 17 [json_name = "complete"];`
+     */
+    public var complete: com.google.protobuf.Timestamp
+      @kotlin.jvm.JvmName("getComplete")
+        get() = _builder.complete
+      @kotlin.jvm.JvmName("setComplete")
+        set(value) {
+        _builder.complete = value
+      }
+    /**
+     * ```
+     * Every piece of the approved plan is done or dropped (gh-hud#22): when
+     * that was first seen (unset while one isn't), and the comment
+     * FinishEpic posts as it closes the epic. Show it next to Finish Epic.
+     * ```
+     *
+     * `.google.protobuf.Timestamp complete = 17 [json_name = "complete"];`
+     */
+    public fun clearComplete() {
+      _builder.clearComplete()
+    }
+    /**
+     * ```
+     * Every piece of the approved plan is done or dropped (gh-hud#22): when
+     * that was first seen (unset while one isn't), and the comment
+     * FinishEpic posts as it closes the epic. Show it next to Finish Epic.
+     * ```
+     *
+     * `.google.protobuf.Timestamp complete = 17 [json_name = "complete"];`
+     * @return Whether the complete field is set.
+     */
+    public fun hasComplete(): kotlin.Boolean {
+      return _builder.hasComplete()
+    }
+
+    public val EpicKt.Dsl.completeOrNull: com.google.protobuf.Timestamp?
+      get() = _builder.completeOrNull
+
+    /**
+     * `string summary = 18 [json_name = "summary"];`
+     */
+    public var summary: kotlin.String
+      @kotlin.jvm.JvmName("getSummary")
+        get() = _builder.summary
+      @kotlin.jvm.JvmName("setSummary")
+        set(value) {
+        _builder.summary = value
+      }
+    /**
+     * `string summary = 18 [json_name = "summary"];`
+     */
+    public fun clearSummary() {
+      _builder.clearSummary()
+    }
+
+    /**
+     * ```
+     * node ID of the summary once posted
+     * ```
+     *
+     * `string summary_comment = 19 [json_name = "summaryComment"];`
+     */
+    public var summaryComment: kotlin.String
+      @kotlin.jvm.JvmName("getSummaryComment")
+        get() = _builder.summaryComment
+      @kotlin.jvm.JvmName("setSummaryComment")
+        set(value) {
+        _builder.summaryComment = value
+      }
+    /**
+     * ```
+     * node ID of the summary once posted
+     * ```
+     *
+     * `string summary_comment = 19 [json_name = "summaryComment"];`
+     */
+    public fun clearSummaryComment() {
+      _builder.clearSummaryComment()
+    }
+
+    /**
+     * ```
+     * When gh-hud saw the epic issue closed (state "closed"), and how:
+     * "finished by gh-hud" or "closed on GitHub".
+     * ```
+     *
+     * `.google.protobuf.Timestamp closed = 20 [json_name = "closed"];`
+     */
+    public var closed: com.google.protobuf.Timestamp
+      @kotlin.jvm.JvmName("getClosed")
+        get() = _builder.closed
+      @kotlin.jvm.JvmName("setClosed")
+        set(value) {
+        _builder.closed = value
+      }
+    /**
+     * ```
+     * When gh-hud saw the epic issue closed (state "closed"), and how:
+     * "finished by gh-hud" or "closed on GitHub".
+     * ```
+     *
+     * `.google.protobuf.Timestamp closed = 20 [json_name = "closed"];`
+     */
+    public fun clearClosed() {
+      _builder.clearClosed()
+    }
+    /**
+     * ```
+     * When gh-hud saw the epic issue closed (state "closed"), and how:
+     * "finished by gh-hud" or "closed on GitHub".
+     * ```
+     *
+     * `.google.protobuf.Timestamp closed = 20 [json_name = "closed"];`
+     * @return Whether the closed field is set.
+     */
+    public fun hasClosed(): kotlin.Boolean {
+      return _builder.hasClosed()
+    }
+
+    public val EpicKt.Dsl.closedOrNull: com.google.protobuf.Timestamp?
+      get() = _builder.closedOrNull
+
+    /**
+     * `string closed_note = 21 [json_name = "closedNote"];`
+     */
+    public var closedNote: kotlin.String
+      @kotlin.jvm.JvmName("getClosedNote")
+        get() = _builder.closedNote
+      @kotlin.jvm.JvmName("setClosedNote")
+        set(value) {
+        _builder.closedNote = value
+      }
+    /**
+     * `string closed_note = 21 [json_name = "closedNote"];`
+     */
+    public fun clearClosedNote() {
+      _builder.clearClosedNote()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.Epic.copy(block: `io.github.jflowers.ghhud.api.v1`.EpicKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.Epic =
@@ -591,4 +737,10 @@ public val io.github.jflowers.ghhud.api.v1.EpicOrBuilder.checkedAtOrNull: com.go
 
 public val io.github.jflowers.ghhud.api.v1.EpicOrBuilder.approvedSnapshotOrNull: io.github.jflowers.ghhud.api.v1.EpicPlan?
   get() = if (hasApprovedSnapshot()) getApprovedSnapshot() else null
+
+public val io.github.jflowers.ghhud.api.v1.EpicOrBuilder.completeOrNull: com.google.protobuf.Timestamp?
+  get() = if (hasComplete()) getComplete() else null
+
+public val io.github.jflowers.ghhud.api.v1.EpicOrBuilder.closedOrNull: com.google.protobuf.Timestamp?
+  get() = if (hasClosed()) getClosed() else null
 

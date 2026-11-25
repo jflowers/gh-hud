@@ -39,6 +39,7 @@ object NoopActions : AppActions {
     override suspend fun approve(e: EpicRow): Answer<String> = Answer.Ok("")
     override suspend fun reread(e: EpicRow): Answer<String> = Answer.Ok("")
     override suspend fun drop(e: EpicRow): Answer<String> = Answer.Ok("")
+    override suspend fun finish(e: EpicRow): Answer<String> = Answer.Ok("")
     override suspend fun clearGate(epic: String, piece: String): Answer<String> = Answer.Ok("")
     override suspend fun enroll(target: String): Answer<String> = Answer.Ok("")
     override fun updateAgents(change: (AgentsView) -> AgentsView) {}

@@ -53,6 +53,11 @@ public class PlanCommands(private val hub: HubConnection) {
     public suspend fun reread(e: EpicRow): Answer<String> =
         say(hub.rereadEpic(e.ref), { "Reading ${e.ref} again" }, { "Can't reread ${e.ref}: $it" })
 
+    public suspend fun finish(e: EpicRow): Answer<String> {
+        val plan = e.planToFinish ?: return Answer.No("${e.ref} isn't finished")
+        return say(hub.finishEpic(e.ref, plan), { "Posted the summary and closed ${e.ref}" }, { "Can't finish ${e.ref}: $it" })
+    }
+
     public suspend fun drop(e: EpicRow): Answer<String> =
         say(hub.dropEpic(e.ref), { "Dropped ${e.ref}" }, { "Can't drop ${e.ref}: $it" })
 

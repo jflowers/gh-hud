@@ -622,6 +622,16 @@ do {
     check(er.status == "approved · 1/6 done, 1 running, 1 ready, 0 in progress", "epic status \(er.status)")
     check(er.open.map(\.short) == ["other/x#1", "lib#4", "#53", "#52"], "open pieces, running first: \(er.open.map(\.short))")
     check(er.open[2].clearable && !er.open[3].clearable && er.planToApprove == nil, "approved: gates clear, no plan to approve")
+    check(er.planToFinish == nil && er.summary.isEmpty, "unfinished: nothing to finish")
+    var fin = e
+    fin.plan.nodes = [node("acme/r#51", "done"), node("acme/r#54", "dropped")]
+    fin.complete.seconds = 1
+    fin.summary = "**Epic finished.** …"
+    check(EpicRow(fin).planToFinish == "p1" && EpicRow(fin).summary == fin.summary
+          && EpicRow(fin).status == "every piece finished · 1/2 done, 0 ready, 0 in progress", "finished epic \(EpicRow(fin).status)")
+    fin.state = "closed"
+    fin.closedNote = "finished by gh-hud"
+    check(EpicRow(fin).planToFinish == nil && EpicRow(fin).status == "finished by gh-hud · 1/2 done, 0 ready, 0 in progress", "closed epic \(EpicRow(fin).status)")
     e.state = "planned"
     check(EpicRow(e).planToApprove == "p1" && !EpicRow(e).open[2].clearable, "planned: approve the plan, gates wait")
     e.plan.stale = true

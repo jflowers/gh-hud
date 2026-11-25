@@ -87,6 +87,8 @@ const (
 	// HubServiceClearEpicGateProcedure is the fully-qualified name of the HubService's ClearEpicGate
 	// RPC.
 	HubServiceClearEpicGateProcedure = "/ghhud.v1.HubService/ClearEpicGate"
+	// HubServiceFinishEpicProcedure is the fully-qualified name of the HubService's FinishEpic RPC.
+	HubServiceFinishEpicProcedure = "/ghhud.v1.HubService/FinishEpic"
 	// HubServiceWatchProcedure is the fully-qualified name of the HubService's Watch RPC.
 	HubServiceWatchProcedure = "/ghhud.v1.HubService/Watch"
 	// HubServiceWatchRunProcedure is the fully-qualified name of the HubService's WatchRun RPC.
@@ -153,6 +155,9 @@ type HubServiceClient interface {
 	RereadEpic(context.Context, *connect.Request[v1.RereadEpicRequest]) (*connect.Response[v1.RereadEpicResponse], error)
 	// ClearEpicGate says a piece's gate holds: it no longer waits on it.
 	ClearEpicGate(context.Context, *connect.Request[v1.ClearEpicGateRequest]) (*connect.Response[v1.ClearEpicGateResponse], error)
+	// FinishEpic posts a finished epic's summary on it, as you, and closes
+	// it as completed (gh-hud#22). Every piece must be done or dropped.
+	FinishEpic(context.Context, *connect.Request[v1.FinishEpicRequest]) (*connect.Response[v1.FinishEpicResponse], error)
 	// Viewers. They open a terminal window on the hub's machine.
 	Watch(context.Context, *connect.Request[v1.WatchRequest]) (*connect.Response[v1.WatchResponse], error)
 	WatchRun(context.Context, *connect.Request[v1.WatchRunRequest]) (*connect.Response[v1.WatchRunResponse], error)
@@ -314,6 +319,12 @@ func NewHubServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(hubServiceMethods.ByName("ClearEpicGate")),
 			connect.WithClientOptions(opts...),
 		),
+		finishEpic: connect.NewClient[v1.FinishEpicRequest, v1.FinishEpicResponse](
+			httpClient,
+			baseURL+HubServiceFinishEpicProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("FinishEpic")),
+			connect.WithClientOptions(opts...),
+		),
 		watch: connect.NewClient[v1.WatchRequest, v1.WatchResponse](
 			httpClient,
 			baseURL+HubServiceWatchProcedure,
@@ -398,6 +409,7 @@ type hubServiceClient struct {
 	dropEpic        *connect.Client[v1.DropEpicRequest, v1.DropEpicResponse]
 	rereadEpic      *connect.Client[v1.RereadEpicRequest, v1.RereadEpicResponse]
 	clearEpicGate   *connect.Client[v1.ClearEpicGateRequest, v1.ClearEpicGateResponse]
+	finishEpic      *connect.Client[v1.FinishEpicRequest, v1.FinishEpicResponse]
 	watch           *connect.Client[v1.WatchRequest, v1.WatchResponse]
 	watchRun        *connect.Client[v1.WatchRunRequest, v1.WatchRunResponse]
 	openTranscript  *connect.Client[v1.OpenTranscriptRequest, v1.OpenTranscriptResponse]
@@ -505,6 +517,11 @@ func (c *hubServiceClient) ClearEpicGate(ctx context.Context, req *connect.Reque
 	return c.clearEpicGate.CallUnary(ctx, req)
 }
 
+// FinishEpic calls ghhud.v1.HubService.FinishEpic.
+func (c *hubServiceClient) FinishEpic(ctx context.Context, req *connect.Request[v1.FinishEpicRequest]) (*connect.Response[v1.FinishEpicResponse], error) {
+	return c.finishEpic.CallUnary(ctx, req)
+}
+
 // Watch calls ghhud.v1.HubService.Watch.
 func (c *hubServiceClient) Watch(ctx context.Context, req *connect.Request[v1.WatchRequest]) (*connect.Response[v1.WatchResponse], error) {
 	return c.watch.CallUnary(ctx, req)
@@ -595,6 +612,9 @@ type HubServiceHandler interface {
 	RereadEpic(context.Context, *connect.Request[v1.RereadEpicRequest]) (*connect.Response[v1.RereadEpicResponse], error)
 	// ClearEpicGate says a piece's gate holds: it no longer waits on it.
 	ClearEpicGate(context.Context, *connect.Request[v1.ClearEpicGateRequest]) (*connect.Response[v1.ClearEpicGateResponse], error)
+	// FinishEpic posts a finished epic's summary on it, as you, and closes
+	// it as completed (gh-hud#22). Every piece must be done or dropped.
+	FinishEpic(context.Context, *connect.Request[v1.FinishEpicRequest]) (*connect.Response[v1.FinishEpicResponse], error)
 	// Viewers. They open a terminal window on the hub's machine.
 	Watch(context.Context, *connect.Request[v1.WatchRequest]) (*connect.Response[v1.WatchResponse], error)
 	WatchRun(context.Context, *connect.Request[v1.WatchRunRequest]) (*connect.Response[v1.WatchRunResponse], error)
@@ -752,6 +772,12 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(hubServiceMethods.ByName("ClearEpicGate")),
 		connect.WithHandlerOptions(opts...),
 	)
+	hubServiceFinishEpicHandler := connect.NewUnaryHandler(
+		HubServiceFinishEpicProcedure,
+		svc.FinishEpic,
+		connect.WithSchema(hubServiceMethods.ByName("FinishEpic")),
+		connect.WithHandlerOptions(opts...),
+	)
 	hubServiceWatchHandler := connect.NewUnaryHandler(
 		HubServiceWatchProcedure,
 		svc.Watch,
@@ -852,6 +878,8 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 			hubServiceRereadEpicHandler.ServeHTTP(w, r)
 		case HubServiceClearEpicGateProcedure:
 			hubServiceClearEpicGateHandler.ServeHTTP(w, r)
+		case HubServiceFinishEpicProcedure:
+			hubServiceFinishEpicHandler.ServeHTTP(w, r)
 		case HubServiceWatchProcedure:
 			hubServiceWatchHandler.ServeHTTP(w, r)
 		case HubServiceWatchRunProcedure:
@@ -955,6 +983,10 @@ func (UnimplementedHubServiceHandler) RereadEpic(context.Context, *connect.Reque
 
 func (UnimplementedHubServiceHandler) ClearEpicGate(context.Context, *connect.Request[v1.ClearEpicGateRequest]) (*connect.Response[v1.ClearEpicGateResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.ClearEpicGate is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) FinishEpic(context.Context, *connect.Request[v1.FinishEpicRequest]) (*connect.Response[v1.FinishEpicResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.FinishEpic is not implemented"))
 }
 
 func (UnimplementedHubServiceHandler) Watch(context.Context, *connect.Request[v1.WatchRequest]) (*connect.Response[v1.WatchResponse], error) {

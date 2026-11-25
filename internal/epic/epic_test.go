@@ -215,3 +215,40 @@ func TestBuildPlanLongRule(t *testing.T) {
 		t.Fatalf("413-character rule: %v, %v", p, err)
 	}
 }
+
+func TestFinished(t *testing.T) {
+	plan := &Plan{ID: "p1", Nodes: []Node{
+		{Ref: "acme/app#2", Title: "Add the  thing", State: NodeDone, Note: "PR #9"},
+		{Ref: "acme/lib#3", Title: "Old idea", State: NodeDropped, Note: "closed not planned"},
+	}}
+	e := Epic{Ref: "acme/app#1", State: StateApproved, ApprovedPlan: "p1", Plan: plan}
+	if !e.Finished() {
+		t.Fatal("every piece done or dropped should be finished")
+	}
+	want := "**Epic finished.** All 2 pieces of plan `p1` are closed: 1 done, 1 dropped.\n" +
+		"\nDone:\n- #2 Add the thing (PR #9)\n" +
+		"\nDropped:\n- lib#3 Old idea (closed not planned)\n" +
+		"\n<sub>Posted by gh-hud, which closes this epic with it.</sub>\n"
+	if got := FinishSummary(e); got != want {
+		t.Errorf("FinishSummary =\n%s\nwant\n%s", got, want)
+	}
+
+	for name, edit := range map[string]func(*Epic){
+		"a piece open":      func(e *Epic) { e.Plan.Nodes[1].State = NodeReady },
+		"blocked by a drop": func(e *Epic) { e.Plan.Nodes[1].State = NodeBlocked },
+		"plan not approved": func(e *Epic) { e.ApprovedPlan = "p0" },
+		"waiting for you":   func(e *Epic) { e.State = StatePlanned },
+		"body changed":      func(e *Epic) { e.Plan.Stale = true },
+		"already closed":    func(e *Epic) { e.State = StateClosed },
+		"no pieces":         func(e *Epic) { e.Plan.Nodes = nil },
+	} {
+		c := e
+		p := *plan
+		p.Nodes = slices.Clone(plan.Nodes)
+		c.Plan = &p
+		edit(&c)
+		if c.Finished() {
+			t.Errorf("%s: Finished() = true", name)
+		}
+	}
+}
