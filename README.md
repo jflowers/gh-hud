@@ -1192,6 +1192,14 @@ auto pass starts them like any other step:
 
   Without the supervisor, or when its review fails, the next run waits 15
   minutes (`epic: ran, no PR yet`).
+- **Holding.** The `hold` label (auto-merge's `hold_label`) or the
+  `human-gate` label (`[dispatch] human_gate_label`) on a piece holds it:
+  it needs you (`held: the hold label`) and never starts, and its slot
+  goes to the next ready piece. On the epic issue itself it holds the
+  whole epic: none of its pieces start (`epic held: …`), runs already
+  going carry on, and the epic's line says so. gh-hud reads the labels on
+  every status check and says once when an epic is held and when it's
+  let go; remove the label to let it go.
 - **When it stops.** A piece gets `max_runs` runs after approval. Once out
   of runs it's yours (`epic: 2 runs, still no PR`). Gated and blocked
   pieces need you too. A piece that can't start says why once:

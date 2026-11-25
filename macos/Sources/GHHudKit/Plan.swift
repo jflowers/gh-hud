@@ -191,6 +191,8 @@ public struct EpicRow: Identifiable, Equatable, Sendable {
                 (status, tone) = ("plan waits for you · " + counts, .warn)
             } else if e.hasComplete {
                 (status, tone) = ("every piece finished · " + counts, .warn)
+            } else if !e.held.isEmpty {
+                (status, tone) = ("held by the \(e.held) label · " + counts, .warn)
             } else {
                 (status, tone) = ("approved · " + counts, .good)
             }

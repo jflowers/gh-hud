@@ -204,6 +204,7 @@ public data class EpicRow(
                 e.plan.stale -> "the epic changed: reread it · $counts" to Tone.WARN
                 e.state == "planned" -> "plan waits for you · $counts" to Tone.WARN
                 e.hasComplete() -> "every piece finished · $counts" to Tone.WARN
+                e.held.isNotEmpty() -> "held by the ${e.held} label · $counts" to Tone.WARN
                 else -> "approved · $counts" to Tone.GOOD
             }
             val repo = e.ref.split("#", limit = 2).first()

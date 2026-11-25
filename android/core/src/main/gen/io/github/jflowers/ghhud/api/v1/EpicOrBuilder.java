@@ -371,4 +371,26 @@ public interface EpicOrBuilder extends
    */
   com.google.protobuf.ByteString
       getClosedNoteBytes();
+
+  /**
+   * <pre>
+   * The label holding the whole epic (the hold or human-gate label on the
+   * epic issue): none of its pieces start while it's there. "" for none.
+   * </pre>
+   *
+   * <code>string held = 22 [json_name = "held"];</code>
+   * @return The held.
+   */
+  java.lang.String getHeld();
+  /**
+   * <pre>
+   * The label holding the whole epic (the hold or human-gate label on the
+   * epic issue): none of its pieces start while it's there. "" for none.
+   * </pre>
+   *
+   * <code>string held = 22 [json_name = "held"];</code>
+   * @return The bytes for held.
+   */
+  com.google.protobuf.ByteString
+      getHeldBytes();
 }

@@ -183,6 +183,23 @@ func (d *Dispatcher) ApproveEpic(ref, planID string) error {
 	return nil
 }
 
+// holdLabel is the label among labels that holds an epic or a piece: the
+// hold label (auto-merge's "don't merge yet", here "don't start yet") or
+// the human-gate label (a person handles it). "" when neither is there.
+func (d *Dispatcher) holdLabel(labels []string) string {
+	for _, want := range []string{d.o().AutoMerge.HoldLabel, d.o().HumanGate} {
+		if want == "" {
+			continue
+		}
+		for _, l := range labels {
+			if strings.EqualFold(l, want) {
+				return l
+			}
+		}
+	}
+	return ""
+}
+
 // noteFinishedLocked keeps e.Complete and e.Summary in step with whether
 // every piece is finished, and says so once when it first is.
 func (d *Dispatcher) noteFinishedLocked(e *epic.Epic) {
@@ -362,6 +379,7 @@ func (d *Dispatcher) goEpic(f func()) {
 type epicIssue struct {
 	Ref, Title, URL, Body string
 	State                 string   // OPEN or CLOSED
+	Labels                []string // label names
 	SubIssues             []string // its sub-issues, owner/repo#N, in GitHub's order
 }
 
@@ -681,20 +699,23 @@ func (d *Dispatcher) checkEpics() {
 	type result struct {
 		plan   *epic.Plan
 		stale  bool
-		closed bool // the epic issue is closed on GitHub
+		closed bool   // the epic issue is closed on GitHub
+		held   string // the label holding the epic; "" for none
+		read   bool   // the epic issue was read
 	}
 	results := map[string]result{}
 	for _, e := range todo {
 		repo, _, _ := epic.ParseRef(e.Ref)
 		facts := d.fetchFacts(ctx, e.Plan.Refs())
 		epic.Refresh(e.Plan, repo, facts)
-		stale, closed := e.Plan.Stale, false
+		r := result{plan: e.Plan, stale: e.Plan.Stale}
 		if iss, err := d.fetchEpicIssue(ctx, e.Ref); err == nil {
 			// A raw hash is what plans read before bodyHash existed hold.
-			stale = !bodyMatches(iss.Body, e.Plan.BodyHash) || !slices.Equal(iss.SubIssues, e.Plan.SubIssues)
-			closed = iss.State == "CLOSED"
+			r.stale = !bodyMatches(iss.Body, e.Plan.BodyHash) || !slices.Equal(iss.SubIssues, e.Plan.SubIssues)
+			r.closed = iss.State == "CLOSED"
+			r.held, r.read = d.holdLabel(iss.Labels), true
 		}
-		results[e.Ref] = result{e.Plan, stale, closed}
+		results[e.Ref] = r
 	}
 
 	d.mu.Lock()
@@ -712,6 +733,14 @@ func (d *Dispatcher) checkEpics() {
 		fresh := r.stale && !e.Plan.Stale
 		r.plan.Stale = r.stale
 		e.Plan, e.CheckedAt = r.plan, time.Now()
+		if r.read && r.held != e.Held {
+			if r.held != "" {
+				d.epicNotes = append(d.epicNotes, fmt.Sprintf("epic %s has the %s label: none of its pieces start until it's removed", e.Ref, r.held))
+			} else if e.State == epic.StateApproved {
+				d.epicNotes = append(d.epicNotes, fmt.Sprintf("epic %s: the %s label is gone, so its pieces start again", e.Ref, e.Held))
+			}
+			e.Held = r.held
+		}
 		if r.closed {
 			// Closed on GitHub: nothing more starts, and it's no longer
 			// checked. Its plan and progress stay as they were.
@@ -847,14 +876,19 @@ func (d *Dispatcher) fetchEpicIssue(ctx context.Context, ref string) (epicIssue,
 		return epicIssue{}, fmt.Errorf("bad ref %q", ref)
 	}
 	owner, name, _ := strings.Cut(repo, "/")
-	q := fmt.Sprintf("query { repository(owner: %q, name: %q) { issue(number: %d) { title url body state subIssues(first: %d) { nodes { number repository { nameWithOwner } } } } } }", owner, name, num, epicSubIssuesMax)
+	q := fmt.Sprintf("query { repository(owner: %q, name: %q) { issue(number: %d) { title url body state labels(first: 30) { nodes { name } } subIssues(first: %d) { nodes { number repository { nameWithOwner } } } } } }", owner, name, num, epicSubIssuesMax)
 	var data struct {
 		Repository *struct {
 			Issue *struct {
-				Title     string `json:"title"`
-				URL       string `json:"url"`
-				Body      string `json:"body"`
-				State     string `json:"state"`
+				Title  string `json:"title"`
+				URL    string `json:"url"`
+				Body   string `json:"body"`
+				State  string `json:"state"`
+				Labels struct {
+					Nodes []struct {
+						Name string `json:"name"`
+					} `json:"nodes"`
+				} `json:"labels"`
 				SubIssues struct {
 					Nodes []struct {
 						Number     int `json:"number"`
@@ -876,6 +910,9 @@ func (d *Dispatcher) fetchEpicIssue(ctx context.Context, ref string) (epicIssue,
 	// The progress block isn't plan: editing it neither changes the hash
 	// nor reaches the planner (gh-hud#118).
 	out := epicIssue{Ref: ref, Title: i.Title, URL: i.URL, Body: epic.StripStatus(i.Body), State: i.State}
+	for _, l := range i.Labels.Nodes {
+		out.Labels = append(out.Labels, l.Name)
+	}
 	for _, s := range i.SubIssues.Nodes {
 		out.SubIssues = append(out.SubIssues, epic.Ref(s.Repository.NameWithOwner, s.Number))
 	}

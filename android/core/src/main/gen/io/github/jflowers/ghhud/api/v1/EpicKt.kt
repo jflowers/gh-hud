@@ -718,6 +718,33 @@ public object EpicKt {
     public fun clearClosedNote() {
       _builder.clearClosedNote()
     }
+
+    /**
+     * ```
+     * The label holding the whole epic (the hold or human-gate label on the
+     * epic issue): none of its pieces start while it's there. "" for none.
+     * ```
+     *
+     * `string held = 22 [json_name = "held"];`
+     */
+    public var held: kotlin.String
+      @kotlin.jvm.JvmName("getHeld")
+        get() = _builder.held
+      @kotlin.jvm.JvmName("setHeld")
+        set(value) {
+        _builder.held = value
+      }
+    /**
+     * ```
+     * The label holding the whole epic (the hold or human-gate label on the
+     * epic issue): none of its pieces start while it's there. "" for none.
+     * ```
+     *
+     * `string held = 22 [json_name = "held"];`
+     */
+    public fun clearHeld() {
+      _builder.clearHeld()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.Epic.copy(block: `io.github.jflowers.ghhud.api.v1`.EpicKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.Epic =

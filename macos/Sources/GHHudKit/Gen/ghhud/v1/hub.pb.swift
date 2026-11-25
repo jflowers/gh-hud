@@ -2679,6 +2679,13 @@ public nonisolated struct Ghhud_V1_Epic: @unchecked Sendable {
     set {_uniqueStorage()._closedNote = newValue}
   }
 
+  /// The label holding the whole epic (the hold or human-gate label on the
+  /// epic issue): none of its pieces start while it's there. "" for none.
+  public var held: String {
+    get {_storage._held}
+    set {_uniqueStorage()._held = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -7436,7 +7443,7 @@ nonisolated extension Ghhud_V1_Proposal: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Epic"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}url\0\u{1}title\0\u{1}enrolled\0\u{1}state\0\u{1}error\0\u{1}plan\0\u{1}approved\0\u{3}approved_plan\0\u{3}checked_at\0\u{1}log\0\u{1}reports\0\u{3}approved_snapshot\0\u{1}changes\0\u{3}status_comment\0\u{3}status_hash\0\u{1}complete\0\u{1}summary\0\u{3}summary_comment\0\u{1}closed\0\u{3}closed_note\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}url\0\u{1}title\0\u{1}enrolled\0\u{1}state\0\u{1}error\0\u{1}plan\0\u{1}approved\0\u{3}approved_plan\0\u{3}checked_at\0\u{1}log\0\u{1}reports\0\u{3}approved_snapshot\0\u{1}changes\0\u{3}status_comment\0\u{3}status_hash\0\u{1}complete\0\u{1}summary\0\u{3}summary_comment\0\u{1}closed\0\u{3}closed_note\0\u{1}held\0")
 
   fileprivate class _StorageClass {
     var _ref: String = String()
@@ -7460,6 +7467,7 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _summaryComment: String = String()
     var _closed: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
     var _closedNote: String = String()
+    var _held: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -7491,6 +7499,7 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _summaryComment = source._summaryComment
       _closed = source._closed
       _closedNote = source._closedNote
+      _held = source._held
     }
   }
 
@@ -7530,6 +7539,7 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 19: try { try decoder.decodeSingularStringField(value: &_storage._summaryComment) }()
         case 20: try { try decoder.decodeSingularMessageField(value: &_storage._closed) }()
         case 21: try { try decoder.decodeSingularStringField(value: &_storage._closedNote) }()
+        case 22: try { try decoder.decodeSingularStringField(value: &_storage._held) }()
         default: break
         }
       }
@@ -7605,6 +7615,9 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
       if !_storage._closedNote.isEmpty {
         try visitor.visitSingularStringField(value: _storage._closedNote, fieldNumber: 21)
       }
+      if !_storage._held.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._held, fieldNumber: 22)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -7635,6 +7648,7 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._summaryComment != rhs_storage._summaryComment {return false}
         if _storage._closed != rhs_storage._closed {return false}
         if _storage._closedNote != rhs_storage._closedNote {return false}
+        if _storage._held != rhs_storage._held {return false}
         return true
       }
       if !storagesAreEqual {return false}

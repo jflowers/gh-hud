@@ -775,6 +775,9 @@ message Epic {
   // "finished by gh-hud" or "closed on GitHub".
   google.protobuf.Timestamp closed = 20;
   string closed_note = 21;
+  // The label holding the whole epic (the hold or human-gate label on the
+  // epic issue): none of its pieces start while it's there. "" for none.
+  string held = 22;
 }
 
 // EpicReport is what a piece's run that left no PR did, and the
