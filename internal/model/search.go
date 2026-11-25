@@ -16,10 +16,16 @@ type pageInfo struct {
 // section, while pages of 15 answer in about 6s (#184).
 const prPage = 15
 
-// MyPRsCap bounds how many of your open PRs the my-prs sections read, a
-// page of limit at a time. gh-hud acts on your PRs without you (auto-merge,
-// the merge train, learnings approval), so it must see all of them, not
-// the first limit; past the cap the section reports itself cut short.
+// issuePage is how many issues one search page asks for; issue nodes are
+// light, so a page can be larger than prPage.
+const issuePage = 50
+
+// MyPRsCap bounds how many items each of your own sections reads, a page
+// at a time: your PRs, review requests, assignments, mentions and labelled
+// issues. gh-hud acts on them without you (auto-merge, the merge train,
+// learnings approval, auto-dispatch), so it must see all of them, not a
+// first page (#184, #198); past the cap a section reports itself cut
+// short. The queue sweep, others' PRs, is bounded by limit instead.
 const MyPRsCap = 300
 
 // searchPages reads pages from page until it has upTo nodes or the search

@@ -143,10 +143,11 @@ func FetchAll(ctx context.Context, c *gh.Client, cfg *config.Config) *FetchResul
 		})
 	}
 
-	// issueSection fetches an issue search and merges items by URL.
+	// issueSection fetches an issue search, up to MyPRsCap issues, and
+	// merges items by URL. Its pages are bounded one by one.
 	issueSection := func(name, search string) {
-		section(name, func(ctx context.Context) error {
-			nodes, total, err := fetchIssueSearch(ctx, c, search, cfg.Limit)
+		sectionWithin(name, 0, func(ctx context.Context) error {
+			nodes, total, err := fetchIssueSearch(ctx, c, search, MyPRsCap, timeout)
 			if err != nil {
 				return err
 			}
@@ -166,12 +167,12 @@ func FetchAll(ctx context.Context, c *gh.Client, cfg *config.Config) *FetchResul
 		})
 	}
 
-	prSection("review-requested", orgs+"review-requested:@me", CatRQ, cfg.Limit)
-	prSection("assigned-prs", orgs+"assignee:@me", CatRQ, cfg.Limit)
-	// Your own PRs, all of them (to MyPRsCap): auto-merge, the merge
-	// train and learnings approval act only on PRs the dashboard has, and
-	// a first page alone drops the least recently updated, the ones most
-	// likely stuck (#184).
+	// Your own sections, all of them (to MyPRsCap): auto-merge, the merge
+	// train, learnings approval and auto-dispatch act only on items the
+	// dashboard has, and a first page alone drops the least recently
+	// updated, the ones most likely stuck (#184, #198).
+	prSection("review-requested", orgs+"review-requested:@me", CatRQ, MyPRsCap)
+	prSection("assigned-prs", orgs+"assignee:@me", CatRQ, MyPRsCap)
 	prSection("my-prs", orgs+"author:@me", CatMy, MyPRsCap)
 	if cfg.MyPRsEverywhere && len(cfg.Orgs) > 0 { // with no orgs, my-prs already is everywhere
 		prSection("my-prs-everywhere", "author:@me", CatMy, MyPRsCap)
@@ -180,6 +181,8 @@ func FetchAll(ctx context.Context, c *gh.Client, cfg *config.Config) *FetchResul
 	// candidates for agent review. Requires orgs; without them the sweep
 	// would cover all of GitHub. The search date is day-granular, so
 	// ReviewQueueReady re-checks the window against UpdatedAt exactly.
+	// Others' PRs are the costly search (a page of 15 is ~17 GraphQL
+	// points), so it reads up to limit, not MyPRsCap.
 	if len(cfg.Orgs) > 0 {
 		cutoff := start.Add(-time.Duration(cfg.QueueWindowHours) * time.Hour)
 		prSection("queue-sweep", orgs+"-author:@me updated:>"+cutoff.Format("2006-01-02"), 0, cfg.Limit)
