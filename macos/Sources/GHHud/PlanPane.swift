@@ -194,6 +194,8 @@ struct PlanCommands {
         Task {
             if let why = await conn.approve(.proposal(id: id)) {
                 ui.say("Can't approve the proposal for \(c.title): \(why)", bad: true)
+            } else if c.isReview {
+                ui.say("Posted \(c.replies.count == 1 ? "1 reply" : "\(c.replies.count) replies") to \(c.title) as you")
             } else {
                 ui.say("Approved: \(c.summary)")
             }
@@ -298,7 +300,7 @@ struct CaseView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Image(systemName: "flag.fill").foregroundStyle(.orange)
+                Image(systemName: row.isReview ? "text.bubble.fill" : "flag.fill").foregroundStyle(.orange)
                 Text(row.title).fontWeight(.medium)
                 Text(row.scope).foregroundStyle(.secondary)
                 Spacer()
@@ -308,8 +310,15 @@ struct CaseView: View {
                 if !row.summary.isEmpty {
                     Text(row.summary).foregroundStyle(.secondary).lineLimit(2)
                 }
+                ForEach(Array(row.replies.enumerated()), id: \.offset) { _, r in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(r.place)  @\(r.author): \(r.quote)").font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        Text(r.body).font(.callout).textSelection(.enabled)
+                    }
+                    .padding(.leading, 22)
+                }
                 HStack {
-                    Button("Approve") { cmds.approve(row) }
+                    Button(row.isReview ? "Post as You" : "Approve") { cmds.approve(row) }
                     Button("Reject") { cmds.reject(row) }
                 }
                 .controlSize(.small)

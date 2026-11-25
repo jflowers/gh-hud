@@ -246,6 +246,33 @@ public object CaseKt {
 
     public val CaseKt.Dsl.proposalOrNull: io.github.jflowers.ghhud.api.v1.Proposal?
       get() = _builder.proposalOrNull
+
+    /**
+     * ```
+     * pr: a review_reply case's PR, whose review threads wait on you; its
+     * proposal's decision (kind answer) carries the drafted replies.
+     * ```
+     *
+     * `int64 pr = 9 [json_name = "pr"];`
+     */
+    public var pr: kotlin.Long
+      @kotlin.jvm.JvmName("getPr")
+        get() = _builder.pr
+      @kotlin.jvm.JvmName("setPr")
+        set(value) {
+        _builder.pr = value
+      }
+    /**
+     * ```
+     * pr: a review_reply case's PR, whose review threads wait on you; its
+     * proposal's decision (kind answer) carries the drafted replies.
+     * ```
+     *
+     * `int64 pr = 9 [json_name = "pr"];`
+     */
+    public fun clearPr() {
+      _builder.clearPr()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.Case.copy(block: `io.github.jflowers.ghhud.api.v1`.CaseKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.Case =

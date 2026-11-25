@@ -734,6 +734,9 @@ message Case {
   Decision decision = 6; // the live decision; unset when undecided
   bool supervising = 7;  // a supervisor run is looking at it
   Proposal proposal = 8; // a proposal waiting for you
+  // pr: a review_reply case's PR, whose review threads wait on you; its
+  // proposal's decision (kind answer) carries the drafted replies.
+  int64 pr = 9;
 }
 
 // CaseFacts are what a case looked like.
@@ -741,18 +744,33 @@ message CaseFacts {
   repeated int64 prs = 1;
   bool on_base = 2;
   string base_oid = 3;
+  string stamp = 4; // review_reply: the PR's head, updated time and open threads
 }
 
 // Decision settles a case (dispatch.Decision).
 message Decision {
   string case_id = 1;
-  string kind = 2; // open set: link_fix, escalate
+  string kind = 2; // open set: link_fix, escalate, answer
   int64 fix_pr = 3;
   string summary = 4;
   repeated string options = 5;
   string by = 6;
   CaseFacts facts = 7;
   google.protobuf.Timestamp decided = 8;
+  repeated ReviewReply replies = 9; // answer: the drafted replies
+}
+
+// ReviewReply is a reply the supervisor drafted to a review thread; it's
+// posted as you only when you approve the proposal.
+message ReviewReply {
+  string thread = 1;       // the review thread's node id
+  string last_comment = 2; // the comment it answers
+  string path = 3;
+  int64 line = 4;
+  string author = 5; // who wrote that comment
+  string quote = 6;  // that comment, clipped
+  string url = 7;    // that comment's URL
+  string body = 8;   // the draft
 }
 
 // Proposal is the supervisor agent's answer to a case.

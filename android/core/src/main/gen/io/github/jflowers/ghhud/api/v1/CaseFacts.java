@@ -21,6 +21,7 @@ public  final class CaseFacts extends
   private CaseFacts() {
     prs_ = emptyLongList();
     baseOid_ = "";
+    stamp_ = "";
   }
   public static final int PRS_FIELD_NUMBER = 1;
   private com.google.protobuf.Internal.LongList prs_;
@@ -163,6 +164,73 @@ public  final class CaseFacts extends
       com.google.protobuf.ByteString value) {
     checkByteStringIsUtf8(value);
     baseOid_ = value.toStringUtf8();
+
+  }
+
+  public static final int STAMP_FIELD_NUMBER = 4;
+  private java.lang.String stamp_;
+  /**
+   * <pre>
+   * review_reply: the PR's head, updated time and open threads
+   * </pre>
+   *
+   * <code>string stamp = 4 [json_name = "stamp"];</code>
+   * @return The stamp.
+   */
+  @java.lang.Override
+  public java.lang.String getStamp() {
+    return stamp_;
+  }
+  /**
+   * <pre>
+   * review_reply: the PR's head, updated time and open threads
+   * </pre>
+   *
+   * <code>string stamp = 4 [json_name = "stamp"];</code>
+   * @return The bytes for stamp.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getStampBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(stamp_);
+  }
+  /**
+   * <pre>
+   * review_reply: the PR's head, updated time and open threads
+   * </pre>
+   *
+   * <code>string stamp = 4 [json_name = "stamp"];</code>
+   * @param value The stamp to set.
+   */
+  private void setStamp(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    stamp_ = value;
+  }
+  /**
+   * <pre>
+   * review_reply: the PR's head, updated time and open threads
+   * </pre>
+   *
+   * <code>string stamp = 4 [json_name = "stamp"];</code>
+   */
+  private void clearStamp() {
+
+    stamp_ = getDefaultInstance().getStamp();
+  }
+  /**
+   * <pre>
+   * review_reply: the PR's head, updated time and open threads
+   * </pre>
+   *
+   * <code>string stamp = 4 [json_name = "stamp"];</code>
+   * @param value The bytes for stamp to set.
+   */
+  private void setStampBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    stamp_ = value.toStringUtf8();
 
   }
 
@@ -413,6 +481,75 @@ public  final class CaseFacts extends
       return this;
     }
 
+    /**
+     * <pre>
+     * review_reply: the PR's head, updated time and open threads
+     * </pre>
+     *
+     * <code>string stamp = 4 [json_name = "stamp"];</code>
+     * @return The stamp.
+     */
+    @java.lang.Override
+    public java.lang.String getStamp() {
+      return instance.getStamp();
+    }
+    /**
+     * <pre>
+     * review_reply: the PR's head, updated time and open threads
+     * </pre>
+     *
+     * <code>string stamp = 4 [json_name = "stamp"];</code>
+     * @return The bytes for stamp.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getStampBytes() {
+      return instance.getStampBytes();
+    }
+    /**
+     * <pre>
+     * review_reply: the PR's head, updated time and open threads
+     * </pre>
+     *
+     * <code>string stamp = 4 [json_name = "stamp"];</code>
+     * @param value The stamp to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStamp(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setStamp(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * review_reply: the PR's head, updated time and open threads
+     * </pre>
+     *
+     * <code>string stamp = 4 [json_name = "stamp"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearStamp() {
+      copyOnWrite();
+      instance.clearStamp();
+      return this;
+    }
+    /**
+     * <pre>
+     * review_reply: the PR's head, updated time and open threads
+     * </pre>
+     *
+     * <code>string stamp = 4 [json_name = "stamp"];</code>
+     * @param value The bytes for stamp to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStampBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setStampBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.CaseFacts)
   }
   @java.lang.Override
@@ -432,10 +569,11 @@ public  final class CaseFacts extends
             "prs_",
             "onBase_",
             "baseOid_",
+            "stamp_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0001\u0000\u0001%\u0002\u0007\u0003" +
-              "\u0208";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0001\u0000\u0001%\u0002\u0007\u0003" +
+              "\u0208\u0004\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

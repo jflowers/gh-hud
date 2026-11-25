@@ -71,14 +71,18 @@ type CaseFacts struct {
 	PRs     []int  `json:"prs"`
 	OnBase  bool   `json:"on_base"`
 	BaseOID string `json:"base_oid,omitempty"`
+	// Stamp is a review_reply case's PR state: its head, updated time and
+	// threads waiting on you (replies.go).
+	Stamp string `json:"stamp,omitempty"`
 }
 
 // Case is one open case.
 type Case struct {
-	ID    string   `json:"id"` // kind|repo|check
+	ID    string   `json:"id"` // kind|repo|check, or review_reply|repo|#N
 	Kind  CaseKind `json:"kind"`
 	Repo  string   `json:"repo"`
 	Check string   `json:"check"`
+	PR    int      `json:"pr,omitempty"` // review_reply: the PR
 	CaseFacts
 	Decision *Decision `json:"decision,omitempty"` // the live decision, if any
 	// Supervising says a supervisor run is looking at the case; Proposal
@@ -95,6 +99,8 @@ type Decision struct {
 	Summary string       `json:"summary,omitempty"`
 	Options []string     `json:"options,omitempty"`
 	By      string       `json:"by,omitempty"`
+	// Replies are an answer's drafted review replies (replies.go).
+	Replies []Reply `json:"replies,omitempty"`
 	// Facts and Decided are set when the decision is accepted.
 	Facts   CaseFacts `json:"facts"`
 	Decided time.Time `json:"decided"`
@@ -110,7 +116,7 @@ func sharedFacts(g *sharedGroup, baseOID string) CaseFacts {
 }
 
 func (f CaseFacts) equal(o CaseFacts) bool {
-	return slices.Equal(f.PRs, o.PRs) && f.OnBase == o.OnBase && f.BaseOID == o.BaseOID
+	return slices.Equal(f.PRs, o.PRs) && f.OnBase == o.OnBase && f.BaseOID == o.BaseOID && f.Stamp == o.Stamp
 }
 
 // openPRs maps "repo#num" to an open PR among the items, any category.
@@ -227,6 +233,12 @@ func (tp *trainPlan) decided(it model.Item) (Decision, bool) {
 
 // stageReason is what a decided PR shows.
 func (dec Decision) stageReason() string {
+	if dec.Kind == DecideAnswer {
+		if len(dec.Replies) == 0 {
+			return clip(dec.Summary, 60)
+		}
+		return replyCount(len(dec.Replies), "drafted ")
+	}
 	if dec.Kind == DecideLinkFix {
 		return fmt.Sprintf("fix in #%d", dec.FixPR)
 	}
@@ -257,6 +269,13 @@ func (tp *trainPlan) openCases() []Case {
 			}
 			out = append(out, c)
 		}
+	}
+	for id, r := range tp.review {
+		c := Case{ID: id, Kind: CaseReviewReply, Repo: r.Repo, PR: r.Num, CaseFacts: CaseFacts{PRs: []int{r.Num}, Stamp: r.Stamp}}
+		if st, ok := tp.sup[id]; ok {
+			c.Supervising, c.Proposal = st.running, st.pending
+		}
+		out = append(out, c)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out

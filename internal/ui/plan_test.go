@@ -251,3 +251,36 @@ func TestPlanClearsAGate(t *testing.T) {
 		t.Error("C didn't clear the gate")
 	}
 }
+
+// gh-hud#180: drafted review replies show in full under the comment each
+// answers, and Y posts them.
+func TestPlanShowsDraftedReplies(t *testing.T) {
+	a := model.Item{Kind: model.KindPR, Cats: model.CatMy, Repo: "acme/r", Num: 12, Title: "feat: cache", URL: "u12"}
+	fake := &hubtest.Fake{}
+	prop := &dispatch.Proposal{ID: "p2", Status: dispatch.ProposalPending,
+		Decision: dispatch.Decision{Case: "review_reply|acme/r|#12", Kind: dispatch.DecideAnswer, Summary: "Answered the LRU question.",
+			Replies: []dispatch.Reply{{Thread: "PRRT_1", Path: "index/cache.go", Line: 42, Author: "alice",
+				Quote: "Why a map and not an LRU here?", Body: "The index is rebuilt per run, so it never outgrows memory."}}}}
+	fake.SetSnap(hub.Snapshot{Seq: 1, Dispatch: true,
+		Res: &model.FetchResult{Items: []model.Item{a}},
+		Plan: []dispatch.PlanRow{{Item: a, Task: dispatch.TaskFeedback,
+			Stage: dispatch.Stage{Kind: dispatch.StageNeedsYou, Task: dispatch.TaskFeedback, Reason: "approve 1 drafted reply?"}}},
+		Cases: []dispatch.Case{{ID: "review_reply|acme/r|#12", Kind: dispatch.CaseReviewReply, Repo: "acme/r", PR: 12,
+			CaseFacts: dispatch.CaseFacts{PRs: []int{12}, Stamp: "h|1|1"}, Proposal: prop}},
+	})
+	m := New(config.Default(), fake)
+	m.width, m.height = 160, 30
+	key := func(k string) { m.handleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)}) }
+	key("p")
+	view := ansiRe.ReplaceAllString(m.View(), "")
+	for _, want := range []string{"✎ acme/r#12 review threads", "supervisor drafted 1 reply: Y post as you · N reject",
+		"index/cache.go:42  @alice: Why a map and not an LRU here?", "→ The index is rebuilt per run, so it never outgrows memory."} {
+		if !strings.Contains(view, want) {
+			t.Errorf("plan view missing %q:\n%s", want, view)
+		}
+	}
+	key("Y")
+	if fake.Called("ApproveProposal p2") != 1 {
+		t.Error("Y didn't approve p2")
+	}
+}

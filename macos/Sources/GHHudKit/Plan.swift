@@ -91,39 +91,63 @@ public struct PlanGroup: Identifiable, Equatable, Sendable {
     public let rows: [PlanItem]
 }
 
-/// A check failing on several of your PRs, and what the supervisor does
-/// about it.
+/// A check failing on several of your PRs, or a PR's review threads
+/// waiting on you, and what the supervisor does about it.
 public struct CaseRow: Identifiable, Equatable, Sendable {
+    /// A drafted reply to a review thread: what Approve posts, as you.
+    public struct Reply: Equatable, Sendable {
+        public let place: String // "index/cache.go:42"
+        public let author: String
+        public let quote: String // the comment it answers, on one line
+        public let body: String
+
+        public init(place: String, author: String, quote: String, body: String) {
+            self.place = place
+            self.author = author
+            self.quote = quote
+            self.body = body
+        }
+    }
+
     public let id: String
-    public let title: String // "acme/r lint"
-    public let scope: String // "2 PRs, main too"
+    public let title: String // "acme/r lint", "acme/r#12 review threads"
+    public let scope: String // "2 PRs, main too"; "" for review threads
     public let status: String
     public let tone: Tone
     /// The proposal's summary, on one line.
     public let summary: String
     /// Set when a proposal waits for you.
     public let proposal: String?
+    /// The drafted replies a review_reply proposal posts.
+    public let replies: [Reply]
+    public var isReview: Bool { id.hasPrefix("review_reply|") }
 
     public init(_ c: Ghhud_V1_Case) {
         id = c.id
-        title = "\(c.repo) \(c.check)"
-        scope = "\(c.facts.prs.count) PR\(c.facts.prs.count == 1 ? "" : "s")" + (c.facts.onBase ? ", main too" : "")
+        let review = c.kind == "review_reply"
+        title = review ? "\(c.repo)#\(c.pr) review threads" : "\(c.repo) \(c.check)"
+        scope = review ? "" : "\(c.facts.prs.count) PR\(c.facts.prs.count == 1 ? "" : "s")" + (c.facts.onBase ? ", main too" : "")
         let waiting = c.hasProposal && !c.proposal.id.isEmpty
             && (c.proposal.status.isEmpty || c.proposal.status == "pending")
         if waiting {
-            (status, tone) = ("supervisor proposes " + Self.reason(c.proposal.decision), .warn)
+            (status, tone) = ((review ? "supervisor drafted " : "supervisor proposes ") + Self.reason(c.proposal.decision), .warn)
         } else if c.hasDecision {
             (status, tone) = (Self.reason(c.decision) + (c.decision.by.isEmpty ? "" : " (\(c.decision.by))"), .muted)
         } else if c.supervising {
-            (status, tone) = ("supervisor looking…", .pending)
+            (status, tone) = (review ? "supervisor drafting replies…" : "supervisor looking…", .pending)
         } else {
             (status, tone) = ("needs you", .warn)
         }
         summary = waiting ? c.proposal.decision.summary.split(whereSeparator: \.isWhitespace).joined(separator: " ") : ""
         proposal = waiting ? c.proposal.id : nil
+        replies = waiting ? c.proposal.decision.replies.map { r in
+            Reply(place: r.line > 0 ? "\(r.path):\(r.line)" : r.path, author: r.author,
+                  quote: r.quote.split(whereSeparator: \.isWhitespace).joined(separator: " "), body: r.body)
+        } : []
     }
 
     static func reason(_ d: Ghhud_V1_Decision) -> String {
+        if d.kind == "answer" { return d.replies.count == 1 ? "1 reply" : "\(d.replies.count) replies" }
         if d.kind == "link_fix" { return "fix in #\(d.fixPr)" }
         return "escalated: " + d.summary.split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }

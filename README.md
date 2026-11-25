@@ -1105,6 +1105,34 @@ the run changed nothing.
 The run view (the TUI, the Mac and Android agent detail, and
 `gh-hud runs -json`) shows the finding, or why there is none.
 
+### Drafted review replies
+
+With the supervisor on, it drafts replies to the review threads waiting
+on you. A draft is never posted unless you approve it.
+
+- **When.** A PR of yours has unresolved review threads opened by a person
+  whose last comment isn't yours. gh-hud's own `feedback` step has stopped
+  at "needs you" (it ran and changed nothing, or ran out of rounds), or
+  `feedback` isn't an auto task. A draft never races the feedback agent.
+  The Plan tab lists the PR as a case, `✎ acme/app#12 review threads`.
+- **The draft.** The supervisor reads each thread in full, and may read the
+  PR and its diff. It drafts the replies you'd post, in the first person.
+  It leaves out any thread that needs a code change first or a decision
+  only you can make, and says so in its summary. It never says a change
+  was made unless the diff shows it.
+- **Approving.** The Plan tab shows each reply in full under the comment it
+  answers. The PR says `▸you: feedback approve 2 drafted replies?`. `Y`
+  posts them as you (the Mac and Android apps: Post as You), and `N` posts
+  nothing. On approval, gh-hud reads the threads again. It posts a reply
+  only to a thread that is still unresolved and has no new comment since
+  the draft, and tells you what it left out. The `act` mode doesn't apply:
+  replies always wait for you.
+- **When it lapses.** A draft holds for the PR as it was: its head, its
+  updated time and its threads waiting on you. When any of these changes
+  (a push, a new comment or review), the draft is dropped. A new one is
+  drafted if threads still wait. A PR gets one draft per state, whether you
+  approve or reject it.
+
 ### Epics
 
 An epic is an issue that tracks a larger piece of work done through other

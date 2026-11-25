@@ -24,7 +24,7 @@ public interface DecisionOrBuilder extends
 
   /**
    * <pre>
-   * open set: link_fix, escalate
+   * open set: link_fix, escalate, answer
    * </pre>
    *
    * <code>string kind = 2 [json_name = "kind"];</code>
@@ -33,7 +33,7 @@ public interface DecisionOrBuilder extends
   java.lang.String getKind();
   /**
    * <pre>
-   * open set: link_fix, escalate
+   * open set: link_fix, escalate, answer
    * </pre>
    *
    * <code>string kind = 2 [json_name = "kind"];</code>
@@ -118,4 +118,30 @@ public interface DecisionOrBuilder extends
    * @return The decided.
    */
   com.google.protobuf.Timestamp getDecided();
+
+  /**
+   * <pre>
+   * answer: the drafted replies
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+   */
+  java.util.List<io.github.jflowers.ghhud.api.v1.ReviewReply> 
+      getRepliesList();
+  /**
+   * <pre>
+   * answer: the drafted replies
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+   */
+  io.github.jflowers.ghhud.api.v1.ReviewReply getReplies(int index);
+  /**
+   * <pre>
+   * answer: the drafted replies
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ReviewReply replies = 9 [json_name = "replies"];</code>
+   */
+  int getRepliesCount();
 }

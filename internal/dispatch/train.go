@@ -53,6 +53,9 @@ type trainPlan struct {
 	prio map[string]bool
 	// open is every open PR the refresh saw, by "repo#num".
 	open map[string]model.Item
+	// review is the PRs whose review threads wait on you, by case id
+	// (replies.go).
+	review map[string]reviewCase
 	// items are the refresh the plan was built from; sup is the supervisor
 	// agent's state by case id (supervisor_run.go). The plan is never
 	// changed in place: a supervisor update swaps in a copy.
@@ -214,6 +217,7 @@ func (d *Dispatcher) updateTrain(items []model.Item) {
 	d.train.applyDecisions(items, d.decisions)
 	d.train.sup = d.supStatesLocked()
 	d.noteBaseLocked()
+	d.train.review = d.reviewCasesLocked(items)
 	d.train.rearm = map[string][]string{}
 	cfg := d.o().AutoMerge
 	if !cfg.Enabled {
