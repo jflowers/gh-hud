@@ -393,4 +393,23 @@ public interface EpicOrBuilder extends
    */
   com.google.protobuf.ByteString
       getHeldBytes();
+
+  /**
+   * <pre>
+   * runs: how many runs its pieces started since the plan was approved;
+   * run_budget: how many they get ([epics] max_total_runs; 0: no limit).
+   * When runs reaches run_budget no piece starts until you approve the
+   * plan again.
+   * </pre>
+   *
+   * <code>int64 runs = 23 [json_name = "runs"];</code>
+   * @return The runs.
+   */
+  long getRuns();
+
+  /**
+   * <code>int64 run_budget = 24 [json_name = "runBudget"];</code>
+   * @return The runBudget.
+   */
+  long getRunBudget();
 }

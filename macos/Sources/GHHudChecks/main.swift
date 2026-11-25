@@ -670,6 +670,15 @@ do {
     heldEpic.held = "hold"
     check(EpicRow(heldEpic).status == "held by the hold label · 1/6 done, 1 running, 1 ready, 0 in progress" && EpicRow(heldEpic).tone == .warn,
           "held epic \(EpicRow(heldEpic).status)")
+    var budgeted = e
+    budgeted.runs = 7
+    budgeted.runBudget = 20
+    check(EpicRow(budgeted).status == "approved · 1/6 done, 1 running, 1 ready, 0 in progress · 7/20 runs"
+          && EpicRow(budgeted).planToApprove == nil && EpicRow(budgeted).budgetToGrant == nil, "budget left \(EpicRow(budgeted).status)")
+    budgeted.runs = 20
+    check(EpicRow(budgeted).status == "run budget spent (20/20 runs) · 1/6 done, 1 running, 1 ready, 0 in progress"
+          && EpicRow(budgeted).planToApprove == "p1" && EpicRow(budgeted).budgetToGrant == 20 && EpicRow(budgeted).tone == .warn,
+          "budget spent \(EpicRow(budgeted).status)")
     var fin = e
     fin.plan.nodes = [node("acme/r#51", "done"), node("acme/r#54", "dropped")]
     fin.complete.seconds = 1

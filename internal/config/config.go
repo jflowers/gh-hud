@@ -241,9 +241,24 @@ type EpicsConfig struct {
 	// MaxRuns is how many runs one piece gets after the plan is approved
 	// before it's left to you (default 2).
 	MaxRuns int `toml:"max_runs"`
+	// MaxTotalRuns is how many runs one epic's pieces get, all told, after
+	// the plan is approved; then nothing new starts until you approve it
+	// again (default 20; negative: no limit).
+	MaxTotalRuns int `toml:"max_total_runs"`
 	// StatusComment keeps an approved epic's progress in one comment on
 	// the epic, edited in place (gh-hud#118; default on).
 	StatusComment *bool `toml:"status_comment"`
+}
+
+// RunBudget is the runs one epic gets after approval; 0 means no limit.
+func (c EpicsConfig) RunBudget() int {
+	switch {
+	case c.MaxTotalRuns < 0:
+		return 0
+	case c.MaxTotalRuns == 0:
+		return 20
+	}
+	return c.MaxTotalRuns
 }
 
 // StatusCommentOn reports whether gh-hud keeps epics' progress comments.

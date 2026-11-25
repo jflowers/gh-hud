@@ -176,6 +176,9 @@ public struct EpicRow: Identifiable, Equatable, Sendable {
     public let tone: Tone
     /// The plan to approve, when one waits for you.
     public let planToApprove: String?
+    /// Set when the epic's run budget is spent: approving the plan again
+    /// grants this many more runs.
+    public let budgetToGrant: Int?
     /// What that plan changed since you last approved one, a line each:
     /// set only when it waits for you again.
     public let changes: [String]
@@ -217,11 +220,15 @@ public struct EpicRow: Identifiable, Equatable, Sendable {
                 (status, tone) = ("every piece finished · " + counts, .warn)
             } else if !e.held.isEmpty {
                 (status, tone) = ("held by the \(e.held) label · " + counts, .warn)
+            } else if Self.budgetSpent(e) {
+                (status, tone) = ("run budget spent (\(e.runs)/\(e.runBudget) runs) · " + counts, .warn)
             } else {
-                (status, tone) = ("approved · " + counts, .good)
+                (status, tone) = ("approved · " + counts + (e.runBudget > 0 ? " · \(e.runs)/\(e.runBudget) runs" : ""), .good)
             }
         }
-        planToApprove = e.state == "planned" && e.hasPlan && !e.plan.stale && !e.plan.id.isEmpty ? e.plan.id : nil
+        let spent = Self.budgetSpent(e) && e.hasPlan && !e.plan.stale && !e.plan.id.isEmpty
+        budgetToGrant = spent ? Int(e.runBudget) : nil
+        planToApprove = (e.state == "planned" || spent) && e.hasPlan && !e.plan.stale && !e.plan.id.isEmpty ? e.plan.id : nil
         changes = planToApprove == nil ? [] : e.changes
         planToFinish = e.state == "approved" && e.hasComplete && e.hasPlan && !e.plan.stale && !e.summary.isEmpty ? e.plan.id : nil
         summary = planToFinish == nil ? "" : e.summary
@@ -247,6 +254,12 @@ public struct EpicRow: Identifiable, Equatable, Sendable {
     }
 
     /// The TUI's piece marks.
+    /// The epic's pieces used its run budget: nothing starts until you
+    /// approve the plan again.
+    static func budgetSpent(_ e: Ghhud_V1_Epic) -> Bool {
+        e.state == "approved" && e.runBudget > 0 && e.runs >= e.runBudget
+    }
+
     public static func mark(_ state: String) -> String {
         switch state {
         case "done": return "✓"

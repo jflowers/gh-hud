@@ -2794,6 +2794,20 @@ public nonisolated struct Ghhud_V1_Epic: @unchecked Sendable {
     set {_uniqueStorage()._held = newValue}
   }
 
+  /// runs: how many runs its pieces started since the plan was approved;
+  /// run_budget: how many they get ([epics] max_total_runs; 0: no limit).
+  /// When runs reaches run_budget no piece starts until you approve the
+  /// plan again.
+  public var runs: Int64 {
+    get {_storage._runs}
+    set {_uniqueStorage()._runs = newValue}
+  }
+
+  public var runBudget: Int64 {
+    get {_storage._runBudget}
+    set {_uniqueStorage()._runBudget = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -7719,7 +7733,7 @@ nonisolated extension Ghhud_V1_Proposal: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Epic"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}url\0\u{1}title\0\u{1}enrolled\0\u{1}state\0\u{1}error\0\u{1}plan\0\u{1}approved\0\u{3}approved_plan\0\u{3}checked_at\0\u{1}log\0\u{1}reports\0\u{3}approved_snapshot\0\u{1}changes\0\u{3}status_comment\0\u{3}status_hash\0\u{1}complete\0\u{1}summary\0\u{3}summary_comment\0\u{1}closed\0\u{3}closed_note\0\u{1}held\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ref\0\u{1}url\0\u{1}title\0\u{1}enrolled\0\u{1}state\0\u{1}error\0\u{1}plan\0\u{1}approved\0\u{3}approved_plan\0\u{3}checked_at\0\u{1}log\0\u{1}reports\0\u{3}approved_snapshot\0\u{1}changes\0\u{3}status_comment\0\u{3}status_hash\0\u{1}complete\0\u{1}summary\0\u{3}summary_comment\0\u{1}closed\0\u{3}closed_note\0\u{1}held\0\u{1}runs\0\u{3}run_budget\0")
 
   fileprivate class _StorageClass {
     var _ref: String = String()
@@ -7744,6 +7758,8 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _closed: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
     var _closedNote: String = String()
     var _held: String = String()
+    var _runs: Int64 = 0
+    var _runBudget: Int64 = 0
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -7776,6 +7792,8 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _closed = source._closed
       _closedNote = source._closedNote
       _held = source._held
+      _runs = source._runs
+      _runBudget = source._runBudget
     }
   }
 
@@ -7816,6 +7834,8 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 20: try { try decoder.decodeSingularMessageField(value: &_storage._closed) }()
         case 21: try { try decoder.decodeSingularStringField(value: &_storage._closedNote) }()
         case 22: try { try decoder.decodeSingularStringField(value: &_storage._held) }()
+        case 23: try { try decoder.decodeSingularInt64Field(value: &_storage._runs) }()
+        case 24: try { try decoder.decodeSingularInt64Field(value: &_storage._runBudget) }()
         default: break
         }
       }
@@ -7894,6 +7914,12 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
       if !_storage._held.isEmpty {
         try visitor.visitSingularStringField(value: _storage._held, fieldNumber: 22)
       }
+      if _storage._runs != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._runs, fieldNumber: 23)
+      }
+      if _storage._runBudget != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._runBudget, fieldNumber: 24)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -7925,6 +7951,8 @@ nonisolated extension Ghhud_V1_Epic: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._closed != rhs_storage._closed {return false}
         if _storage._closedNote != rhs_storage._closedNote {return false}
         if _storage._held != rhs_storage._held {return false}
+        if _storage._runs != rhs_storage._runs {return false}
+        if _storage._runBudget != rhs_storage._runBudget {return false}
         return true
       }
       if !storagesAreEqual {return false}

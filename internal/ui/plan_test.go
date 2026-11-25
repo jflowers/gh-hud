@@ -284,3 +284,26 @@ func TestPlanShowsDraftedReplies(t *testing.T) {
 		t.Error("Y didn't approve p2")
 	}
 }
+
+// gh-hud#22: an epic whose run budget is spent says so, and E approves it
+// again.
+func TestPlanEpicRunBudgetSpent(t *testing.T) {
+	approved := time.Now().Add(-time.Hour)
+	fake := &hubtest.Fake{}
+	fake.SetSnap(hub.Snapshot{Seq: 1, Dispatch: true, Res: &model.FetchResult{},
+		Epics: []epic.Epic{{Ref: "acme/app#100", Title: "The epic", State: epic.StateApproved, ApprovedPlan: "p7", Approved: &approved,
+			Runs: 20, RunBudget: 20,
+			Plan: &epic.Plan{ID: "p7", Nodes: []epic.Node{{Ref: "acme/app#101", Title: "first", State: epic.NodeReady}}}}}})
+	m := New(config.Default(), fake)
+	m.width, m.height = 160, 30
+	key := func(k string) { m.handleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)}) }
+	key("p")
+	view := ansiRe.ReplaceAllString(m.View(), "")
+	if !strings.Contains(view, "run budget spent (20/20 runs): E approves 20 more") {
+		t.Errorf("plan view:\n%s", view)
+	}
+	key("E")
+	if fake.Called("ApproveEpic acme/app#100 p7") != 1 {
+		t.Error("E didn't approve the epic again")
+	}
+}

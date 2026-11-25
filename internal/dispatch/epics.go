@@ -64,8 +64,28 @@ func (d *Dispatcher) Epics() []epic.Epic {
 	out := make([]epic.Epic, len(d.epics))
 	for i, e := range d.epics {
 		out[i] = cloneEpic(e)
+		out[i].Runs, out[i].RunBudget = d.epicBudgetLocked(e)
 	}
 	return out
+}
+
+// epicBudgetLocked is how many runs an approved epic's pieces have started
+// since its approval, and its run budget (0: no limit, or not approved).
+// mu held.
+func (d *Dispatcher) epicBudgetLocked(e epic.Epic) (used, budget int) {
+	if e.State != epic.StateApproved || e.Approved == nil || e.Plan == nil {
+		return 0, 0
+	}
+	refs := map[string]bool{}
+	for _, n := range e.Plan.Nodes {
+		refs[n.Ref] = true
+	}
+	for _, r := range d.records {
+		if r.Task == TaskIssue && refs[r.Ref] && !r.StartedAt.Before(*e.Approved) {
+			used++
+		}
+	}
+	return used, d.o().Epics.RunBudget()
 }
 
 func clonePlan(in *epic.Plan) *epic.Plan {
@@ -174,7 +194,11 @@ func (d *Dispatcher) ApproveEpic(ref, planID string) error {
 	case e.Plan.Stale:
 		return fmt.Errorf("%s changed since its plan was read: reread it first", ref)
 	case e.ApprovedPlan == e.Plan.ID:
-		return fmt.Errorf("%s's plan is already approved", ref)
+		// Approving it again grants a fresh run budget, once the last is
+		// spent: the counts start over.
+		if used, budget := d.epicBudgetLocked(*e); budget == 0 || used < budget {
+			return fmt.Errorf("%s's plan is already approved", ref)
+		}
 	}
 	now := time.Now()
 	e.Approved, e.ApprovedPlan, e.State = &now, e.Plan.ID, epic.StateApproved

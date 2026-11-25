@@ -50,7 +50,7 @@ public class PlanCommands(private val hub: HubConnection) {
 
     public suspend fun approve(e: EpicRow): Answer<String> {
         val plan = e.planToApprove ?: return Answer.No("No plan of ${e.ref} waits for you")
-        return say(why(hub.approve(Approval.Epic(e.ref, plan))), { "Approved the plan for ${e.ref}" }, {
+        return say(why(hub.approve(Approval.Epic(e.ref, plan))), { e.budgetToGrant?.let { "Approved ${e.ref} again: $it more runs" } ?: "Approved the plan for ${e.ref}" }, {
             "Can't approve the plan for ${e.ref}: $it"
         })
     }

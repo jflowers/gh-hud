@@ -326,7 +326,7 @@ private fun EpicView(
         }
         if (e.planToApprove != null) {
             Button(onClick = onApprove, enabled = enabled, modifier = Modifier.padding(top = 6.dp).testTag("approve-epic:" + e.ref)) {
-                Text("Approve plan")
+                Text(e.budgetToGrant?.let { "Approve again ($it more runs)" } ?: "Approve plan")
             }
         }
         if (e.planToFinish != null) {

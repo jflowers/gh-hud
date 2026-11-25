@@ -5939,7 +5939,13 @@ type Epic struct {
 	ClosedNote string                 `protobuf:"bytes,21,opt,name=closed_note,json=closedNote,proto3" json:"closed_note,omitempty"`
 	// The label holding the whole epic (the hold or human-gate label on the
 	// epic issue): none of its pieces start while it's there. "" for none.
-	Held          string `protobuf:"bytes,22,opt,name=held,proto3" json:"held,omitempty"`
+	Held string `protobuf:"bytes,22,opt,name=held,proto3" json:"held,omitempty"`
+	// runs: how many runs its pieces started since the plan was approved;
+	// run_budget: how many they get ([epics] max_total_runs; 0: no limit).
+	// When runs reaches run_budget no piece starts until you approve the
+	// plan again.
+	Runs          int64 `protobuf:"varint,23,opt,name=runs,proto3" json:"runs,omitempty"`
+	RunBudget     int64 `protobuf:"varint,24,opt,name=run_budget,json=runBudget,proto3" json:"run_budget,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6126,6 +6132,20 @@ func (x *Epic) GetHeld() string {
 		return x.Held
 	}
 	return ""
+}
+
+func (x *Epic) GetRuns() int64 {
+	if x != nil {
+		return x.Runs
+	}
+	return 0
+}
+
+func (x *Epic) GetRunBudget() int64 {
+	if x != nil {
+		return x.RunBudget
+	}
+	return 0
 }
 
 // EpicReport is what a piece's run that left no PR did, and the
@@ -8484,7 +8504,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\acreated\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\acreated\x12\x1b\n" +
 	"\tno_answer\x18\x05 \x01(\bR\bnoAnswer\x12\x12\n" +
 	"\x04note\x18\x06 \x01(\tR\x04note\x12\x10\n" +
-	"\x03log\x18\a \x01(\tR\x03log\"\xad\x06\n" +
+	"\x03log\x18\a \x01(\tR\x03log\"\xe0\x06\n" +
 	"\x04Epic\x12\x10\n" +
 	"\x03ref\x18\x01 \x01(\tR\x03ref\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x14\n" +
@@ -8511,7 +8531,10 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x06closed\x18\x14 \x01(\v2\x1a.google.protobuf.TimestampR\x06closed\x12\x1f\n" +
 	"\vclosed_note\x18\x15 \x01(\tR\n" +
 	"closedNote\x12\x12\n" +
-	"\x04held\x18\x16 \x01(\tR\x04held\"\x9d\x02\n" +
+	"\x04held\x18\x16 \x01(\tR\x04held\x12\x12\n" +
+	"\x04runs\x18\x17 \x01(\x03R\x04runs\x12\x1d\n" +
+	"\n" +
+	"run_budget\x18\x18 \x01(\x03R\trunBudget\"\x9d\x02\n" +
 	"\n" +
 	"EpicReport\x12\x14\n" +
 	"\x05piece\x18\x01 \x01(\tR\x05piece\x12\x15\n" +

@@ -390,6 +390,7 @@ type Dispatcher struct {
 	epicNotes     []string
 	epicFailed    map[string]string // piece ref → the start error last announced
 	epicReviewing map[string]bool   // pieces whose last run the supervisor is reviewing
+	budgetNoted   map[string]bool   // epic|approval whose spent run budget was noted
 	// ghQuery runs a GraphQL query and decodes its data (a hook for tests;
 	// nil uses gh).
 	ghQuery func(ctx context.Context, query string, out any) error

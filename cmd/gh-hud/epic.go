@@ -18,7 +18,7 @@ import (
 
 const epicUsage = `usage: gh-hud epic <url | owner/repo#N>   enroll an epic and read its plan
        gh-hud epic list [-json]             the enrolled epics, their plans and status
-       gh-hud epic approve <ref>            approve an epic's current plan
+       gh-hud epic approve <ref>            approve an epic's current plan (again, once its run budget is spent)
        gh-hud epic reread <ref>             read an epic again (a changed plan needs approving)
        gh-hud epic clear <ref> <piece>      clear a piece's gate (piece: #N or owner/repo#N)
        gh-hud epic finish <ref> [-y]        show a finished epic's summary; -y posts it as you and closes the epic
@@ -255,8 +255,14 @@ func printEpics(w io.Writer, epics []epic.Epic) {
 			fmt.Fprintf(w, "  held by the %s label on the epic: none of its pieces start until it's removed\n", e.Held)
 		case e.Complete != nil:
 			fmt.Fprintf(w, "  every piece is finished: gh-hud epic finish %s shows the summary it closes with\n", e.Ref)
+		case e.BudgetSpent():
+			fmt.Fprintf(w, "  run budget spent (%d/%d runs since approval): no piece starts; gh-hud epic approve %s grants %d more\n", e.Runs, e.RunBudget, e.Ref, e.RunBudget)
 		case e.ApprovedPlan == p.ID:
-			fmt.Fprintf(w, "  approved %s\n", e.Approved.Local().Format("Jan 2 15:04"))
+			runs := ""
+			if e.RunBudget > 0 {
+				runs = fmt.Sprintf(", %d/%d runs used", e.Runs, e.RunBudget)
+			}
+			fmt.Fprintf(w, "  approved %s%s\n", e.Approved.Local().Format("Jan 2 15:04"), runs)
 		case e.State == epic.StatePlanned:
 			fmt.Fprintf(w, "  waiting for your approval: gh-hud epic approve %s\n", e.Ref)
 			if len(e.Changes) > 0 {
