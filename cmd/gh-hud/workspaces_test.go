@@ -28,9 +28,11 @@ func checkoutCmd(t *testing.T, args ...string) (code int, out, errOut string) {
 	return code, o.String(), e.String()
 }
 
-// workspacesHub is fakeHub with three checkouts: a ready one on the hub,
-// a dirty one with local-only commits on lap1, and lap1's other clone of
-// the same repo, so its directory's last element alone is ambiguous.
+// workspacesHub is fakeHub with checkouts as a fleet has them: two repos
+// in one workspace on the hub, a dirty one with local-only commits on
+// lap1, lap1's other clone of the same repo (so the directory's last
+// element alone is ambiguous), and two plain org dirs on lap1 (so the
+// workspace alone is).
 func workspacesHub() *hubtest.Fake {
 	f := fakeHub()
 	at := time.Date(2026, 11, 18, 9, 0, 0, 0, time.UTC)
@@ -38,10 +40,14 @@ func workspacesHub() *hubtest.Fake {
 	f.Snap.Workspaces = []dispatch.CheckoutHealth{
 		{Workspace: "acme@main", Repo: "acme/app", Dir: "/h/acme@main/app", Branch: "main", Default: "main",
 			LastUpkeep: &dispatch.UpkeepResult{At: at, Default: "main", Did: []string{"fast-forwarded main by 3"}}},
+		{Workspace: "acme@main", Repo: "acme/lib", Dir: "/h/acme@main/lib", Branch: "main", Default: "main",
+			LastUpkeep: &dispatch.UpkeepResult{At: at, Left: []string{"fast-forward refused: error: Your local changes to the following files would be overwritten by merge"}}},
 		{Machine: "lap1", Workspace: "acme@oak", Repo: "acme/app", Dir: "/w/acme@oak/app", Branch: "fix", Default: "main",
 			Dirty: []string{" M a.go", "?? b.go"}, LocalOnly: []string{"fix\t2", "wip\t1"},
 			LastReindex: &dispatch.ReindexResult{At: at, Err: "dewey crashed", Duration: 20 * time.Second}},
 		{Machine: "lap1", Workspace: "acme@elm", Repo: "acme/app", Dir: "/w/acme@elm/app", Branch: "main", Default: "main"},
+		{Machine: "lap1", Workspace: "acme", Repo: "acme/app", Dir: "/w/acme/app", Branch: "main", Default: "main", UpkeepOnly: true},
+		{Machine: "lap1", Workspace: "acme", Repo: "acme/lib", Dir: "/w/acme/lib", Branch: "main", Default: "main", UpkeepOnly: true},
 	}
 	return f
 }
@@ -52,11 +58,17 @@ func TestWorkspacesList(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("code %d: %s", code, errOut)
 	}
-	for _, want := range []string{"MACHINE", "LOCAL-ONLY", "local", "acme@main", "ready", "fast-forwarded main by 3",
-		"lap1", "acme@oak", "2 uncommitted", "failed after 20s: dewey crashed"} {
+	// Each row is named by its directory's last two elements, and a long
+	// outcome is cut short.
+	for _, want := range []string{"MACHINE", "LOCAL-ONLY", "local    acme@main/app", "local    acme@main/lib", "ready", "fast-forwarded main by 3",
+		"lap1     acme@oak/app", "lap1     acme/app", "lap1     acme/lib", "2 uncommitted", "failed after 20s: dewey crashed",
+		"left: fast-forward refused: error: Your local c…"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in:\n%s", want, out)
 		}
+	}
+	if strings.Contains(out, "would be overwritten") {
+		t.Errorf("a long outcome isn't cut short:\n%s", out)
 	}
 
 	code, out, _ = workspacesCmd(t, append(flags, "-json", "-machine", "lap1", "-problems")...)
@@ -64,7 +76,7 @@ func TestWorkspacesList(t *testing.T) {
 	if code != 0 || json.Unmarshal([]byte(out), &v) != nil {
 		t.Fatalf("-json: %d %s", code, out)
 	}
-	if len(v.Workspaces) != 1 {
+	if len(v.Workspaces) != 3 { // acme@oak/app and the two upkeep-only dirs
 		t.Fatalf("-machine lap1 -problems = %+v", v.Workspaces)
 	}
 	w := v.Workspaces[0]
@@ -102,8 +114,8 @@ func TestCheckoutAction(t *testing.T) {
 	f := workspacesHub()
 	flags := lanHub(t, f)
 
-	// By workspace name; the hub is machine "".
-	code, out, errOut := checkoutCmd(t, append([]string{"pull", "local", "acme@main"}, flags...)...)
+	// By the name the list shows; the hub is machine "".
+	code, out, errOut := checkoutCmd(t, append([]string{"pull", "local", "acme@main/app"}, flags...)...)
 	if code != 0 || !strings.Contains(out, "pull /h/acme@main/app") {
 		t.Errorf("pull local: %d %q %q", code, out, errOut)
 	}
@@ -117,10 +129,28 @@ func TestCheckoutAction(t *testing.T) {
 		t.Errorf("calls = %q, want %q", f.Calls, want)
 	}
 
+	// By the name the list shows, where the workspace alone is ambiguous.
+	if code, _, errOut := checkoutCmd(t, append([]string{"pull", "lap1", "acme/lib"}, flags...)...); code != 0 {
+		t.Errorf("pull lap1 acme/lib: %d %q", code, errOut)
+	}
+	if code, _, errOut := checkoutCmd(t, append([]string{"pull", "local", "acme@main/lib"}, flags...)...); code != 0 {
+		t.Errorf("pull local acme@main/lib: %d %q", code, errOut)
+	}
+	if want := []string{"CheckoutAction  /h/acme@main/app pull", "CheckoutAction lap1 /w/acme@oak/app save",
+		"CheckoutAction lap1 /w/acme/lib pull", "CheckoutAction  /h/acme@main/lib pull"}; !slices.Equal(f.Calls, want) {
+		t.Errorf("calls = %q, want %q", f.Calls, want)
+	}
+
 	// A name two checkouts share, and one no checkout has, are refused
 	// before the hub is asked.
-	if code, _, errOut := checkoutCmd(t, append([]string{"upkeep", "lap1", "app"}, flags...)...); code != 1 || !strings.Contains(errOut, "names more than one checkout on lap1") {
-		t.Errorf("ambiguous: %d %q", code, errOut)
+	for _, arg := range []string{"app", "acme", "acme@main"} {
+		machine := map[string]string{"acme@main": "local"}[arg]
+		if machine == "" {
+			machine = "lap1"
+		}
+		if code, _, errOut := checkoutCmd(t, append([]string{"upkeep", machine, arg}, flags...)...); code != 1 || !strings.Contains(errOut, "names more than one checkout on "+machine) {
+			t.Errorf("ambiguous %s: %d %q", arg, code, errOut)
+		}
 	}
 	if code, _, errOut := checkoutCmd(t, append([]string{"upkeep", "lap1", "nope"}, flags...)...); code != 1 || !strings.Contains(errOut, "no checkout nope on lap1") {
 		t.Errorf("unknown checkout: %d %q", code, errOut)
@@ -128,7 +158,7 @@ func TestCheckoutAction(t *testing.T) {
 	if code, _, errOut := checkoutCmd(t, append([]string{"upkeep", "lap9", "app"}, flags...)...); code != 1 || !strings.Contains(errOut, "no checkouts on lap9") {
 		t.Errorf("unknown machine: %d %q", code, errOut)
 	}
-	if len(f.Calls) != 2 {
+	if len(f.Calls) != 4 {
 		t.Errorf("asked the hub anyway: %q", f.Calls)
 	}
 

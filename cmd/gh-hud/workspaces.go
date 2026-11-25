@@ -36,8 +36,9 @@ const checkoutUsage = `usage: gh-hud checkout pull <machine> <checkout>        f
                                                         commits and untracked learnings)
 
 <machine> is a fleet machine's name, local for the hub. <checkout> is the
-checkout's directory, its workspace name or the directory's last element,
-as gh-hud workspaces lists it. The action runs in the background on the
+checkout's name as gh-hud workspaces lists it (unbound-force@chai/dewey),
+its directory, or its workspace name or the directory's last element
+when that names one checkout. The action runs in the background on the
 hub; its outcome is a notice and the checkout's last upkeep (or reindex)
 in gh-hud workspaces. It refuses a checkout with a live agent.
 
@@ -173,20 +174,42 @@ func printWorkspaces(w io.Writer, v workspacesView) {
 	}
 }
 
-// checkoutName is the name a row goes by: its workspace, else its
-// directory's last element.
+// checkoutName is the name a row goes by: its directory's last two
+// elements (unbound-force@chai/dewey, or fullsend-ai/agents for a plain
+// org dir), which tell one machine's checkouts apart where the workspace
+// alone can't (a workspace holds a checkout per repo, and every plain dir
+// of an org shares the org's name). A row that isn't a checkout is its
+// directory.
 func checkoutName(c workspaceView) string {
-	if c.Workspace != "" {
-		return c.Workspace
+	if c.Unmanaged {
+		return c.Dir
 	}
-	return filepath.Base(c.Dir)
+	return dirName(c.Dir)
 }
+
+// dirName is dir's last two elements.
+func dirName(dir string) string {
+	dir = filepath.Clean(dir)
+	return filepath.Join(filepath.Base(filepath.Dir(dir)), filepath.Base(dir))
+}
+
+// outcomeWidth bounds an outcome's text in the table; -json has it whole.
+const outcomeWidth = 48
 
 func outcomeText(o *outcomeView) string {
 	if o == nil {
 		return ""
 	}
-	return when(o.At) + " " + o.Text
+	return when(o.At) + " " + clip(o.Text, outcomeWidth)
+}
+
+// clip cuts s to n runes, ending in … when it cut.
+func clip(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n-1]) + "…"
 }
 
 func runWorkspaces(args []string, stdout, stderr io.Writer) int {
@@ -238,8 +261,9 @@ func runWorkspaces(args []string, stdout, stderr io.Writer) int {
 }
 
 // findCheckout finds the checkout arg names on machine in the last
-// Workspaces read: its directory, its workspace name, or its directory's
-// last element, matching one checkout only.
+// Workspaces read: its directory or its name as the list shows it, else
+// its workspace name or its directory's last element, matching one
+// checkout only.
 func findCheckout(ws []dispatch.CheckoutHealth, machine, arg string) (dispatch.CheckoutHealth, error) {
 	var onMachine, hits []dispatch.CheckoutHealth
 	for _, h := range ws {
@@ -256,6 +280,15 @@ func findCheckout(ws []dispatch.CheckoutHealth, machine, arg string) (dispatch.C
 		}
 	}
 	for _, h := range onMachine {
+		if !h.Unmanaged && dirName(h.Dir) == filepath.Clean(arg) {
+			hits = append(hits, h)
+		}
+	}
+	if len(hits) == 1 {
+		return hits[0], nil
+	}
+	hits = nil
+	for _, h := range onMachine {
 		if h.Workspace == arg || filepath.Base(h.Dir) == arg {
 			hits = append(hits, h)
 		}
@@ -266,11 +299,11 @@ func findCheckout(ws []dispatch.CheckoutHealth, machine, arg string) (dispatch.C
 	case 0:
 		return dispatch.CheckoutHealth{}, fmt.Errorf("no checkout %s on %s (gh-hud workspaces -machine %s lists them)", arg, machine, machine)
 	}
-	var dirs []string
+	var names []string
 	for _, h := range hits {
-		dirs = append(dirs, h.Dir)
+		names = append(names, dirName(h.Dir))
 	}
-	return dispatch.CheckoutHealth{}, fmt.Errorf("%s names more than one checkout on %s: %s; give its directory", arg, machine, strings.Join(dirs, ", "))
+	return dispatch.CheckoutHealth{}, fmt.Errorf("%s names more than one checkout on %s: %s; say which", arg, machine, strings.Join(names, ", "))
 }
 
 // agentTokenRefusal is the start of the hub's refusal of a call the agent
