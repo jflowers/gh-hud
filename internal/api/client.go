@@ -367,6 +367,20 @@ func (c *Client) FinishEpic(ctx context.Context, ref, planID string) error {
 	return fromConnect(err)
 }
 
+func (c *Client) CancelRun(ctx context.Context, runID string) error {
+	ctx, cancel := withDeadline(ctx, dispatchDeadline)
+	defer cancel()
+	_, err := c.rpc.CancelRun(ctx, connect.NewRequest(&pb.CancelRunRequest{RunId: runID}))
+	return fromConnect(err)
+}
+
+func (c *Client) SkipAuto(ctx context.Context, task dispatch.Task, url string, undo bool) error {
+	ctx, cancel := withDeadline(ctx, callTimeout)
+	defer cancel()
+	_, err := c.rpc.SkipAuto(ctx, connect.NewRequest(&pb.SkipAutoRequest{Task: string(task), Url: url, Undo: undo}))
+	return fromConnect(err)
+}
+
 func (c *Client) Unqueue(ctx context.Context, task dispatch.Task, ref string) error {
 	ctx, cancel := withDeadline(ctx, callTimeout)
 	defer cancel()

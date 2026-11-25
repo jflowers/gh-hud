@@ -151,10 +151,22 @@ struct PlanCommands {
             Button("Move Earlier") { move(r, by: -1) }.disabled(off != nil)
             Button("Move Later") { move(r, by: 1) }.disabled(off != nil)
             Button("Remove from Queue") { unqueue(r) }.disabled(off != nil)
+        } else if r.autoNext {
+            Button("Queue \(r.task)") { enqueue(r) }.disabled(off != nil)
+            Button("Skip \(r.task)") { skip(r, undo: false) }.disabled(off != nil)
+        } else if r.skipped {
+            Button("Resume \(r.task)") { skip(r, undo: true) }.disabled(off != nil)
         } else if !r.task.isEmpty {
             Button("Queue \(r.task)") { enqueue(r) }.disabled(off != nil)
         } else {
             Button("Add to Queue…") { ui.sheet = AgentRequest(row: row(r), queue: true) }.disabled(off != nil)
+        }
+        if let run = liveRun(r) {
+            Divider()
+            Button("Cancel \(run.task) Run…") {
+                ItemCommands(conn: conn, ui: ui).askCancel(id: run.id, label: "\(run.task) on \(r.ref)")
+            }
+            .disabled(off != nil)
         }
         if r.gated {
             Divider()
@@ -175,6 +187,25 @@ struct PlanCommands {
         Task {
             if case .failure(let why) = await conn.moveQueued(task: r.task, ref: r.ref, by: delta) {
                 ui.say("Can't move \(r.task) \(r.ref): \(why)", bad: true)
+            }
+        }
+    }
+
+    /// The run going on the row's PR or issue, if any.
+    func liveRun(_ r: PlanItem) -> Ghhud_V1_Run? {
+        conn.snapshot.runs.first { run in
+            run.ref == r.ref && (run.status == "running" || run.status == "blocked")
+        }
+    }
+
+    func skip(_ r: PlanItem, undo: Bool) {
+        Task {
+            if let why = await conn.skipAuto(task: r.task, url: r.item.url, undo: undo) {
+                ui.say("Can't \(undo ? "resume" : "skip") \(r.task) \(r.ref): \(why)", bad: true)
+            } else if undo {
+                ui.say("Resumed \(r.task) on \(r.ref): auto-dispatch may start it again")
+            } else {
+                ui.say("Skipped \(r.task) on \(r.ref) until it changes")
             }
         }
     }

@@ -137,6 +137,16 @@ func (d *fakeDisp) Enqueue(task dispatch.Task, it model.Item) error {
 	return nil
 }
 
+func (d *fakeDisp) CancelRun(_ context.Context, id string) error {
+	d.record("CancelRun %s", id)
+	return nil
+}
+
+func (d *fakeDisp) SkipAuto(task dispatch.Task, it model.Item, undo bool) error {
+	d.record("SkipAuto %s %s %v", task, it.Ref(), undo)
+	return nil
+}
+
 func (d *fakeDisp) Unqueue(task dispatch.Task, ref string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()

@@ -160,10 +160,13 @@ type Record struct {
 	FindingNote string        `json:"finding_note,omitempty"`
 	FindingRead bool          `json:"finding_read,omitempty"`
 	FindingLog  string        `json:"finding_log,omitempty"`
-	Summary     string        `json:"summary,omitempty"`    // the agent's final message
-	StartHead   string        `json:"start_head,omitempty"` // HEAD when the agent started
-	Branch      string        `json:"branch,omitempty"`     // branch left checked out
-	Left        []string      `json:"left,omitempty"`       // leftovers: uncommitted/unpushed work
+	// Cancelled: you cancelled the run (cancel.go); it counts as failed and
+	// its checkout's uncommitted changes were discarded.
+	Cancelled bool     `json:"cancelled,omitempty"`
+	Summary   string   `json:"summary,omitempty"`    // the agent's final message
+	StartHead string   `json:"start_head,omitempty"` // HEAD when the agent started
+	Branch    string   `json:"branch,omitempty"`     // branch left checked out
+	Left      []string `json:"left,omitempty"`       // leftovers: uncommitted/unpushed work
 	// Backup is where upkeep saved the leftovers when it cleaned the
 	// checkout ("origin/wip/<label>/...", upkeep_backup.go).
 	Backup       string     `json:"backup,omitempty"`
@@ -360,6 +363,10 @@ type Dispatcher struct {
 	baseBroke map[string]map[string]bool
 	queue     []QueueEntry // guarded by mu: tasks you queued (queue.go)
 	queueMod  time.Time    // queue.json mtime at the last load or save
+	// skips are the auto steps you skipped (cancel.go), guarded by mu;
+	// skipsMod is skips.json's mtime.
+	skips    []SkipEntry
+	skipsMod time.Time
 	// decisions are the supervisor's accepted decisions (supervisor.go),
 	// guarded by mu; decisionsMod is decisions.json's mtime.
 	decisions    []Decision
@@ -548,6 +555,7 @@ func New(opts Options) (*Dispatcher, error) {
 	}
 	d.loadState()
 	d.loadQueueLocked()
+	d.loadSkipsLocked()
 	d.loadDecisionsLocked()
 	d.loadProposalsLocked()
 	d.loadEpicsLocked()

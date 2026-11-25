@@ -498,7 +498,15 @@ func (d *Dispatcher) finishRecord(r Record, exitCode *int, closePane bool) {
 	if closePane {
 		_, _ = herdrRun(ctx, m, "pane", "close", r.PaneID)
 	}
+	discard := ""
+	if d.cancelledRecord(r) {
+		o = cancelOutcome(o)
+		discard = d.discardCancelled(ctx, m, r)
+	}
 	insp := d.inspect(ctx, m, r)
+	if discard != "" {
+		insp.err = strings.TrimPrefix(insp.err+"; "+discard, "; ")
+	}
 
 	now := time.Now().UTC()
 	d.mu.Lock()

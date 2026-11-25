@@ -96,6 +96,8 @@ var agentCalls = map[string]bool{
 	ghhudv1connect.HubServiceReinspectProcedure:  true,
 	ghhudv1connect.HubServiceEnqueueProcedure:    true,
 	ghhudv1connect.HubServiceUnqueueProcedure:    true,
+	ghhudv1connect.HubServiceCancelRunProcedure:  true,
+	ghhudv1connect.HubServiceSkipAutoProcedure:   true,
 	ghhudv1connect.HubServiceMoveQueuedProcedure: true,
 	ghhudv1connect.HubServiceEnrollEpicProcedure: true,
 	ghhudv1connect.HubServiceRereadEpicProcedure: true,

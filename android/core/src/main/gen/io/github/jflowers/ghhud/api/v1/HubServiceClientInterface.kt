@@ -46,6 +46,16 @@ public interface HubServiceClientInterface {
   public suspend fun reinspect(request: ReinspectRequest, headers: Headers = emptyMap()): ResponseMessage<ReinspectResponse>
 
   /**
+   *  CancelRun stops a live run (Snapshot.runs) by its id: its herdr pane
+   *  is closed, or its local process stopped. It finishes in the
+   *  background as failed, "cancelled from gh-hud", with its checkout's
+   *  uncommitted changes discarded and the checkout back on its default
+   *  branch when no commits were left. FAILED_PRECONDITION when the run
+   *  already finished.
+   */
+  public suspend fun cancelRun(request: CancelRunRequest, headers: Headers = emptyMap()): ResponseMessage<CancelRunResponse>
+
+  /**
    *  PruneBranches finds the dispatch checkouts' branches whose PR is
    *  merged or closed, and your forks' (gh-hud branches); with apply it
    *  deletes them and fast-forwards the forks' default branches.
@@ -62,6 +72,12 @@ public interface HubServiceClientInterface {
   public suspend fun unqueue(request: UnqueueRequest, headers: Headers = emptyMap()): ResponseMessage<UnqueueResponse>
 
   public suspend fun moveQueued(request: MoveQueuedRequest, headers: Headers = emptyMap()): ResponseMessage<MoveQueuedResponse>
+
+  /**
+   *  SkipAuto takes a due auto step off the plan until the item changes
+   *  (its stage becomes "you", "skipped by you"); undo lets it run again.
+   */
+  public suspend fun skipAuto(request: SkipAutoRequest, headers: Headers = emptyMap()): ResponseMessage<SkipAutoResponse>
 
   /**
    *  Supervisor proposals (Snapshot.cases), by proposal id.

@@ -92,6 +92,13 @@ struct AgentsPane: View {
                 .disabled(off != nil || !run.hasFinishedAt)
             Button("Open Transcript") { transcript(r, run) }
                 .disabled(off != nil || run.sessionID.isEmpty || conn.isRemote)
+            if r.live {
+                Divider()
+                Button("Cancel Run…") {
+                    ItemCommands(conn: conn, ui: ui).askCancel(id: run.id, label: "\(run.task) on \(run.ref)")
+                }
+                .disabled(off != nil)
+            }
         }
         Divider()
         if let url = Links.forRef(r.session.ref) {

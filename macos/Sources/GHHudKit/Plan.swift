@@ -27,6 +27,10 @@ public struct PlanItem: Identifiable, Equatable, Sendable {
     public let epic: String
     /// A piece held by a gate only you can clear.
     public let gated: Bool
+    /// An auto step due to start: you can skip it.
+    public let autoNext: Bool
+    /// An auto step you skipped: you can resume it.
+    public let skipped: Bool
     public let item: Ghhud_V1_Item
 
     init(_ r: Ghhud_V1_PlanRow, position: Int?) {
@@ -45,7 +49,12 @@ public struct PlanItem: Identifiable, Equatable, Sendable {
         missing = r.missing
         epic = r.epic
         gated = !r.epic.isEmpty && r.stage.reason.hasPrefix("gate: ")
+        autoNext = r.queued == 0 && r.epic.isEmpty && r.stage.kind == "next"
+        skipped = r.queued == 0 && r.stage.kind == "you" && r.stage.reason == Self.skippedReason
     }
+
+    /// The stage reason of an auto step you skipped (dispatch.SkippedReason).
+    public static let skippedReason = "skipped by you"
 
     /// Whether the next pass tries to start it.
     static func starts(_ r: Ghhud_V1_PlanRow) -> Bool {

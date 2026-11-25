@@ -44,6 +44,15 @@ public protocol Ghhud_V1_HubServiceClientInterface: Sendable {
     @available(iOS 13, *)
     func `reinspect`(request: Ghhud_V1_ReinspectRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_ReinspectResponse>
 
+    /// CancelRun stops a live run (Snapshot.runs) by its id: its herdr pane
+    /// is closed, or its local process stopped. It finishes in the
+    /// background as failed, "cancelled from gh-hud", with its checkout's
+    /// uncommitted changes discarded and the checkout back on its default
+    /// branch when no commits were left. FAILED_PRECONDITION when the run
+    /// already finished.
+    @available(iOS 13, *)
+    func `cancelRun`(request: Ghhud_V1_CancelRunRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_CancelRunResponse>
+
     /// PruneBranches finds the dispatch checkouts' branches whose PR is
     /// merged or closed, and your forks' (gh-hud branches); with apply it
     /// deletes them and fast-forwards the forks' default branches.
@@ -62,6 +71,11 @@ public protocol Ghhud_V1_HubServiceClientInterface: Sendable {
 
     @available(iOS 13, *)
     func `moveQueued`(request: Ghhud_V1_MoveQueuedRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_MoveQueuedResponse>
+
+    /// SkipAuto takes a due auto step off the plan until the item changes
+    /// (its stage becomes "you", "skipped by you"); undo lets it run again.
+    @available(iOS 13, *)
+    func `skipAuto`(request: Ghhud_V1_SkipAutoRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_SkipAutoResponse>
 
     /// Supervisor proposals (Snapshot.cases), by proposal id.
     @available(iOS 13, *)
@@ -191,6 +205,11 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
     }
 
     @available(iOS 13, *)
+    public func `cancelRun`(request: Ghhud_V1_CancelRunRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_CancelRunResponse> {
+        return await self.client.unary(path: "/ghhud.v1.HubService/CancelRun", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `pruneBranches`(request: Ghhud_V1_PruneBranchesRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_PruneBranchesResponse> {
         return await self.client.unary(path: "/ghhud.v1.HubService/PruneBranches", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -213,6 +232,11 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
     @available(iOS 13, *)
     public func `moveQueued`(request: Ghhud_V1_MoveQueuedRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_MoveQueuedResponse> {
         return await self.client.unary(path: "/ghhud.v1.HubService/MoveQueued", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `skipAuto`(request: Ghhud_V1_SkipAutoRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_SkipAutoResponse> {
+        return await self.client.unary(path: "/ghhud.v1.HubService/SkipAuto", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
     @available(iOS 13, *)
@@ -314,11 +338,13 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
             public static let dispatch = Connect.MethodSpec(name: "Dispatch", service: "ghhud.v1.HubService", type: .unary)
             public static let itemChoices = Connect.MethodSpec(name: "ItemChoices", service: "ghhud.v1.HubService", type: .unary)
             public static let reinspect = Connect.MethodSpec(name: "Reinspect", service: "ghhud.v1.HubService", type: .unary)
+            public static let cancelRun = Connect.MethodSpec(name: "CancelRun", service: "ghhud.v1.HubService", type: .unary)
             public static let pruneBranches = Connect.MethodSpec(name: "PruneBranches", service: "ghhud.v1.HubService", type: .unary)
             public static let queueChoices = Connect.MethodSpec(name: "QueueChoices", service: "ghhud.v1.HubService", type: .unary)
             public static let enqueue = Connect.MethodSpec(name: "Enqueue", service: "ghhud.v1.HubService", type: .unary)
             public static let unqueue = Connect.MethodSpec(name: "Unqueue", service: "ghhud.v1.HubService", type: .unary)
             public static let moveQueued = Connect.MethodSpec(name: "MoveQueued", service: "ghhud.v1.HubService", type: .unary)
+            public static let skipAuto = Connect.MethodSpec(name: "SkipAuto", service: "ghhud.v1.HubService", type: .unary)
             public static let approveProposal = Connect.MethodSpec(name: "ApproveProposal", service: "ghhud.v1.HubService", type: .unary)
             public static let rejectProposal = Connect.MethodSpec(name: "RejectProposal", service: "ghhud.v1.HubService", type: .unary)
             public static let enrollEpic = Connect.MethodSpec(name: "EnrollEpic", service: "ghhud.v1.HubService", type: .unary)

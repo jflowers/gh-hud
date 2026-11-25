@@ -104,6 +104,22 @@ struct ItemCommands {
         }
     }
 
+    /// Asks to cancel a live run (the window confirms it).
+    func askCancel(id: String, label: String) {
+        ui.cancelling = CancelAsk(id: id, label: label)
+    }
+
+    func cancel(_ a: CancelAsk) {
+        ui.say("Cancelling \(a.label)…")
+        Task {
+            if let why = await conn.cancelRun(id: a.id) {
+                ui.say("Can't cancel \(a.label): \(why)", bad: true)
+            } else {
+                ui.say("Cancelled \(a.label); its checkout is being cleaned up")
+            }
+        }
+    }
+
     static func outcome(_ r: Ghhud_V1_Run) -> String {
         let words = RunTag.words(r.status)
         return r.summary.isEmpty ? words : "\(words) — \(r.summary)"
@@ -125,8 +141,18 @@ struct ItemCommands {
                 .disabled(off != nil || !run.finished)
             Button("Open \(run.task) Transcript") { transcript(r) }
                 .disabled(off != nil || !run.hasTranscript || conn.isRemote)
+            if run.live {
+                Button("Cancel \(run.task) Run…") { askCancel(id: run.id, label: "\(run.task) on \(r.ref)") }
+                    .disabled(off != nil)
+            }
         }
     }
+}
+
+/// A live run you asked to cancel, waiting for you to confirm.
+struct CancelAsk: Identifiable, Equatable {
+    let id: String // the run's
+    let label: String // "feedback on acme/r#5"
 }
 
 /// Loads the choices for an item and runs the one you pick.

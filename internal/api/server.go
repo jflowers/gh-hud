@@ -202,6 +202,15 @@ func (s *Server) Enqueue(ctx context.Context, req *connect.Request[pb.EnqueueReq
 	return connect.NewResponse(&pb.EnqueueResponse{Position: int64(pos)}), nil
 }
 
+func (s *Server) CancelRun(ctx context.Context, req *connect.Request[pb.CancelRunRequest]) (*connect.Response[pb.CancelRunResponse], error) {
+	return reply(&pb.CancelRunResponse{}, s.b.CancelRun(ctx, req.Msg.GetRunId()))
+}
+
+func (s *Server) SkipAuto(ctx context.Context, req *connect.Request[pb.SkipAutoRequest]) (*connect.Response[pb.SkipAutoResponse], error) {
+	err := s.b.SkipAuto(ctx, dispatch.Task(req.Msg.GetTask()), req.Msg.GetUrl(), req.Msg.GetUndo())
+	return reply(&pb.SkipAutoResponse{}, err)
+}
+
 func (s *Server) Unqueue(ctx context.Context, req *connect.Request[pb.UnqueueRequest]) (*connect.Response[pb.UnqueueResponse], error) {
 	err := s.b.Unqueue(ctx, dispatch.Task(req.Msg.GetTask()), req.Msg.GetRef())
 	return reply(&pb.UnqueueResponse{}, err)

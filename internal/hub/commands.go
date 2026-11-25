@@ -206,6 +206,39 @@ func (h *Hub) Reinspect(ctx context.Context, runID string) (dispatch.Run, error)
 	return run, err
 }
 
+// CancelRun stops a live run; it finishes as cancelled in the background.
+func (h *Hub) CancelRun(ctx context.Context, runID string) error {
+	d, err := h.disp()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(ctx, reinspectTimeout)
+	defer cancel()
+	if err := d.CancelRun(ctx, runID); err != nil {
+		return err
+	}
+	poke(h.agentsReq)
+	h.publish()
+	return nil
+}
+
+// SkipAuto skips (or with undo resumes) a due auto step on an item.
+func (h *Hub) SkipAuto(ctx context.Context, task dispatch.Task, url string, undo bool) error {
+	d, err := h.disp()
+	if err != nil {
+		return err
+	}
+	it, err := h.find(ctx, url)
+	if err != nil {
+		return err
+	}
+	if err := d.SkipAuto(task, it, undo); err != nil {
+		return err
+	}
+	h.publish()
+	return nil
+}
+
 // QueueChoices lists the tasks that can be queued on an item.
 func (h *Hub) QueueChoices(ctx context.Context, url string) ([]dispatch.Task, error) {
 	d, err := h.disp()
