@@ -502,13 +502,14 @@ type runView struct {
 	Index    string     `json:"index_health,omitempty"`
 	Session  string     `json:"session,omitempty"`
 	Opencode string     `json:"opencode,omitempty"`
+	Finding  string     `json:"finding,omitempty"`
 }
 
 func runOf(r dispatch.Run) runView {
 	return runView{ID: r.ID, Task: string(r.Task), Ref: r.Ref, Machine: machineName(r.Machine), Where: r.Workspace,
 		Status: string(r.Status), Auto: r.Auto, Started: r.StartedAt, Finished: r.FinishedAt, Reason: r.Reason,
 		Summary: r.Summary, Branch: r.Branch, Pushed: r.Pushed, Left: r.Left, Index: r.IndexHealth, Session: r.SessionID,
-		Opencode: r.Opencode}
+		Opencode: r.Opencode, Finding: r.FindingText()}
 }
 
 func printRuns(w io.Writer, rs []runView) {
@@ -519,6 +520,9 @@ func printRuns(w io.Writer, rs []runView) {
 	tw := tabwriter.NewWriter(w, 0, 2, 2, ' ', 0)
 	for _, r := range rs {
 		reason := r.Reason
+		if reason == "" && r.Finding != "" {
+			reason = "found: " + r.Finding
+		}
 		if len(reason) > 80 {
 			reason = reason[:79] + "…"
 		}

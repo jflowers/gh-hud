@@ -1069,6 +1069,39 @@ one run per set of facts. An approved, rejected or applied proposal holds
 off another run until the case's PRs or main's commit change. Proposals
 are kept in `proposals.json`.
 
+### What a ci run found
+
+A `ci` agent sometimes works out that a failure isn't the PR's to fix: main
+is broken, or another PR already fixes it. gh-hud keeps that conclusion as
+a finding and acts on it, instead of stopping the PR at "needs you" because
+the run changed nothing.
+
+- **From the agent.** A run can end its last message with one line:
+  `gh-hud-finding: {"kind": "blocked_by_base", "check": "Build", "why": "main's run fails the same test"}`
+  or `gh-hud-finding: {"kind": "fixed_by", "pr": 1031}`.
+- **From the supervisor.** With the supervisor on, a `ci` run that pushed
+  nothing and left no finding line is read by the supervisor agent. It gets
+  the PR's failing checks, what main fails, the other open PRs in the repo
+  and the agent's last message. It answers `blocked_by_base`, `fixed_by` or
+  `none`. While it reads, the PR shows `▸ci supervisor reading the run`.
+- **Checked like a decision.** A `blocked_by_base` must name one of the
+  checks the PR was failing; the check can be left out when there was only
+  one. A `fixed_by` must name another PR that gh-hud sees open. A refused
+  finding is noted on the run and the PR stops as before.
+- **What it does.** The PR waits, `▸ci main broken: Build` or
+  `▸ci fix in #1031`. It doesn't need you, no ci agent starts, and it doesn't
+  merge.
+- **When it lapses.** Each run records what it started from: the PR's head,
+  main's commit and the failing checks. The finding lapses when any of
+  those change, or when the `fixed_by` PR is no longer open. Then the run
+  that changed nothing no longer stops the PR, so `ci` can run again. A
+  `blocked_by_base` check counts as seen failing on main, so once main
+  passes it, the PR is brought up to date with main (no agent), as for a
+  shared failure.
+
+The run view (the TUI, the Mac and Android agent detail, and
+`gh-hud runs -json`) shows the finding, or why there is none.
+
 ### Epics
 
 An epic is an issue that tracks a larger piece of work done through other

@@ -149,12 +149,21 @@ type Record struct {
 	// (ExitCode stays nil).
 	FinishError string `json:"finish_error,omitempty"`
 	// Outcome detail and after-run inspection (see finish.go).
-	FailReason  string   `json:"fail_reason,omitempty"`  // why the run failed
-	HumanNeeded bool     `json:"human_needed,omitempty"` // the agent handed a decision to a person
-	Summary     string   `json:"summary,omitempty"`      // the agent's final message
-	StartHead   string   `json:"start_head,omitempty"`   // HEAD when the agent started
-	Branch      string   `json:"branch,omitempty"`       // branch left checked out
-	Left        []string `json:"left,omitempty"`         // leftovers: uncommitted/unpushed work
+	FailReason  string `json:"fail_reason,omitempty"`  // why the run failed
+	HumanNeeded bool   `json:"human_needed,omitempty"` // the agent handed a decision to a person
+	// Basis is what a ci run started from, Finding what it found, while
+	// it's recorded, and FindingNote why there is none; FindingRead says
+	// the finding was settled (stated, refused or read by the supervisor)
+	// and FindingLog is the supervisor's log (findings.go).
+	Basis       *FindingBasis `json:"basis,omitempty"`
+	Finding     *Finding      `json:"finding,omitempty"`
+	FindingNote string        `json:"finding_note,omitempty"`
+	FindingRead bool          `json:"finding_read,omitempty"`
+	FindingLog  string        `json:"finding_log,omitempty"`
+	Summary     string        `json:"summary,omitempty"`    // the agent's final message
+	StartHead   string        `json:"start_head,omitempty"` // HEAD when the agent started
+	Branch      string        `json:"branch,omitempty"`     // branch left checked out
+	Left        []string      `json:"left,omitempty"`       // leftovers: uncommitted/unpushed work
 	// Backup is where upkeep saved the leftovers when it cleaned the
 	// checkout ("origin/wip/<label>/...", upkeep_backup.go).
 	Backup       string     `json:"backup,omitempty"`
@@ -362,6 +371,9 @@ type Dispatcher struct {
 	proposalsMod time.Time
 	supRunning   map[string]bool
 	supNotes     []string
+	// findingReviewing is the ci runs the supervisor is reading, by run id
+	// (findings.go).
+	findingReviewing map[string]bool
 	// supervisorRun runs one supervisor agent and returns its output; a
 	// test hook (nil uses runOpencodeSupervisor).
 	supervisorRun func(ctx context.Context, spec supervisorSpec) ([]byte, error)
@@ -889,6 +901,7 @@ func (d *Dispatcher) dispatchLocal(task Task, it model.Item, co ghws.Checkout, n
 		Stash:       stash,
 		Fingerprint: fingerprint(task, it),
 		Auto:        auto,
+		Basis:       ciBasis(task, it),
 	}
 	d.mu.Lock()
 	d.records = append(d.records, rec)
@@ -970,6 +983,7 @@ func (d *Dispatcher) dispatchHerdr(ctx context.Context, task Task, it model.Item
 		Stash:       stash,
 		Fingerprint: fingerprint(task, it),
 		Auto:        auto,
+		Basis:       ciBasis(task, it),
 		Runner:      "herdr",
 		WSID:        wsID,
 		PaneID:      paneID,

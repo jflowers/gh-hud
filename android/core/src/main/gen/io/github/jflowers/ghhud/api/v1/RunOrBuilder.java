@@ -364,4 +364,47 @@ public interface RunOrBuilder extends
    */
   com.google.protobuf.ByteString
       getOpencodeBytes();
+
+  /**
+   * <pre>
+   * finding: what a ci run found (blocked by the base branch, fixed by
+   * another PR) while it's recorded; finding_note says why there is none
+   * (refused, or the supervisor found nothing); finding_pending that the
+   * supervisor is reading the run (#180).
+   * </pre>
+   *
+   * <code>.ghhud.v1.Finding finding = 27 [json_name = "finding"];</code>
+   * @return Whether the finding field is set.
+   */
+  boolean hasFinding();
+  /**
+   * <pre>
+   * finding: what a ci run found (blocked by the base branch, fixed by
+   * another PR) while it's recorded; finding_note says why there is none
+   * (refused, or the supervisor found nothing); finding_pending that the
+   * supervisor is reading the run (#180).
+   * </pre>
+   *
+   * <code>.ghhud.v1.Finding finding = 27 [json_name = "finding"];</code>
+   * @return The finding.
+   */
+  io.github.jflowers.ghhud.api.v1.Finding getFinding();
+
+  /**
+   * <code>string finding_note = 28 [json_name = "findingNote"];</code>
+   * @return The findingNote.
+   */
+  java.lang.String getFindingNote();
+  /**
+   * <code>string finding_note = 28 [json_name = "findingNote"];</code>
+   * @return The bytes for findingNote.
+   */
+  com.google.protobuf.ByteString
+      getFindingNoteBytes();
+
+  /**
+   * <code>bool finding_pending = 29 [json_name = "findingPending"];</code>
+   * @return The findingPending.
+   */
+  boolean getFindingPending();
 }

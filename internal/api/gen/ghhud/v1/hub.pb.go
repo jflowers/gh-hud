@@ -4756,9 +4756,16 @@ type Run struct {
 	IndexHealth string `protobuf:"bytes,25,opt,name=index_health,json=indexHealth,proto3" json:"index_health,omitempty"`
 	// opencode: the machine's `opencode --version` when the run started;
 	// empty when unknown.
-	Opencode      string `protobuf:"bytes,26,opt,name=opencode,proto3" json:"opencode,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Opencode string `protobuf:"bytes,26,opt,name=opencode,proto3" json:"opencode,omitempty"`
+	// finding: what a ci run found (blocked by the base branch, fixed by
+	// another PR) while it's recorded; finding_note says why there is none
+	// (refused, or the supervisor found nothing); finding_pending that the
+	// supervisor is reading the run (#180).
+	Finding        *Finding `protobuf:"bytes,27,opt,name=finding,proto3" json:"finding,omitempty"`
+	FindingNote    string   `protobuf:"bytes,28,opt,name=finding_note,json=findingNote,proto3" json:"finding_note,omitempty"`
+	FindingPending bool     `protobuf:"varint,29,opt,name=finding_pending,json=findingPending,proto3" json:"finding_pending,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Run) Reset() {
@@ -4973,6 +4980,129 @@ func (x *Run) GetOpencode() string {
 	return ""
 }
 
+func (x *Run) GetFinding() *Finding {
+	if x != nil {
+		return x.Finding
+	}
+	return nil
+}
+
+func (x *Run) GetFindingNote() string {
+	if x != nil {
+		return x.FindingNote
+	}
+	return ""
+}
+
+func (x *Run) GetFindingPending() bool {
+	if x != nil {
+		return x.FindingPending
+	}
+	return false
+}
+
+// Finding is what a ci run found, with the PR state it holds for: it
+// lapses when the head, the base commit or the failing checks change.
+type Finding struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Kind          string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`   // open set: blocked_by_base, fixed_by
+	Check         string                 `protobuf:"bytes,2,opt,name=check,proto3" json:"check,omitempty"` // blocked_by_base: the check the base branch breaks
+	Pr            int64                  `protobuf:"varint,3,opt,name=pr,proto3" json:"pr,omitempty"`      // fixed_by: the PR that fixes it
+	Why           string                 `protobuf:"bytes,4,opt,name=why,proto3" json:"why,omitempty"`
+	By            string                 `protobuf:"bytes,5,opt,name=by,proto3" json:"by,omitempty"` // agent or supervisor
+	Head          string                 `protobuf:"bytes,6,opt,name=head,proto3" json:"head,omitempty"`
+	Base          string                 `protobuf:"bytes,7,opt,name=base,proto3" json:"base,omitempty"`
+	Checks        []string               `protobuf:"bytes,8,rep,name=checks,proto3" json:"checks,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Finding) Reset() {
+	*x = Finding{}
+	mi := &file_ghhud_v1_hub_proto_msgTypes[72]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Finding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Finding) ProtoMessage() {}
+
+func (x *Finding) ProtoReflect() protoreflect.Message {
+	mi := &file_ghhud_v1_hub_proto_msgTypes[72]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Finding.ProtoReflect.Descriptor instead.
+func (*Finding) Descriptor() ([]byte, []int) {
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{72}
+}
+
+func (x *Finding) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *Finding) GetCheck() string {
+	if x != nil {
+		return x.Check
+	}
+	return ""
+}
+
+func (x *Finding) GetPr() int64 {
+	if x != nil {
+		return x.Pr
+	}
+	return 0
+}
+
+func (x *Finding) GetWhy() string {
+	if x != nil {
+		return x.Why
+	}
+	return ""
+}
+
+func (x *Finding) GetBy() string {
+	if x != nil {
+		return x.By
+	}
+	return ""
+}
+
+func (x *Finding) GetHead() string {
+	if x != nil {
+		return x.Head
+	}
+	return ""
+}
+
+func (x *Finding) GetBase() string {
+	if x != nil {
+		return x.Base
+	}
+	return ""
+}
+
+func (x *Finding) GetChecks() []string {
+	if x != nil {
+		return x.Checks
+	}
+	return nil
+}
+
 type MachineUsage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -4988,7 +5118,7 @@ type MachineUsage struct {
 
 func (x *MachineUsage) Reset() {
 	*x = MachineUsage{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[72]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5000,7 +5130,7 @@ func (x *MachineUsage) String() string {
 func (*MachineUsage) ProtoMessage() {}
 
 func (x *MachineUsage) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[72]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5013,7 +5143,7 @@ func (x *MachineUsage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MachineUsage.ProtoReflect.Descriptor instead.
 func (*MachineUsage) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{72}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *MachineUsage) GetName() string {
@@ -5064,7 +5194,7 @@ type Stage struct {
 
 func (x *Stage) Reset() {
 	*x = Stage{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[73]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5076,7 +5206,7 @@ func (x *Stage) String() string {
 func (*Stage) ProtoMessage() {}
 
 func (x *Stage) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[73]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5089,7 +5219,7 @@ func (x *Stage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Stage.ProtoReflect.Descriptor instead.
 func (*Stage) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{73}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *Stage) GetKind() string {
@@ -5129,7 +5259,7 @@ type PlanRow struct {
 
 func (x *PlanRow) Reset() {
 	*x = PlanRow{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[74]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5141,7 +5271,7 @@ func (x *PlanRow) String() string {
 func (*PlanRow) ProtoMessage() {}
 
 func (x *PlanRow) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[74]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5154,7 +5284,7 @@ func (x *PlanRow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlanRow.ProtoReflect.Descriptor instead.
 func (*PlanRow) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{74}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *PlanRow) GetItem() *Item {
@@ -5226,7 +5356,7 @@ type QueueEntry struct {
 
 func (x *QueueEntry) Reset() {
 	*x = QueueEntry{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[75]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5238,7 +5368,7 @@ func (x *QueueEntry) String() string {
 func (*QueueEntry) ProtoMessage() {}
 
 func (x *QueueEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[75]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5251,7 +5381,7 @@ func (x *QueueEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueueEntry.ProtoReflect.Descriptor instead.
 func (*QueueEntry) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{75}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *QueueEntry) GetRef() string {
@@ -5306,7 +5436,7 @@ type Case struct {
 
 func (x *Case) Reset() {
 	*x = Case{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[76]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5318,7 +5448,7 @@ func (x *Case) String() string {
 func (*Case) ProtoMessage() {}
 
 func (x *Case) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[76]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5331,7 +5461,7 @@ func (x *Case) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Case.ProtoReflect.Descriptor instead.
 func (*Case) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{76}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *Case) GetId() string {
@@ -5402,7 +5532,7 @@ type CaseFacts struct {
 
 func (x *CaseFacts) Reset() {
 	*x = CaseFacts{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[77]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5414,7 +5544,7 @@ func (x *CaseFacts) String() string {
 func (*CaseFacts) ProtoMessage() {}
 
 func (x *CaseFacts) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[77]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5427,7 +5557,7 @@ func (x *CaseFacts) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CaseFacts.ProtoReflect.Descriptor instead.
 func (*CaseFacts) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{77}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *CaseFacts) GetPrs() []int64 {
@@ -5468,7 +5598,7 @@ type Decision struct {
 
 func (x *Decision) Reset() {
 	*x = Decision{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[78]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5480,7 +5610,7 @@ func (x *Decision) String() string {
 func (*Decision) ProtoMessage() {}
 
 func (x *Decision) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[78]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5493,7 +5623,7 @@ func (x *Decision) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Decision.ProtoReflect.Descriptor instead.
 func (*Decision) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{78}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *Decision) GetCaseId() string {
@@ -5568,7 +5698,7 @@ type Proposal struct {
 
 func (x *Proposal) Reset() {
 	*x = Proposal{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[79]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5580,7 +5710,7 @@ func (x *Proposal) String() string {
 func (*Proposal) ProtoMessage() {}
 
 func (x *Proposal) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[79]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5593,7 +5723,7 @@ func (x *Proposal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Proposal.ProtoReflect.Descriptor instead.
 func (*Proposal) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{79}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *Proposal) GetId() string {
@@ -5685,7 +5815,7 @@ type Epic struct {
 
 func (x *Epic) Reset() {
 	*x = Epic{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[80]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5697,7 +5827,7 @@ func (x *Epic) String() string {
 func (*Epic) ProtoMessage() {}
 
 func (x *Epic) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[80]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5710,7 +5840,7 @@ func (x *Epic) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Epic.ProtoReflect.Descriptor instead.
 func (*Epic) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{80}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *Epic) GetRef() string {
@@ -5888,7 +6018,7 @@ type EpicReport struct {
 
 func (x *EpicReport) Reset() {
 	*x = EpicReport{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[81]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5900,7 +6030,7 @@ func (x *EpicReport) String() string {
 func (*EpicReport) ProtoMessage() {}
 
 func (x *EpicReport) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[81]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5913,7 +6043,7 @@ func (x *EpicReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EpicReport.ProtoReflect.Descriptor instead.
 func (*EpicReport) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{81}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *EpicReport) GetPiece() string {
@@ -6013,7 +6143,7 @@ type EpicPlan struct {
 
 func (x *EpicPlan) Reset() {
 	*x = EpicPlan{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[82]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6025,7 +6155,7 @@ func (x *EpicPlan) String() string {
 func (*EpicPlan) ProtoMessage() {}
 
 func (x *EpicPlan) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[82]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6038,7 +6168,7 @@ func (x *EpicPlan) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EpicPlan.ProtoReflect.Descriptor instead.
 func (*EpicPlan) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{82}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *EpicPlan) GetId() string {
@@ -6127,7 +6257,7 @@ type EpicNode struct {
 
 func (x *EpicNode) Reset() {
 	*x = EpicNode{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[83]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6139,7 +6269,7 @@ func (x *EpicNode) String() string {
 func (*EpicNode) ProtoMessage() {}
 
 func (x *EpicNode) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[83]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6152,7 +6282,7 @@ func (x *EpicNode) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EpicNode.ProtoReflect.Descriptor instead.
 func (*EpicNode) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{83}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *EpicNode) GetRef() string {
@@ -6298,7 +6428,7 @@ type CheckoutHealth struct {
 
 func (x *CheckoutHealth) Reset() {
 	*x = CheckoutHealth{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[84]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6310,7 +6440,7 @@ func (x *CheckoutHealth) String() string {
 func (*CheckoutHealth) ProtoMessage() {}
 
 func (x *CheckoutHealth) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[84]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6323,7 +6453,7 @@ func (x *CheckoutHealth) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckoutHealth.ProtoReflect.Descriptor instead.
 func (*CheckoutHealth) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{84}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *CheckoutHealth) GetMachine() string {
@@ -6555,7 +6685,7 @@ type UpkeepResult struct {
 
 func (x *UpkeepResult) Reset() {
 	*x = UpkeepResult{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[85]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6567,7 +6697,7 @@ func (x *UpkeepResult) String() string {
 func (*UpkeepResult) ProtoMessage() {}
 
 func (x *UpkeepResult) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[85]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6580,7 +6710,7 @@ func (x *UpkeepResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpkeepResult.ProtoReflect.Descriptor instead.
 func (*UpkeepResult) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{85}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *UpkeepResult) GetAt() *timestamppb.Timestamp {
@@ -6665,7 +6795,7 @@ type ReindexResult struct {
 
 func (x *ReindexResult) Reset() {
 	*x = ReindexResult{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[86]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6677,7 +6807,7 @@ func (x *ReindexResult) String() string {
 func (*ReindexResult) ProtoMessage() {}
 
 func (x *ReindexResult) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[86]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6690,7 +6820,7 @@ func (x *ReindexResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReindexResult.ProtoReflect.Descriptor instead.
 func (*ReindexResult) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{86}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *ReindexResult) GetAt() *timestamppb.Timestamp {
@@ -6768,7 +6898,7 @@ type FleetSnapshot struct {
 
 func (x *FleetSnapshot) Reset() {
 	*x = FleetSnapshot{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[87]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6780,7 +6910,7 @@ func (x *FleetSnapshot) String() string {
 func (*FleetSnapshot) ProtoMessage() {}
 
 func (x *FleetSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[87]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6793,7 +6923,7 @@ func (x *FleetSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FleetSnapshot.ProtoReflect.Descriptor instead.
 func (*FleetSnapshot) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{87}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *FleetSnapshot) GetTarget() string {
@@ -6904,7 +7034,7 @@ type FleetMachine struct {
 
 func (x *FleetMachine) Reset() {
 	*x = FleetMachine{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[88]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6916,7 +7046,7 @@ func (x *FleetMachine) String() string {
 func (*FleetMachine) ProtoMessage() {}
 
 func (x *FleetMachine) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[88]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6929,7 +7059,7 @@ func (x *FleetMachine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FleetMachine.ProtoReflect.Descriptor instead.
 func (*FleetMachine) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{88}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *FleetMachine) GetName() string {
@@ -7050,7 +7180,7 @@ type DeweyPass struct {
 
 func (x *DeweyPass) Reset() {
 	*x = DeweyPass{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[89]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7062,7 +7192,7 @@ func (x *DeweyPass) String() string {
 func (*DeweyPass) ProtoMessage() {}
 
 func (x *DeweyPass) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[89]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7075,7 +7205,7 @@ func (x *DeweyPass) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeweyPass.ProtoReflect.Descriptor instead.
 func (*DeweyPass) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{89}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *DeweyPass) GetRunning() bool {
@@ -7166,7 +7296,7 @@ type Event struct {
 
 func (x *Event) Reset() {
 	*x = Event{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[90]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7178,7 +7308,7 @@ func (x *Event) String() string {
 func (*Event) ProtoMessage() {}
 
 func (x *Event) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[90]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7191,7 +7321,7 @@ func (x *Event) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Event.ProtoReflect.Descriptor instead.
 func (*Event) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{90}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *Event) GetKind() EventKind {
@@ -7228,7 +7358,7 @@ type Alert struct {
 
 func (x *Alert) Reset() {
 	*x = Alert{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[91]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7240,7 +7370,7 @@ func (x *Alert) String() string {
 func (*Alert) ProtoMessage() {}
 
 func (x *Alert) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[91]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7253,7 +7383,7 @@ func (x *Alert) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Alert.ProtoReflect.Descriptor instead.
 func (*Alert) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{91}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{92}
 }
 
 func (x *Alert) GetType() AlertType {
@@ -7305,7 +7435,7 @@ type ToolkitSnapshot struct {
 
 func (x *ToolkitSnapshot) Reset() {
 	*x = ToolkitSnapshot{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[92]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7317,7 +7447,7 @@ func (x *ToolkitSnapshot) String() string {
 func (*ToolkitSnapshot) ProtoMessage() {}
 
 func (x *ToolkitSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[92]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7330,7 +7460,7 @@ func (x *ToolkitSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToolkitSnapshot.ProtoReflect.Descriptor instead.
 func (*ToolkitSnapshot) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{92}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{93}
 }
 
 func (x *ToolkitSnapshot) GetTools() []*ToolkitTool {
@@ -7384,7 +7514,7 @@ type ToolkitTool struct {
 
 func (x *ToolkitTool) Reset() {
 	*x = ToolkitTool{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[93]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7396,7 +7526,7 @@ func (x *ToolkitTool) String() string {
 func (*ToolkitTool) ProtoMessage() {}
 
 func (x *ToolkitTool) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[93]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7409,7 +7539,7 @@ func (x *ToolkitTool) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToolkitTool.ProtoReflect.Descriptor instead.
 func (*ToolkitTool) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{93}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *ToolkitTool) GetName() string {
@@ -7479,7 +7609,7 @@ type ToolkitRepo struct {
 
 func (x *ToolkitRepo) Reset() {
 	*x = ToolkitRepo{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[94]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7491,7 +7621,7 @@ func (x *ToolkitRepo) String() string {
 func (*ToolkitRepo) ProtoMessage() {}
 
 func (x *ToolkitRepo) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[94]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7504,7 +7634,7 @@ func (x *ToolkitRepo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToolkitRepo.ProtoReflect.Descriptor instead.
 func (*ToolkitRepo) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{94}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{95}
 }
 
 func (x *ToolkitRepo) GetTarget() string {
@@ -7551,7 +7681,7 @@ type ToolkitRolloutState struct {
 
 func (x *ToolkitRolloutState) Reset() {
 	*x = ToolkitRolloutState{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[95]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7563,7 +7693,7 @@ func (x *ToolkitRolloutState) String() string {
 func (*ToolkitRolloutState) ProtoMessage() {}
 
 func (x *ToolkitRolloutState) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[95]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7576,7 +7706,7 @@ func (x *ToolkitRolloutState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToolkitRolloutState.ProtoReflect.Descriptor instead.
 func (*ToolkitRolloutState) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{95}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *ToolkitRolloutState) GetId() string {
@@ -7703,7 +7833,7 @@ type ToolkitTarget struct {
 
 func (x *ToolkitTarget) Reset() {
 	*x = ToolkitTarget{}
-	mi := &file_ghhud_v1_hub_proto_msgTypes[96]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7715,7 +7845,7 @@ func (x *ToolkitTarget) String() string {
 func (*ToolkitTarget) ProtoMessage() {}
 
 func (x *ToolkitTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_ghhud_v1_hub_proto_msgTypes[96]
+	mi := &file_ghhud_v1_hub_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7728,7 +7858,7 @@ func (x *ToolkitTarget) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToolkitTarget.ProtoReflect.Descriptor instead.
 func (*ToolkitTarget) Descriptor() ([]byte, []int) {
-	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{96}
+	return file_ghhud_v1_hub_proto_rawDescGZIP(), []int{97}
 }
 
 func (x *ToolkitTarget) GetTarget() string {
@@ -8111,7 +8241,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\x05ws_id\x18\x10 \x01(\tR\x04wsId\x12\x18\n" +
 	"\ablocked\x18\x11 \x01(\bR\ablocked\x12?\n" +
 	"\rblocked_since\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\fblockedSince\x12\x15\n" +
-	"\x06run_id\x18\x13 \x01(\tR\x05runId\"\xc2\x05\n" +
+	"\x06run_id\x18\x13 \x01(\tR\x05runId\"\xbb\x06\n" +
 	"\x03Run\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04task\x18\x02 \x01(\tR\x04task\x12\x10\n" +
@@ -8142,7 +8272,19 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\vfingerprint\x18\x17 \x01(\tR\vfingerprint\x12!\n" +
 	"\fhuman_needed\x18\x18 \x01(\bR\vhumanNeeded\x12!\n" +
 	"\findex_health\x18\x19 \x01(\tR\vindexHealth\x12\x1a\n" +
-	"\bopencode\x18\x1a \x01(\tR\bopencode\"t\n" +
+	"\bopencode\x18\x1a \x01(\tR\bopencode\x12+\n" +
+	"\afinding\x18\x1b \x01(\v2\x11.ghhud.v1.FindingR\afinding\x12!\n" +
+	"\ffinding_note\x18\x1c \x01(\tR\vfindingNote\x12'\n" +
+	"\x0ffinding_pending\x18\x1d \x01(\bR\x0efindingPending\"\xa5\x01\n" +
+	"\aFinding\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x14\n" +
+	"\x05check\x18\x02 \x01(\tR\x05check\x12\x0e\n" +
+	"\x02pr\x18\x03 \x01(\x03R\x02pr\x12\x10\n" +
+	"\x03why\x18\x04 \x01(\tR\x03why\x12\x0e\n" +
+	"\x02by\x18\x05 \x01(\tR\x02by\x12\x12\n" +
+	"\x04head\x18\x06 \x01(\tR\x04head\x12\x12\n" +
+	"\x04base\x18\a \x01(\tR\x04base\x12\x16\n" +
+	"\x06checks\x18\b \x03(\tR\x06checks\"t\n" +
 	"\fMachineUsage\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04used\x18\x02 \x01(\x03R\x04used\x12\x10\n" +
@@ -8534,7 +8676,7 @@ func file_ghhud_v1_hub_proto_rawDescGZIP() []byte {
 }
 
 var file_ghhud_v1_hub_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_ghhud_v1_hub_proto_msgTypes = make([]protoimpl.MessageInfo, 98)
+var file_ghhud_v1_hub_proto_msgTypes = make([]protoimpl.MessageInfo, 99)
 var file_ghhud_v1_hub_proto_goTypes = []any{
 	(RefreshTarget)(0),              // 0: ghhud.v1.RefreshTarget
 	(FleetAction)(0),                // 1: ghhud.v1.FleetAction
@@ -8616,39 +8758,40 @@ var file_ghhud_v1_hub_proto_goTypes = []any{
 	(*Item)(nil),                    // 77: ghhud.v1.Item
 	(*Session)(nil),                 // 78: ghhud.v1.Session
 	(*Run)(nil),                     // 79: ghhud.v1.Run
-	(*MachineUsage)(nil),            // 80: ghhud.v1.MachineUsage
-	(*Stage)(nil),                   // 81: ghhud.v1.Stage
-	(*PlanRow)(nil),                 // 82: ghhud.v1.PlanRow
-	(*QueueEntry)(nil),              // 83: ghhud.v1.QueueEntry
-	(*Case)(nil),                    // 84: ghhud.v1.Case
-	(*CaseFacts)(nil),               // 85: ghhud.v1.CaseFacts
-	(*Decision)(nil),                // 86: ghhud.v1.Decision
-	(*Proposal)(nil),                // 87: ghhud.v1.Proposal
-	(*Epic)(nil),                    // 88: ghhud.v1.Epic
-	(*EpicReport)(nil),              // 89: ghhud.v1.EpicReport
-	(*EpicPlan)(nil),                // 90: ghhud.v1.EpicPlan
-	(*EpicNode)(nil),                // 91: ghhud.v1.EpicNode
-	(*CheckoutHealth)(nil),          // 92: ghhud.v1.CheckoutHealth
-	(*UpkeepResult)(nil),            // 93: ghhud.v1.UpkeepResult
-	(*ReindexResult)(nil),           // 94: ghhud.v1.ReindexResult
-	(*FleetSnapshot)(nil),           // 95: ghhud.v1.FleetSnapshot
-	(*FleetMachine)(nil),            // 96: ghhud.v1.FleetMachine
-	(*DeweyPass)(nil),               // 97: ghhud.v1.DeweyPass
-	(*Event)(nil),                   // 98: ghhud.v1.Event
-	(*Alert)(nil),                   // 99: ghhud.v1.Alert
-	(*ToolkitSnapshot)(nil),         // 100: ghhud.v1.ToolkitSnapshot
-	(*ToolkitTool)(nil),             // 101: ghhud.v1.ToolkitTool
-	(*ToolkitRepo)(nil),             // 102: ghhud.v1.ToolkitRepo
-	(*ToolkitRolloutState)(nil),     // 103: ghhud.v1.ToolkitRolloutState
-	(*ToolkitTarget)(nil),           // 104: ghhud.v1.ToolkitTarget
-	nil,                             // 105: ghhud.v1.Snapshot.StagesEntry
-	(*timestamppb.Timestamp)(nil),   // 106: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),     // 107: google.protobuf.Duration
+	(*Finding)(nil),                 // 80: ghhud.v1.Finding
+	(*MachineUsage)(nil),            // 81: ghhud.v1.MachineUsage
+	(*Stage)(nil),                   // 82: ghhud.v1.Stage
+	(*PlanRow)(nil),                 // 83: ghhud.v1.PlanRow
+	(*QueueEntry)(nil),              // 84: ghhud.v1.QueueEntry
+	(*Case)(nil),                    // 85: ghhud.v1.Case
+	(*CaseFacts)(nil),               // 86: ghhud.v1.CaseFacts
+	(*Decision)(nil),                // 87: ghhud.v1.Decision
+	(*Proposal)(nil),                // 88: ghhud.v1.Proposal
+	(*Epic)(nil),                    // 89: ghhud.v1.Epic
+	(*EpicReport)(nil),              // 90: ghhud.v1.EpicReport
+	(*EpicPlan)(nil),                // 91: ghhud.v1.EpicPlan
+	(*EpicNode)(nil),                // 92: ghhud.v1.EpicNode
+	(*CheckoutHealth)(nil),          // 93: ghhud.v1.CheckoutHealth
+	(*UpkeepResult)(nil),            // 94: ghhud.v1.UpkeepResult
+	(*ReindexResult)(nil),           // 95: ghhud.v1.ReindexResult
+	(*FleetSnapshot)(nil),           // 96: ghhud.v1.FleetSnapshot
+	(*FleetMachine)(nil),            // 97: ghhud.v1.FleetMachine
+	(*DeweyPass)(nil),               // 98: ghhud.v1.DeweyPass
+	(*Event)(nil),                   // 99: ghhud.v1.Event
+	(*Alert)(nil),                   // 100: ghhud.v1.Alert
+	(*ToolkitSnapshot)(nil),         // 101: ghhud.v1.ToolkitSnapshot
+	(*ToolkitTool)(nil),             // 102: ghhud.v1.ToolkitTool
+	(*ToolkitRepo)(nil),             // 103: ghhud.v1.ToolkitRepo
+	(*ToolkitRolloutState)(nil),     // 104: ghhud.v1.ToolkitRolloutState
+	(*ToolkitTarget)(nil),           // 105: ghhud.v1.ToolkitTarget
+	nil,                             // 106: ghhud.v1.Snapshot.StagesEntry
+	(*timestamppb.Timestamp)(nil),   // 107: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),     // 108: google.protobuf.Duration
 }
 var file_ghhud_v1_hub_proto_depIdxs = []int32{
 	73,  // 0: ghhud.v1.GetSnapshotResponse.snapshot:type_name -> ghhud.v1.Snapshot
 	73,  // 1: ghhud.v1.SubscribeResponse.snapshot:type_name -> ghhud.v1.Snapshot
-	98,  // 2: ghhud.v1.SubscribeResponse.event:type_name -> ghhud.v1.Event
+	99,  // 2: ghhud.v1.SubscribeResponse.event:type_name -> ghhud.v1.Event
 	0,   // 3: ghhud.v1.RefreshRequest.target:type_name -> ghhud.v1.RefreshTarget
 	16,  // 4: ghhud.v1.MenuChoicesResponse.choices:type_name -> ghhud.v1.MenuChoice
 	77,  // 5: ghhud.v1.ItemChoicesResponse.item:type_name -> ghhud.v1.Item
@@ -8658,151 +8801,152 @@ var file_ghhud_v1_hub_proto_depIdxs = []int32{
 	26,  // 9: ghhud.v1.PruneBranchesResponse.remote:type_name -> ghhud.v1.BranchPrune
 	25,  // 10: ghhud.v1.PruneBranchesResponse.forks:type_name -> ghhud.v1.ForkSync
 	61,  // 11: ghhud.v1.TranscriptResponse.messages:type_name -> ghhud.v1.TranscriptMessage
-	106, // 12: ghhud.v1.TranscriptMessage.created:type_name -> google.protobuf.Timestamp
+	107, // 12: ghhud.v1.TranscriptMessage.created:type_name -> google.protobuf.Timestamp
 	62,  // 13: ghhud.v1.TranscriptMessage.parts:type_name -> ghhud.v1.TranscriptPart
 	1,   // 14: ghhud.v1.FleetControlRequest.action:type_name -> ghhud.v1.FleetAction
 	2,   // 15: ghhud.v1.CheckoutActionRequest.action:type_name -> ghhud.v1.CheckoutActionKind
 	3,   // 16: ghhud.v1.ToolkitControlRequest.action:type_name -> ghhud.v1.ToolkitAction
 	74,  // 17: ghhud.v1.Snapshot.result:type_name -> ghhud.v1.FetchResult
-	106, // 18: ghhud.v1.Snapshot.fetched_at:type_name -> google.protobuf.Timestamp
+	107, // 18: ghhud.v1.Snapshot.fetched_at:type_name -> google.protobuf.Timestamp
 	78,  // 19: ghhud.v1.Snapshot.sessions:type_name -> ghhud.v1.Session
 	79,  // 20: ghhud.v1.Snapshot.runs:type_name -> ghhud.v1.Run
-	80,  // 21: ghhud.v1.Snapshot.usage:type_name -> ghhud.v1.MachineUsage
-	106, // 22: ghhud.v1.Snapshot.agents_at:type_name -> google.protobuf.Timestamp
-	105, // 23: ghhud.v1.Snapshot.stages:type_name -> ghhud.v1.Snapshot.StagesEntry
-	82,  // 24: ghhud.v1.Snapshot.plan:type_name -> ghhud.v1.PlanRow
-	83,  // 25: ghhud.v1.Snapshot.queue:type_name -> ghhud.v1.QueueEntry
-	92,  // 26: ghhud.v1.Snapshot.workspaces:type_name -> ghhud.v1.CheckoutHealth
-	106, // 27: ghhud.v1.Snapshot.workspaces_at:type_name -> google.protobuf.Timestamp
-	95,  // 28: ghhud.v1.Snapshot.fleet:type_name -> ghhud.v1.FleetSnapshot
-	84,  // 29: ghhud.v1.Snapshot.cases:type_name -> ghhud.v1.Case
-	88,  // 30: ghhud.v1.Snapshot.epics:type_name -> ghhud.v1.Epic
-	100, // 31: ghhud.v1.Snapshot.toolkit:type_name -> ghhud.v1.ToolkitSnapshot
+	81,  // 21: ghhud.v1.Snapshot.usage:type_name -> ghhud.v1.MachineUsage
+	107, // 22: ghhud.v1.Snapshot.agents_at:type_name -> google.protobuf.Timestamp
+	106, // 23: ghhud.v1.Snapshot.stages:type_name -> ghhud.v1.Snapshot.StagesEntry
+	83,  // 24: ghhud.v1.Snapshot.plan:type_name -> ghhud.v1.PlanRow
+	84,  // 25: ghhud.v1.Snapshot.queue:type_name -> ghhud.v1.QueueEntry
+	93,  // 26: ghhud.v1.Snapshot.workspaces:type_name -> ghhud.v1.CheckoutHealth
+	107, // 27: ghhud.v1.Snapshot.workspaces_at:type_name -> google.protobuf.Timestamp
+	96,  // 28: ghhud.v1.Snapshot.fleet:type_name -> ghhud.v1.FleetSnapshot
+	85,  // 29: ghhud.v1.Snapshot.cases:type_name -> ghhud.v1.Case
+	89,  // 30: ghhud.v1.Snapshot.epics:type_name -> ghhud.v1.Epic
+	101, // 31: ghhud.v1.Snapshot.toolkit:type_name -> ghhud.v1.ToolkitSnapshot
 	77,  // 32: ghhud.v1.FetchResult.items:type_name -> ghhud.v1.Item
 	76,  // 33: ghhud.v1.FetchResult.errors:type_name -> ghhud.v1.SectionError
-	107, // 34: ghhud.v1.FetchResult.took:type_name -> google.protobuf.Duration
-	106, // 35: ghhud.v1.FetchResult.fetched_at:type_name -> google.protobuf.Timestamp
+	108, // 34: ghhud.v1.FetchResult.took:type_name -> google.protobuf.Duration
+	107, // 35: ghhud.v1.FetchResult.fetched_at:type_name -> google.protobuf.Timestamp
 	75,  // 36: ghhud.v1.FetchResult.cut_short:type_name -> ghhud.v1.SectionCut
 	4,   // 37: ghhud.v1.Item.kind:type_name -> ghhud.v1.ItemKind
-	106, // 38: ghhud.v1.Item.created_at:type_name -> google.protobuf.Timestamp
-	106, // 39: ghhud.v1.Item.updated_at:type_name -> google.protobuf.Timestamp
+	107, // 38: ghhud.v1.Item.created_at:type_name -> google.protobuf.Timestamp
+	107, // 39: ghhud.v1.Item.updated_at:type_name -> google.protobuf.Timestamp
 	5,   // 40: ghhud.v1.Item.ci:type_name -> ghhud.v1.CIState
 	5,   // 41: ghhud.v1.Item.codecov:type_name -> ghhud.v1.CIState
-	106, // 42: ghhud.v1.Session.updated_at:type_name -> google.protobuf.Timestamp
-	106, // 43: ghhud.v1.Session.blocked_since:type_name -> google.protobuf.Timestamp
-	106, // 44: ghhud.v1.Run.started_at:type_name -> google.protobuf.Timestamp
-	106, // 45: ghhud.v1.Run.finished_at:type_name -> google.protobuf.Timestamp
-	77,  // 46: ghhud.v1.PlanRow.item:type_name -> ghhud.v1.Item
-	81,  // 47: ghhud.v1.PlanRow.stage:type_name -> ghhud.v1.Stage
-	106, // 48: ghhud.v1.QueueEntry.added:type_name -> google.protobuf.Timestamp
-	85,  // 49: ghhud.v1.Case.facts:type_name -> ghhud.v1.CaseFacts
-	86,  // 50: ghhud.v1.Case.decision:type_name -> ghhud.v1.Decision
-	87,  // 51: ghhud.v1.Case.proposal:type_name -> ghhud.v1.Proposal
-	85,  // 52: ghhud.v1.Decision.facts:type_name -> ghhud.v1.CaseFacts
-	106, // 53: ghhud.v1.Decision.decided:type_name -> google.protobuf.Timestamp
-	86,  // 54: ghhud.v1.Proposal.decision:type_name -> ghhud.v1.Decision
-	106, // 55: ghhud.v1.Proposal.created:type_name -> google.protobuf.Timestamp
-	106, // 56: ghhud.v1.Epic.enrolled:type_name -> google.protobuf.Timestamp
-	90,  // 57: ghhud.v1.Epic.plan:type_name -> ghhud.v1.EpicPlan
-	106, // 58: ghhud.v1.Epic.approved:type_name -> google.protobuf.Timestamp
-	106, // 59: ghhud.v1.Epic.checked_at:type_name -> google.protobuf.Timestamp
-	89,  // 60: ghhud.v1.Epic.reports:type_name -> ghhud.v1.EpicReport
-	90,  // 61: ghhud.v1.Epic.approved_snapshot:type_name -> ghhud.v1.EpicPlan
-	106, // 62: ghhud.v1.Epic.complete:type_name -> google.protobuf.Timestamp
-	106, // 63: ghhud.v1.Epic.closed:type_name -> google.protobuf.Timestamp
-	106, // 64: ghhud.v1.EpicReport.finished:type_name -> google.protobuf.Timestamp
-	91,  // 65: ghhud.v1.EpicPlan.nodes:type_name -> ghhud.v1.EpicNode
-	106, // 66: ghhud.v1.EpicPlan.created:type_name -> google.protobuf.Timestamp
-	106, // 67: ghhud.v1.CheckoutHealth.index_built:type_name -> google.protobuf.Timestamp
-	106, // 68: ghhud.v1.CheckoutHealth.index_status_at:type_name -> google.protobuf.Timestamp
-	94,  // 69: ghhud.v1.CheckoutHealth.last_reindex:type_name -> ghhud.v1.ReindexResult
-	93,  // 70: ghhud.v1.CheckoutHealth.last_upkeep:type_name -> ghhud.v1.UpkeepResult
-	106, // 71: ghhud.v1.UpkeepResult.at:type_name -> google.protobuf.Timestamp
-	106, // 72: ghhud.v1.ReindexResult.at:type_name -> google.protobuf.Timestamp
-	107, // 73: ghhud.v1.ReindexResult.duration:type_name -> google.protobuf.Duration
-	96,  // 74: ghhud.v1.FleetSnapshot.machines:type_name -> ghhud.v1.FleetMachine
-	107, // 75: ghhud.v1.FleetMachine.waited:type_name -> google.protobuf.Duration
-	97,  // 76: ghhud.v1.FleetMachine.dewey_pass:type_name -> ghhud.v1.DeweyPass
-	106, // 77: ghhud.v1.DeweyPass.started:type_name -> google.protobuf.Timestamp
-	106, // 78: ghhud.v1.DeweyPass.ended:type_name -> google.protobuf.Timestamp
-	6,   // 79: ghhud.v1.Event.kind:type_name -> ghhud.v1.EventKind
-	99,  // 80: ghhud.v1.Event.alert:type_name -> ghhud.v1.Alert
-	7,   // 81: ghhud.v1.Alert.type:type_name -> ghhud.v1.AlertType
-	79,  // 82: ghhud.v1.Alert.run:type_name -> ghhud.v1.Run
-	78,  // 83: ghhud.v1.Alert.session:type_name -> ghhud.v1.Session
-	101, // 84: ghhud.v1.ToolkitSnapshot.tools:type_name -> ghhud.v1.ToolkitTool
-	103, // 85: ghhud.v1.ToolkitSnapshot.rollouts:type_name -> ghhud.v1.ToolkitRolloutState
-	106, // 86: ghhud.v1.ToolkitSnapshot.checked_at:type_name -> google.protobuf.Timestamp
-	102, // 87: ghhud.v1.ToolkitTool.repos:type_name -> ghhud.v1.ToolkitRepo
-	106, // 88: ghhud.v1.ToolkitRolloutState.started:type_name -> google.protobuf.Timestamp
-	106, // 89: ghhud.v1.ToolkitRolloutState.updated:type_name -> google.protobuf.Timestamp
-	104, // 90: ghhud.v1.ToolkitRolloutState.targets:type_name -> ghhud.v1.ToolkitTarget
-	81,  // 91: ghhud.v1.Snapshot.StagesEntry.value:type_name -> ghhud.v1.Stage
-	8,   // 92: ghhud.v1.HubService.GetSnapshot:input_type -> ghhud.v1.GetSnapshotRequest
-	10,  // 93: ghhud.v1.HubService.Subscribe:input_type -> ghhud.v1.SubscribeRequest
-	12,  // 94: ghhud.v1.HubService.Refresh:input_type -> ghhud.v1.RefreshRequest
-	14,  // 95: ghhud.v1.HubService.MenuChoices:input_type -> ghhud.v1.MenuChoicesRequest
-	19,  // 96: ghhud.v1.HubService.Dispatch:input_type -> ghhud.v1.DispatchRequest
-	17,  // 97: ghhud.v1.HubService.ItemChoices:input_type -> ghhud.v1.ItemChoicesRequest
-	21,  // 98: ghhud.v1.HubService.Reinspect:input_type -> ghhud.v1.ReinspectRequest
-	23,  // 99: ghhud.v1.HubService.PruneBranches:input_type -> ghhud.v1.PruneBranchesRequest
-	27,  // 100: ghhud.v1.HubService.QueueChoices:input_type -> ghhud.v1.QueueChoicesRequest
-	29,  // 101: ghhud.v1.HubService.Enqueue:input_type -> ghhud.v1.EnqueueRequest
-	31,  // 102: ghhud.v1.HubService.Unqueue:input_type -> ghhud.v1.UnqueueRequest
-	33,  // 103: ghhud.v1.HubService.MoveQueued:input_type -> ghhud.v1.MoveQueuedRequest
-	35,  // 104: ghhud.v1.HubService.ApproveProposal:input_type -> ghhud.v1.ApproveProposalRequest
-	37,  // 105: ghhud.v1.HubService.RejectProposal:input_type -> ghhud.v1.RejectProposalRequest
-	39,  // 106: ghhud.v1.HubService.EnrollEpic:input_type -> ghhud.v1.EnrollEpicRequest
-	41,  // 107: ghhud.v1.HubService.ApproveEpic:input_type -> ghhud.v1.ApproveEpicRequest
-	43,  // 108: ghhud.v1.HubService.DropEpic:input_type -> ghhud.v1.DropEpicRequest
-	45,  // 109: ghhud.v1.HubService.RereadEpic:input_type -> ghhud.v1.RereadEpicRequest
-	47,  // 110: ghhud.v1.HubService.ClearEpicGate:input_type -> ghhud.v1.ClearEpicGateRequest
-	49,  // 111: ghhud.v1.HubService.FinishEpic:input_type -> ghhud.v1.FinishEpicRequest
-	51,  // 112: ghhud.v1.HubService.Watch:input_type -> ghhud.v1.WatchRequest
-	53,  // 113: ghhud.v1.HubService.WatchRun:input_type -> ghhud.v1.WatchRunRequest
-	55,  // 114: ghhud.v1.HubService.OpenTranscript:input_type -> ghhud.v1.OpenTranscriptRequest
-	57,  // 115: ghhud.v1.HubService.ReadPane:input_type -> ghhud.v1.ReadPaneRequest
-	59,  // 116: ghhud.v1.HubService.Transcript:input_type -> ghhud.v1.TranscriptRequest
-	63,  // 117: ghhud.v1.HubService.FleetControl:input_type -> ghhud.v1.FleetControlRequest
-	65,  // 118: ghhud.v1.HubService.DeweyReindex:input_type -> ghhud.v1.DeweyReindexRequest
-	67,  // 119: ghhud.v1.HubService.CheckoutAction:input_type -> ghhud.v1.CheckoutActionRequest
-	69,  // 120: ghhud.v1.HubService.ToolkitRollout:input_type -> ghhud.v1.ToolkitRolloutRequest
-	71,  // 121: ghhud.v1.HubService.ToolkitControl:input_type -> ghhud.v1.ToolkitControlRequest
-	9,   // 122: ghhud.v1.HubService.GetSnapshot:output_type -> ghhud.v1.GetSnapshotResponse
-	11,  // 123: ghhud.v1.HubService.Subscribe:output_type -> ghhud.v1.SubscribeResponse
-	13,  // 124: ghhud.v1.HubService.Refresh:output_type -> ghhud.v1.RefreshResponse
-	15,  // 125: ghhud.v1.HubService.MenuChoices:output_type -> ghhud.v1.MenuChoicesResponse
-	20,  // 126: ghhud.v1.HubService.Dispatch:output_type -> ghhud.v1.DispatchResponse
-	18,  // 127: ghhud.v1.HubService.ItemChoices:output_type -> ghhud.v1.ItemChoicesResponse
-	22,  // 128: ghhud.v1.HubService.Reinspect:output_type -> ghhud.v1.ReinspectResponse
-	24,  // 129: ghhud.v1.HubService.PruneBranches:output_type -> ghhud.v1.PruneBranchesResponse
-	28,  // 130: ghhud.v1.HubService.QueueChoices:output_type -> ghhud.v1.QueueChoicesResponse
-	30,  // 131: ghhud.v1.HubService.Enqueue:output_type -> ghhud.v1.EnqueueResponse
-	32,  // 132: ghhud.v1.HubService.Unqueue:output_type -> ghhud.v1.UnqueueResponse
-	34,  // 133: ghhud.v1.HubService.MoveQueued:output_type -> ghhud.v1.MoveQueuedResponse
-	36,  // 134: ghhud.v1.HubService.ApproveProposal:output_type -> ghhud.v1.ApproveProposalResponse
-	38,  // 135: ghhud.v1.HubService.RejectProposal:output_type -> ghhud.v1.RejectProposalResponse
-	40,  // 136: ghhud.v1.HubService.EnrollEpic:output_type -> ghhud.v1.EnrollEpicResponse
-	42,  // 137: ghhud.v1.HubService.ApproveEpic:output_type -> ghhud.v1.ApproveEpicResponse
-	44,  // 138: ghhud.v1.HubService.DropEpic:output_type -> ghhud.v1.DropEpicResponse
-	46,  // 139: ghhud.v1.HubService.RereadEpic:output_type -> ghhud.v1.RereadEpicResponse
-	48,  // 140: ghhud.v1.HubService.ClearEpicGate:output_type -> ghhud.v1.ClearEpicGateResponse
-	50,  // 141: ghhud.v1.HubService.FinishEpic:output_type -> ghhud.v1.FinishEpicResponse
-	52,  // 142: ghhud.v1.HubService.Watch:output_type -> ghhud.v1.WatchResponse
-	54,  // 143: ghhud.v1.HubService.WatchRun:output_type -> ghhud.v1.WatchRunResponse
-	56,  // 144: ghhud.v1.HubService.OpenTranscript:output_type -> ghhud.v1.OpenTranscriptResponse
-	58,  // 145: ghhud.v1.HubService.ReadPane:output_type -> ghhud.v1.ReadPaneResponse
-	60,  // 146: ghhud.v1.HubService.Transcript:output_type -> ghhud.v1.TranscriptResponse
-	64,  // 147: ghhud.v1.HubService.FleetControl:output_type -> ghhud.v1.FleetControlResponse
-	66,  // 148: ghhud.v1.HubService.DeweyReindex:output_type -> ghhud.v1.DeweyReindexResponse
-	68,  // 149: ghhud.v1.HubService.CheckoutAction:output_type -> ghhud.v1.CheckoutActionResponse
-	70,  // 150: ghhud.v1.HubService.ToolkitRollout:output_type -> ghhud.v1.ToolkitRolloutResponse
-	72,  // 151: ghhud.v1.HubService.ToolkitControl:output_type -> ghhud.v1.ToolkitControlResponse
-	122, // [122:152] is the sub-list for method output_type
-	92,  // [92:122] is the sub-list for method input_type
-	92,  // [92:92] is the sub-list for extension type_name
-	92,  // [92:92] is the sub-list for extension extendee
-	0,   // [0:92] is the sub-list for field type_name
+	107, // 42: ghhud.v1.Session.updated_at:type_name -> google.protobuf.Timestamp
+	107, // 43: ghhud.v1.Session.blocked_since:type_name -> google.protobuf.Timestamp
+	107, // 44: ghhud.v1.Run.started_at:type_name -> google.protobuf.Timestamp
+	107, // 45: ghhud.v1.Run.finished_at:type_name -> google.protobuf.Timestamp
+	80,  // 46: ghhud.v1.Run.finding:type_name -> ghhud.v1.Finding
+	77,  // 47: ghhud.v1.PlanRow.item:type_name -> ghhud.v1.Item
+	82,  // 48: ghhud.v1.PlanRow.stage:type_name -> ghhud.v1.Stage
+	107, // 49: ghhud.v1.QueueEntry.added:type_name -> google.protobuf.Timestamp
+	86,  // 50: ghhud.v1.Case.facts:type_name -> ghhud.v1.CaseFacts
+	87,  // 51: ghhud.v1.Case.decision:type_name -> ghhud.v1.Decision
+	88,  // 52: ghhud.v1.Case.proposal:type_name -> ghhud.v1.Proposal
+	86,  // 53: ghhud.v1.Decision.facts:type_name -> ghhud.v1.CaseFacts
+	107, // 54: ghhud.v1.Decision.decided:type_name -> google.protobuf.Timestamp
+	87,  // 55: ghhud.v1.Proposal.decision:type_name -> ghhud.v1.Decision
+	107, // 56: ghhud.v1.Proposal.created:type_name -> google.protobuf.Timestamp
+	107, // 57: ghhud.v1.Epic.enrolled:type_name -> google.protobuf.Timestamp
+	91,  // 58: ghhud.v1.Epic.plan:type_name -> ghhud.v1.EpicPlan
+	107, // 59: ghhud.v1.Epic.approved:type_name -> google.protobuf.Timestamp
+	107, // 60: ghhud.v1.Epic.checked_at:type_name -> google.protobuf.Timestamp
+	90,  // 61: ghhud.v1.Epic.reports:type_name -> ghhud.v1.EpicReport
+	91,  // 62: ghhud.v1.Epic.approved_snapshot:type_name -> ghhud.v1.EpicPlan
+	107, // 63: ghhud.v1.Epic.complete:type_name -> google.protobuf.Timestamp
+	107, // 64: ghhud.v1.Epic.closed:type_name -> google.protobuf.Timestamp
+	107, // 65: ghhud.v1.EpicReport.finished:type_name -> google.protobuf.Timestamp
+	92,  // 66: ghhud.v1.EpicPlan.nodes:type_name -> ghhud.v1.EpicNode
+	107, // 67: ghhud.v1.EpicPlan.created:type_name -> google.protobuf.Timestamp
+	107, // 68: ghhud.v1.CheckoutHealth.index_built:type_name -> google.protobuf.Timestamp
+	107, // 69: ghhud.v1.CheckoutHealth.index_status_at:type_name -> google.protobuf.Timestamp
+	95,  // 70: ghhud.v1.CheckoutHealth.last_reindex:type_name -> ghhud.v1.ReindexResult
+	94,  // 71: ghhud.v1.CheckoutHealth.last_upkeep:type_name -> ghhud.v1.UpkeepResult
+	107, // 72: ghhud.v1.UpkeepResult.at:type_name -> google.protobuf.Timestamp
+	107, // 73: ghhud.v1.ReindexResult.at:type_name -> google.protobuf.Timestamp
+	108, // 74: ghhud.v1.ReindexResult.duration:type_name -> google.protobuf.Duration
+	97,  // 75: ghhud.v1.FleetSnapshot.machines:type_name -> ghhud.v1.FleetMachine
+	108, // 76: ghhud.v1.FleetMachine.waited:type_name -> google.protobuf.Duration
+	98,  // 77: ghhud.v1.FleetMachine.dewey_pass:type_name -> ghhud.v1.DeweyPass
+	107, // 78: ghhud.v1.DeweyPass.started:type_name -> google.protobuf.Timestamp
+	107, // 79: ghhud.v1.DeweyPass.ended:type_name -> google.protobuf.Timestamp
+	6,   // 80: ghhud.v1.Event.kind:type_name -> ghhud.v1.EventKind
+	100, // 81: ghhud.v1.Event.alert:type_name -> ghhud.v1.Alert
+	7,   // 82: ghhud.v1.Alert.type:type_name -> ghhud.v1.AlertType
+	79,  // 83: ghhud.v1.Alert.run:type_name -> ghhud.v1.Run
+	78,  // 84: ghhud.v1.Alert.session:type_name -> ghhud.v1.Session
+	102, // 85: ghhud.v1.ToolkitSnapshot.tools:type_name -> ghhud.v1.ToolkitTool
+	104, // 86: ghhud.v1.ToolkitSnapshot.rollouts:type_name -> ghhud.v1.ToolkitRolloutState
+	107, // 87: ghhud.v1.ToolkitSnapshot.checked_at:type_name -> google.protobuf.Timestamp
+	103, // 88: ghhud.v1.ToolkitTool.repos:type_name -> ghhud.v1.ToolkitRepo
+	107, // 89: ghhud.v1.ToolkitRolloutState.started:type_name -> google.protobuf.Timestamp
+	107, // 90: ghhud.v1.ToolkitRolloutState.updated:type_name -> google.protobuf.Timestamp
+	105, // 91: ghhud.v1.ToolkitRolloutState.targets:type_name -> ghhud.v1.ToolkitTarget
+	82,  // 92: ghhud.v1.Snapshot.StagesEntry.value:type_name -> ghhud.v1.Stage
+	8,   // 93: ghhud.v1.HubService.GetSnapshot:input_type -> ghhud.v1.GetSnapshotRequest
+	10,  // 94: ghhud.v1.HubService.Subscribe:input_type -> ghhud.v1.SubscribeRequest
+	12,  // 95: ghhud.v1.HubService.Refresh:input_type -> ghhud.v1.RefreshRequest
+	14,  // 96: ghhud.v1.HubService.MenuChoices:input_type -> ghhud.v1.MenuChoicesRequest
+	19,  // 97: ghhud.v1.HubService.Dispatch:input_type -> ghhud.v1.DispatchRequest
+	17,  // 98: ghhud.v1.HubService.ItemChoices:input_type -> ghhud.v1.ItemChoicesRequest
+	21,  // 99: ghhud.v1.HubService.Reinspect:input_type -> ghhud.v1.ReinspectRequest
+	23,  // 100: ghhud.v1.HubService.PruneBranches:input_type -> ghhud.v1.PruneBranchesRequest
+	27,  // 101: ghhud.v1.HubService.QueueChoices:input_type -> ghhud.v1.QueueChoicesRequest
+	29,  // 102: ghhud.v1.HubService.Enqueue:input_type -> ghhud.v1.EnqueueRequest
+	31,  // 103: ghhud.v1.HubService.Unqueue:input_type -> ghhud.v1.UnqueueRequest
+	33,  // 104: ghhud.v1.HubService.MoveQueued:input_type -> ghhud.v1.MoveQueuedRequest
+	35,  // 105: ghhud.v1.HubService.ApproveProposal:input_type -> ghhud.v1.ApproveProposalRequest
+	37,  // 106: ghhud.v1.HubService.RejectProposal:input_type -> ghhud.v1.RejectProposalRequest
+	39,  // 107: ghhud.v1.HubService.EnrollEpic:input_type -> ghhud.v1.EnrollEpicRequest
+	41,  // 108: ghhud.v1.HubService.ApproveEpic:input_type -> ghhud.v1.ApproveEpicRequest
+	43,  // 109: ghhud.v1.HubService.DropEpic:input_type -> ghhud.v1.DropEpicRequest
+	45,  // 110: ghhud.v1.HubService.RereadEpic:input_type -> ghhud.v1.RereadEpicRequest
+	47,  // 111: ghhud.v1.HubService.ClearEpicGate:input_type -> ghhud.v1.ClearEpicGateRequest
+	49,  // 112: ghhud.v1.HubService.FinishEpic:input_type -> ghhud.v1.FinishEpicRequest
+	51,  // 113: ghhud.v1.HubService.Watch:input_type -> ghhud.v1.WatchRequest
+	53,  // 114: ghhud.v1.HubService.WatchRun:input_type -> ghhud.v1.WatchRunRequest
+	55,  // 115: ghhud.v1.HubService.OpenTranscript:input_type -> ghhud.v1.OpenTranscriptRequest
+	57,  // 116: ghhud.v1.HubService.ReadPane:input_type -> ghhud.v1.ReadPaneRequest
+	59,  // 117: ghhud.v1.HubService.Transcript:input_type -> ghhud.v1.TranscriptRequest
+	63,  // 118: ghhud.v1.HubService.FleetControl:input_type -> ghhud.v1.FleetControlRequest
+	65,  // 119: ghhud.v1.HubService.DeweyReindex:input_type -> ghhud.v1.DeweyReindexRequest
+	67,  // 120: ghhud.v1.HubService.CheckoutAction:input_type -> ghhud.v1.CheckoutActionRequest
+	69,  // 121: ghhud.v1.HubService.ToolkitRollout:input_type -> ghhud.v1.ToolkitRolloutRequest
+	71,  // 122: ghhud.v1.HubService.ToolkitControl:input_type -> ghhud.v1.ToolkitControlRequest
+	9,   // 123: ghhud.v1.HubService.GetSnapshot:output_type -> ghhud.v1.GetSnapshotResponse
+	11,  // 124: ghhud.v1.HubService.Subscribe:output_type -> ghhud.v1.SubscribeResponse
+	13,  // 125: ghhud.v1.HubService.Refresh:output_type -> ghhud.v1.RefreshResponse
+	15,  // 126: ghhud.v1.HubService.MenuChoices:output_type -> ghhud.v1.MenuChoicesResponse
+	20,  // 127: ghhud.v1.HubService.Dispatch:output_type -> ghhud.v1.DispatchResponse
+	18,  // 128: ghhud.v1.HubService.ItemChoices:output_type -> ghhud.v1.ItemChoicesResponse
+	22,  // 129: ghhud.v1.HubService.Reinspect:output_type -> ghhud.v1.ReinspectResponse
+	24,  // 130: ghhud.v1.HubService.PruneBranches:output_type -> ghhud.v1.PruneBranchesResponse
+	28,  // 131: ghhud.v1.HubService.QueueChoices:output_type -> ghhud.v1.QueueChoicesResponse
+	30,  // 132: ghhud.v1.HubService.Enqueue:output_type -> ghhud.v1.EnqueueResponse
+	32,  // 133: ghhud.v1.HubService.Unqueue:output_type -> ghhud.v1.UnqueueResponse
+	34,  // 134: ghhud.v1.HubService.MoveQueued:output_type -> ghhud.v1.MoveQueuedResponse
+	36,  // 135: ghhud.v1.HubService.ApproveProposal:output_type -> ghhud.v1.ApproveProposalResponse
+	38,  // 136: ghhud.v1.HubService.RejectProposal:output_type -> ghhud.v1.RejectProposalResponse
+	40,  // 137: ghhud.v1.HubService.EnrollEpic:output_type -> ghhud.v1.EnrollEpicResponse
+	42,  // 138: ghhud.v1.HubService.ApproveEpic:output_type -> ghhud.v1.ApproveEpicResponse
+	44,  // 139: ghhud.v1.HubService.DropEpic:output_type -> ghhud.v1.DropEpicResponse
+	46,  // 140: ghhud.v1.HubService.RereadEpic:output_type -> ghhud.v1.RereadEpicResponse
+	48,  // 141: ghhud.v1.HubService.ClearEpicGate:output_type -> ghhud.v1.ClearEpicGateResponse
+	50,  // 142: ghhud.v1.HubService.FinishEpic:output_type -> ghhud.v1.FinishEpicResponse
+	52,  // 143: ghhud.v1.HubService.Watch:output_type -> ghhud.v1.WatchResponse
+	54,  // 144: ghhud.v1.HubService.WatchRun:output_type -> ghhud.v1.WatchRunResponse
+	56,  // 145: ghhud.v1.HubService.OpenTranscript:output_type -> ghhud.v1.OpenTranscriptResponse
+	58,  // 146: ghhud.v1.HubService.ReadPane:output_type -> ghhud.v1.ReadPaneResponse
+	60,  // 147: ghhud.v1.HubService.Transcript:output_type -> ghhud.v1.TranscriptResponse
+	64,  // 148: ghhud.v1.HubService.FleetControl:output_type -> ghhud.v1.FleetControlResponse
+	66,  // 149: ghhud.v1.HubService.DeweyReindex:output_type -> ghhud.v1.DeweyReindexResponse
+	68,  // 150: ghhud.v1.HubService.CheckoutAction:output_type -> ghhud.v1.CheckoutActionResponse
+	70,  // 151: ghhud.v1.HubService.ToolkitRollout:output_type -> ghhud.v1.ToolkitRolloutResponse
+	72,  // 152: ghhud.v1.HubService.ToolkitControl:output_type -> ghhud.v1.ToolkitControlResponse
+	123, // [123:153] is the sub-list for method output_type
+	93,  // [93:123] is the sub-list for method input_type
+	93,  // [93:93] is the sub-list for extension type_name
+	93,  // [93:93] is the sub-list for extension extendee
+	0,   // [0:93] is the sub-list for field type_name
 }
 
 func init() { file_ghhud_v1_hub_proto_init() }
@@ -8820,7 +8964,7 @@ func file_ghhud_v1_hub_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ghhud_v1_hub_proto_rawDesc), len(file_ghhud_v1_hub_proto_rawDesc)),
 			NumEnums:      8,
-			NumMessages:   98,
+			NumMessages:   99,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

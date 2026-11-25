@@ -39,6 +39,7 @@ public  final class Run extends
     fingerprint_ = "";
     indexHealth_ = "";
     opencode_ = "";
+    findingNote_ = "";
   }
   private int bitField0_;
   public static final int ID_FIELD_NUMBER = 1;
@@ -1379,6 +1380,161 @@ public  final class Run extends
     checkByteStringIsUtf8(value);
     opencode_ = value.toStringUtf8();
 
+  }
+
+  public static final int FINDING_FIELD_NUMBER = 27;
+  private io.github.jflowers.ghhud.api.v1.Finding finding_;
+  /**
+   * <pre>
+   * finding: what a ci run found (blocked by the base branch, fixed by
+   * another PR) while it's recorded; finding_note says why there is none
+   * (refused, or the supervisor found nothing); finding_pending that the
+   * supervisor is reading the run (#180).
+   * </pre>
+   *
+   * <code>.ghhud.v1.Finding finding = 27 [json_name = "finding"];</code>
+   */
+  @java.lang.Override
+  public boolean hasFinding() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <pre>
+   * finding: what a ci run found (blocked by the base branch, fixed by
+   * another PR) while it's recorded; finding_note says why there is none
+   * (refused, or the supervisor found nothing); finding_pending that the
+   * supervisor is reading the run (#180).
+   * </pre>
+   *
+   * <code>.ghhud.v1.Finding finding = 27 [json_name = "finding"];</code>
+   */
+  @java.lang.Override
+  public io.github.jflowers.ghhud.api.v1.Finding getFinding() {
+    return finding_ == null ? io.github.jflowers.ghhud.api.v1.Finding.getDefaultInstance() : finding_;
+  }
+  /**
+   * <pre>
+   * finding: what a ci run found (blocked by the base branch, fixed by
+   * another PR) while it's recorded; finding_note says why there is none
+   * (refused, or the supervisor found nothing); finding_pending that the
+   * supervisor is reading the run (#180).
+   * </pre>
+   *
+   * <code>.ghhud.v1.Finding finding = 27 [json_name = "finding"];</code>
+   */
+  private void setFinding(io.github.jflowers.ghhud.api.v1.Finding value) {
+    java.util.Objects.requireNonNull(value);
+    finding_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <pre>
+   * finding: what a ci run found (blocked by the base branch, fixed by
+   * another PR) while it's recorded; finding_note says why there is none
+   * (refused, or the supervisor found nothing); finding_pending that the
+   * supervisor is reading the run (#180).
+   * </pre>
+   *
+   * <code>.ghhud.v1.Finding finding = 27 [json_name = "finding"];</code>
+   */
+  @java.lang.SuppressWarnings("ReferenceEquality")
+  private void mergeFinding(io.github.jflowers.ghhud.api.v1.Finding value) {
+    java.util.Objects.requireNonNull(value);
+    if (finding_ != null &&
+        finding_ != io.github.jflowers.ghhud.api.v1.Finding.getDefaultInstance()) {
+      finding_ =
+        io.github.jflowers.ghhud.api.v1.Finding.newBuilder(finding_).mergeFrom(value).buildPartial();
+    } else {
+      finding_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <pre>
+   * finding: what a ci run found (blocked by the base branch, fixed by
+   * another PR) while it's recorded; finding_note says why there is none
+   * (refused, or the supervisor found nothing); finding_pending that the
+   * supervisor is reading the run (#180).
+   * </pre>
+   *
+   * <code>.ghhud.v1.Finding finding = 27 [json_name = "finding"];</code>
+   */
+  private void clearFinding() {
+    finding_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
+  public static final int FINDING_NOTE_FIELD_NUMBER = 28;
+  private java.lang.String findingNote_;
+  /**
+   * <code>string finding_note = 28 [json_name = "findingNote"];</code>
+   * @return The findingNote.
+   */
+  @java.lang.Override
+  public java.lang.String getFindingNote() {
+    return findingNote_;
+  }
+  /**
+   * <code>string finding_note = 28 [json_name = "findingNote"];</code>
+   * @return The bytes for findingNote.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getFindingNoteBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(findingNote_);
+  }
+  /**
+   * <code>string finding_note = 28 [json_name = "findingNote"];</code>
+   * @param value The findingNote to set.
+   */
+  private void setFindingNote(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    findingNote_ = value;
+  }
+  /**
+   * <code>string finding_note = 28 [json_name = "findingNote"];</code>
+   */
+  private void clearFindingNote() {
+
+    findingNote_ = getDefaultInstance().getFindingNote();
+  }
+  /**
+   * <code>string finding_note = 28 [json_name = "findingNote"];</code>
+   * @param value The bytes for findingNote to set.
+   */
+  private void setFindingNoteBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    findingNote_ = value.toStringUtf8();
+
+  }
+
+  public static final int FINDING_PENDING_FIELD_NUMBER = 29;
+  private boolean findingPending_;
+  /**
+   * <code>bool finding_pending = 29 [json_name = "findingPending"];</code>
+   * @return The findingPending.
+   */
+  @java.lang.Override
+  public boolean getFindingPending() {
+    return findingPending_;
+  }
+  /**
+   * <code>bool finding_pending = 29 [json_name = "findingPending"];</code>
+   * @param value The findingPending to set.
+   */
+  private void setFindingPending(boolean value) {
+    
+    findingPending_ = value;
+  }
+  /**
+   * <code>bool finding_pending = 29 [json_name = "findingPending"];</code>
+   */
+  private void clearFindingPending() {
+
+    findingPending_ = false;
   }
 
   public static io.github.jflowers.ghhud.api.v1.Run parseFrom(
@@ -2868,6 +3024,172 @@ public  final class Run extends
       return this;
     }
 
+    /**
+     * <pre>
+     * finding: what a ci run found (blocked by the base branch, fixed by
+     * another PR) while it's recorded; finding_note says why there is none
+     * (refused, or the supervisor found nothing); finding_pending that the
+     * supervisor is reading the run (#180).
+     * </pre>
+     *
+     * <code>.ghhud.v1.Finding finding = 27 [json_name = "finding"];</code>
+     */
+    @java.lang.Override
+    public boolean hasFinding() {
+      return instance.hasFinding();
+    }
+    /**
+     * <pre>
+     * finding: what a ci run found (blocked by the base branch, fixed by
+     * another PR) while it's recorded; finding_note says why there is none
+     * (refused, or the supervisor found nothing); finding_pending that the
+     * supervisor is reading the run (#180).
+     * </pre>
+     *
+     * <code>.ghhud.v1.Finding finding = 27 [json_name = "finding"];</code>
+     */
+    @java.lang.Override
+    public io.github.jflowers.ghhud.api.v1.Finding getFinding() {
+      return instance.getFinding();
+    }
+    /**
+     * <pre>
+     * finding: what a ci run found (blocked by the base branch, fixed by
+     * another PR) while it's recorded; finding_note says why there is none
+     * (refused, or the supervisor found nothing); finding_pending that the
+     * supervisor is reading the run (#180).
+     * </pre>
+     *
+     * <code>.ghhud.v1.Finding finding = 27 [json_name = "finding"];</code>
+     */
+    public Builder setFinding(io.github.jflowers.ghhud.api.v1.Finding value) {
+      copyOnWrite();
+      instance.setFinding(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * finding: what a ci run found (blocked by the base branch, fixed by
+     * another PR) while it's recorded; finding_note says why there is none
+     * (refused, or the supervisor found nothing); finding_pending that the
+     * supervisor is reading the run (#180).
+     * </pre>
+     *
+     * <code>.ghhud.v1.Finding finding = 27 [json_name = "finding"];</code>
+     */
+    public Builder setFinding(
+        io.github.jflowers.ghhud.api.v1.Finding.Builder builderForValue) {
+      copyOnWrite();
+      instance.setFinding(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * finding: what a ci run found (blocked by the base branch, fixed by
+     * another PR) while it's recorded; finding_note says why there is none
+     * (refused, or the supervisor found nothing); finding_pending that the
+     * supervisor is reading the run (#180).
+     * </pre>
+     *
+     * <code>.ghhud.v1.Finding finding = 27 [json_name = "finding"];</code>
+     */
+    public Builder mergeFinding(io.github.jflowers.ghhud.api.v1.Finding value) {
+      copyOnWrite();
+      instance.mergeFinding(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * finding: what a ci run found (blocked by the base branch, fixed by
+     * another PR) while it's recorded; finding_note says why there is none
+     * (refused, or the supervisor found nothing); finding_pending that the
+     * supervisor is reading the run (#180).
+     * </pre>
+     *
+     * <code>.ghhud.v1.Finding finding = 27 [json_name = "finding"];</code>
+     */
+    public Builder clearFinding() {  copyOnWrite();
+      instance.clearFinding();
+      return this;
+    }
+
+    /**
+     * <code>string finding_note = 28 [json_name = "findingNote"];</code>
+     * @return The findingNote.
+     */
+    @java.lang.Override
+    public java.lang.String getFindingNote() {
+      return instance.getFindingNote();
+    }
+    /**
+     * <code>string finding_note = 28 [json_name = "findingNote"];</code>
+     * @return The bytes for findingNote.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getFindingNoteBytes() {
+      return instance.getFindingNoteBytes();
+    }
+    /**
+     * <code>string finding_note = 28 [json_name = "findingNote"];</code>
+     * @param value The findingNote to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFindingNote(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setFindingNote(value);
+      return this;
+    }
+    /**
+     * <code>string finding_note = 28 [json_name = "findingNote"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearFindingNote() {
+      copyOnWrite();
+      instance.clearFindingNote();
+      return this;
+    }
+    /**
+     * <code>string finding_note = 28 [json_name = "findingNote"];</code>
+     * @param value The bytes for findingNote to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFindingNoteBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setFindingNoteBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>bool finding_pending = 29 [json_name = "findingPending"];</code>
+     * @return The findingPending.
+     */
+    @java.lang.Override
+    public boolean getFindingPending() {
+      return instance.getFindingPending();
+    }
+    /**
+     * <code>bool finding_pending = 29 [json_name = "findingPending"];</code>
+     * @param value The findingPending to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFindingPending(boolean value) {
+      copyOnWrite();
+      instance.setFindingPending(value);
+      return this;
+    }
+    /**
+     * <code>bool finding_pending = 29 [json_name = "findingPending"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearFindingPending() {
+      copyOnWrite();
+      instance.clearFindingPending();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.Run)
   }
   @java.lang.Override
@@ -2911,13 +3233,16 @@ public  final class Run extends
             "humanNeeded_",
             "indexHealth_",
             "opencode_",
+            "finding_",
+            "findingNote_",
+            "findingPending_",
           };
           java.lang.String info =
-              "\u0000\u001a\u0000\u0001\u0001\u001a\u001a\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u001d\u0000\u0001\u0001\u001d\u001d\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\u0208\u0005\u0002\u0006\u0208\u0007\u0208\b\u0208\t\u0208\n\u0007" +
               "\u000b\u1009\u0000\f\u1009\u0001\r\u0208\u000e\u0208\u000f\u0208\u0010\u0208\u0011" +
               "\u0208\u0012\u0208\u0013\u021a\u0014\u021a\u0015\u0208\u0016\u0007\u0017\u0208\u0018" +
-              "\u0007\u0019\u0208\u001a\u0208";
+              "\u0007\u0019\u0208\u001a\u0208\u001b\u1009\u0002\u001c\u0208\u001d\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -51,6 +51,8 @@ type trainPlan struct {
 	// fix PRs they put first (supervisor.go).
 	live map[string]Decision
 	prio map[string]bool
+	// open is every open PR the refresh saw, by "repo#num".
+	open map[string]model.Item
 	// items are the refresh the plan was built from; sup is the supervisor
 	// agent's state by case id (supervisor_run.go). The plan is never
 	// changed in place: a supervisor update swaps in a copy.
@@ -244,6 +246,7 @@ func (d *Dispatcher) noteBaseLocked() {
 	if d.baseBroke == nil {
 		d.baseBroke = map[string]map[string]bool{}
 	}
+	found := baseFindings(d.records)
 	for repo, prs := range d.train.order {
 		broke := d.baseBroke[repo]
 		if broke == nil {
@@ -254,6 +257,11 @@ func (d *Dispatcher) noteBaseLocked() {
 		for _, p := range prs {
 			for _, c := range p.BaseFailing {
 				broke[c] = true
+			}
+			// A ci run found the base branch broken: the same as seeing it
+			// fail there (findings.go), for the PR commit it ran on.
+			if f := found[p.Ref()]; f != nil && f.Facts.Head == p.HeadOID {
+				broke[f.Check] = true
 			}
 			for _, c := range p.FailingChecks {
 				failing[c] = true

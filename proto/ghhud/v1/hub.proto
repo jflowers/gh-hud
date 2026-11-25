@@ -664,6 +664,26 @@ message Run {
   // opencode: the machine's `opencode --version` when the run started;
   // empty when unknown.
   string opencode = 26;
+  // finding: what a ci run found (blocked by the base branch, fixed by
+  // another PR) while it's recorded; finding_note says why there is none
+  // (refused, or the supervisor found nothing); finding_pending that the
+  // supervisor is reading the run (#180).
+  Finding finding = 27;
+  string finding_note = 28;
+  bool finding_pending = 29;
+}
+
+// Finding is what a ci run found, with the PR state it holds for: it
+// lapses when the head, the base commit or the failing checks change.
+message Finding {
+  string kind = 1; // open set: blocked_by_base, fixed_by
+  string check = 2; // blocked_by_base: the check the base branch breaks
+  int64 pr = 3; // fixed_by: the PR that fixes it
+  string why = 4;
+  string by = 5; // agent or supervisor
+  string head = 6;
+  string base = 7;
+  repeated string checks = 8;
 }
 
 message MachineUsage {

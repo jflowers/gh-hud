@@ -294,11 +294,24 @@ func stageOf(it model.Item, runs []Run, tasks map[string]config.TaskConfig, am c
 			last = &ofRef[i]
 		}
 	}
+	// A ci run's finding that still holds: the PR waits on the base branch
+	// or the fix, not on you (findings.go).
+	if task == TaskCI {
+		if f, ok := tp.liveFinding(it, last); ok {
+			return Stage{Kind: StageWait, Task: task, Reason: f.reason()}
+		}
+	}
 	if limit := tc.RoundLimit(string(task)); limit > 0 && n >= limit {
 		return Stage{Kind: StageNeedsYou, Task: task, Reason: fmt.Sprintf("%d/%d rounds", n, limit)}
 	}
 	if last != nil {
-		if last.Fingerprint == fingerprint(task, it) {
+		// A finding that lapsed (the base, the checks or the fix PR moved
+		// on) no longer explains the run, so the step can run again.
+		lapsed := task == TaskCI && last.Finding != nil
+		if task == TaskCI && last.FindingPending && last.Fingerprint == fingerprint(task, it) {
+			return Stage{Kind: StageWait, Task: task, Reason: "supervisor reading the run"}
+		}
+		if last.Fingerprint == fingerprint(task, it) && !lapsed {
 			switch last.Status {
 			case RunFailed:
 				if last.HumanNeeded {

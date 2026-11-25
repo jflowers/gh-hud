@@ -382,65 +382,87 @@ func SessionFromPB(p *pb.Session) dispatch.Session {
 // RunToPB converts a dispatch run for the wire.
 func RunToPB(r dispatch.Run) *pb.Run {
 	return &pb.Run{
-		Id:          r.ID,
-		Task:        string(r.Task),
-		Ref:         r.Ref,
-		Repo:        r.Repo,
-		Num:         int64(r.Num),
-		Machine:     r.Machine,
-		Workspace:   r.Workspace,
-		Dir:         r.Dir,
-		Status:      string(r.Status),
-		Auto:        r.Auto,
-		StartedAt:   ts(r.StartedAt),
-		FinishedAt:  tsPtr(r.FinishedAt),
-		SessionId:   r.SessionID,
-		PaneId:      r.PaneID,
-		WsId:        r.WSID,
-		Log:         r.Log,
-		Reason:      r.Reason,
-		Summary:     r.Summary,
-		Left:        strs(r.Left),
-		Pushed:      strs(r.Pushed),
-		Branch:      r.Branch,
-		Cleaned:     r.Cleaned,
-		Fingerprint: r.Fingerprint,
-		HumanNeeded: r.HumanNeeded,
-		IndexHealth: r.IndexHealth,
-		Opencode:    r.Opencode,
+		Id:             r.ID,
+		Task:           string(r.Task),
+		Ref:            r.Ref,
+		Repo:           r.Repo,
+		Num:            int64(r.Num),
+		Machine:        r.Machine,
+		Workspace:      r.Workspace,
+		Dir:            r.Dir,
+		Status:         string(r.Status),
+		Auto:           r.Auto,
+		StartedAt:      ts(r.StartedAt),
+		FinishedAt:     tsPtr(r.FinishedAt),
+		SessionId:      r.SessionID,
+		PaneId:         r.PaneID,
+		WsId:           r.WSID,
+		Log:            r.Log,
+		Reason:         r.Reason,
+		Summary:        r.Summary,
+		Left:           strs(r.Left),
+		Pushed:         strs(r.Pushed),
+		Branch:         r.Branch,
+		Cleaned:        r.Cleaned,
+		Fingerprint:    r.Fingerprint,
+		HumanNeeded:    r.HumanNeeded,
+		IndexHealth:    r.IndexHealth,
+		Opencode:       r.Opencode,
+		Finding:        findingToPB(r.Finding),
+		FindingNote:    r.FindingNote,
+		FindingPending: r.FindingPending,
 	}
 }
 
 // RunFromPB converts a wire run back.
 func RunFromPB(p *pb.Run) dispatch.Run {
 	return dispatch.Run{
-		ID:          p.GetId(),
-		Task:        dispatch.Task(p.GetTask()),
-		Ref:         p.GetRef(),
-		Repo:        p.GetRepo(),
-		Num:         int(p.GetNum()),
-		Machine:     p.GetMachine(),
-		Workspace:   p.GetWorkspace(),
-		Dir:         p.GetDir(),
-		Status:      dispatch.RunStatus(p.GetStatus()),
-		Auto:        p.GetAuto(),
-		StartedAt:   fromTS(p.GetStartedAt()),
-		FinishedAt:  fromTSPtr(p.GetFinishedAt()),
-		SessionID:   p.GetSessionId(),
-		PaneID:      p.GetPaneId(),
-		WSID:        p.GetWsId(),
-		Log:         p.GetLog(),
-		Reason:      p.GetReason(),
-		Summary:     p.GetSummary(),
-		Left:        strs(p.GetLeft()),
-		Pushed:      strs(p.GetPushed()),
-		Branch:      p.GetBranch(),
-		Cleaned:     p.GetCleaned(),
-		Fingerprint: p.GetFingerprint(),
-		HumanNeeded: p.GetHumanNeeded(),
-		IndexHealth: p.GetIndexHealth(),
-		Opencode:    p.GetOpencode(),
+		ID:             p.GetId(),
+		Task:           dispatch.Task(p.GetTask()),
+		Ref:            p.GetRef(),
+		Repo:           p.GetRepo(),
+		Num:            int(p.GetNum()),
+		Machine:        p.GetMachine(),
+		Workspace:      p.GetWorkspace(),
+		Dir:            p.GetDir(),
+		Status:         dispatch.RunStatus(p.GetStatus()),
+		Auto:           p.GetAuto(),
+		StartedAt:      fromTS(p.GetStartedAt()),
+		FinishedAt:     fromTSPtr(p.GetFinishedAt()),
+		SessionID:      p.GetSessionId(),
+		PaneID:         p.GetPaneId(),
+		WSID:           p.GetWsId(),
+		Log:            p.GetLog(),
+		Reason:         p.GetReason(),
+		Summary:        p.GetSummary(),
+		Left:           strs(p.GetLeft()),
+		Pushed:         strs(p.GetPushed()),
+		Branch:         p.GetBranch(),
+		Cleaned:        p.GetCleaned(),
+		Fingerprint:    p.GetFingerprint(),
+		HumanNeeded:    p.GetHumanNeeded(),
+		IndexHealth:    p.GetIndexHealth(),
+		Opencode:       p.GetOpencode(),
+		Finding:        findingFromPB(p.GetFinding()),
+		FindingNote:    p.GetFindingNote(),
+		FindingPending: p.GetFindingPending(),
 	}
+}
+
+func findingToPB(f *dispatch.Finding) *pb.Finding {
+	if f == nil {
+		return nil
+	}
+	return &pb.Finding{Kind: string(f.Kind), Check: f.Check, Pr: int64(f.PR), Why: f.Why, By: f.By,
+		Head: f.Facts.Head, Base: f.Facts.Base, Checks: strs(f.Facts.Checks)}
+}
+
+func findingFromPB(p *pb.Finding) *dispatch.Finding {
+	if p == nil {
+		return nil
+	}
+	return &dispatch.Finding{Kind: dispatch.FindingKind(p.GetKind()), Check: p.GetCheck(), PR: int(p.GetPr()), Why: p.GetWhy(), By: p.GetBy(),
+		Facts: dispatch.FindingBasis{Head: p.GetHead(), Base: p.GetBase(), Checks: strs(p.GetChecks())}}
 }
 
 func usageToPB(u dispatch.MachineUsage) *pb.MachineUsage {

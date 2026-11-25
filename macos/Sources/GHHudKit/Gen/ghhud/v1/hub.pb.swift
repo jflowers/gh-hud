@@ -2212,11 +2212,66 @@ public nonisolated struct Ghhud_V1_Run: @unchecked Sendable {
     set {_uniqueStorage()._opencode = newValue}
   }
 
+  /// finding: what a ci run found (blocked by the base branch, fixed by
+  /// another PR) while it's recorded; finding_note says why there is none
+  /// (refused, or the supervisor found nothing); finding_pending that the
+  /// supervisor is reading the run (#180).
+  public var finding: Ghhud_V1_Finding {
+    get {_storage._finding ?? Ghhud_V1_Finding()}
+    set {_uniqueStorage()._finding = newValue}
+  }
+  /// Returns true if `finding` has been explicitly set.
+  public var hasFinding: Bool {_storage._finding != nil}
+  /// Clears the value of `finding`. Subsequent reads from it will return its default value.
+  public mutating func clearFinding() {_uniqueStorage()._finding = nil}
+
+  public var findingNote: String {
+    get {_storage._findingNote}
+    set {_uniqueStorage()._findingNote = newValue}
+  }
+
+  public var findingPending: Bool {
+    get {_storage._findingPending}
+    set {_uniqueStorage()._findingPending = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+/// Finding is what a ci run found, with the PR state it holds for: it
+/// lapses when the head, the base commit or the failing checks change.
+public nonisolated struct Ghhud_V1_Finding: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// open set: blocked_by_base, fixed_by
+  public var kind: String = String()
+
+  /// blocked_by_base: the check the base branch breaks
+  public var check: String = String()
+
+  /// fixed_by: the PR that fixes it
+  public var pr: Int64 = 0
+
+  public var why: String = String()
+
+  /// agent or supervisor
+  public var by: String = String()
+
+  public var head: String = String()
+
+  public var base: String = String()
+
+  public var checks: [String] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
 }
 
 public nonisolated struct Ghhud_V1_MachineUsage: Sendable {
@@ -6645,7 +6700,7 @@ nonisolated extension Ghhud_V1_Session: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Run"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}task\0\u{1}ref\0\u{1}repo\0\u{1}num\0\u{1}machine\0\u{1}workspace\0\u{1}dir\0\u{1}status\0\u{1}auto\0\u{3}started_at\0\u{3}finished_at\0\u{3}session_id\0\u{3}pane_id\0\u{3}ws_id\0\u{1}log\0\u{1}reason\0\u{1}summary\0\u{1}left\0\u{1}pushed\0\u{1}branch\0\u{1}cleaned\0\u{1}fingerprint\0\u{3}human_needed\0\u{3}index_health\0\u{1}opencode\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}task\0\u{1}ref\0\u{1}repo\0\u{1}num\0\u{1}machine\0\u{1}workspace\0\u{1}dir\0\u{1}status\0\u{1}auto\0\u{3}started_at\0\u{3}finished_at\0\u{3}session_id\0\u{3}pane_id\0\u{3}ws_id\0\u{1}log\0\u{1}reason\0\u{1}summary\0\u{1}left\0\u{1}pushed\0\u{1}branch\0\u{1}cleaned\0\u{1}fingerprint\0\u{3}human_needed\0\u{3}index_health\0\u{1}opencode\0\u{1}finding\0\u{3}finding_note\0\u{3}finding_pending\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -6674,6 +6729,9 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
     var _humanNeeded: Bool = false
     var _indexHealth: String = String()
     var _opencode: String = String()
+    var _finding: Ghhud_V1_Finding? = nil
+    var _findingNote: String = String()
+    var _findingPending: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -6710,6 +6768,9 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
       _humanNeeded = source._humanNeeded
       _indexHealth = source._indexHealth
       _opencode = source._opencode
+      _finding = source._finding
+      _findingNote = source._findingNote
+      _findingPending = source._findingPending
     }
   }
 
@@ -6754,6 +6815,9 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
         case 24: try { try decoder.decodeSingularBoolField(value: &_storage._humanNeeded) }()
         case 25: try { try decoder.decodeSingularStringField(value: &_storage._indexHealth) }()
         case 26: try { try decoder.decodeSingularStringField(value: &_storage._opencode) }()
+        case 27: try { try decoder.decodeSingularMessageField(value: &_storage._finding) }()
+        case 28: try { try decoder.decodeSingularStringField(value: &_storage._findingNote) }()
+        case 29: try { try decoder.decodeSingularBoolField(value: &_storage._findingPending) }()
         default: break
         }
       }
@@ -6844,6 +6908,15 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
       if !_storage._opencode.isEmpty {
         try visitor.visitSingularStringField(value: _storage._opencode, fieldNumber: 26)
       }
+      try { if let v = _storage._finding {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 27)
+      } }()
+      if !_storage._findingNote.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._findingNote, fieldNumber: 28)
+      }
+      if _storage._findingPending != false {
+        try visitor.visitSingularBoolField(value: _storage._findingPending, fieldNumber: 29)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -6879,10 +6952,78 @@ nonisolated extension Ghhud_V1_Run: SwiftProtobuf.Message, SwiftProtobuf._Messag
         if _storage._humanNeeded != rhs_storage._humanNeeded {return false}
         if _storage._indexHealth != rhs_storage._indexHealth {return false}
         if _storage._opencode != rhs_storage._opencode {return false}
+        if _storage._finding != rhs_storage._finding {return false}
+        if _storage._findingNote != rhs_storage._findingNote {return false}
+        if _storage._findingPending != rhs_storage._findingPending {return false}
         return true
       }
       if !storagesAreEqual {return false}
     }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_Finding: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".Finding"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{1}check\0\u{1}pr\0\u{1}why\0\u{1}by\0\u{1}head\0\u{1}base\0\u{1}checks\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.kind) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.check) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.pr) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.why) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.by) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.head) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.base) }()
+      case 8: try { try decoder.decodeRepeatedStringField(value: &self.checks) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.kind.isEmpty {
+      try visitor.visitSingularStringField(value: self.kind, fieldNumber: 1)
+    }
+    if !self.check.isEmpty {
+      try visitor.visitSingularStringField(value: self.check, fieldNumber: 2)
+    }
+    if self.pr != 0 {
+      try visitor.visitSingularInt64Field(value: self.pr, fieldNumber: 3)
+    }
+    if !self.why.isEmpty {
+      try visitor.visitSingularStringField(value: self.why, fieldNumber: 4)
+    }
+    if !self.by.isEmpty {
+      try visitor.visitSingularStringField(value: self.by, fieldNumber: 5)
+    }
+    if !self.head.isEmpty {
+      try visitor.visitSingularStringField(value: self.head, fieldNumber: 6)
+    }
+    if !self.base.isEmpty {
+      try visitor.visitSingularStringField(value: self.base, fieldNumber: 7)
+    }
+    if !self.checks.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.checks, fieldNumber: 8)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_Finding, rhs: Ghhud_V1_Finding) -> Bool {
+    if lhs.kind != rhs.kind {return false}
+    if lhs.check != rhs.check {return false}
+    if lhs.pr != rhs.pr {return false}
+    if lhs.why != rhs.why {return false}
+    if lhs.by != rhs.by {return false}
+    if lhs.head != rhs.head {return false}
+    if lhs.base != rhs.base {return false}
+    if lhs.checks != rhs.checks {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os/exec"
 	"regexp"
 	"slices"
@@ -66,6 +67,12 @@ type Run struct {
 	// HumanNeeded: the agent handed a decision to a person (auto-question's
 	// escalation) and stopped; the run counts as failed.
 	HumanNeeded bool
+	// Finding is what the ci run found, while it's recorded (findings.go);
+	// FindingNote says why there is none (refused, or the supervisor found
+	// nothing), and FindingPending that the supervisor is reading the run.
+	Finding        *Finding
+	FindingNote    string
+	FindingPending bool
 	// IndexHealth is the checkout's Dewey index health after the run (see
 	// Record.IndexHealth).
 	IndexHealth string
@@ -106,6 +113,9 @@ func runStatus(r Record, live, blocked bool) RunStatus {
 // snapshot.
 func (d *Dispatcher) Runs(ctx context.Context) []Run {
 	recs := d.snapshot()
+	d.mu.Lock()
+	reviewing := maps.Clone(d.findingReviewing)
+	d.mu.Unlock()
 	snaps := d.agentsSnapshot(ctx)
 	out := make([]Run, 0, len(recs))
 	for i := len(recs) - 1; i >= 0; i-- {
@@ -133,6 +143,7 @@ func (d *Dispatcher) Runs(ctx context.Context) []Run {
 			Reason: reason, Summary: r.Summary, Left: r.Left, Pushed: r.Pushed,
 			Branch: r.Branch, Cleaned: r.Cleaned, Fingerprint: r.Fingerprint,
 			HumanNeeded: r.HumanNeeded, IndexHealth: r.IndexHealth, Opencode: r.Opencode,
+			Finding: r.Finding, FindingNote: r.FindingNote, FindingPending: reviewing[runID(r)],
 		})
 	}
 	return out
@@ -150,6 +161,8 @@ type outcome struct {
 	humanNeeded bool     // auto-question handed a decision to a person
 	humanReason string   // why, when humanNeeded
 	children    []string // subagent sessions the run started (task tool)
+	finding     *Finding // the agent's finding line, unchecked (findings.go)
+	findingErr  error    // why its finding line doesn't parse
 }
 
 // exportedSession is the slice of `opencode export` the outcome needs.
@@ -246,6 +259,12 @@ func judgeSession(out string) (outcome, error) {
 		for j := len(s.Messages[i].Parts) - 1; j >= 0; j-- {
 			if p := s.Messages[i].Parts[j]; p.Type == "text" && strings.TrimSpace(p.Text) != "" {
 				o.summary = truncateRunes(strings.TrimSpace(p.Text), summaryMax)
+				if f, ok, err := parseFindingLine(p.Text); ok {
+					o.findingErr = err
+					if err == nil {
+						o.finding = &f
+					}
+				}
 				break
 			}
 		}
@@ -500,6 +519,7 @@ func (d *Dispatcher) finishRecord(r Record, exitCode *int, closePane bool) {
 		rec.Unread = o.unreachable
 		rec.HumanNeeded = o.humanNeeded
 		insp.apply(rec)
+		applyFinding(rec, o)
 	}
 	d.saveStateLocked()
 	delete(d.tuiBusy, paneKey(r.Machine, r.PaneID))
