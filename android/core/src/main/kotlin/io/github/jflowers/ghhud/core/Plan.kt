@@ -185,12 +185,17 @@ public data class EpicRow(
     val summary: String = "",
     /** Set when the run budget is spent: approving the plan again grants this many more runs. */
     val budgetToGrant: Int? = null,
+    /** Changes the supervisor proposes to the plan, waiting for you; approving makes them on GitHub, as you. */
+    val replans: List<Replan> = emptyList(),
     /** Pieces still to do, running and ready first. */
     val open: List<Piece>,
     val done: Int,
     val total: Int,
 ) {
     val id: String get() = ref
+
+    /** A proposed change to the plan: "drop #12 (close it as not planned)", and why. */
+    public data class Replan(val id: String, val what: String, val why: String)
 
     public data class Piece(
         val ref: String, // owner/repo#N
@@ -259,6 +264,14 @@ public data class EpicRow(
                 planToFinish = toFinish,
                 summary = if (toFinish == null) "" else e.summary,
                 budgetToGrant = if (spent) e.runBudget.toInt() else null,
+                replans = e.replansList.filter { it.status == "pending" }.map {
+                    val what = if (it.kind == "drop") {
+                        "drop ${short(repo, it.piece)} (close it as not planned)"
+                    } else {
+                        "new piece \u201C${it.title}\u201D, from ${short(repo, it.piece)}"
+                    }
+                    Replan(it.id, what, it.why)
+                },
                 open = open,
                 done = done,
                 total = nodes.size,

@@ -673,6 +673,14 @@ do {
     heldEpic.held = "hold"
     check(EpicRow(heldEpic).status == "held by the hold label · 1/6 done, 1 running, 1 ready, 0 in progress" && EpicRow(heldEpic).tone == .warn,
           "held epic \(EpicRow(heldEpic).status)")
+    var replanned = e
+    var rp = Ghhud_V1_EpicReplan()
+    rp.id = "r1"; rp.kind = "drop"; rp.piece = "acme/r#52"; rp.why = "done in #9"; rp.status = "pending"
+    var rf = Ghhud_V1_EpicReplan()
+    rf.id = "r2"; rf.kind = "follow_up"; rf.piece = "acme/r#52"; rf.title = "Fix it"; rf.status = "rejected"
+    replanned.replans = [rp, rf]
+    check(EpicRow(replanned).replans == [EpicRow.Replan(id: "r1", what: "drop #52 (close it as not planned)", why: "done in #9")],
+          "pending replans \(EpicRow(replanned).replans)")
     var budgeted = e
     budgeted.runs = 7
     budgeted.runBudget = 20

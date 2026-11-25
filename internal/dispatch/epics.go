@@ -115,6 +115,8 @@ func cloneEpic(e epic.Epic) epic.Epic {
 		e.Approved = &t
 	}
 	e.Reports = slices.Clone(e.Reports)
+	e.Replans = slices.Clone(e.Replans)
+	e.ApprovedAdds = slices.Clone(e.ApprovedAdds)
 	return e
 }
 
@@ -461,7 +463,7 @@ func (d *Dispatcher) readEpic(ref string) {
 		repo, _, _ := epic.ParseRef(ref)
 		short := func(r string) string { return epic.Short(repo, r) }
 		diff = epic.Diff(e.ApprovedSnapshot, plan)
-		if !diff.Structural() {
+		if !diff.Structural() || diff.AddsOnly(e.ApprovedAdds) {
 			e.ApprovedPlan, e.ApprovedSnapshot = plan.ID, clonePlan(plan)
 		} else {
 			e.Changes = diff.Lines(short)

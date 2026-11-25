@@ -412,4 +412,64 @@ public interface EpicOrBuilder extends
    * @return The runBudget.
    */
   long getRunBudget();
+
+  /**
+   * <pre>
+   * replans: the supervisor's proposed changes to the plan (pending ones
+   * wait for you: ApproveProposal/RejectProposal with the replan's id);
+   * approved_adds: follow-up issues you approved, which a reread adds
+   * without asking for approval again.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+   */
+  java.util.List<io.github.jflowers.ghhud.api.v1.EpicReplan> 
+      getReplansList();
+  /**
+   * <pre>
+   * replans: the supervisor's proposed changes to the plan (pending ones
+   * wait for you: ApproveProposal/RejectProposal with the replan's id);
+   * approved_adds: follow-up issues you approved, which a reread adds
+   * without asking for approval again.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+   */
+  io.github.jflowers.ghhud.api.v1.EpicReplan getReplans(int index);
+  /**
+   * <pre>
+   * replans: the supervisor's proposed changes to the plan (pending ones
+   * wait for you: ApproveProposal/RejectProposal with the replan's id);
+   * approved_adds: follow-up issues you approved, which a reread adds
+   * without asking for approval again.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.EpicReplan replans = 25 [json_name = "replans"];</code>
+   */
+  int getReplansCount();
+
+  /**
+   * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+   * @return A list containing the approvedAdds.
+   */
+  java.util.List<java.lang.String>
+      getApprovedAddsList();
+  /**
+   * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+   * @return The count of approvedAdds.
+   */
+  int getApprovedAddsCount();
+  /**
+   * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+   * @param index The index of the element to return.
+   * @return The approvedAdds at the given index.
+   */
+  java.lang.String getApprovedAdds(int index);
+  /**
+   * <code>repeated string approved_adds = 26 [json_name = "approvedAdds"];</code>
+   * @param index The index of the element to return.
+   * @return The approvedAdds at the given index.
+   */
+  com.google.protobuf.ByteString
+      getApprovedAddsBytes(int index);
 }
