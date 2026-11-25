@@ -1313,7 +1313,7 @@ except:
 - the fleet orgs' plain dirs (`unbound-force/`), which ghws clones new
   instances from;
 - the machine's `keep` paths: a workspace dir, or one repo in it (for
-  example the opencode plugins the machine loads from there);
+  example an opencode plugin the machine loads from a checkout);
 - hidden entries and plain files.
 
 A repo is removed only when it, and every repo under it, holds nothing
@@ -1333,7 +1333,7 @@ named like the hub.
 [[machines]]
 name = "lap1"
 remove_unmanaged = true
-keep = ["Opencode-DCP/opencode-dynamic-context-pruning", "jflowers/opencode-session-search", "jflowers/opencode-session-notes"]
+keep = ["Opencode-DCP/opencode-dynamic-context-pruning"]
 ```
 
 ## Configuring dispatch
