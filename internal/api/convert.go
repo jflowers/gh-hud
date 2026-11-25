@@ -753,6 +753,7 @@ func fleetToPB(f fleet.Snapshot) *pb.FleetSnapshot {
 				ReindexFailures: m.Reindex.Failed, ReindexNote: m.Reindex.Note,
 				ReindexCurrent: strs(m.Reindex.Current),
 				DeweyPass:      passToPB(m.Pass),
+				PruneNote:      m.Pruned,
 			}
 		}),
 	}
@@ -780,7 +781,8 @@ func fleetFromPB(p *pb.FleetSnapshot) fleet.Snapshot {
 					Failed: m.GetReindexFailures(), Note: m.GetReindexNote(),
 					Current: strs(m.GetReindexCurrent()),
 				},
-				Pass: passFromPB(m.GetDeweyPass()),
+				Pass:   passFromPB(m.GetDeweyPass()),
+				Pruned: m.GetPruneNote(),
 			}
 		}),
 	}

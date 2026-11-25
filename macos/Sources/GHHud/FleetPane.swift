@@ -157,6 +157,13 @@ struct FleetDeweyDetail: View {
                     .padding(.leading, l.text.hasPrefix("✗") || l.text.hasPrefix("–") ? 12 : 0)
                     .textSelection(.enabled)
             }
+            if !row.pruned.isEmpty {
+                Text(row.pruned)
+                    .font(.callout)
+                    .foregroundStyle(row.prunedTone == .muted ? .secondary : row.prunedTone.color)
+                    .padding(.top, 4)
+                    .textSelection(.enabled)
+            }
         }
     }
 }

@@ -27,6 +27,9 @@ public data class FleetRow(
     /** How long it has waited for agents to drain, in seconds. */
     val waited: Double?,
     val error: String,
+    /** What pruning unused tool versions did after the last verified apply ("" before one ran). */
+    val pruned: String = "",
+    val prunedTone: Tone = Tone.MUTED,
 ) : ColumnFilterable {
     val id: String get() = name
 
@@ -65,6 +68,8 @@ public data class FleetRow(
                 applied = if (m.state == "current" || target.isEmpty() || m.appliedShort == target) have else "$have → $target",
                 waited = if (m.state == "draining" && secs > 0) secs else null,
                 error = m.lastError.split(Regex("\\R")).filter { it.isNotEmpty() }.joinToString(" "),
+                pruned = m.pruneNote,
+                prunedTone = FleetList.pruneTone(m.pruneNote),
             )
         }
     }
@@ -82,6 +87,9 @@ public object FleetList {
         "failed" -> Tone.BAD
         else -> Tone.WARN // unreachable, skipped
     }
+
+    /** How a prune note reads: bad when the prune failed. */
+    public fun pruneTone(note: String): Tone = if (note.contains("failed")) Tone.BAD else Tone.MUTED
 
     /** How the target's CI reads. */
     public fun ciTone(ci: String): Tone = when (ci) {

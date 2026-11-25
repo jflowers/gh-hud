@@ -1737,6 +1737,17 @@ can't be read before or after the apply, the view says the change is
 unknown and nothing is reindexed. The hub is still last, so its own
 checkouts are reindexed after its own apply.
 
+Once a machine's apply verifies, and while it is still drained, gh-hud
+runs `mise prune --yes` there from the home directory (#86). Each pin
+bump leaves the old version installed, so without it a machine piles up
+dozens of versions and several GB. mise removes only versions that no
+tracked config or tool stub selects, and keeps any a running process
+was started from, so a checkout's own pins and the hub's running gh-hud
+keep theirs. The fleet view shows what it did under the machine ("mise
+prune: removed 12 versions, freed 2.7 GB"). A machine without mise, or
+a prune that fails, is only a note there: the rollout goes on and
+nothing is notified.
+
 `F` opens the fleet view: per-machine table (name, reachable, slots,
 applied vs target sha, state, drain wait, last error) with target/CI/pause
 status in the header. Keys: `p` pause/resume · `a` apply now (force a

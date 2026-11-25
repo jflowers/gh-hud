@@ -448,7 +448,36 @@ public object FleetMachineKt {
 @kotlin.jvm.JvmName("setReindexCurrent")
     public fun com.google.protobuf.kotlin.DslList<kotlin.String, ReindexCurrentProxy>.clear() {
       _builder.clearReindexCurrent()
-    }}
+    }
+    /**
+     * ```
+     * What pruning unused tool versions did after the machine's last
+     * verified apply (gh-hud#86): "mise prune: removed 12 versions, freed
+     * 2.7 GB"; "" when none ran since the hub started.
+     * ```
+     *
+     * `string prune_note = 14 [json_name = "pruneNote"];`
+     */
+    public var pruneNote: kotlin.String
+      @kotlin.jvm.JvmName("getPruneNote")
+        get() = _builder.pruneNote
+      @kotlin.jvm.JvmName("setPruneNote")
+        set(value) {
+        _builder.pruneNote = value
+      }
+    /**
+     * ```
+     * What pruning unused tool versions did after the machine's last
+     * verified apply (gh-hud#86): "mise prune: removed 12 versions, freed
+     * 2.7 GB"; "" when none ran since the hub started.
+     * ```
+     *
+     * `string prune_note = 14 [json_name = "pruneNote"];`
+     */
+    public fun clearPruneNote() {
+      _builder.clearPruneNote()
+    }
+  }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.FleetMachine.copy(block: `io.github.jflowers.ghhud.api.v1`.FleetMachineKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.FleetMachine =
   `io.github.jflowers.ghhud.api.v1`.FleetMachineKt.Dsl._create(this.toBuilder()).apply { block() }._build()

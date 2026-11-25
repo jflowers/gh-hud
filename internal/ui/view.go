@@ -867,6 +867,13 @@ func (m *Model) fleetView() string {
 		lines = append(lines, line)
 		lines = append(lines, fleetReindexLines(ms.Reindex, comment, bad)...)
 		lines = append(lines, fleetPassLines(ms.Pass, time.Now(), comment, bad)...)
+		if ms.Pruned != "" {
+			st := comment
+			if strings.Contains(ms.Pruned, "failed") {
+				st = bad
+			}
+			lines = append(lines, st.Render("    "+truncatePlain(ms.Pruned, 82)))
+		}
 	}
 
 	lines = append(lines, "")

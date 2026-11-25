@@ -6741,8 +6741,12 @@ type FleetMachine struct {
 	// The vaults the rollout's check found up to date (#138): nothing to
 	// reindex.
 	ReindexCurrent []string `protobuf:"bytes,13,rep,name=reindex_current,json=reindexCurrent,proto3" json:"reindex_current,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// What pruning unused tool versions did after the machine's last
+	// verified apply (gh-hud#86): "mise prune: removed 12 versions, freed
+	// 2.7 GB"; "" when none ran since the hub started.
+	PruneNote     string `protobuf:"bytes,14,opt,name=prune_note,json=pruneNote,proto3" json:"prune_note,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *FleetMachine) Reset() {
@@ -6864,6 +6868,13 @@ func (x *FleetMachine) GetReindexCurrent() []string {
 		return x.ReindexCurrent
 	}
 	return nil
+}
+
+func (x *FleetMachine) GetPruneNote() string {
+	if x != nil {
+		return x.PruneNote
+	}
+	return ""
 }
 
 // DeweyPass is a machine's latest "reindex the vaults now" pass (#139).
@@ -8161,7 +8172,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\n" +
 	"last_error\x18\n" +
 	" \x01(\tR\tlastError\x122\n" +
-	"\bmachines\x18\v \x03(\v2\x16.ghhud.v1.FleetMachineR\bmachines\"\xda\x03\n" +
+	"\bmachines\x18\v \x03(\v2\x16.ghhud.v1.FleetMachineR\bmachines\"\xf9\x03\n" +
 	"\fFleetMachine\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\tR\x05state\x12\x1c\n" +
@@ -8178,7 +8189,9 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\freindex_note\x18\v \x01(\tR\vreindexNote\x122\n" +
 	"\n" +
 	"dewey_pass\x18\f \x01(\v2\x13.ghhud.v1.DeweyPassR\tdeweyPass\x12'\n" +
-	"\x0freindex_current\x18\r \x03(\tR\x0ereindexCurrent\"\xcd\x02\n" +
+	"\x0freindex_current\x18\r \x03(\tR\x0ereindexCurrent\x12\x1d\n" +
+	"\n" +
+	"prune_note\x18\x0e \x01(\tR\tpruneNote\"\xcd\x02\n" +
 	"\tDeweyPass\x12\x18\n" +
 	"\arunning\x18\x01 \x01(\bR\arunning\x12\x12\n" +
 	"\x04done\x18\x02 \x01(\x05R\x04done\x12\x14\n" +

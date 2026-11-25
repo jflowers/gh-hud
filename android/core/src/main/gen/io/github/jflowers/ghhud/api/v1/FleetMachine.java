@@ -23,6 +23,7 @@ public  final class FleetMachine extends
     reindexFailures_ = emptyProtobufList();
     reindexNote_ = "";
     reindexCurrent_ = emptyProtobufList();
+    pruneNote_ = "";
   }
   private int bitField0_;
   public static final int NAME_FIELD_NUMBER = 1;
@@ -769,6 +770,83 @@ public  final class FleetMachine extends
     checkByteStringIsUtf8(value);
     ensureReindexCurrentIsMutable();
     reindexCurrent_.add(value.toStringUtf8());
+  }
+
+  public static final int PRUNE_NOTE_FIELD_NUMBER = 14;
+  private java.lang.String pruneNote_;
+  /**
+   * <pre>
+   * What pruning unused tool versions did after the machine's last
+   * verified apply (gh-hud#86): "mise prune: removed 12 versions, freed
+   * 2.7 GB"; "" when none ran since the hub started.
+   * </pre>
+   *
+   * <code>string prune_note = 14 [json_name = "pruneNote"];</code>
+   * @return The pruneNote.
+   */
+  @java.lang.Override
+  public java.lang.String getPruneNote() {
+    return pruneNote_;
+  }
+  /**
+   * <pre>
+   * What pruning unused tool versions did after the machine's last
+   * verified apply (gh-hud#86): "mise prune: removed 12 versions, freed
+   * 2.7 GB"; "" when none ran since the hub started.
+   * </pre>
+   *
+   * <code>string prune_note = 14 [json_name = "pruneNote"];</code>
+   * @return The bytes for pruneNote.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getPruneNoteBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(pruneNote_);
+  }
+  /**
+   * <pre>
+   * What pruning unused tool versions did after the machine's last
+   * verified apply (gh-hud#86): "mise prune: removed 12 versions, freed
+   * 2.7 GB"; "" when none ran since the hub started.
+   * </pre>
+   *
+   * <code>string prune_note = 14 [json_name = "pruneNote"];</code>
+   * @param value The pruneNote to set.
+   */
+  private void setPruneNote(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    pruneNote_ = value;
+  }
+  /**
+   * <pre>
+   * What pruning unused tool versions did after the machine's last
+   * verified apply (gh-hud#86): "mise prune: removed 12 versions, freed
+   * 2.7 GB"; "" when none ran since the hub started.
+   * </pre>
+   *
+   * <code>string prune_note = 14 [json_name = "pruneNote"];</code>
+   */
+  private void clearPruneNote() {
+
+    pruneNote_ = getDefaultInstance().getPruneNote();
+  }
+  /**
+   * <pre>
+   * What pruning unused tool versions did after the machine's last
+   * verified apply (gh-hud#86): "mise prune: removed 12 versions, freed
+   * 2.7 GB"; "" when none ran since the hub started.
+   * </pre>
+   *
+   * <code>string prune_note = 14 [json_name = "pruneNote"];</code>
+   * @param value The bytes for pruneNote to set.
+   */
+  private void setPruneNoteBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    pruneNote_ = value.toStringUtf8();
+
   }
 
   public static io.github.jflowers.ghhud.api.v1.FleetMachine parseFrom(
@@ -1638,6 +1716,85 @@ public  final class FleetMachine extends
       return this;
     }
 
+    /**
+     * <pre>
+     * What pruning unused tool versions did after the machine's last
+     * verified apply (gh-hud#86): "mise prune: removed 12 versions, freed
+     * 2.7 GB"; "" when none ran since the hub started.
+     * </pre>
+     *
+     * <code>string prune_note = 14 [json_name = "pruneNote"];</code>
+     * @return The pruneNote.
+     */
+    @java.lang.Override
+    public java.lang.String getPruneNote() {
+      return instance.getPruneNote();
+    }
+    /**
+     * <pre>
+     * What pruning unused tool versions did after the machine's last
+     * verified apply (gh-hud#86): "mise prune: removed 12 versions, freed
+     * 2.7 GB"; "" when none ran since the hub started.
+     * </pre>
+     *
+     * <code>string prune_note = 14 [json_name = "pruneNote"];</code>
+     * @return The bytes for pruneNote.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getPruneNoteBytes() {
+      return instance.getPruneNoteBytes();
+    }
+    /**
+     * <pre>
+     * What pruning unused tool versions did after the machine's last
+     * verified apply (gh-hud#86): "mise prune: removed 12 versions, freed
+     * 2.7 GB"; "" when none ran since the hub started.
+     * </pre>
+     *
+     * <code>string prune_note = 14 [json_name = "pruneNote"];</code>
+     * @param value The pruneNote to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPruneNote(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setPruneNote(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * What pruning unused tool versions did after the machine's last
+     * verified apply (gh-hud#86): "mise prune: removed 12 versions, freed
+     * 2.7 GB"; "" when none ran since the hub started.
+     * </pre>
+     *
+     * <code>string prune_note = 14 [json_name = "pruneNote"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPruneNote() {
+      copyOnWrite();
+      instance.clearPruneNote();
+      return this;
+    }
+    /**
+     * <pre>
+     * What pruning unused tool versions did after the machine's last
+     * verified apply (gh-hud#86): "mise prune: removed 12 versions, freed
+     * 2.7 GB"; "" when none ran since the hub started.
+     * </pre>
+     *
+     * <code>string prune_note = 14 [json_name = "pruneNote"];</code>
+     * @param value The bytes for pruneNote to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPruneNoteBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setPruneNoteBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.FleetMachine)
   }
   @java.lang.Override
@@ -1668,11 +1825,12 @@ public  final class FleetMachine extends
             "reindexNote_",
             "deweyPass_",
             "reindexCurrent_",
+            "pruneNote_",
           };
           java.lang.String info =
-              "\u0000\r\u0000\u0001\u0001\r\r\u0000\u0002\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
-              "\u0004\u0208\u0005\u0208\u0006\u1009\u0000\u0007\u0208\b\u0004\t\u0004\n\u021a\u000b" +
-              "\u0208\f\u1009\u0001\r\u021a";
+              "\u0000\u000e\u0000\u0001\u0001\u000e\u000e\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0007\u0004\u0208\u0005\u0208\u0006\u1009\u0000\u0007\u0208\b\u0004\t\u0004" +
+              "\n\u021a\u000b\u0208\f\u1009\u0001\r\u021a\u000e\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
