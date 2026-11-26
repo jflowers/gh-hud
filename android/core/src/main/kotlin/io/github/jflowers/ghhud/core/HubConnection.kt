@@ -3,6 +3,7 @@ package io.github.jflowers.ghhud.core
 import com.connectrpc.ConnectException
 import com.connectrpc.ProtocolClientConfig
 import com.connectrpc.ResponseMessage
+import com.connectrpc.StreamType
 import com.connectrpc.extensions.GoogleJavaLiteProtobufStrategy
 import com.connectrpc.impl.ProtocolClient
 import com.connectrpc.okhttp.ConnectOkHttpClient
@@ -126,8 +127,11 @@ public class HubConnection(
     init {
         // Commands get a deadline; the subscription none, since an idle hub
         // sends nothing for minutes. Over HTTP/2 (the tailnet's HTTPS) pings
-        // find a connection that died quietly, so it reconnects.
-        val unary = base.newBuilder().callTimeout(30, TimeUnit.SECONDS).build()
+        // find a connection that died quietly, so it reconnects. connect-kotlin
+        // gives every call, streams too, 10s unless told otherwise, and tells
+        // the hub so, which cut the subscription every 10s: timeoutOracle
+        // below says otherwise.
+        val unary = base.newBuilder().callTimeout(COMMAND_DEADLINE.inWholeSeconds, TimeUnit.SECONDS).build()
         val stream = base.newBuilder().readTimeout(0, TimeUnit.SECONDS).pingInterval(60, TimeUnit.SECONDS).build()
         hub = HubServiceClient(
             ProtocolClient(
@@ -136,6 +140,7 @@ public class HubConnection(
                     host = address.url.trimEnd('/'),
                     serializationStrategy = GoogleJavaLiteProtobufStrategy(),
                     networkProtocol = NetworkProtocol.CONNECT,
+                    timeoutOracle = { if (it.streamType == StreamType.UNARY) COMMAND_DEADLINE else null },
                 ),
             ),
         )
@@ -413,6 +418,7 @@ public class HubConnection(
             is ResponseMessage.Failure -> Answer.No(describe(r.cause))
         }
 
+        val COMMAND_DEADLINE: Duration = 30.seconds
         val FIRST_RETRY: Duration = 250.milliseconds
         val LONGEST_RETRY: Duration = 5.seconds
 
