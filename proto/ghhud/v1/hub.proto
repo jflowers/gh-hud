@@ -520,6 +520,9 @@ message Snapshot {
   // loading, such as keys nothing reads.
   repeated string config_warnings = 21;
   ToolkitSnapshot toolkit = 22; // unset when the toolkit is off
+  // releases is where each repo jflowers/ship releases stands (issue
+  // #218); unset when [releases] is off.
+  ReleasesSnapshot releases = 23;
 }
 
 message FetchResult {
@@ -1149,4 +1152,45 @@ message ToolkitTarget {
   string ci = 9;
   int32 files = 10;
   string needs_you = 11;
+}
+
+// ReleasesSnapshot is what the hub last read of ship's repos.yaml and the
+// repos it lists.
+message ReleasesSnapshot {
+  // manifest is the repos.yaml read, as owner/repo/path.
+  string manifest = 1;
+  google.protobuf.Timestamp checked_at = 2; // unset until the first read
+  bool checking = 3;
+  // error is why repos.yaml couldn't be read; repos keeps the last read.
+  string error = 4;
+  repeated ReleaseRepo repos = 5; // in repos.yaml's order
+}
+
+// ReleaseRepo is one repo on a ship workflow.
+message ReleaseRepo {
+  string repo = 1; // owner/repo
+  repeated string kinds = 2; // what it publishes: go-cli, cask, npm, ...
+  // workflow is repos.yaml's, e.g. "go-release.yml@v0.10.0"; ship is its
+  // ship version, "" when it records none.
+  string workflow = 3;
+  string ship = 4;
+  string latest = 5; // the latest GitHub release's tag, "" for none
+  google.protobuf.Timestamp released_at = 6;
+  string release_url = 7;
+  // ahead is the commits on the default branch since latest, -1 when
+  // unknown.
+  int32 ahead = 8;
+  string compare_url = 9;
+  ReleaseRun last_run = 10; // unset when its release workflow never ran
+  string error = 11;
+}
+
+// ReleaseRun is a release workflow's run.
+message ReleaseRun {
+  string workflow = 1; // its file, e.g. release.yml
+  string title = 2;
+  string status = 3; // queued, in_progress, completed
+  string conclusion = 4; // success, failure, cancelled, ... once completed
+  string url = 5;
+  google.protobuf.Timestamp at = 6;
 }

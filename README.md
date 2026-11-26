@@ -309,6 +309,15 @@ the failed machine. Reindex Dewey reindexes the vaults that need it on
 the selected machine or every machine, or every vault with Force, after
 asking, and cancels a pass.
 
+With `[releases]` set (see "Config"), **Ship → Releases** lists every repo
+[jflowers/ship](https://github.com/jflowers/ship) releases, read from its
+`repos.yaml`: the latest release and how long ago it went out, the commits
+on the default branch since it, the ship version `repos.yaml` records, and
+the last release run (its failures are the sidebar's badge). Double-click
+opens the release; the right-click menu opens its unreleased commits, its
+last run or the repo, or copies `gh ship release <repo> ` to finish with a
+tag. The hub reads it all every 15 minutes, and Refresh (⌘R) reads it now.
+
 Its source is in `macos/` and it needs a hub running (see "The hub") with
 TCP on, which is the default.
 
@@ -2203,6 +2212,12 @@ update_method = "merge"    # merge train's branch update: merge or rebase
 [upkeep]
 mode = "report"            # off, report (record what it would do) or auto
 keep_backups = 14          # days before branch pruning deletes upkeep's wip/ and backup/ fork branches
+
+# The Mac app's Releases pane (see "Mac app" above): what jflowers/ship
+# releases and where each repo stands. Off unless manifest is set.
+[releases]
+manifest = "jflowers/ship" # ship's repos.yaml: owner/repo, or owner/repo/path
+poll = "15m"               # how often the hub reads it all again (the default)
 
 # How apps other than the TUI reach the hub (see "The hub" above).
 [hub]

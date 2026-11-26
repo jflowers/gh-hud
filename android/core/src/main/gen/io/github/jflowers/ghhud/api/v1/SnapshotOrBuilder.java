@@ -440,4 +440,25 @@ io.github.jflowers.ghhud.api.v1.Stage defaultValue);
    * @return The toolkit.
    */
   io.github.jflowers.ghhud.api.v1.ToolkitSnapshot getToolkit();
+
+  /**
+   * <pre>
+   * releases is where each repo jflowers/ship releases stands (issue
+   * #218); unset when [releases] is off.
+   * </pre>
+   *
+   * <code>.ghhud.v1.ReleasesSnapshot releases = 23 [json_name = "releases"];</code>
+   * @return Whether the releases field is set.
+   */
+  boolean hasReleases();
+  /**
+   * <pre>
+   * releases is where each repo jflowers/ship releases stands (issue
+   * #218); unset when [releases] is off.
+   * </pre>
+   *
+   * <code>.ghhud.v1.ReleasesSnapshot releases = 23 [json_name = "releases"];</code>
+   * @return The releases.
+   */
+  io.github.jflowers.ghhud.api.v1.ReleasesSnapshot getReleases();
 }

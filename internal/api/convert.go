@@ -18,6 +18,7 @@ import (
 	"github.com/jflowers/gh-hud/internal/fleet"
 	"github.com/jflowers/gh-hud/internal/hub"
 	"github.com/jflowers/gh-hud/internal/model"
+	"github.com/jflowers/gh-hud/internal/releases"
 	"github.com/jflowers/gh-hud/internal/toolkit"
 )
 
@@ -129,6 +130,9 @@ func SnapshotToPB(s hub.Snapshot) *pb.Snapshot {
 	if s.Toolkit != nil {
 		out.Toolkit = toolkitToPB(*s.Toolkit)
 	}
+	if s.Releases != nil {
+		out.Releases = releasesToPB(*s.Releases)
+	}
 	if s.Fleet != nil {
 		out.Fleet = fleetToPB(*s.Fleet)
 	}
@@ -169,6 +173,10 @@ func SnapshotFromPB(p *pb.Snapshot) hub.Snapshot {
 	if p.GetToolkit() != nil {
 		t := toolkitFromPB(p.GetToolkit())
 		s.Toolkit = &t
+	}
+	if p.GetReleases() != nil {
+		r := releasesFromPB(p.GetReleases())
+		s.Releases = &r
 	}
 	if p.GetFleet() != nil {
 		f := fleetFromPB(p.GetFleet())
@@ -921,6 +929,56 @@ func toolkitFromPB(p *pb.ToolkitSnapshot) toolkit.Snapshot {
 					}
 				}),
 			}
+		}),
+	}
+}
+
+// ---------------------------------------------------------------------------
+// releases
+
+func releasesToPB(r releases.Snapshot) *pb.ReleasesSnapshot {
+	return &pb.ReleasesSnapshot{
+		Manifest:  r.Manifest,
+		CheckedAt: ts(r.CheckedAt),
+		Checking:  r.Checking,
+		Error:     r.Err,
+		Repos: mapSlice(r.Repos, func(x releases.Repo) *pb.ReleaseRepo {
+			out := &pb.ReleaseRepo{
+				Repo: x.Repo, Kinds: x.Kinds, Workflow: x.Workflow, Ship: x.Ship,
+				Latest: x.Latest, ReleasedAt: ts(x.ReleasedAt), ReleaseUrl: x.ReleaseURL,
+				Ahead:      int32(max(min(x.Ahead, math.MaxInt32), -1)), //nolint:gosec // clamped
+				CompareUrl: x.CompareURL, Error: x.Err,
+			}
+			if run := x.LastRun; run != nil {
+				out.LastRun = &pb.ReleaseRun{
+					Workflow: run.Workflow, Title: run.Title, Status: run.Status,
+					Conclusion: run.Conclusion, Url: run.URL, At: ts(run.At),
+				}
+			}
+			return out
+		}),
+	}
+}
+
+func releasesFromPB(p *pb.ReleasesSnapshot) releases.Snapshot {
+	return releases.Snapshot{
+		Manifest:  p.GetManifest(),
+		CheckedAt: fromTS(p.GetCheckedAt()),
+		Checking:  p.GetChecking(),
+		Err:       p.GetError(),
+		Repos: mapSlice(p.GetRepos(), func(x *pb.ReleaseRepo) releases.Repo {
+			out := releases.Repo{
+				Repo: x.GetRepo(), Kinds: x.GetKinds(), Workflow: x.GetWorkflow(), Ship: x.GetShip(),
+				Latest: x.GetLatest(), ReleasedAt: fromTS(x.GetReleasedAt()), ReleaseURL: x.GetReleaseUrl(),
+				Ahead: int(x.GetAhead()), CompareURL: x.GetCompareUrl(), Err: x.GetError(),
+			}
+			if run := x.GetLastRun(); run != nil {
+				out.LastRun = &releases.Run{
+					Workflow: run.GetWorkflow(), Title: run.GetTitle(), Status: run.GetStatus(),
+					Conclusion: run.GetConclusion(), URL: run.GetUrl(), At: fromTS(run.GetAt()),
+				}
+			}
+			return out
 		}),
 	}
 }

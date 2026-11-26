@@ -11,6 +11,7 @@ enum Pane: Hashable {
     case workspaces
     case fleet
     case toolkit
+    case releases
 }
 
 /// The window's own state. Not @State (a macro only Xcode ships): see
@@ -36,6 +37,7 @@ final class DashboardState: ObservableObject {
     @Published var confirmSkipWait = false
     @Published var toolSelection: ToolRow.ID?
     @Published var rolloutSelection: RolloutRow.ID?
+    @Published var releaseSelection: ReleaseRow.ID?
     /// The tool whose waiting release the notes sheet shows.
     @Published var release: String?
     @Published var releaseBusy = false
@@ -180,6 +182,7 @@ struct DashboardView: View {
         switch ui.pane {
         case .agents: return "Read the agent sessions and runs now"
         case .workspaces: return "Read every checkout now"
+        case .releases: return "Read ship's repos.yaml and each repo's releases now"
         default: return "Fetch GitHub now"
         }
     }
@@ -188,6 +191,7 @@ struct DashboardView: View {
         switch ui.pane {
         case .workspaces: return conn.snapshot.workspacesLoading
         case .agents: return false
+        case .releases: return conn.snapshot.releases.checking
         default: return conn.snapshot.fetching
         }
     }
@@ -212,6 +216,7 @@ struct DashboardView: View {
         case .plan: return "Plan"
         case .fleet: return "Fleet"
         case .toolkit: return "Toolkit"
+        case .releases: return "Releases"
         case .agents: return "Agents"
         case .workspaces: return "Workspaces"
         default: return filter.title
@@ -259,6 +264,8 @@ struct DashboardView: View {
             FleetPane(conn: conn, ui: ui)
         case .toolkit:
             ToolkitPane(conn: conn, ui: ui)
+        case .releases:
+            ReleasesPane(conn: conn, ui: ui)
         case .agents:
             AgentsPane(conn: conn, ui: ui)
         case .workspaces:
@@ -329,6 +336,14 @@ struct Sidebar: View {
                         .help("The tools the fleet pins, and their rollouts")
                         .badge(waiting)
                         .tag(Pane.toolkit)
+                }
+            }
+            if conn.snapshot.hasReleases {
+                Section("Ship") {
+                    Label("Releases", systemImage: "shippingbox.and.arrow.backward")
+                        .help("The repos jflowers/ship releases: latest release, unreleased commits, last run")
+                        .badge(ReleaseList.failing(conn.snapshot))
+                        .tag(Pane.releases)
                 }
             }
         }
