@@ -110,6 +110,11 @@ class HubConnectionTest {
         server.enqueue(MockResponse.Builder().setHeader("Content-Type", "application/proto").build())
         assertNull(hub.approve(Approval.Proposal("p1")))
         assertEquals("30000", server.takeRequest().headers["Connect-Timeout-Ms"])
+
+        // Starting an agent gets longer than the hub's 2 minutes for it.
+        server.enqueue(MockResponse.Builder().setHeader("Content-Type", "application/proto").build())
+        hub.dispatch("review", "https://github.com/acme/r/pull/7")
+        assertEquals("150000", server.takeRequest().headers["Connect-Timeout-Ms"])
         hub.stop()
     }
 

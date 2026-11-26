@@ -1,5 +1,6 @@
 package io.github.jflowers.ghhud.core
 
+import com.connectrpc.Code
 import com.connectrpc.ConnectException
 import com.connectrpc.ProtocolClientConfig
 import com.connectrpc.ResponseMessage
@@ -95,7 +96,11 @@ public data class HubState(
 public sealed interface Answer<out T> {
     public data class Ok<T>(val value: T) : Answer<T>
 
-    public data class No(val why: String) : Answer<Nothing>
+    /**
+     * unsure: the call was cut off before the hub answered (a deadline, a
+     * dropped connection), so the hub may have done it anyway.
+     */
+    public data class No(val why: String, val unsure: Boolean = false) : Answer<Nothing>
 }
 
 /**
@@ -120,6 +125,9 @@ public class HubConnection(
     public val alerts: SharedFlow<Alert> = _alerts.asSharedFlow()
 
     private val hub: HubServiceClient
+
+    /** The client for Dispatch alone, with its longer deadline. */
+    private val dispatcher: HubServiceClient
     private val headers: Map<String, List<String>> =
         if (address.token.isEmpty()) emptyMap() else mapOf("Authorization" to listOf("Bearer ${address.token}"))
     private var job: Job? = null
@@ -131,19 +139,29 @@ public class HubConnection(
         // gives every call, streams too, 10s unless told otherwise, and tells
         // the hub so, which cut the subscription every 10s: timeoutOracle
         // below says otherwise.
-        val unary = base.newBuilder().callTimeout(COMMAND_DEADLINE.inWholeSeconds, TimeUnit.SECONDS).build()
+        //
+        // Dispatch gets longer: the hub gives starting an agent 2 minutes
+        // (reaching a remote machine, picking a checkout, launching herdr),
+        // and a phone that gave up at 30s told the hub to give up too.
+        // OkHttp's callTimeout is what ends a call (connect-kotlin only
+        // labels it), and it is per client, so Dispatch has its own.
         val stream = base.newBuilder().readTimeout(0, TimeUnit.SECONDS).pingInterval(60, TimeUnit.SECONDS).build()
-        hub = HubServiceClient(
+        fun client(deadline: Duration) = HubServiceClient(
             ProtocolClient(
-                httpClient = ConnectOkHttpClient(unary, stream),
+                httpClient = ConnectOkHttpClient(
+                    base.newBuilder().callTimeout(deadline.inWholeMilliseconds, TimeUnit.MILLISECONDS).build(),
+                    stream,
+                ),
                 config = ProtocolClientConfig(
                     host = address.url.trimEnd('/'),
                     serializationStrategy = GoogleJavaLiteProtobufStrategy(),
                     networkProtocol = NetworkProtocol.CONNECT,
-                    timeoutOracle = { if (it.streamType == StreamType.UNARY) COMMAND_DEADLINE else null },
+                    timeoutOracle = { if (it.streamType == StreamType.UNARY) deadline else null },
                 ),
             ),
         )
+        hub = client(COMMAND_DEADLINE)
+        dispatcher = client(DISPATCH_DEADLINE)
     }
 
     /** Starts connecting (again, after stop). */
@@ -291,7 +309,7 @@ public class HubConnection(
     /** Starts an agent task on an item. */
     public suspend fun dispatch(task: String, url: String): Answer<DispatchResponse> =
         answer(
-            hub.dispatch(
+            dispatcher.dispatch(
                 dispatchRequest {
                     this.task = task
                     this.url = url
@@ -415,10 +433,13 @@ public class HubConnection(
     private companion object {
         fun <T, R> answer(r: ResponseMessage<T>, value: (T) -> R): Answer<R> = when (r) {
             is ResponseMessage.Success -> Answer.Ok(value(r.message))
-            is ResponseMessage.Failure -> Answer.No(describe(r.cause))
+            is ResponseMessage.Failure -> Answer.No(describe(r.cause), unsure = cutOff(r.cause))
         }
 
         val COMMAND_DEADLINE: Duration = 30.seconds
+
+        /** Over the hub's 2 minutes for starting an agent (dispatchTimeout). */
+        val DISPATCH_DEADLINE: Duration = 150.seconds
         val FIRST_RETRY: Duration = 250.milliseconds
         val LONGEST_RETRY: Duration = 5.seconds
 
@@ -427,7 +448,25 @@ public class HubConnection(
             is ResponseMessage.Failure -> describe(r.cause)
         }
 
-        fun describe(e: ConnectException): String =
+        /** Ended by a deadline or a dropped call, not by the hub saying no. */
+        fun cutOff(e: ConnectException): Boolean =
+            e.code == Code.DEADLINE_EXCEEDED || e.code == Code.CANCELED || raw(e).equals("timeout", ignoreCase = true) ||
+                raw(e).equals("canceled", ignoreCase = true)
+
+        /**
+         * Why a call failed, in words: the hub's own reason, or what became
+         * of the call when the hub never answered (OkHttp says only
+         * "timeout" or "Canceled").
+         */
+        fun describe(e: ConnectException): String = when {
+            e.code == Code.DEADLINE_EXCEEDED || raw(e).equals("timeout", ignoreCase = true) ->
+                "The hub didn't answer in time"
+            e.code == Code.CANCELED || raw(e).equals("canceled", ignoreCase = true) ->
+                "The connection to the hub dropped before it answered"
+            else -> raw(e)
+        }
+
+        private fun raw(e: ConnectException): String =
             e.message?.takeIf { it.isNotBlank() } ?: e.exception?.message ?: e.code.toString()
     }
 }
