@@ -35,6 +35,9 @@ public final class HubConnection {
     @ObservationIgnored private var hub: HubDiscovery?
     /// The client for commands, made once per hub (a URLSession each).
     @ObservationIgnored private var commands: Ghhud_V1_HubServiceClient?
+    /// The client for Dispatch alone: starting an agent takes the hub up to
+    /// 2 minutes, and the hub sends nothing until it's done.
+    @ObservationIgnored private var dispatcher: Ghhud_V1_HubServiceClient?
 
     private static let firstRetry: Duration = .milliseconds(250)
     private static let longestRetry: Duration = .seconds(5)
@@ -60,6 +63,7 @@ public final class HubConnection {
         source = s
         hub = nil
         commands = nil
+        dispatcher = nil
         snapshot = Ghhud_V1_Snapshot()
         attention = .empty
         status = .connecting
@@ -169,7 +173,7 @@ public final class HubConnection {
 
     /// Starts an agent task on an item.
     public func dispatch(task: String, url: String) async -> Result<Ghhud_V1_DispatchResponse, CommandError> {
-        guard let hub, let client = commands else { return .failure(.notConnected) }
+        guard let hub, let client = dispatcher else { return .failure(.notConnected) }
         var req = Ghhud_V1_DispatchRequest()
         req.task = task
         req.url = url
@@ -390,6 +394,7 @@ public final class HubConnection {
             } catch {
                 hub = nil
                 commands = nil
+                dispatcher = nil
                 status = .noHub(error.description)
                 try? await Task.sleep(for: Self.longestRetry)
                 continue
@@ -397,6 +402,7 @@ public final class HubConnection {
             if hub != d {
                 hub = d
                 commands = Self.client(for: d, streaming: false)
+                dispatcher = Self.client(for: d, streaming: false, timeout: Self.dispatchTimeout)
             }
             let (got, why) = await stream(d)
             if got {
@@ -464,16 +470,27 @@ public final class HubConnection {
         attention = Attention(s)
     }
 
+    /// How long a command may go without an answer. URLSession's request
+    /// timeout counts quiet, and a unary call is quiet until the hub answers.
+    static let commandTimeout: TimeInterval = 15
+
+    /// Over the hub's 2 minutes for starting an agent (dispatchTimeout in
+    /// internal/hub/commands.go): giving up sooner drops the call, and the
+    /// hub stops starting the agent with it.
+    static let dispatchTimeout: TimeInterval = 150
+
     /// A client for the hub. The subscription gets its own session with a
     /// long timeout: an idle hub sends nothing, and URLSession would
     /// otherwise give up on the stream after a minute of quiet.
-    private static func client(for d: HubDiscovery, streaming: Bool) -> Ghhud_V1_HubServiceClient {
+    private static func client(
+        for d: HubDiscovery, streaming: Bool, timeout: TimeInterval = commandTimeout
+    ) -> Ghhud_V1_HubServiceClient {
         let conf = URLSessionConfiguration.ephemeral
         if streaming {
             conf.timeoutIntervalForRequest = 24 * 3600
             conf.timeoutIntervalForResource = .infinity
         } else {
-            conf.timeoutIntervalForRequest = 15
+            conf.timeoutIntervalForRequest = timeout
         }
         let pc = ProtocolClient(
             httpClient: URLSessionHTTPClient(configuration: conf),
