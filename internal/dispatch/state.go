@@ -9,6 +9,7 @@ package dispatch
 import (
 	"context"
 	"encoding/json"
+	"os/exec"
 	"strings"
 	"sync"
 	"time"
@@ -98,13 +99,18 @@ func (d *Dispatcher) reachability(ctx context.Context) map[string]bool {
 	}
 	d.cacheMu.Unlock()
 
+	// herdr exits 1 when any saved machine is in error (mini1 with a stale
+	// herdr), yet still prints every machine's status. Read the JSON
+	// whatever the exit code, so one broken machine can't hide the rest.
 	out := map[string]bool{}
-	if raw, err := runCmd(ctx, "", herdrBinary(), "machine", "status", "--json"); err == nil {
-		var entries []machineStatusEntry
-		if json.Unmarshal([]byte(strings.TrimSpace(raw)), &entries) == nil {
-			for _, e := range entries {
-				out[e.Label] = e.Status == "reachable"
-			}
+	var stdout strings.Builder
+	cmd := exec.CommandContext(ctx, herdrBinary(), "machine", "status", "--json")
+	cmd.Stdout = &stdout
+	_ = cmd.Run()
+	var entries []machineStatusEntry
+	if json.Unmarshal([]byte(strings.TrimSpace(stdout.String())), &entries) == nil {
+		for _, e := range entries {
+			out[e.Label] = e.Status == "reachable"
 		}
 	}
 
