@@ -836,10 +836,14 @@ upstream column is as of each checkout's last fetch), every 2 minutes and
 on `r`; `y` copies the checkout's dir.
 
 In the Mac app, a checkout's right-click menu starts [upkeep](#upkeep)'s
-steps on it now, instead of waiting for the next sweep (#172). Each runs on
-the hub in the background, takes the machine's one upkeep/reindex slot,
-and refuses a checkout with an agent in it. Its outcome is the checkout's
-last upkeep (or reindex) in the detail pane:
+steps on it now, instead of waiting for the next sweep (#172); in the
+Android app, the checkout's screen has them as buttons. Each runs on the
+hub in the background, takes the machine's one upkeep/reindex slot, and
+refuses a checkout with an agent in it. While one runs, the checkout's
+state names it and how long it has run ("saving work to a draft PR · 2m";
+a sweep's own shows as "upkeep" or "reindexing"), in the TUI, both apps
+and `gh-hud workspaces`. Its outcome is the checkout's last upkeep (or
+reindex) in the detail pane:
 
 - **Fast-Forward** the default branch (and submodules); nothing else.
 - **Open Learnings PR**: the checkout's and its overlays' learnings PRs,
@@ -853,13 +857,17 @@ last upkeep (or reindex) in the detail pane:
   reports.
 - **Reindex Dewey**: the checkout's vault (not with `dewey_reindex =
   "off"`).
+- **Discard Uncommitted Changes**: resets tracked edits and deletes
+  untracked files, keeping untracked learnings, Dewey's cache, ignored
+  files and every commit.
 
-The two that push and open PRs ask first. The agent token can't call
+The ones that push, open PRs or throw work away ask first. The agent token can't call
 them.
 
 From a shell, `gh-hud workspaces` lists the same rows (`-json` for a
 script), and `gh-hud checkout <action> <machine> <checkout>` starts one of
-these on a checkout: `pull`, `learnings`, `save`, `upkeep` or `reindex`.
+these on a checkout: `pull`, `learnings`, `save`, `upkeep`, `reindex` or
+`discard`.
 `<machine>` is `local` for the hub; `<checkout>` is its name as the list
 shows it (its directory's last two elements, like
 `unbound-force@chai/dewey` or `fullsend-ai/agents`), its directory, or its

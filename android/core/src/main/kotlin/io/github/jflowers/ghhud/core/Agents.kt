@@ -1,5 +1,6 @@
 package io.github.jflowers.ghhud.core
 
+import io.github.jflowers.ghhud.api.v1.CheckoutActionKind
 import io.github.jflowers.ghhud.api.v1.CheckoutHealth
 import io.github.jflowers.ghhud.api.v1.Item
 import io.github.jflowers.ghhud.api.v1.Run
@@ -177,7 +178,7 @@ public data class WorkspaceRow(
     public companion object {
         public val COLUMNS: List<String> = listOf("where", "workspace", "repo", "branch", "state")
 
-        public fun of(h: CheckoutHealth): WorkspaceRow {
+        public fun of(h: CheckoutHealth, now: Instant = Instant.now()): WorkspaceRow {
             val sync = if (h.behind < 0 || h.ahead < 0) {
                 "—"
             } else {
@@ -191,7 +192,7 @@ public data class WorkspaceRow(
                     val i = h.busy.lastIndexOf('#')
                     "running ${if (i >= 0) h.busy.substring(i) else h.busy}" to Tone.PENDING
                 }
-                h.reindexing || h.upkeeping -> problem to Tone.PENDING
+                h.reindexing || h.upkeeping -> WorkspaceActions.runningText(h, now) to Tone.PENDING
                 h.noUpstream -> problem to Tone.WARN
                 problem == UPKEEP_ONLY -> problem to Tone.MUTED
                 problem.isNotEmpty() -> problem to Tone.BAD
@@ -209,6 +210,8 @@ public data class WorkspaceRow(
                 ready && h.defaultBranch.isNotEmpty() && h.branch != h.defaultBranch ->
                     "A run here switches to ${h.defaultBranch} and fast-forwards it."
                 ready -> "A run here fast-forwards ${h.defaultBranch} to upstream."
+                h.action != CheckoutActionKind.CHECKOUT_ACTION_KIND_UNSPECIFIED && (h.reindexing || h.upkeeping) ->
+                    "gh-hud is ${WorkspaceActions.running(h)}, as asked: no run starts here until it ends."
                 h.reindexing -> "gh-hud is reindexing its Dewey index: no run starts here until it ends."
                 h.upkeeping -> "gh-hud is fetching and fast-forwarding it: no run starts here until it ends."
                 problem == UPKEEP_ONLY ->
@@ -235,8 +238,7 @@ public data class WorkspaceRow(
         internal fun problem(h: CheckoutHealth): String = when {
             h.error.isNotEmpty() -> h.error
             h.busy.isNotEmpty() -> "running " + h.busy
-            h.reindexing -> "reindexing"
-            h.upkeeping -> "upkeep"
+            h.reindexing || h.upkeeping -> WorkspaceActions.running(h)
             h.noUpstream -> "no upstream remote"
             h.dirtyCount > 0 -> "${h.dirtyCount} uncommitted"
             h.ahead > 0 && h.behind > 0 -> h.defaultBranch + " diverged"

@@ -6916,7 +6916,13 @@ type CheckoutHealth struct {
 	// ghws clones new instances from it, so upkeep keeps it current, but no
 	// run ever starts here. Never ready; its state is "upkeep only" when
 	// nothing else stands out.
-	UpkeepOnly    bool `protobuf:"varint,30,opt,name=upkeep_only,json=upkeepOnly,proto3" json:"upkeep_only,omitempty"`
+	UpkeepOnly bool `protobuf:"varint,30,opt,name=upkeep_only,json=upkeepOnly,proto3" json:"upkeep_only,omitempty"`
+	// What is running here while upkeeping or reindexing: action is the
+	// checkout action asked for by hand (CheckoutActionRequest), UNSPECIFIED
+	// for a sweep's own upkeep or reindex; action_started is when the
+	// upkeep, reindex or action started (unset when none runs).
+	Action        CheckoutActionKind     `protobuf:"varint,31,opt,name=action,proto3,enum=ghhud.v1.CheckoutActionKind" json:"action,omitempty"`
+	ActionStarted *timestamppb.Timestamp `protobuf:"bytes,32,opt,name=action_started,json=actionStarted,proto3" json:"action_started,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7159,6 +7165,20 @@ func (x *CheckoutHealth) GetUpkeepOnly() bool {
 		return x.UpkeepOnly
 	}
 	return false
+}
+
+func (x *CheckoutHealth) GetAction() CheckoutActionKind {
+	if x != nil {
+		return x.Action
+	}
+	return CheckoutActionKind_CHECKOUT_ACTION_KIND_UNSPECIFIED
+}
+
+func (x *CheckoutHealth) GetActionStarted() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ActionStarted
+	}
+	return nil
 }
 
 // UpkeepResult is the last upkeep of an idle fleet checkout: fetched,
@@ -9237,7 +9257,7 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	" \x01(\bR\acleared\x12\x16\n" +
 	"\x06labels\x18\v \x03(\tR\x06labels\x12!\n" +
 	"\flabels_known\x18\f \x01(\bR\vlabelsKnown\x12\x12\n" +
-	"\x04area\x18\r \x03(\tR\x04area\"\x83\b\n" +
+	"\x04area\x18\r \x03(\tR\x04area\"\xfc\b\n" +
 	"\x0eCheckoutHealth\x12\x18\n" +
 	"\amachine\x18\x01 \x01(\tR\amachine\x12\x1c\n" +
 	"\tworkspace\x18\x02 \x01(\tR\tworkspace\x12\x12\n" +
@@ -9277,7 +9297,9 @@ const file_ghhud_v1_hub_proto_rawDesc = "" +
 	"\rindex_reasons\x18\x1c \x03(\tR\findexReasons\x12\x1c\n" +
 	"\tunmanaged\x18\x1d \x01(\bR\tunmanaged\x12\x1f\n" +
 	"\vupkeep_only\x18\x1e \x01(\bR\n" +
-	"upkeepOnly\"\xfd\x01\n" +
+	"upkeepOnly\x124\n" +
+	"\x06action\x18\x1f \x01(\x0e2\x1c.ghhud.v1.CheckoutActionKindR\x06action\x12A\n" +
+	"\x0eaction_started\x18  \x01(\v2\x1a.google.protobuf.TimestampR\ractionStarted\"\xfd\x01\n" +
 	"\fUpkeepResult\x12*\n" +
 	"\x02at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x12\x16\n" +
 	"\x06report\x18\x02 \x01(\bR\x06report\x12%\n" +
@@ -9740,101 +9762,103 @@ var file_ghhud_v1_hub_proto_depIdxs = []int32{
 	116, // 73: ghhud.v1.CheckoutHealth.index_status_at:type_name -> google.protobuf.Timestamp
 	101, // 74: ghhud.v1.CheckoutHealth.last_reindex:type_name -> ghhud.v1.ReindexResult
 	100, // 75: ghhud.v1.CheckoutHealth.last_upkeep:type_name -> ghhud.v1.UpkeepResult
-	116, // 76: ghhud.v1.UpkeepResult.at:type_name -> google.protobuf.Timestamp
-	116, // 77: ghhud.v1.ReindexResult.at:type_name -> google.protobuf.Timestamp
-	117, // 78: ghhud.v1.ReindexResult.duration:type_name -> google.protobuf.Duration
-	103, // 79: ghhud.v1.FleetSnapshot.machines:type_name -> ghhud.v1.FleetMachine
-	117, // 80: ghhud.v1.FleetMachine.waited:type_name -> google.protobuf.Duration
-	104, // 81: ghhud.v1.FleetMachine.dewey_pass:type_name -> ghhud.v1.DeweyPass
-	116, // 82: ghhud.v1.DeweyPass.started:type_name -> google.protobuf.Timestamp
-	116, // 83: ghhud.v1.DeweyPass.ended:type_name -> google.protobuf.Timestamp
-	6,   // 84: ghhud.v1.Event.kind:type_name -> ghhud.v1.EventKind
-	106, // 85: ghhud.v1.Event.alert:type_name -> ghhud.v1.Alert
-	7,   // 86: ghhud.v1.Alert.type:type_name -> ghhud.v1.AlertType
-	83,  // 87: ghhud.v1.Alert.run:type_name -> ghhud.v1.Run
-	82,  // 88: ghhud.v1.Alert.session:type_name -> ghhud.v1.Session
-	108, // 89: ghhud.v1.ToolkitSnapshot.tools:type_name -> ghhud.v1.ToolkitTool
-	110, // 90: ghhud.v1.ToolkitSnapshot.rollouts:type_name -> ghhud.v1.ToolkitRolloutState
-	116, // 91: ghhud.v1.ToolkitSnapshot.checked_at:type_name -> google.protobuf.Timestamp
-	109, // 92: ghhud.v1.ToolkitTool.repos:type_name -> ghhud.v1.ToolkitRepo
-	116, // 93: ghhud.v1.ToolkitRolloutState.started:type_name -> google.protobuf.Timestamp
-	116, // 94: ghhud.v1.ToolkitRolloutState.updated:type_name -> google.protobuf.Timestamp
-	111, // 95: ghhud.v1.ToolkitRolloutState.targets:type_name -> ghhud.v1.ToolkitTarget
-	116, // 96: ghhud.v1.ReleasesSnapshot.checked_at:type_name -> google.protobuf.Timestamp
-	113, // 97: ghhud.v1.ReleasesSnapshot.repos:type_name -> ghhud.v1.ReleaseRepo
-	116, // 98: ghhud.v1.ReleaseRepo.released_at:type_name -> google.protobuf.Timestamp
-	114, // 99: ghhud.v1.ReleaseRepo.last_run:type_name -> ghhud.v1.ReleaseRun
-	116, // 100: ghhud.v1.ReleaseRun.at:type_name -> google.protobuf.Timestamp
-	86,  // 101: ghhud.v1.Snapshot.StagesEntry.value:type_name -> ghhud.v1.Stage
-	8,   // 102: ghhud.v1.HubService.GetSnapshot:input_type -> ghhud.v1.GetSnapshotRequest
-	10,  // 103: ghhud.v1.HubService.Subscribe:input_type -> ghhud.v1.SubscribeRequest
-	12,  // 104: ghhud.v1.HubService.Refresh:input_type -> ghhud.v1.RefreshRequest
-	14,  // 105: ghhud.v1.HubService.MenuChoices:input_type -> ghhud.v1.MenuChoicesRequest
-	19,  // 106: ghhud.v1.HubService.Dispatch:input_type -> ghhud.v1.DispatchRequest
-	17,  // 107: ghhud.v1.HubService.ItemChoices:input_type -> ghhud.v1.ItemChoicesRequest
-	21,  // 108: ghhud.v1.HubService.Reinspect:input_type -> ghhud.v1.ReinspectRequest
-	23,  // 109: ghhud.v1.HubService.CancelRun:input_type -> ghhud.v1.CancelRunRequest
-	25,  // 110: ghhud.v1.HubService.PruneBranches:input_type -> ghhud.v1.PruneBranchesRequest
-	29,  // 111: ghhud.v1.HubService.QueueChoices:input_type -> ghhud.v1.QueueChoicesRequest
-	31,  // 112: ghhud.v1.HubService.Enqueue:input_type -> ghhud.v1.EnqueueRequest
-	33,  // 113: ghhud.v1.HubService.Unqueue:input_type -> ghhud.v1.UnqueueRequest
-	35,  // 114: ghhud.v1.HubService.MoveQueued:input_type -> ghhud.v1.MoveQueuedRequest
-	37,  // 115: ghhud.v1.HubService.SkipAuto:input_type -> ghhud.v1.SkipAutoRequest
-	39,  // 116: ghhud.v1.HubService.ApproveProposal:input_type -> ghhud.v1.ApproveProposalRequest
-	41,  // 117: ghhud.v1.HubService.RejectProposal:input_type -> ghhud.v1.RejectProposalRequest
-	43,  // 118: ghhud.v1.HubService.EnrollEpic:input_type -> ghhud.v1.EnrollEpicRequest
-	45,  // 119: ghhud.v1.HubService.ApproveEpic:input_type -> ghhud.v1.ApproveEpicRequest
-	47,  // 120: ghhud.v1.HubService.DropEpic:input_type -> ghhud.v1.DropEpicRequest
-	49,  // 121: ghhud.v1.HubService.RereadEpic:input_type -> ghhud.v1.RereadEpicRequest
-	51,  // 122: ghhud.v1.HubService.ClearEpicGate:input_type -> ghhud.v1.ClearEpicGateRequest
-	53,  // 123: ghhud.v1.HubService.FinishEpic:input_type -> ghhud.v1.FinishEpicRequest
-	55,  // 124: ghhud.v1.HubService.Watch:input_type -> ghhud.v1.WatchRequest
-	57,  // 125: ghhud.v1.HubService.WatchRun:input_type -> ghhud.v1.WatchRunRequest
-	59,  // 126: ghhud.v1.HubService.OpenTranscript:input_type -> ghhud.v1.OpenTranscriptRequest
-	61,  // 127: ghhud.v1.HubService.ReadPane:input_type -> ghhud.v1.ReadPaneRequest
-	63,  // 128: ghhud.v1.HubService.Transcript:input_type -> ghhud.v1.TranscriptRequest
-	67,  // 129: ghhud.v1.HubService.FleetControl:input_type -> ghhud.v1.FleetControlRequest
-	69,  // 130: ghhud.v1.HubService.DeweyReindex:input_type -> ghhud.v1.DeweyReindexRequest
-	71,  // 131: ghhud.v1.HubService.CheckoutAction:input_type -> ghhud.v1.CheckoutActionRequest
-	73,  // 132: ghhud.v1.HubService.ToolkitRollout:input_type -> ghhud.v1.ToolkitRolloutRequest
-	75,  // 133: ghhud.v1.HubService.ToolkitControl:input_type -> ghhud.v1.ToolkitControlRequest
-	9,   // 134: ghhud.v1.HubService.GetSnapshot:output_type -> ghhud.v1.GetSnapshotResponse
-	11,  // 135: ghhud.v1.HubService.Subscribe:output_type -> ghhud.v1.SubscribeResponse
-	13,  // 136: ghhud.v1.HubService.Refresh:output_type -> ghhud.v1.RefreshResponse
-	15,  // 137: ghhud.v1.HubService.MenuChoices:output_type -> ghhud.v1.MenuChoicesResponse
-	20,  // 138: ghhud.v1.HubService.Dispatch:output_type -> ghhud.v1.DispatchResponse
-	18,  // 139: ghhud.v1.HubService.ItemChoices:output_type -> ghhud.v1.ItemChoicesResponse
-	22,  // 140: ghhud.v1.HubService.Reinspect:output_type -> ghhud.v1.ReinspectResponse
-	24,  // 141: ghhud.v1.HubService.CancelRun:output_type -> ghhud.v1.CancelRunResponse
-	26,  // 142: ghhud.v1.HubService.PruneBranches:output_type -> ghhud.v1.PruneBranchesResponse
-	30,  // 143: ghhud.v1.HubService.QueueChoices:output_type -> ghhud.v1.QueueChoicesResponse
-	32,  // 144: ghhud.v1.HubService.Enqueue:output_type -> ghhud.v1.EnqueueResponse
-	34,  // 145: ghhud.v1.HubService.Unqueue:output_type -> ghhud.v1.UnqueueResponse
-	36,  // 146: ghhud.v1.HubService.MoveQueued:output_type -> ghhud.v1.MoveQueuedResponse
-	38,  // 147: ghhud.v1.HubService.SkipAuto:output_type -> ghhud.v1.SkipAutoResponse
-	40,  // 148: ghhud.v1.HubService.ApproveProposal:output_type -> ghhud.v1.ApproveProposalResponse
-	42,  // 149: ghhud.v1.HubService.RejectProposal:output_type -> ghhud.v1.RejectProposalResponse
-	44,  // 150: ghhud.v1.HubService.EnrollEpic:output_type -> ghhud.v1.EnrollEpicResponse
-	46,  // 151: ghhud.v1.HubService.ApproveEpic:output_type -> ghhud.v1.ApproveEpicResponse
-	48,  // 152: ghhud.v1.HubService.DropEpic:output_type -> ghhud.v1.DropEpicResponse
-	50,  // 153: ghhud.v1.HubService.RereadEpic:output_type -> ghhud.v1.RereadEpicResponse
-	52,  // 154: ghhud.v1.HubService.ClearEpicGate:output_type -> ghhud.v1.ClearEpicGateResponse
-	54,  // 155: ghhud.v1.HubService.FinishEpic:output_type -> ghhud.v1.FinishEpicResponse
-	56,  // 156: ghhud.v1.HubService.Watch:output_type -> ghhud.v1.WatchResponse
-	58,  // 157: ghhud.v1.HubService.WatchRun:output_type -> ghhud.v1.WatchRunResponse
-	60,  // 158: ghhud.v1.HubService.OpenTranscript:output_type -> ghhud.v1.OpenTranscriptResponse
-	62,  // 159: ghhud.v1.HubService.ReadPane:output_type -> ghhud.v1.ReadPaneResponse
-	64,  // 160: ghhud.v1.HubService.Transcript:output_type -> ghhud.v1.TranscriptResponse
-	68,  // 161: ghhud.v1.HubService.FleetControl:output_type -> ghhud.v1.FleetControlResponse
-	70,  // 162: ghhud.v1.HubService.DeweyReindex:output_type -> ghhud.v1.DeweyReindexResponse
-	72,  // 163: ghhud.v1.HubService.CheckoutAction:output_type -> ghhud.v1.CheckoutActionResponse
-	74,  // 164: ghhud.v1.HubService.ToolkitRollout:output_type -> ghhud.v1.ToolkitRolloutResponse
-	76,  // 165: ghhud.v1.HubService.ToolkitControl:output_type -> ghhud.v1.ToolkitControlResponse
-	134, // [134:166] is the sub-list for method output_type
-	102, // [102:134] is the sub-list for method input_type
-	102, // [102:102] is the sub-list for extension type_name
-	102, // [102:102] is the sub-list for extension extendee
-	0,   // [0:102] is the sub-list for field type_name
+	2,   // 76: ghhud.v1.CheckoutHealth.action:type_name -> ghhud.v1.CheckoutActionKind
+	116, // 77: ghhud.v1.CheckoutHealth.action_started:type_name -> google.protobuf.Timestamp
+	116, // 78: ghhud.v1.UpkeepResult.at:type_name -> google.protobuf.Timestamp
+	116, // 79: ghhud.v1.ReindexResult.at:type_name -> google.protobuf.Timestamp
+	117, // 80: ghhud.v1.ReindexResult.duration:type_name -> google.protobuf.Duration
+	103, // 81: ghhud.v1.FleetSnapshot.machines:type_name -> ghhud.v1.FleetMachine
+	117, // 82: ghhud.v1.FleetMachine.waited:type_name -> google.protobuf.Duration
+	104, // 83: ghhud.v1.FleetMachine.dewey_pass:type_name -> ghhud.v1.DeweyPass
+	116, // 84: ghhud.v1.DeweyPass.started:type_name -> google.protobuf.Timestamp
+	116, // 85: ghhud.v1.DeweyPass.ended:type_name -> google.protobuf.Timestamp
+	6,   // 86: ghhud.v1.Event.kind:type_name -> ghhud.v1.EventKind
+	106, // 87: ghhud.v1.Event.alert:type_name -> ghhud.v1.Alert
+	7,   // 88: ghhud.v1.Alert.type:type_name -> ghhud.v1.AlertType
+	83,  // 89: ghhud.v1.Alert.run:type_name -> ghhud.v1.Run
+	82,  // 90: ghhud.v1.Alert.session:type_name -> ghhud.v1.Session
+	108, // 91: ghhud.v1.ToolkitSnapshot.tools:type_name -> ghhud.v1.ToolkitTool
+	110, // 92: ghhud.v1.ToolkitSnapshot.rollouts:type_name -> ghhud.v1.ToolkitRolloutState
+	116, // 93: ghhud.v1.ToolkitSnapshot.checked_at:type_name -> google.protobuf.Timestamp
+	109, // 94: ghhud.v1.ToolkitTool.repos:type_name -> ghhud.v1.ToolkitRepo
+	116, // 95: ghhud.v1.ToolkitRolloutState.started:type_name -> google.protobuf.Timestamp
+	116, // 96: ghhud.v1.ToolkitRolloutState.updated:type_name -> google.protobuf.Timestamp
+	111, // 97: ghhud.v1.ToolkitRolloutState.targets:type_name -> ghhud.v1.ToolkitTarget
+	116, // 98: ghhud.v1.ReleasesSnapshot.checked_at:type_name -> google.protobuf.Timestamp
+	113, // 99: ghhud.v1.ReleasesSnapshot.repos:type_name -> ghhud.v1.ReleaseRepo
+	116, // 100: ghhud.v1.ReleaseRepo.released_at:type_name -> google.protobuf.Timestamp
+	114, // 101: ghhud.v1.ReleaseRepo.last_run:type_name -> ghhud.v1.ReleaseRun
+	116, // 102: ghhud.v1.ReleaseRun.at:type_name -> google.protobuf.Timestamp
+	86,  // 103: ghhud.v1.Snapshot.StagesEntry.value:type_name -> ghhud.v1.Stage
+	8,   // 104: ghhud.v1.HubService.GetSnapshot:input_type -> ghhud.v1.GetSnapshotRequest
+	10,  // 105: ghhud.v1.HubService.Subscribe:input_type -> ghhud.v1.SubscribeRequest
+	12,  // 106: ghhud.v1.HubService.Refresh:input_type -> ghhud.v1.RefreshRequest
+	14,  // 107: ghhud.v1.HubService.MenuChoices:input_type -> ghhud.v1.MenuChoicesRequest
+	19,  // 108: ghhud.v1.HubService.Dispatch:input_type -> ghhud.v1.DispatchRequest
+	17,  // 109: ghhud.v1.HubService.ItemChoices:input_type -> ghhud.v1.ItemChoicesRequest
+	21,  // 110: ghhud.v1.HubService.Reinspect:input_type -> ghhud.v1.ReinspectRequest
+	23,  // 111: ghhud.v1.HubService.CancelRun:input_type -> ghhud.v1.CancelRunRequest
+	25,  // 112: ghhud.v1.HubService.PruneBranches:input_type -> ghhud.v1.PruneBranchesRequest
+	29,  // 113: ghhud.v1.HubService.QueueChoices:input_type -> ghhud.v1.QueueChoicesRequest
+	31,  // 114: ghhud.v1.HubService.Enqueue:input_type -> ghhud.v1.EnqueueRequest
+	33,  // 115: ghhud.v1.HubService.Unqueue:input_type -> ghhud.v1.UnqueueRequest
+	35,  // 116: ghhud.v1.HubService.MoveQueued:input_type -> ghhud.v1.MoveQueuedRequest
+	37,  // 117: ghhud.v1.HubService.SkipAuto:input_type -> ghhud.v1.SkipAutoRequest
+	39,  // 118: ghhud.v1.HubService.ApproveProposal:input_type -> ghhud.v1.ApproveProposalRequest
+	41,  // 119: ghhud.v1.HubService.RejectProposal:input_type -> ghhud.v1.RejectProposalRequest
+	43,  // 120: ghhud.v1.HubService.EnrollEpic:input_type -> ghhud.v1.EnrollEpicRequest
+	45,  // 121: ghhud.v1.HubService.ApproveEpic:input_type -> ghhud.v1.ApproveEpicRequest
+	47,  // 122: ghhud.v1.HubService.DropEpic:input_type -> ghhud.v1.DropEpicRequest
+	49,  // 123: ghhud.v1.HubService.RereadEpic:input_type -> ghhud.v1.RereadEpicRequest
+	51,  // 124: ghhud.v1.HubService.ClearEpicGate:input_type -> ghhud.v1.ClearEpicGateRequest
+	53,  // 125: ghhud.v1.HubService.FinishEpic:input_type -> ghhud.v1.FinishEpicRequest
+	55,  // 126: ghhud.v1.HubService.Watch:input_type -> ghhud.v1.WatchRequest
+	57,  // 127: ghhud.v1.HubService.WatchRun:input_type -> ghhud.v1.WatchRunRequest
+	59,  // 128: ghhud.v1.HubService.OpenTranscript:input_type -> ghhud.v1.OpenTranscriptRequest
+	61,  // 129: ghhud.v1.HubService.ReadPane:input_type -> ghhud.v1.ReadPaneRequest
+	63,  // 130: ghhud.v1.HubService.Transcript:input_type -> ghhud.v1.TranscriptRequest
+	67,  // 131: ghhud.v1.HubService.FleetControl:input_type -> ghhud.v1.FleetControlRequest
+	69,  // 132: ghhud.v1.HubService.DeweyReindex:input_type -> ghhud.v1.DeweyReindexRequest
+	71,  // 133: ghhud.v1.HubService.CheckoutAction:input_type -> ghhud.v1.CheckoutActionRequest
+	73,  // 134: ghhud.v1.HubService.ToolkitRollout:input_type -> ghhud.v1.ToolkitRolloutRequest
+	75,  // 135: ghhud.v1.HubService.ToolkitControl:input_type -> ghhud.v1.ToolkitControlRequest
+	9,   // 136: ghhud.v1.HubService.GetSnapshot:output_type -> ghhud.v1.GetSnapshotResponse
+	11,  // 137: ghhud.v1.HubService.Subscribe:output_type -> ghhud.v1.SubscribeResponse
+	13,  // 138: ghhud.v1.HubService.Refresh:output_type -> ghhud.v1.RefreshResponse
+	15,  // 139: ghhud.v1.HubService.MenuChoices:output_type -> ghhud.v1.MenuChoicesResponse
+	20,  // 140: ghhud.v1.HubService.Dispatch:output_type -> ghhud.v1.DispatchResponse
+	18,  // 141: ghhud.v1.HubService.ItemChoices:output_type -> ghhud.v1.ItemChoicesResponse
+	22,  // 142: ghhud.v1.HubService.Reinspect:output_type -> ghhud.v1.ReinspectResponse
+	24,  // 143: ghhud.v1.HubService.CancelRun:output_type -> ghhud.v1.CancelRunResponse
+	26,  // 144: ghhud.v1.HubService.PruneBranches:output_type -> ghhud.v1.PruneBranchesResponse
+	30,  // 145: ghhud.v1.HubService.QueueChoices:output_type -> ghhud.v1.QueueChoicesResponse
+	32,  // 146: ghhud.v1.HubService.Enqueue:output_type -> ghhud.v1.EnqueueResponse
+	34,  // 147: ghhud.v1.HubService.Unqueue:output_type -> ghhud.v1.UnqueueResponse
+	36,  // 148: ghhud.v1.HubService.MoveQueued:output_type -> ghhud.v1.MoveQueuedResponse
+	38,  // 149: ghhud.v1.HubService.SkipAuto:output_type -> ghhud.v1.SkipAutoResponse
+	40,  // 150: ghhud.v1.HubService.ApproveProposal:output_type -> ghhud.v1.ApproveProposalResponse
+	42,  // 151: ghhud.v1.HubService.RejectProposal:output_type -> ghhud.v1.RejectProposalResponse
+	44,  // 152: ghhud.v1.HubService.EnrollEpic:output_type -> ghhud.v1.EnrollEpicResponse
+	46,  // 153: ghhud.v1.HubService.ApproveEpic:output_type -> ghhud.v1.ApproveEpicResponse
+	48,  // 154: ghhud.v1.HubService.DropEpic:output_type -> ghhud.v1.DropEpicResponse
+	50,  // 155: ghhud.v1.HubService.RereadEpic:output_type -> ghhud.v1.RereadEpicResponse
+	52,  // 156: ghhud.v1.HubService.ClearEpicGate:output_type -> ghhud.v1.ClearEpicGateResponse
+	54,  // 157: ghhud.v1.HubService.FinishEpic:output_type -> ghhud.v1.FinishEpicResponse
+	56,  // 158: ghhud.v1.HubService.Watch:output_type -> ghhud.v1.WatchResponse
+	58,  // 159: ghhud.v1.HubService.WatchRun:output_type -> ghhud.v1.WatchRunResponse
+	60,  // 160: ghhud.v1.HubService.OpenTranscript:output_type -> ghhud.v1.OpenTranscriptResponse
+	62,  // 161: ghhud.v1.HubService.ReadPane:output_type -> ghhud.v1.ReadPaneResponse
+	64,  // 162: ghhud.v1.HubService.Transcript:output_type -> ghhud.v1.TranscriptResponse
+	68,  // 163: ghhud.v1.HubService.FleetControl:output_type -> ghhud.v1.FleetControlResponse
+	70,  // 164: ghhud.v1.HubService.DeweyReindex:output_type -> ghhud.v1.DeweyReindexResponse
+	72,  // 165: ghhud.v1.HubService.CheckoutAction:output_type -> ghhud.v1.CheckoutActionResponse
+	74,  // 166: ghhud.v1.HubService.ToolkitRollout:output_type -> ghhud.v1.ToolkitRolloutResponse
+	76,  // 167: ghhud.v1.HubService.ToolkitControl:output_type -> ghhud.v1.ToolkitControlResponse
+	136, // [136:168] is the sub-list for method output_type
+	104, // [104:136] is the sub-list for method input_type
+	104, // [104:104] is the sub-list for extension type_name
+	104, // [104:104] is the sub-list for extension extendee
+	0,   // [0:104] is the sub-list for field type_name
 }
 
 func init() { file_ghhud_v1_hub_proto_init() }

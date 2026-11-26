@@ -68,6 +68,26 @@ func (a CheckoutAction) verb() string {
 	return ""
 }
 
+// Doing is the action while it runs, for the Workspaces list: what each
+// UI shows on a checkout the action holds.
+func (a CheckoutAction) Doing() string {
+	switch a {
+	case CheckoutPull:
+		return "fast-forwarding"
+	case CheckoutLearnings:
+		return "opening learnings PRs"
+	case CheckoutSave:
+		return "saving work to a draft PR"
+	case CheckoutUpkeep:
+		return "keeping up (asked for)"
+	case CheckoutReindex:
+		return "reindexing (asked for)"
+	case CheckoutDiscard:
+		return "discarding changes"
+	}
+	return ""
+}
+
 // StartCheckoutAction starts action a on the checkout dir on the machine
 // with key machine ("" is the hub). It claims the machine's slot before
 // returning, so a refusal (another upkeep or reindex there, a dispatch
@@ -105,6 +125,7 @@ func (d *Dispatcher) StartCheckoutAction(machine, dir string, a CheckoutAction, 
 	} else if err := d.takeUpkeepSlot(key, dir); err != nil {
 		return "", err
 	}
+	d.markSlotAction(key, a)
 	work.Add(1)
 	go func() { //nolint:gosec // G118: its own timeout, detached from the request
 		defer work.Done()
@@ -117,6 +138,43 @@ func (d *Dispatcher) StartCheckoutAction(machine, dir string, a CheckoutAction, 
 		}
 	}()
 	return a.verb() + " " + where, nil
+}
+
+// heldSlot is what holds a machine's slot (Dispatcher.slotWork).
+type heldSlot struct {
+	Dir     string
+	Action  CheckoutAction // "" for a sweep's upkeep or reindex
+	Started time.Time
+}
+
+// holdSlotLocked records that dir now holds machine's slot; d.mu is held.
+func (d *Dispatcher) holdSlotLocked(machine, dir string) {
+	if d.slotWork == nil {
+		d.slotWork = map[string]heldSlot{}
+	}
+	d.slotWork[machine] = heldSlot{Dir: dir, Started: time.Now()}
+}
+
+// markSlotAction names the action asked for by hand that holds machine's
+// slot.
+func (d *Dispatcher) markSlotAction(machine string, a CheckoutAction) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if w, ok := d.slotWork[machine]; ok {
+		w.Action = a
+		d.slotWork[machine] = w
+	}
+}
+
+// heldSlots is what holds each machine's slot (machine key → work).
+func (d *Dispatcher) heldSlots() map[string]heldSlot {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	out := make(map[string]heldSlot, len(d.slotWork))
+	for k, v := range d.slotWork {
+		out[k] = v
+	}
+	return out
 }
 
 // checkoutAction runs a on dir with the slot held and returns its outcome

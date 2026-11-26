@@ -901,6 +901,71 @@ public object CheckoutHealthKt {
     public fun clearUpkeepOnly() {
       _builder.clearUpkeepOnly()
     }
+
+    /**
+     * ```
+     * What is running here while upkeeping or reindexing: action is the
+     * checkout action asked for by hand (CheckoutActionRequest), UNSPECIFIED
+     * for a sweep's own upkeep or reindex; action_started is when the
+     * upkeep, reindex or action started (unset when none runs).
+     * ```
+     *
+     * `.ghhud.v1.CheckoutActionKind action = 31 [json_name = "action"];`
+     */
+    public var action: io.github.jflowers.ghhud.api.v1.CheckoutActionKind
+      @kotlin.jvm.JvmName("getAction")
+        get() = _builder.action
+      @kotlin.jvm.JvmName("setAction")
+        set(value) {
+        _builder.action = value
+      }
+    public var actionValue: kotlin.Int
+      @kotlin.jvm.JvmName("getActionValue")
+        get() = _builder.actionValue
+      @kotlin.jvm.JvmName("setActionValue")
+        set(value) {
+        _builder.actionValue = value
+      }
+    /**
+     * ```
+     * What is running here while upkeeping or reindexing: action is the
+     * checkout action asked for by hand (CheckoutActionRequest), UNSPECIFIED
+     * for a sweep's own upkeep or reindex; action_started is when the
+     * upkeep, reindex or action started (unset when none runs).
+     * ```
+     *
+     * `.ghhud.v1.CheckoutActionKind action = 31 [json_name = "action"];`
+     */
+    public fun clearAction() {
+      _builder.clearAction()
+    }
+
+    /**
+     * `.google.protobuf.Timestamp action_started = 32 [json_name = "actionStarted"];`
+     */
+    public var actionStarted: com.google.protobuf.Timestamp
+      @kotlin.jvm.JvmName("getActionStarted")
+        get() = _builder.actionStarted
+      @kotlin.jvm.JvmName("setActionStarted")
+        set(value) {
+        _builder.actionStarted = value
+      }
+    /**
+     * `.google.protobuf.Timestamp action_started = 32 [json_name = "actionStarted"];`
+     */
+    public fun clearActionStarted() {
+      _builder.clearActionStarted()
+    }
+    /**
+     * `.google.protobuf.Timestamp action_started = 32 [json_name = "actionStarted"];`
+     * @return Whether the actionStarted field is set.
+     */
+    public fun hasActionStarted(): kotlin.Boolean {
+      return _builder.hasActionStarted()
+    }
+
+    public val CheckoutHealthKt.Dsl.actionStartedOrNull: com.google.protobuf.Timestamp?
+      get() = _builder.actionStartedOrNull
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.CheckoutHealth.copy(block: `io.github.jflowers.ghhud.api.v1`.CheckoutHealthKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.CheckoutHealth =
@@ -917,4 +982,7 @@ public val io.github.jflowers.ghhud.api.v1.CheckoutHealthOrBuilder.lastReindexOr
 
 public val io.github.jflowers.ghhud.api.v1.CheckoutHealthOrBuilder.lastUpkeepOrNull: io.github.jflowers.ghhud.api.v1.UpkeepResult?
   get() = if (hasLastUpkeep()) getLastUpkeep() else null
+
+public val io.github.jflowers.ghhud.api.v1.CheckoutHealthOrBuilder.actionStartedOrNull: com.google.protobuf.Timestamp?
+  get() = if (hasActionStarted()) getActionStarted() else null
 

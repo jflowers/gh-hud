@@ -185,8 +185,8 @@ public struct WorkspaceRow: Identifiable, Equatable, Sendable {
         case !h.busy.isEmpty:
             let ref = h.busy.lastIndex(of: "#").map { String(h.busy[$0...]) } ?? h.busy
             (state, tone) = ("running \(ref)", .pending)
-        case h.reindexing:
-            (state, tone) = (problem, .pending)
+        case h.reindexing || h.upkeeping:
+            (state, tone) = (Self.runningText(h, now: now), .pending)
         case h.noUpstream:
             (state, tone) = (problem, .warn)
         case problem == "upkeep only":
@@ -225,12 +225,36 @@ public struct WorkspaceRow: Identifiable, Equatable, Sendable {
     static func problem(_ h: Ghhud_V1_CheckoutHealth) -> String {
         if !h.error.isEmpty { return h.error }
         if !h.busy.isEmpty { return "running " + h.busy }
-        if h.reindexing { return "reindexing" }
+        if h.reindexing || h.upkeeping { return running(h) }
         if h.noUpstream { return "no upstream remote" }
         if !h.dirty.isEmpty { return "\(h.dirty.count) uncommitted" }
         if h.ahead > 0, h.behind > 0 { return h.defaultBranch + " diverged" }
         if h.upkeepOnly { return "upkeep only" }
         return ""
+    }
+
+    /// The maintenance running in the checkout, as the hub's Workspaces
+    /// list names it: the action asked for by hand ("saving work to a
+    /// draft PR"), else the sweep's own "reindexing" or "upkeep"; "" when
+    /// none runs.
+    public static func running(_ h: Ghhud_V1_CheckoutHealth) -> String {
+        guard h.reindexing || h.upkeeping else { return "" }
+        switch h.action {
+        case .pull: return "fast-forwarding"
+        case .learnings: return "opening learnings PRs"
+        case .save: return "saving work to a draft PR"
+        case .upkeep: return "keeping up (asked for)"
+        case .reindex: return "reindexing (asked for)"
+        case .discard: return "discarding changes"
+        default: return h.reindexing ? "reindexing" : "upkeep"
+        }
+    }
+
+    /// running with how long it has run: "saving work to a draft PR · 2m".
+    public static func runningText(_ h: Ghhud_V1_CheckoutHealth, now: Date = Date()) -> String {
+        let s = running(h)
+        guard h.hasActionStarted else { return s }
+        return s + " · " + ItemList.age(h.actionStarted.date, now: now)
     }
 
     /// Commits on no remote, across branches ("branch\tcount" lines).

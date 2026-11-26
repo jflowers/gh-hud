@@ -11,7 +11,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -19,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,6 +33,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.jflowers.ghhud.api.v1.CheckoutActionKind
+import io.github.jflowers.ghhud.api.v1.CheckoutHealth
 import io.github.jflowers.ghhud.core.AgentDetail
 import io.github.jflowers.ghhud.core.AgentRow
 import io.github.jflowers.ghhud.core.Answer
@@ -37,6 +42,7 @@ import io.github.jflowers.ghhud.core.DeweyIndex
 import io.github.jflowers.ghhud.core.Links
 import io.github.jflowers.ghhud.core.Tone
 import io.github.jflowers.ghhud.core.WatchTarget
+import io.github.jflowers.ghhud.core.WorkspaceActions
 import io.github.jflowers.ghhud.core.WorkspaceDetail
 import io.github.jflowers.ghhud.core.WorkspaceRow
 import kotlinx.coroutines.launch
@@ -45,6 +51,9 @@ import java.time.Instant
 /** What an agent's screen can ask for, beyond opening and copying. */
 interface AgentActions {
     suspend fun recheck(r: AgentRow): Answer<String>
+
+    /** Starts a maintenance action on a checkout; the answer is what to say. */
+    suspend fun checkoutAction(h: CheckoutHealth, kind: CheckoutActionKind): Answer<String>
 }
 
 /** A detail screen's frame: a title and Back. */
@@ -150,9 +159,35 @@ fun AgentScreen(
     }
 }
 
-/** A checkout: why it is or isn't ready for the next run. */
+/**
+ * A checkout: why it is or isn't ready for the next run, what maintenance
+ * runs in it, and the actions you can start on it (the Mac's Workspaces
+ * menu): fast-forward, learnings PR, save work, discard, keep up, reindex.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun WorkspaceScreen(row: WorkspaceRow?, items: ItemActions, onBack: () -> Unit, now: Instant = Instant.now()) {
+fun WorkspaceScreen(
+    row: WorkspaceRow?,
+    off: String?,
+    act: AgentActions,
+    items: ItemActions,
+    say: Say,
+    onBack: () -> Unit,
+    now: Instant = Instant.now(),
+) {
+    val scope = rememberCoroutineScope()
+    var starting by remember { mutableStateOf(false) }
+    var confirm by remember { mutableStateOf<WorkspaceActions.Action?>(null) }
+    fun start(h: CheckoutHealth, a: WorkspaceActions.Action) {
+        starting = true
+        scope.launch {
+            when (val r = act.checkoutAction(h, a.kind)) {
+                is Answer.Ok -> say(r.value, false)
+                is Answer.No -> say(r.why, true)
+            }
+            starting = false
+        }
+    }
     Detail(row?.place ?: "Workspace", onBack) {
         if (row == null) {
             Text("This checkout is no longer in the hub's list.", modifier = Modifier.testTag("workspace-gone"))
@@ -162,9 +197,31 @@ fun WorkspaceScreen(row: WorkspaceRow?, items: ItemActions, onBack: () -> Unit, 
         Text(WorkspaceDetail.sentence(row), style = MaterialTheme.typography.titleMedium, color = row.tone.color(),
             modifier = Modifier.padding(top = 4.dp).testTag("sentence"))
         Column(Modifier.padding(vertical = 12.dp)) {
-            for (f in WorkspaceDetail.facts(row)) FactRow(f.label, f.value)
+            for (f in WorkspaceDetail.facts(row, now)) FactRow(f.label, f.value)
         }
         for (l in WorkspaceDetail.lists(row)) FactLines(l)
+        val actions = WorkspaceActions.actions(row.health)
+        if (actions.isNotEmpty()) {
+            Text("Actions", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 12.dp).testTag("actions"))
+            WorkspaceActions.running(row.health).takeIf { it.isNotEmpty() }?.let {
+                Text("Waits for $it to end.", style = MaterialTheme.typography.bodySmall, color = Tone.MUTED.color(),
+                    modifier = Modifier.testTag("actions-wait"))
+            }
+            off?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Tone.MUTED.color()) }
+            FlowRow(
+                Modifier.padding(top = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                for (a in actions) {
+                    OutlinedButton(
+                        onClick = { if (a.confirm) confirm = a else start(row.health, a) },
+                        enabled = a.enabled && off == null && !starting,
+                        modifier = Modifier.testTag("action:" + a.kind.name.removePrefix("CHECKOUT_ACTION_KIND_").lowercase()),
+                    ) { Text(a.title) }
+                }
+            }
+        }
         val facts = DeweyIndex.facts(row.health, now)
         if (facts.isNotEmpty()) {
             Text("Dewey index", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 12.dp).testTag("dewey"))
@@ -178,5 +235,24 @@ fun WorkspaceScreen(row: WorkspaceRow?, items: ItemActions, onBack: () -> Unit, 
             for (l in DeweyIndex.lists(row.health)) FactLines(l)
         }
         OutlinedButton(onClick = { items.copy(row.health.dir) }, modifier = Modifier.padding(top = 12.dp)) { Text("Copy directory") }
+    }
+    val c = confirm
+    if (c != null && row != null) {
+        AlertDialog(
+            onDismissRequest = { confirm = null },
+            title = { Text(c.title.removeSuffix("…") + "?") },
+            text = { Text(WorkspaceActions.confirmation(c.kind, row.health)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirm = null
+                        start(row.health, c)
+                    },
+                    colors = if (c.destructive) ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error) else ButtonDefaults.textButtonColors(),
+                    modifier = Modifier.testTag("action-confirm"),
+                ) { Text(if (c.destructive) "Discard" else "Start") }
+            },
+            dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancel") } },
+        )
     }
 }

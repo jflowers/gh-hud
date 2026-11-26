@@ -365,6 +365,7 @@ func (d *Dispatcher) takeUpkeepSlot(machine, dir string) error {
 	}
 	d.upkeeping[machine] = dir
 	d.claims[dirKey] = busyUpkeep
+	d.holdSlotLocked(machine, dir)
 	return nil
 }
 
@@ -372,6 +373,7 @@ func (d *Dispatcher) releaseUpkeepSlot(machine, dir string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	delete(d.upkeeping, machine)
+	delete(d.slotWork, machine)
 	delete(d.claims, "dir|"+machine+"|"+dir)
 }
 

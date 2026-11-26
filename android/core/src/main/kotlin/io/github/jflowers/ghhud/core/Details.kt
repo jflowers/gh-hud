@@ -82,7 +82,7 @@ public object WorkspaceDetail {
         return r.explanation?.let { "$state. $it" } ?: "$state."
     }
 
-    public fun facts(r: WorkspaceRow): List<Fact> {
+    public fun facts(r: WorkspaceRow, now: Instant = Instant.now()): List<Fact> {
         val h = r.health
         return listOfNotNull(
             Fact("dir", h.dir),
@@ -102,6 +102,11 @@ public object WorkspaceDetail {
             },
             if (h.stashes > 0) Fact("stashes", "${h.stashes}") else null,
             if (h.learnings > 0) Fact("learnings", "${h.learnings} untracked; the next clean run opens the daily chore PR") else null,
+            if (h.upkeeping || h.reindexing) {
+                Fact("running", WorkspaceActions.runningText(h, now) + "; no dispatch here until it ends")
+            } else {
+                null
+            },
         )
     }
 

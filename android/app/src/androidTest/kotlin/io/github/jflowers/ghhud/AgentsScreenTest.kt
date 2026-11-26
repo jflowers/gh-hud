@@ -3,6 +3,9 @@ package io.github.jflowers.ghhud
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -17,6 +20,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.jflowers.ghhud.api.v1.Snapshot
 import io.github.jflowers.ghhud.api.v1.CheckoutHealth
+import io.github.jflowers.ghhud.api.v1.CheckoutActionKind
 import com.google.protobuf.Timestamp
 import io.github.jflowers.ghhud.core.AgentChoice
 import io.github.jflowers.ghhud.core.AgentList
@@ -131,7 +135,7 @@ class AgentsScreenTest {
     @Test
     fun aCheckoutsDeweyIndexOnItsScreen() {
         val row = WorkspaceList.rows(oldIndex()).first { it.place == "api" }
-        compose.setContent { MaterialTheme { WorkspaceScreen(row, items, onBack = {}, now = now) } }
+        compose.setContent { MaterialTheme { WorkspaceScreen(row, null, act, items, say = { t, bad -> said += "$t bad=$bad" }, onBack = {}, now = now) } }
         compose.onNodeWithTag("fact:index").assertTextEquals("reindex needed (still dispatchable)")
         compose.onNodeWithText("index format 0, this Dewey writes 1").assertExists()
         compose.onNodeWithText("no embeddings").assertExists()
@@ -148,6 +152,11 @@ class AgentsScreenTest {
         override suspend fun recheck(r: AgentRow): Answer<String> {
             asked += "recheck ${r.id}"
             return Answer.Ok("Re-checked fix on acme/api#70: succeeded")
+        }
+
+        override suspend fun checkoutAction(h: CheckoutHealth, kind: CheckoutActionKind): Answer<String> {
+            asked += "action $kind ${h.dir}"
+            return Answer.Ok("Saving the work in w/api on chai")
         }
     }
 
@@ -179,11 +188,44 @@ class AgentsScreenTest {
     @Test
     fun aCheckout() {
         val row = WorkspaceList.rows(snap).first { it.place == "api" }
-        compose.setContent { MaterialTheme { WorkspaceScreen(row, items, onBack = {}) } }
+        compose.setContent { MaterialTheme { WorkspaceScreen(row, null, act, items, say = { t, bad -> said += "$t bad=$bad" }, onBack = {}, now = now) } }
         compose.onNodeWithTag("sentence").assertTextEquals("Ready. A run here switches to main and fast-forwards it.")
         compose.onNodeWithTag("fact:stashes").assertTextEquals("1")
         compose.onNodeWithText("feature: 3 commits").assertIsDisplayed()
         compose.onNodeWithText("Copy directory").performClick()
         assertEquals(listOf("copy /w/api"), asked)
+    }
+
+    /** Save asks first, then starts on the hub and says what started (#172). */
+    @Test
+    fun aCheckoutsActions() {
+        val row = WorkspaceList.rows(snap).first { it.place == "api" }
+        compose.setContent { MaterialTheme { WorkspaceScreen(row, null, act, items, say = { t, bad -> said += "$t bad=$bad" }, onBack = {}, now = now) } }
+        compose.onNodeWithTag("action:discard").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithTag("action:save").performScrollTo().assertIsEnabled().performClick()
+        compose.onNodeWithTag("action-confirm").performClick()
+        compose.waitUntil(5_000) { said.isNotEmpty() }
+        assertEquals(listOf("action CHECKOUT_ACTION_KIND_SAVE /w/api"), asked)
+        assertEquals(listOf("Saving the work in w/api on chai bad=false"), said)
+    }
+
+    /** What runs in a checkout shows, and holds its actions until it ends. */
+    @Test
+    fun aCheckoutWithAnActionRunning() {
+        val b = snap.toBuilder()
+        val i = b.workspacesList.indexOfFirst { it.workspace == "api" }
+        b.setWorkspaces(
+            i,
+            b.getWorkspaces(i).toBuilder().setUpkeeping(true)
+                .setAction(CheckoutActionKind.CHECKOUT_ACTION_KIND_SAVE)
+                .setActionStarted(Timestamp.newBuilder().setSeconds(now.epochSecond - 120))
+                .build(),
+        )
+        val row = io.github.jflowers.ghhud.core.WorkspaceRow.of(b.getWorkspaces(i), now)
+        compose.setContent { MaterialTheme { WorkspaceScreen(row, null, act, items, say = { t, bad -> said += "$t bad=$bad" }, onBack = {}, now = now) } }
+        compose.onNodeWithTag("sentence").assertTextContains("Saving work to a draft PR · 2m", substring = true)
+        compose.onNodeWithTag("fact:running").assertTextEquals("saving work to a draft PR · 2m; no dispatch here until it ends")
+        compose.onNodeWithTag("actions-wait").performScrollTo().assertTextEquals("Waits for saving work to a draft PR to end.")
+        compose.onNodeWithTag("action:pull").performScrollTo().assertIsNotEnabled()
     }
 }

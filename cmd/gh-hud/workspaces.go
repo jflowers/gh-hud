@@ -80,6 +80,9 @@ type workspaceView struct {
 	Index            string       `json:"index,omitempty"`
 	Upkeeping        bool         `json:"upkeeping,omitempty"`
 	Reindexing       bool         `json:"reindexing,omitempty"`
+	Running          string       `json:"running,omitempty"` // the upkeep, reindex or action in it
+	Action           string       `json:"action,omitempty"`  // the checkout action asked for by hand
+	ActionStarted    time.Time    `json:"action_started,omitzero"`
 	LastUpkeep       *outcomeView `json:"last_upkeep,omitempty"`
 	LastReindex      *outcomeView `json:"last_reindex,omitempty"`
 	UpkeepOnly       bool         `json:"upkeep_only,omitempty"`
@@ -101,6 +104,7 @@ func workspaceOf(h dispatch.CheckoutHealth) workspaceView {
 		LocalOnly: h.LocalOnly, LocalOnlyCommits: h.LocalOnlyCommits(), Stashes: h.Stashes,
 		Index: h.Index, Upkeeping: h.Upkeeping, Reindexing: h.Reindexing,
 		UpkeepOnly: h.UpkeepOnly, Unmanaged: h.Unmanaged,
+		Running: h.Running(), Action: string(h.Action), ActionStarted: h.ActionStarted,
 	}
 	if u := h.LastUpkeep; u != nil {
 		v.LastUpkeep = &outcomeView{At: u.At, Text: u.String(), Failed: u.Failed()}
@@ -150,7 +154,10 @@ func printWorkspaces(w io.Writer, v workspacesView) {
 	fmt.Fprintln(tw, "MACHINE\tCHECKOUT\tBRANCH\tPROBLEM\tDIRTY\tLOCAL-ONLY\tLAST UPKEEP\tLAST REINDEX")
 	for _, c := range v.Workspaces {
 		problem := c.Problem
-		if problem == "" {
+		switch {
+		case c.Running != "":
+			problem = c.Running
+		case problem == "":
 			problem = "ready"
 		}
 		local := ""

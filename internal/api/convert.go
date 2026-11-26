@@ -699,6 +699,8 @@ func checkoutToPB(h dispatch.CheckoutHealth) *pb.CheckoutHealth {
 		LastUpkeep:        upkeepToPB(h.LastUpkeep),
 		Unmanaged:         h.Unmanaged,
 		UpkeepOnly:        h.UpkeepOnly,
+		Action:            checkoutActionToPB(h.Action),
+		ActionStarted:     ts(h.ActionStarted),
 	}
 }
 
@@ -769,6 +771,8 @@ func checkoutFromPB(p *pb.CheckoutHealth) dispatch.CheckoutHealth {
 		LastUpkeep:        upkeepFromPB(p.GetLastUpkeep()),
 		Unmanaged:         p.GetUnmanaged(),
 		UpkeepOnly:        p.GetUpkeepOnly(),
+		Action:            checkoutActionOrNone(p.GetAction()),
+		ActionStarted:     fromTS(p.GetActionStarted()),
 		Index:             p.GetIndex(),
 		IndexBuilt:        fromTS(p.GetIndexBuilt()),
 		IndexPages:        int(p.GetIndexPages()),
@@ -1144,6 +1148,12 @@ func transcriptFromPB(r *pb.TranscriptResponse) hub.Transcript {
 // clamp32 is n as an int32, held to its range.
 func clamp32(n int) int32 {
 	return int32(max(min(n, math.MaxInt32), math.MinInt32)) //nolint:gosec // clamped on this line
+}
+
+// checkoutActionOrNone is k's action, "" for none.
+func checkoutActionOrNone(k pb.CheckoutActionKind) dispatch.CheckoutAction {
+	a, _ := checkoutActionFromPB(k)
+	return a
 }
 
 func replanToPB(r epic.Replan) *pb.EpicReplan {

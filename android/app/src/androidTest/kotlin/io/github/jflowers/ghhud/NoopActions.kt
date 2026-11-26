@@ -1,5 +1,7 @@
 package io.github.jflowers.ghhud
 
+import io.github.jflowers.ghhud.api.v1.CheckoutActionKind
+import io.github.jflowers.ghhud.api.v1.CheckoutHealth
 import io.github.jflowers.ghhud.api.v1.FleetAction
 import io.github.jflowers.ghhud.api.v1.ToolkitAction
 import io.github.jflowers.ghhud.api.v1.TranscriptResponse
@@ -47,6 +49,7 @@ object NoopActions : AppActions {
     override fun refreshAgents() {}
     override fun refreshWorkspaces() {}
     override suspend fun recheck(r: AgentRow): Answer<String> = Answer.Ok("")
+    override suspend fun checkoutAction(h: CheckoutHealth, kind: CheckoutActionKind): Answer<String> = Answer.Ok("")
     override suspend fun fleet(action: FleetAction): Answer<String> = Answer.Ok("")
     override suspend fun dewey(machine: String?, force: Boolean): Answer<String> = Answer.Ok("")
     override suspend fun deweyCancel(machine: String?): Answer<String> = Answer.Ok("")

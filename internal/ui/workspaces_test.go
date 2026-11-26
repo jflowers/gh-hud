@@ -37,7 +37,7 @@ func TestWorkspacesTabReindex(t *testing.T) {
 	}
 	pressKey(t, m, "j")
 	plain = ansiRe.ReplaceAllString(m.View(), "")
-	if !strings.Contains(plain, "reindexing the index; no dispatch") || strings.Contains(plain, "warm") {
+	if !strings.Contains(plain, "reindexing; no dispatch here until it ends") || strings.Contains(plain, "warm") {
 		t.Errorf("reindexing checkout's detail:\n%s", plain)
 	}
 }

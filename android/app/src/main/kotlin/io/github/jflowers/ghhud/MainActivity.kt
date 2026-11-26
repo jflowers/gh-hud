@@ -1,5 +1,8 @@
 package io.github.jflowers.ghhud
 
+import io.github.jflowers.ghhud.api.v1.CheckoutActionKind
+import io.github.jflowers.ghhud.api.v1.CheckoutHealth
+import io.github.jflowers.ghhud.core.WorkspaceCommands
 import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.ClipData
@@ -80,6 +83,9 @@ class MainActivity : ComponentActivity() {
         override fun refreshWorkspaces() = model.refresh(RefreshTarget.REFRESH_TARGET_WORKSPACES)
 
         override suspend fun recheck(r: AgentRow) = AgentCommands.recheck(model.connection, r)
+
+        override suspend fun checkoutAction(h: CheckoutHealth, kind: CheckoutActionKind) =
+            WorkspaceCommands.start(model.connection, h, kind)
 
         override suspend fun fleet(action: FleetAction) = FleetCommands.run(model.connection, action, model.ui.value.hub.snapshot.fleet)
 
