@@ -50,8 +50,19 @@ import kotlinx.coroutines.launch
 fun AgentSheet(row: ItemRow, queue: Boolean, act: ItemActions, onDone: (String?) -> Unit) {
     var choices by remember { mutableStateOf<Answer<List<AgentChoice>>?>(null) }
     var running by remember { mutableStateOf<String?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<Pair<Answer.No, AgentChoice>?>(null) }
     val scope = rememberCoroutineScope()
+    val start: (AgentChoice) -> Unit = { choice ->
+        running = choice.id
+        error = null
+        scope.launch {
+            when (val r = act.run(row, choice, queue)) {
+                is Answer.Ok -> onDone(r.value)
+                is Answer.No -> error = r to choice
+            }
+            running = null
+        }
+    }
     LaunchedEffect(row.id, queue) { choices = act.choices(row, queue) }
     ModalBottomSheet(onDismissRequest = { onDone(null) }, modifier = Modifier.testTag("agent-sheet")) {
         Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -73,19 +84,27 @@ fun AgentSheet(row: ItemRow, queue: Boolean, act: ItemActions, onDone: (String?)
                     )
                 }
                 is Answer.No -> Text(c.why, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("choices-none"))
-                is Answer.Ok -> ChoiceCards(c.value, running, showSuggested = false) { choice ->
-                    running = choice.id
-                    error = null
-                    scope.launch {
-                        when (val r = act.run(row, choice, queue)) {
-                            is Answer.Ok -> onDone(r.value)
-                            is Answer.No -> error = r.why
-                        }
-                        running = null
-                    }
-                }
+                is Answer.Ok -> ChoiceCards(c.value, running, showSuggested = false, pick = start)
             }
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("sheet-error")) }
+            error?.let { (no, choice) -> SheetError(no, enabled = running == null) { start(choice) } }
+        }
+    }
+}
+
+/**
+ * Why starting failed, and Try again. Not when the call was cut off: the
+ * agent may be starting, and the words say to check Agents first.
+ */
+@Composable
+private fun SheetError(no: Answer.No, enabled: Boolean, retry: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            no.why,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.weight(1f).testTag("sheet-error"),
+        )
+        if (!no.unsure) {
+            TextButton(onClick = retry, enabled = enabled, modifier = Modifier.testTag("try-again")) { Text("Try again") }
         }
     }
 }
@@ -149,7 +168,7 @@ fun NamedAgentSheet(initial: String, act: ItemActions, onDone: (String?) -> Unit
     var looking by remember { mutableStateOf(false) }
     var found by remember { mutableStateOf<Answer<Pair<NamedItem, List<AgentChoice>>>?>(null) }
     var running by remember { mutableStateOf<String?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<Pair<Answer.No, AgentChoice>?>(null) }
     val scope = rememberCoroutineScope()
     val lookUp = {
         if (text.isNotBlank() && !looking) {
@@ -208,20 +227,21 @@ fun NamedAgentSheet(initial: String, act: ItemActions, onDone: (String?) -> Unit
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.testTag("named-item"),
                     )
-                    ChoiceCards(choices, running, showSuggested = true) { choice ->
+                    val start: (AgentChoice) -> Unit = { choice ->
                         running = choice.id
                         error = null
                         scope.launch {
                             when (val r = act.run(item, choice)) {
                                 is Answer.Ok -> onDone(r.value)
-                                is Answer.No -> error = r.why
+                                is Answer.No -> error = r to choice
                             }
                             running = null
                         }
                     }
+                    ChoiceCards(choices, running, showSuggested = true, pick = start)
+                    error?.let { (no, choice) -> SheetError(no, enabled = running == null) { start(choice) } }
                 }
             }
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("sheet-error")) }
         }
     }
 }

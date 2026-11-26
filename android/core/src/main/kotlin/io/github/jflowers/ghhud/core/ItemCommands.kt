@@ -2,6 +2,13 @@ package io.github.jflowers.ghhud.core
 
 import io.github.jflowers.ghhud.api.v1.ItemKind
 import io.github.jflowers.ghhud.api.v1.Run
+import io.github.jflowers.ghhud.api.v1.Snapshot
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withTimeoutOrNull
+import java.time.Instant
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 // The commands on an item: start an agent, add one to your queue, re-check
 // its last run. The hub does the work; these say how it went, in the Mac's
@@ -57,22 +64,61 @@ public object ItemCommands {
     }
 
     /** Starts or queues a choice; the answer is what to say. */
-    public suspend fun run(hub: HubConnection, row: ItemRow, c: AgentChoice, queue: Boolean): Answer<String> {
+    public suspend fun run(hub: HubConnection, row: ItemRow, c: AgentChoice, queue: Boolean, confirm: Duration = CONFIRM): Answer<String> {
         if (queue) {
             return when (val a = hub.enqueue(c.task, row.id)) {
                 is Answer.No -> a
                 is Answer.Ok -> Answer.Ok("Queued ${c.task} for ${row.ref}, number ${a.value} in your queue")
             }
         }
-        return when (val a = hub.dispatch(c.task, row.id)) {
-            is Answer.No -> a
+        return dispatch(hub, row.id, row.ref, c, confirm)
+    }
+
+    /**
+     * Starts c on an item and says how it went. When the call is cut off
+     * before the hub answers, the agent may have started anyway: it
+     * watches the hub's snapshot for confirm, and says it started if a run
+     * shows up, or that it may still be starting if none does.
+     */
+    private suspend fun dispatch(hub: HubConnection, url: String, ref: String, c: AgentChoice, confirm: Duration): Answer<String> {
+        val since = Instant.now()
+        return when (val a = hub.dispatch(c.task, url)) {
             is Answer.Ok -> {
                 val rec = a.value
-                val at = if (rec.workspace.isEmpty()) "" else " in ${rec.machine.ifEmpty { "local" }}:${rec.workspace}"
-                Answer.Ok("Started ${rec.task.ifEmpty { c.task }} on ${row.ref}$at")
+                Answer.Ok("Started ${rec.task.ifEmpty { c.task }} on $ref${at(rec.machine, rec.workspace)}")
+            }
+            is Answer.No -> {
+                if (!a.unsure) return a
+                val run = withTimeoutOrNull(confirm) {
+                    hub.state.map { startedRun(it.snapshot, ref, c.task, since) }.first { it != null }
+                }
+                if (run != null) {
+                    Answer.Ok("Started ${c.task} on $ref${at(run.machine, run.workspace)}")
+                } else {
+                    Answer.No(
+                        "${a.why}, so ${c.task} may still be starting on ${c.target}. " +
+                            "Check Agents before you try again.",
+                        unsure = true,
+                    )
+                }
             }
         }
     }
+
+    private fun at(machine: String, workspace: String): String =
+        if (workspace.isEmpty()) "" else " in ${machine.ifEmpty { "local" }}:$workspace"
+
+    /** A run of task on ref the hub started at since or later, if any. */
+    internal fun startedRun(s: Snapshot, ref: String, task: String, since: Instant): Run? {
+        // The hub's clock and the phone's can differ by a little.
+        val from = since.minusSeconds(SKEW_SECONDS).epochSecond
+        return s.runsList.firstOrNull { it.ref == ref && it.task == task && it.startedAt.seconds >= from }
+    }
+
+    private const val SKEW_SECONDS = 30L
+
+    /** How long a cut-off Dispatch watches for its run to show up. */
+    private val CONFIRM: Duration = 15.seconds
 
     /**
      * Asks the hub about an issue or PR you name (a GitHub URL or
@@ -102,15 +148,8 @@ public object ItemCommands {
     }
 
     /** Starts a choice on an item you named; the answer is what to say. */
-    public suspend fun run(hub: HubConnection, item: NamedItem, c: AgentChoice): Answer<String> =
-        when (val a = hub.dispatch(c.task, item.url)) {
-            is Answer.No -> a
-            is Answer.Ok -> {
-                val rec = a.value
-                val at = if (rec.workspace.isEmpty()) "" else " in ${rec.machine.ifEmpty { "local" }}:${rec.workspace}"
-                Answer.Ok("Started ${rec.task.ifEmpty { c.task }} on ${item.ref}$at")
-            }
-        }
+    public suspend fun run(hub: HubConnection, item: NamedItem, c: AgentChoice, confirm: Duration = CONFIRM): Answer<String> =
+        dispatch(hub, item.url, item.ref, c, confirm)
 
     /**
      * The first GitHub issue or PR link in shared text (a browser shares

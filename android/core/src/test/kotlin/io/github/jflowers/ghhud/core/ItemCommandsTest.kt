@@ -13,6 +13,10 @@ import io.github.jflowers.ghhud.api.v1.menuChoicesResponse
 import io.github.jflowers.ghhud.api.v1.queueChoicesResponse
 import io.github.jflowers.ghhud.api.v1.reinspectResponse
 import io.github.jflowers.ghhud.api.v1.run as hubRun
+import io.github.jflowers.ghhud.api.v1.snapshot
+import com.google.protobuf.timestamp
+import java.time.Instant
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -23,6 +27,7 @@ import mockwebserver3.MockWebServer
 import okio.Buffer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
@@ -88,6 +93,50 @@ class ItemCommandsTest {
         )
         refused("dispatch is off")
         assertEquals(Answer.No("dispatch is off"), ItemCommands.run(hub, row, AgentChoice("fix", "x"), queue = false))
+    }
+
+    private fun cutOff(code: String) = server.enqueue(
+        MockResponse.Builder().code(504).setHeader("Content-Type", "application/json")
+            .body("""{"code":"$code","message":"timeout"}""").build(),
+    )
+
+    @Test
+    fun aCutOffStartMayStillBeStarting() = runBlocking {
+        // The hub never answered: no run shows up, so it may still be
+        // starting, and it says not to try again blind.
+        cutOff("deadline_exceeded")
+        val said = ItemCommands.run(hub, row, AgentChoice("review", "zero-dot-force@zinnia"), queue = false, confirm = 200.milliseconds)
+        assertEquals(
+            Answer.No(
+                "The hub didn't answer in time, so review may still be starting on zero-dot-force@zinnia. " +
+                    "Check Agents before you try again.",
+                unsure = true,
+            ),
+            said,
+        )
+        // A refusal is sure: said as the hub said it.
+        refused("dispatch is off")
+        assertEquals(Answer.No("dispatch is off"), ItemCommands.run(hub, row, AgentChoice("fix", "x"), queue = false))
+    }
+
+    @Test
+    fun findsTheRunACutOffStartMade() {
+        val since = Instant.ofEpochSecond(1_000)
+        fun run(ref: String, task: String, at: Long) = hubRun {
+            this.ref = ref
+            this.task = task
+            machine = "zinnia"
+            workspace = "vc-2"
+            startedAt = timestamp { seconds = at }
+        }
+        val s = snapshot {
+            runs += run("acme/r#7", "review", 500) // an earlier run
+            runs += run("acme/r#8", "review", 1_005) // another PR
+            runs += run("acme/r#7", "fix", 1_005) // another task
+        }
+        assertNull(ItemCommands.startedRun(s, "acme/r#7", "review", since))
+        val now = s.toBuilder().addRuns(run("acme/r#7", "review", 990)).build() // the hub's clock a little behind
+        assertEquals("vc-2", ItemCommands.startedRun(now, "acme/r#7", "review", since)?.workspace)
     }
 
     @Test
