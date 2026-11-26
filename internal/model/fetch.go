@@ -289,7 +289,7 @@ func FetchAll(ctx context.Context, c *gh.Client, cfg *config.Config) *FetchResul
 		}
 	}
 
-	markReady(items, me, time.Duration(cfg.QueueWindowHours)*time.Hour, bots)
+	markReady(items, me, time.Duration(cfg.QueueWindowHours)*time.Hour, bots, cfg.Dispatch["review"].Covers)
 
 	SortItems(items)
 	res.Items = items
@@ -298,10 +298,12 @@ func FetchAll(ctx context.Context, c *gh.Client, cfg *config.Config) *FetchResul
 }
 
 // markReady sets the derived section bits: CatReady for my PRs waiting only
-// on a human maintainer, CatQueue for PRs ready for an agent review. A
+// on a human maintainer, CatQueue for PRs ready for an agent review in a
+// repo inQueue covers ([dispatch.review]'s orgs and repos), so the queue
+// holds what review auto-dispatch would take, not every repo in orgs. A
 // Dependabot PR merging itself leaves review-requested: it needs nothing
 // from me.
-func markReady(items []Item, me string, window time.Duration, bots *BotFilter) {
+func markReady(items []Item, me string, window time.Duration, bots *BotFilter, inQueue func(repo string) bool) {
 	for i := range items {
 		if items[i].DependabotSettled() {
 			items[i].Cats &^= CatRQ
@@ -309,7 +311,7 @@ func markReady(items []Item, me string, window time.Duration, bots *BotFilter) {
 		if items[i].MyMaintainerReady() {
 			items[i].Cats |= CatReady
 		}
-		if items[i].ReviewQueueReady(me, window, bots) {
+		if items[i].ReviewQueueReady(me, window, bots) && inQueue(items[i].Repo) {
 			items[i].Cats |= CatQueue
 		}
 	}

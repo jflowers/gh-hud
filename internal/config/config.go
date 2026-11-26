@@ -412,13 +412,16 @@ func (tc TaskConfig) RoundLimit(task string) int {
 }
 
 // AutoFor reports whether the task auto-dispatches for repo ("owner/name"):
-// auto is on and the repo is covered: its owner is in orgs or it is in
-// repos (any repo when both are empty). Neither limits a dispatch you
-// start with a keypress.
+// auto is on and Covers the repo. Neither orgs nor repos limits a dispatch
+// you start with a keypress.
 func (tc TaskConfig) AutoFor(repo string) bool {
-	if !tc.Auto {
-		return false
-	}
+	return tc.Auto && tc.Covers(repo)
+}
+
+// Covers reports whether repo ("owner/name") is in the task's scope: its
+// owner is in orgs or it is in repos (any repo when both are empty).
+// [dispatch.review]'s scope also bounds the Agent review queue.
+func (tc TaskConfig) Covers(repo string) bool {
 	if len(tc.Orgs) == 0 && len(tc.Repos) == 0 {
 		return true
 	}

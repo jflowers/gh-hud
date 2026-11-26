@@ -665,3 +665,22 @@ func TestLoadRemoveUnmanaged(t *testing.T) {
 		}
 	}
 }
+
+func TestTaskConfigCovers(t *testing.T) {
+	tc := TaskConfig{Orgs: []string{"unbound-force"}, Repos: []string{"fullsend-ai/fullsend"}}
+	for repo, want := range map[string]bool{
+		"unbound-force/gaze":      true,
+		"Fullsend-AI/Fullsend":    true,
+		"fullsend-ai/rfe-creator": false,
+	} {
+		if got := tc.Covers(repo); got != want {
+			t.Errorf("Covers(%q) = %v, want %v", repo, got, want)
+		}
+	}
+	if !(TaskConfig{}).Covers("anyone/anything") {
+		t.Error("a task with no orgs or repos (or no [dispatch.review] at all) covers every repo")
+	}
+	if !(TaskConfig{Orgs: []string{"unbound-force"}}).Covers("unbound-force/x") {
+		t.Error("Covers must not depend on auto")
+	}
+}
