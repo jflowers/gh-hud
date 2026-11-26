@@ -91,7 +91,7 @@ extension SnapshotMode {
     /// for the hub, and draws the window (the real AppKit views, table and
     /// toolbar included) to a PNG. --select selects the row numbered N;
     /// --agent or --queue then opens its sheet, drawn to out-sheet.png.
-    /// `--pane plan|agents|workspaces|fleet|toolkit [--pick N]` shows that pane instead, with
+    /// `--pane plan|agents|workspaces|fleet|toolkit|releases [--pick N]` shows that pane instead, with
     /// its Nth row (from 0) selected; --enroll opens the Enroll Epic sheet.
     /// --oldest-first sorts the items by their Age column, oldest first.
     /// --search goes to the shown table's search field; --keep then keeps
@@ -117,6 +117,7 @@ extension SnapshotMode {
         case "plan": .plan
         case "fleet": .fleet
         case "toolkit": .toolkit
+        case "releases": .releases
         case "agents": .agents
         case "workspaces": .workspaces
         default: .items(filter)
@@ -169,6 +170,9 @@ extension SnapshotMode {
                 } else if pane == .fleet {
                     let rows = FleetList.rows(conn.snapshot)
                     if n < rows.count { ui.fleetSelection = rows[n].id }
+                } else if pane == .releases {
+                    let rows = ReleaseList.rows(conn.snapshot)
+                    if n < rows.count { ui.releaseSelection = rows[n].id }
                 }
             }
             if let n = arg("--select").flatMap(Int.init),

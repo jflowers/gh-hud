@@ -122,6 +122,9 @@ type Config struct {
 	Fleet FleetConfig `toml:"fleet"`
 	// Toolkit rolls tool releases out ([toolkit], issue #75).
 	Toolkit ToolkitConfig `toml:"toolkit"`
+	// Releases watches the repos jflowers/ship releases ([releases],
+	// issue #218).
+	Releases ReleasesConfig `toml:"releases"`
 	// Hub is how other apps reach the hub ([hub]).
 	Hub HubConfig `toml:"hub"`
 }
@@ -504,6 +507,17 @@ type ToolkitConfig struct {
 	// Dotfiles is a clone of [fleet]'s repo to cut pin branches from
 	// (default: the chezmoi source, ~/.local/share/chezmoi).
 	Dotfiles string `toml:"dotfiles"`
+}
+
+// ReleasesConfig turns on the Releases view: the hub reads ship's
+// repos.yaml, then each repo's latest release, the commits since it and
+// its last release run.
+type ReleasesConfig struct {
+	// Manifest is ship's repos.yaml as "owner/repo" (its repos.yaml) or
+	// "owner/repo/path"; empty turns the view off.
+	Manifest string `toml:"manifest"`
+	// Poll is how often it reads them again (a duration; default 15m).
+	Poll string `toml:"poll"`
 }
 
 // DefaultFleet returns the built-in fleet defaults.

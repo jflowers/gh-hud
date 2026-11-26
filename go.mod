@@ -10,6 +10,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.31
 	github.com/muesli/termenv v0.16.0
 	google.golang.org/protobuf v1.36.12
+	gopkg.in/yaml.v3 v3.0.1
 	tailscale.com v1.102.5
 )
 

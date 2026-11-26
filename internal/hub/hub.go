@@ -13,6 +13,7 @@ import (
 	"github.com/jflowers/gh-hud/internal/fleet"
 	"github.com/jflowers/gh-hud/internal/model"
 	"github.com/jflowers/gh-hud/internal/notify"
+	"github.com/jflowers/gh-hud/internal/releases"
 	"github.com/jflowers/gh-hud/internal/toolkit"
 )
 
@@ -88,6 +89,13 @@ type Toolkit interface {
 	Cancel(id string) error
 	Retry(id string) error
 	Dismiss(id string) error
+	Check()
+}
+
+// Releases is the part of *releases.Watcher the hub drives.
+type Releases interface {
+	Snapshot() releases.Snapshot
+	Run(ctx context.Context)
 	Check()
 }
 
@@ -214,7 +222,8 @@ type Options struct {
 	// Dispatcher and Fleet are nil when dispatch / the fleet are off.
 	Dispatcher Dispatcher
 	Fleet      Fleet
-	Toolkit    Toolkit // nil when the toolkit is off
+	Toolkit    Toolkit  // nil when the toolkit is off
+	Releases   Releases // nil when the Releases view is off
 	// Notifier delivers alerts (nil drops them).
 	Notifier notify.Notifier
 	// Now is the clock (time.Now when nil).
@@ -286,6 +295,10 @@ type Snapshot struct {
 	Fleet *fleet.Snapshot // nil when the fleet is off
 
 	Toolkit *toolkit.Snapshot // nil when the toolkit is off
+
+	// Releases is what ship releases and where each repo stands; nil
+	// when [releases] is off.
+	Releases *releases.Snapshot
 
 	// ConfigWarnings are problems with config.toml that didn't stop it
 	// loading (config.Config.Warnings).
@@ -393,6 +406,10 @@ func New(opts Options) *Hub {
 		ts := opts.Toolkit.Snapshot()
 		h.snap.Toolkit = &ts
 	}
+	if opts.Releases != nil {
+		rs := opts.Releases.Snapshot()
+		h.snap.Releases = &rs
+	}
 	return h
 }
 
@@ -405,6 +422,10 @@ func (h *Hub) Run(ctx context.Context) {
 	}
 	if h.opts.Toolkit != nil && h.ownsDispatch() {
 		go h.opts.Toolkit.Run(ctx)
+	}
+	// Releases only reads, so a follower runs it too.
+	if h.opts.Releases != nil {
+		go h.opts.Releases.Run(ctx)
 	}
 	go loop(ctx, h.refreshEvery, h.fetchReq, h.fetch)
 	if h.opts.Dispatcher != nil {
@@ -467,6 +488,9 @@ func poke(ch chan struct{}) {
 func (h *Hub) Refresh(context.Context) error {
 	poke(h.fetchReq)
 	poke(h.cfgReq)
+	if h.opts.Releases != nil {
+		h.opts.Releases.Check()
+	}
 	return nil
 }
 
@@ -669,6 +693,11 @@ func (h *Hub) publish() {
 		v := h.opts.Toolkit.Snapshot()
 		ts = &v
 	}
+	var rs *releases.Snapshot
+	if h.opts.Releases != nil {
+		v := h.opts.Releases.Snapshot()
+		rs = &v
+	}
 	var (
 		stages map[string]dispatch.Stage
 		plan   []dispatch.PlanRow
@@ -693,6 +722,7 @@ func (h *Hub) publish() {
 	h.snap.Seq++
 	h.snap.Fleet = fs
 	h.snap.Toolkit = ts
+	h.snap.Releases = rs
 	h.snap.Stages = stages
 	h.snap.Plan, h.snap.Queue = plan, queue
 	h.snap.Cases, h.snap.Epics = cases, epics

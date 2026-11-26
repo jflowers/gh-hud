@@ -27,6 +27,7 @@ import (
 	"github.com/jflowers/gh-hud/internal/hub"
 	"github.com/jflowers/gh-hud/internal/model"
 	"github.com/jflowers/gh-hud/internal/notify"
+	"github.com/jflowers/gh-hud/internal/releases"
 	"github.com/jflowers/gh-hud/internal/selfrestart"
 	"github.com/jflowers/gh-hud/internal/ui"
 )
@@ -465,6 +466,9 @@ func buildHub(cfg *config.Config, cfgPath string, client *gh.Client, stateDir st
 	if tk != nil {
 		hopts.Toolkit = tk
 	}
+	if rw := buildReleases(cfg.Releases, client); rw != nil {
+		hopts.Releases = rw
+	}
 	h = hub.New(hopts)
 	quiet = func(ctx context.Context) {
 		for fleetCoord != nil && fleetCoord.Busy() {
@@ -546,4 +550,18 @@ func runOnce(cfg *config.Config, client *gh.Client, width int) int {
 		return 1
 	}
 	return 0
+}
+
+// buildReleases builds the Releases watcher, or returns nil when
+// [releases] names no manifest. A poll that isn't a duration falls back to
+// the default.
+func buildReleases(rc config.ReleasesConfig, api releases.API) *releases.Watcher {
+	if strings.TrimSpace(rc.Manifest) == "" {
+		return nil
+	}
+	every, err := time.ParseDuration(rc.Poll)
+	if err != nil || every < time.Minute {
+		every = releases.DefaultEvery
+	}
+	return releases.New(releases.Options{Manifest: strings.TrimSpace(rc.Manifest), Every: every, API: api})
 }

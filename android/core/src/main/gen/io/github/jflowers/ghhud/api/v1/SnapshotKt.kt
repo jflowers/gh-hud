@@ -1250,6 +1250,48 @@ public object SnapshotKt {
 
     public val SnapshotKt.Dsl.toolkitOrNull: io.github.jflowers.ghhud.api.v1.ToolkitSnapshot?
       get() = _builder.toolkitOrNull
+
+    /**
+     * ```
+     * releases is where each repo jflowers/ship releases stands (issue
+     * #218); unset when [releases] is off.
+     * ```
+     *
+     * `.ghhud.v1.ReleasesSnapshot releases = 23 [json_name = "releases"];`
+     */
+    public var releases: io.github.jflowers.ghhud.api.v1.ReleasesSnapshot
+      @kotlin.jvm.JvmName("getReleases")
+        get() = _builder.releases
+      @kotlin.jvm.JvmName("setReleases")
+        set(value) {
+        _builder.releases = value
+      }
+    /**
+     * ```
+     * releases is where each repo jflowers/ship releases stands (issue
+     * #218); unset when [releases] is off.
+     * ```
+     *
+     * `.ghhud.v1.ReleasesSnapshot releases = 23 [json_name = "releases"];`
+     */
+    public fun clearReleases() {
+      _builder.clearReleases()
+    }
+    /**
+     * ```
+     * releases is where each repo jflowers/ship releases stands (issue
+     * #218); unset when [releases] is off.
+     * ```
+     *
+     * `.ghhud.v1.ReleasesSnapshot releases = 23 [json_name = "releases"];`
+     * @return Whether the releases field is set.
+     */
+    public fun hasReleases(): kotlin.Boolean {
+      return _builder.hasReleases()
+    }
+
+    public val SnapshotKt.Dsl.releasesOrNull: io.github.jflowers.ghhud.api.v1.ReleasesSnapshot?
+      get() = _builder.releasesOrNull
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.Snapshot.copy(block: `io.github.jflowers.ghhud.api.v1`.SnapshotKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.Snapshot =
@@ -1272,4 +1314,7 @@ public val io.github.jflowers.ghhud.api.v1.SnapshotOrBuilder.fleetOrNull: io.git
 
 public val io.github.jflowers.ghhud.api.v1.SnapshotOrBuilder.toolkitOrNull: io.github.jflowers.ghhud.api.v1.ToolkitSnapshot?
   get() = if (hasToolkit()) getToolkit() else null
+
+public val io.github.jflowers.ghhud.api.v1.SnapshotOrBuilder.releasesOrNull: io.github.jflowers.ghhud.api.v1.ReleasesSnapshot?
+  get() = if (hasReleases()) getReleases() else null
 

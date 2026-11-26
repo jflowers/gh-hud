@@ -1028,6 +1028,73 @@ check(HubConnection.nothingCanStart(on: "acme/r#7", why: "an agent is already ru
 check(HubConnection.nothingCanStart(on: "acme/r#7", why: "", guess: "no checkout of acme/r is free")
       == "Nothing can start on acme/r#7 now: no checkout of acme/r is free.", "nothing can start: an old hub")
 
+// MARK: releases (#218)
+
+do {
+    let now = Date(timeIntervalSince1970: 1_800_000_000)
+    func at(_ ago: TimeInterval) -> Google_Protobuf_Timestamp { Google_Protobuf_Timestamp(date: now.addingTimeInterval(-ago)) }
+    func repo(_ name: String, latest: String = "", released: TimeInterval = 0, ahead: Int32 = -1, ship: String = "",
+              run: (String, String, TimeInterval)? = nil, error: String = "") -> Ghhud_V1_ReleaseRepo {
+        var r = Ghhud_V1_ReleaseRepo()
+        r.repo = name
+        r.kinds = ["go-cli", "cask"]
+        r.latest = latest
+        if !latest.isEmpty {
+            r.releasedAt = at(released)
+            r.releaseURL = "https://github.com/\(name)/releases/tag/\(latest)"
+            r.compareURL = "https://github.com/\(name)/compare/\(latest)...main"
+        }
+        r.ahead = ahead
+        r.ship = ship
+        if let (status, conclusion, ago) = run {
+            var x = Ghhud_V1_ReleaseRun()
+            x.status = status
+            x.conclusion = conclusion
+            x.at = at(ago)
+            x.url = "https://github.com/\(name)/actions/runs/1"
+            r.lastRun = x
+        }
+        r.error = error
+        return r
+    }
+    var s = Ghhud_V1_Snapshot()
+    check(ReleaseList.rows(s).isEmpty && ReleaseList.failing(s) == 0, "releases: none without [releases]")
+    s.releases.manifest = "jflowers/ship/repos.yaml"
+    s.releases.checkedAt = at(180)
+    s.releases.repos = [
+        repo("acme/tool", latest: "v1.2.0", released: 3 * 86400, ahead: 12, ship: "v0.10.0", run: ("completed", "success", 3 * 86400)),
+        repo("acme/lib", latest: "v0.3.0", released: 7200, ahead: 0, ship: "v0.9.0", run: ("completed", "failure", 7200)),
+        repo("acme/new", run: ("in_progress", "", 60)),
+        repo("acme/broken", latest: "v2.0.0", released: 60, ship: "v0.10.0", error: "compare: gh: HTTP 500"),
+    ]
+    let rows = ReleaseList.rows(s, now: now)
+    check(rows.map(\.repo) == ["acme/tool", "acme/lib", "acme/new", "acme/broken"], "releases: repos.yaml's order")
+    let tool = rows[0], lib = rows[1], new = rows[2], broken = rows[3]
+    check(tool.latest == "v1.2.0" && tool.released == "3d" && tool.unreleased == "12" && tool.hasUnreleased,
+          "releases: latest, age and unreleased commits \(tool)")
+    check(tool.run == "success · 3d" && tool.runTone == .good && tool.ship == "v0.10.0" && tool.kinds == "go-cli, cask",
+          "releases: a good run \(tool.run)")
+    check(tool.compareURL?.absoluteString == "https://github.com/acme/tool/compare/v1.2.0...main"
+          && tool.releaseURL != nil && tool.runURL != nil, "releases: links")
+    check(tool.releaseCommand == "gh ship release acme/tool ", "releases: the gh ship command")
+    check(lib.unreleased == "0" && lib.unreleasedTone == .good && !lib.hasUnreleased && lib.compareURL == nil,
+          "releases: nothing unreleased has no compare link")
+    check(lib.run == "failure · 2h" && lib.runTone == .bad, "releases: a failed run \(lib.run)")
+    check(new.latest == "—" && new.released == "" && new.unreleased == "—" && new.ship == "—" && new.releaseURL == nil,
+          "releases: never released")
+    check(new.run == "running" && new.runTone == .pending, "releases: a run in progress")
+    check(broken.error == "compare: gh: HTTP 500" && broken.unreleased == "—" && broken.run == "", "releases: a repo's error")
+    check(ReleaseList.failing(s) == 1, "releases: the badge counts failed runs")
+    var two = s
+    two.releases.repos[0].lastRun.conclusion = "failure"
+    check(ReleaseList.failing(two) == 2 && ReleaseList.failing(s) == 1, "releases: only failed runs count")
+    check(ReleaseList.state(s, now: now) == "4 repos · 1 with unreleased commits · checked 3m ago", "releases: state \(ReleaseList.state(s, now: now))")
+    s.releases.checking = true
+    check(ReleaseList.state(s, now: now).hasSuffix("checking…"), "releases: checking")
+    s.releases.error = "read jflowers/ship/repos.yaml: gh: Not Found (HTTP 404)"
+    check(ReleaseList.state(s, now: now) == s.releases.error, "releases: the manifest's error")
+}
+
 // MARK: shared fixtures (testdata/clients)
 
 checkFixtures()

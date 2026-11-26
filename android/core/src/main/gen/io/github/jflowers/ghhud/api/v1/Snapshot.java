@@ -1846,6 +1846,78 @@ io.github.jflowers.ghhud.api.v1.Stage defaultValue) {
     bitField0_ = (bitField0_ & ~0x00000020);
   }
 
+  public static final int RELEASES_FIELD_NUMBER = 23;
+  private io.github.jflowers.ghhud.api.v1.ReleasesSnapshot releases_;
+  /**
+   * <pre>
+   * releases is where each repo jflowers/ship releases stands (issue
+   * #218); unset when [releases] is off.
+   * </pre>
+   *
+   * <code>.ghhud.v1.ReleasesSnapshot releases = 23 [json_name = "releases"];</code>
+   */
+  @java.lang.Override
+  public boolean hasReleases() {
+    return ((bitField0_ & 0x00000040) != 0);
+  }
+  /**
+   * <pre>
+   * releases is where each repo jflowers/ship releases stands (issue
+   * #218); unset when [releases] is off.
+   * </pre>
+   *
+   * <code>.ghhud.v1.ReleasesSnapshot releases = 23 [json_name = "releases"];</code>
+   */
+  @java.lang.Override
+  public io.github.jflowers.ghhud.api.v1.ReleasesSnapshot getReleases() {
+    return releases_ == null ? io.github.jflowers.ghhud.api.v1.ReleasesSnapshot.getDefaultInstance() : releases_;
+  }
+  /**
+   * <pre>
+   * releases is where each repo jflowers/ship releases stands (issue
+   * #218); unset when [releases] is off.
+   * </pre>
+   *
+   * <code>.ghhud.v1.ReleasesSnapshot releases = 23 [json_name = "releases"];</code>
+   */
+  private void setReleases(io.github.jflowers.ghhud.api.v1.ReleasesSnapshot value) {
+    java.util.Objects.requireNonNull(value);
+    releases_ = value;
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <pre>
+   * releases is where each repo jflowers/ship releases stands (issue
+   * #218); unset when [releases] is off.
+   * </pre>
+   *
+   * <code>.ghhud.v1.ReleasesSnapshot releases = 23 [json_name = "releases"];</code>
+   */
+  @java.lang.SuppressWarnings("ReferenceEquality")
+  private void mergeReleases(io.github.jflowers.ghhud.api.v1.ReleasesSnapshot value) {
+    java.util.Objects.requireNonNull(value);
+    if (releases_ != null &&
+        releases_ != io.github.jflowers.ghhud.api.v1.ReleasesSnapshot.getDefaultInstance()) {
+      releases_ =
+        io.github.jflowers.ghhud.api.v1.ReleasesSnapshot.newBuilder(releases_).mergeFrom(value).buildPartial();
+    } else {
+      releases_ = value;
+    }
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <pre>
+   * releases is where each repo jflowers/ship releases stands (issue
+   * #218); unset when [releases] is off.
+   * </pre>
+   *
+   * <code>.ghhud.v1.ReleasesSnapshot releases = 23 [json_name = "releases"];</code>
+   */
+  private void clearReleases() {
+    releases_ = null;
+    bitField0_ = (bitField0_ & ~0x00000040);
+  }
+
   public static io.github.jflowers.ghhud.api.v1.Snapshot parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -3877,6 +3949,83 @@ io.github.jflowers.ghhud.api.v1.Stage defaultValue) {
       return this;
     }
 
+    /**
+     * <pre>
+     * releases is where each repo jflowers/ship releases stands (issue
+     * #218); unset when [releases] is off.
+     * </pre>
+     *
+     * <code>.ghhud.v1.ReleasesSnapshot releases = 23 [json_name = "releases"];</code>
+     */
+    @java.lang.Override
+    public boolean hasReleases() {
+      return instance.hasReleases();
+    }
+    /**
+     * <pre>
+     * releases is where each repo jflowers/ship releases stands (issue
+     * #218); unset when [releases] is off.
+     * </pre>
+     *
+     * <code>.ghhud.v1.ReleasesSnapshot releases = 23 [json_name = "releases"];</code>
+     */
+    @java.lang.Override
+    public io.github.jflowers.ghhud.api.v1.ReleasesSnapshot getReleases() {
+      return instance.getReleases();
+    }
+    /**
+     * <pre>
+     * releases is where each repo jflowers/ship releases stands (issue
+     * #218); unset when [releases] is off.
+     * </pre>
+     *
+     * <code>.ghhud.v1.ReleasesSnapshot releases = 23 [json_name = "releases"];</code>
+     */
+    public Builder setReleases(io.github.jflowers.ghhud.api.v1.ReleasesSnapshot value) {
+      copyOnWrite();
+      instance.setReleases(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * releases is where each repo jflowers/ship releases stands (issue
+     * #218); unset when [releases] is off.
+     * </pre>
+     *
+     * <code>.ghhud.v1.ReleasesSnapshot releases = 23 [json_name = "releases"];</code>
+     */
+    public Builder setReleases(
+        io.github.jflowers.ghhud.api.v1.ReleasesSnapshot.Builder builderForValue) {
+      copyOnWrite();
+      instance.setReleases(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * releases is where each repo jflowers/ship releases stands (issue
+     * #218); unset when [releases] is off.
+     * </pre>
+     *
+     * <code>.ghhud.v1.ReleasesSnapshot releases = 23 [json_name = "releases"];</code>
+     */
+    public Builder mergeReleases(io.github.jflowers.ghhud.api.v1.ReleasesSnapshot value) {
+      copyOnWrite();
+      instance.mergeReleases(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * releases is where each repo jflowers/ship releases stands (issue
+     * #218); unset when [releases] is off.
+     * </pre>
+     *
+     * <code>.ghhud.v1.ReleasesSnapshot releases = 23 [json_name = "releases"];</code>
+     */
+    public Builder clearReleases() {  copyOnWrite();
+      instance.clearReleases();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.Snapshot)
   }
   @java.lang.Override
@@ -3925,13 +4074,14 @@ io.github.jflowers.ghhud.api.v1.Stage defaultValue) {
             io.github.jflowers.ghhud.api.v1.Epic.class,
             "configWarnings_",
             "toolkit_",
+            "releases_",
           };
           java.lang.String info =
-              "\u0000\u0016\u0000\u0001\u0001\u0016\u0016\u0001\t\u0000\u0001\u0003\u0002\u1009" +
+              "\u0000\u0017\u0000\u0001\u0001\u0017\u0017\u0001\t\u0000\u0001\u0003\u0002\u1009" +
               "\u0000\u0003\u1009\u0001\u0004\u0007\u0005\u0208\u0006\u0007\u0007\u0208\b\u001b" +
               "\t\u001b\n\u001b\u000b\u1009\u0002\f2\r\u001b\u000e\u001b\u000f\u001b\u0010\u1009" +
               "\u0003\u0011\u0007\u0012\u1009\u0004\u0013\u001b\u0014\u001b\u0015\u021a\u0016\u1009" +
-              "\u0005";
+              "\u0005\u0017\u1009\u0006";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

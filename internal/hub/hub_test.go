@@ -13,6 +13,7 @@ import (
 	"github.com/jflowers/gh-hud/internal/fleet"
 	"github.com/jflowers/gh-hud/internal/model"
 	"github.com/jflowers/gh-hud/internal/notify"
+	"github.com/jflowers/gh-hud/internal/releases"
 )
 
 // waitFor polls cond until it holds or the test times out.
@@ -457,5 +458,40 @@ func TestSnapshotCarriesConfigWarnings(t *testing.T) {
 	h := New(Options{Config: cfg, Fetch: func(context.Context) *model.FetchResult { return nil }})
 	if got := h.Snapshot().ConfigWarnings; len(got) != 1 || got[0] != "config: unknown key x" {
 		t.Errorf("ConfigWarnings = %q", got)
+	}
+}
+
+type fakeReleases struct {
+	runs, checks atomic.Int32
+	snap         releases.Snapshot
+}
+
+func (f *fakeReleases) Snapshot() releases.Snapshot { return f.snap }
+func (f *fakeReleases) Run(ctx context.Context)     { f.runs.Add(1); <-ctx.Done() }
+func (f *fakeReleases) Check()                      { f.checks.Add(1) }
+
+// TestReleasesInSnapshotAndRefresh: the Releases view's state is in every
+// snapshot, its watcher runs on any hub (it only reads), and Refresh asks
+// it to read again.
+func TestReleasesInSnapshotAndRefresh(t *testing.T) {
+	rel := &fakeReleases{snap: releases.Snapshot{Manifest: "jflowers/ship/repos.yaml", Repos: []releases.Repo{{Repo: "a/b", Latest: "v1.0.0"}}}}
+	h := New(Options{Config: testCfg(), Fetch: (&fakeFetcher{}).fetch, Releases: rel, PublishEvery: time.Millisecond})
+	if s := h.Snapshot(); s.Releases == nil || s.Releases.Repos[0].Latest != "v1.0.0" {
+		t.Fatalf("snapshot releases = %+v", s.Releases)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go h.Run(ctx)
+	waitFor(t, "the watcher to run", func() bool { return rel.runs.Load() == 1 })
+	if err := h.Refresh(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if rel.checks.Load() != 1 {
+		t.Errorf("Refresh checked releases %d times, want once", rel.checks.Load())
+	}
+	waitFor(t, "a publish with releases", func() bool { s := h.Snapshot(); return s.Seq > 0 && s.Releases != nil })
+
+	if New(Options{Config: testCfg(), Fetch: (&fakeFetcher{}).fetch}).Snapshot().Releases != nil {
+		t.Error("releases set with the view off")
 	}
 }
