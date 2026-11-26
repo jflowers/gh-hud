@@ -188,12 +188,12 @@ fun AppScreen(
                 d != null && d.startsWith("wsref:") -> {
                     val ref = d.removePrefix("wsref:")
                     val row = remember(s, ref) { WorkspaceList.byRef(s, ref) }
-                    WorkspaceScreen(row, act, onBack = back)
+                    WorkspaceScreen(row, off, act, act, say, onBack = back)
                 }
                 d != null && d.startsWith("ws:") -> {
                     val id = d.removePrefix("ws:")
                     val row = remember(s, id) { WorkspaceList.rows(s).firstOrNull { it.id == id } }
-                    WorkspaceScreen(row, act, onBack = back)
+                    WorkspaceScreen(row, off, act, act, say, onBack = back)
                 }
                 place == Place.INBOX -> AttentionScreen(ui, act, onToolkit = { rollout ->
                     openRollout = rollout

@@ -200,3 +200,44 @@ func TestStartCheckoutActionRefuses(t *testing.T) {
 		t.Error("the upkeep wasn't recorded")
 	}
 }
+
+// The slot records what holds it, for the Workspaces list: a sweep's
+// upkeep or reindex, or the action asked for by hand; releasing it
+// forgets that.
+func TestHeldSlotNamesTheAction(t *testing.T) {
+	d := &Dispatcher{}
+	before := time.Now()
+	if err := d.takeUpkeepSlot("m", "/w/a"); err != nil {
+		t.Fatal(err)
+	}
+	w, ok := d.heldSlots()["m"]
+	if !ok || w.Dir != "/w/a" || w.Action != "" || w.Started.Before(before) {
+		t.Fatalf("sweep upkeep held = %+v %v", w, ok)
+	}
+	h := CheckoutHealth{Upkeeping: true, Action: w.Action}
+	if got := h.Running(); got != busyUpkeep {
+		t.Errorf("sweep upkeep running = %q", got)
+	}
+	d.markSlotAction("m", CheckoutSave)
+	if got := (CheckoutHealth{Upkeeping: true, Action: d.heldSlots()["m"].Action}).Running(); got != "saving work to a draft PR" {
+		t.Errorf("save running = %q", got)
+	}
+	d.releaseUpkeepSlot("m", "/w/a")
+	if _, ok := d.heldSlots()["m"]; ok {
+		t.Error("released slot still held")
+	}
+
+	if err := d.takeReindexSlot("m", "/w/b"); err != nil {
+		t.Fatal(err)
+	}
+	if got := (CheckoutHealth{Reindexing: true}).Running(); got != busyReindexing {
+		t.Errorf("sweep reindex running = %q", got)
+	}
+	d.releaseReindexSlot("m", "/w/b")
+	if len(d.heldSlots()) != 0 {
+		t.Error("released reindex slot still held")
+	}
+	if got := (CheckoutHealth{Action: CheckoutDiscard}).Running(); got != "" {
+		t.Errorf("idle checkout running = %q", got)
+	}
+}

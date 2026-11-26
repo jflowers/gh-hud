@@ -446,8 +446,8 @@ struct WorkspaceDetail: View {
         if h.learnings > 0 {
             facts.append(("learnings", "\(h.learnings) untracked; the next clean run opens the daily chore PR"))
         }
-        if h.upkeeping {
-            facts.append(("upkeep", "running now; no dispatch here until it ends"))
+        if h.upkeeping || h.reindexing {
+            facts.append(("running", WorkspaceRow.runningText(h) + "; no dispatch here until it ends"))
         }
         if h.hasLastUpkeep {
             facts.append(("last upkeep", WorkspaceActions.upkeepLine(h.lastUpkeep)))

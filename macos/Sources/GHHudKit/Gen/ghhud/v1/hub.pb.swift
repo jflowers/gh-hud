@@ -3274,6 +3274,24 @@ public nonisolated struct Ghhud_V1_CheckoutHealth: @unchecked Sendable {
     set {_uniqueStorage()._upkeepOnly = newValue}
   }
 
+  /// What is running here while upkeeping or reindexing: action is the
+  /// checkout action asked for by hand (CheckoutActionRequest), UNSPECIFIED
+  /// for a sweep's own upkeep or reindex; action_started is when the
+  /// upkeep, reindex or action started (unset when none runs).
+  public var action: Ghhud_V1_CheckoutActionKind {
+    get {_storage._action}
+    set {_uniqueStorage()._action = newValue}
+  }
+
+  public var actionStarted: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_storage._actionStarted ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_uniqueStorage()._actionStarted = newValue}
+  }
+  /// Returns true if `actionStarted` has been explicitly set.
+  public var hasActionStarted: Bool {_storage._actionStarted != nil}
+  /// Clears the value of `actionStarted`. Subsequent reads from it will return its default value.
+  public mutating func clearActionStarted() {_uniqueStorage()._actionStarted = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -8715,7 +8733,7 @@ nonisolated extension Ghhud_V1_EpicNode: SwiftProtobuf.Message, SwiftProtobuf._M
 
 nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CheckoutHealth"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machine\0\u{1}workspace\0\u{1}repo\0\u{1}dir\0\u{1}branch\0\u{3}default_branch\0\u{1}ahead\0\u{1}behind\0\u{1}dirty\0\u{1}learnings\0\u{3}local_only\0\u{1}stashes\0\u{1}busy\0\u{3}no_upstream\0\u{1}error\0\u{1}index\0\u{3}index_built\0\u{3}index_pages\0\u{3}index_blocks\0\u{3}index_embeddings\0\u{3}index_status_at\0\u{1}reindexing\0\u{3}last_reindex\0\u{1}upkeeping\0\u{3}last_upkeep\0\u{3}index_dewey_version\0\u{3}index_format\0\u{3}index_reasons\0\u{1}unmanaged\0\u{3}upkeep_only\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machine\0\u{1}workspace\0\u{1}repo\0\u{1}dir\0\u{1}branch\0\u{3}default_branch\0\u{1}ahead\0\u{1}behind\0\u{1}dirty\0\u{1}learnings\0\u{3}local_only\0\u{1}stashes\0\u{1}busy\0\u{3}no_upstream\0\u{1}error\0\u{1}index\0\u{3}index_built\0\u{3}index_pages\0\u{3}index_blocks\0\u{3}index_embeddings\0\u{3}index_status_at\0\u{1}reindexing\0\u{3}last_reindex\0\u{1}upkeeping\0\u{3}last_upkeep\0\u{3}index_dewey_version\0\u{3}index_format\0\u{3}index_reasons\0\u{1}unmanaged\0\u{3}upkeep_only\0\u{1}action\0\u{3}action_started\0")
 
   fileprivate class _StorageClass {
     var _machine: String = String()
@@ -8748,6 +8766,8 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
     var _indexReasons: [String] = []
     var _unmanaged: Bool = false
     var _upkeepOnly: Bool = false
+    var _action: Ghhud_V1_CheckoutActionKind = .unspecified
+    var _actionStarted: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -8788,6 +8808,8 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
       _indexReasons = source._indexReasons
       _unmanaged = source._unmanaged
       _upkeepOnly = source._upkeepOnly
+      _action = source._action
+      _actionStarted = source._actionStarted
     }
   }
 
@@ -8836,6 +8858,8 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
         case 28: try { try decoder.decodeRepeatedStringField(value: &_storage._indexReasons) }()
         case 29: try { try decoder.decodeSingularBoolField(value: &_storage._unmanaged) }()
         case 30: try { try decoder.decodeSingularBoolField(value: &_storage._upkeepOnly) }()
+        case 31: try { try decoder.decodeSingularEnumField(value: &_storage._action) }()
+        case 32: try { try decoder.decodeSingularMessageField(value: &_storage._actionStarted) }()
         default: break
         }
       }
@@ -8938,6 +8962,12 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
       if _storage._upkeepOnly != false {
         try visitor.visitSingularBoolField(value: _storage._upkeepOnly, fieldNumber: 30)
       }
+      if _storage._action != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._action, fieldNumber: 31)
+      }
+      try { if let v = _storage._actionStarted {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 32)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -8977,6 +9007,8 @@ nonisolated extension Ghhud_V1_CheckoutHealth: SwiftProtobuf.Message, SwiftProto
         if _storage._indexReasons != rhs_storage._indexReasons {return false}
         if _storage._unmanaged != rhs_storage._unmanaged {return false}
         if _storage._upkeepOnly != rhs_storage._upkeepOnly {return false}
+        if _storage._action != rhs_storage._action {return false}
+        if _storage._actionStarted != rhs_storage._actionStarted {return false}
         return true
       }
       if !storagesAreEqual {return false}

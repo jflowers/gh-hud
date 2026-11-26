@@ -550,6 +550,19 @@ do {
     var f = h; f.lastUpkeep = u
     check(WorkspaceRow(f).notes.contains("upkeep failed"), "workspace row: upkeep failed note")
     check(WorkspaceRow(h).notes.isEmpty, "workspace row: no notes when clean")
+
+    // What's running in a checkout: the sweep's upkeep, or the action asked for.
+    let now = Date(timeIntervalSince1970: 1_000_000)
+    var sweep = h; sweep.upkeeping = true
+    check(WorkspaceRow(sweep, now: now).state == "upkeep", "workspace row: a sweep's upkeep")
+    check(WorkspaceRow(sweep, now: now).tone == .pending, "workspace row: upkeep is pending")
+    var saving = sweep; saving.action = .save
+    saving.actionStarted = .init(date: now.addingTimeInterval(-180))
+    check(WorkspaceRow(saving, now: now).state == "saving work to a draft PR · 3m", "workspace row: the action asked for, with its age")
+    var rx = h; rx.reindexing = true; rx.action = .reindex
+    check(WorkspaceRow.running(rx) == "reindexing (asked for)", "workspace row: a reindex asked for")
+    var idle = h; idle.action = .discard
+    check(WorkspaceRow.running(idle).isEmpty, "workspace row: nothing runs when idle")
 }
 
 // MARK: plan

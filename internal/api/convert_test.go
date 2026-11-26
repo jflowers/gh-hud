@@ -39,6 +39,10 @@ func (f *filler) fill(v reflect.Value, path string, t *testing.T) {
 	case v.Type() == errorType:
 		v.Set(reflect.ValueOf(fmt.Errorf("err %d", f.next())))
 		return
+	case v.Type() == reflect.TypeFor[dispatch.CheckoutAction]():
+		// An enum on the wire: one of its values.
+		v.SetString(string(dispatch.CheckoutSave))
+		return
 	}
 	switch v.Kind() {
 	case reflect.String:

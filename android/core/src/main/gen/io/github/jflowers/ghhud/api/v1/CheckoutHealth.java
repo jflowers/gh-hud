@@ -1579,6 +1579,131 @@ public  final class CheckoutHealth extends
     upkeepOnly_ = false;
   }
 
+  public static final int ACTION_FIELD_NUMBER = 31;
+  private int action_;
+  /**
+   * <pre>
+   * What is running here while upkeeping or reindexing: action is the
+   * checkout action asked for by hand (CheckoutActionRequest), UNSPECIFIED
+   * for a sweep's own upkeep or reindex; action_started is when the
+   * upkeep, reindex or action started (unset when none runs).
+   * </pre>
+   *
+   * <code>.ghhud.v1.CheckoutActionKind action = 31 [json_name = "action"];</code>
+   * @return The enum numeric value on the wire for action.
+   */
+  @java.lang.Override
+  public int getActionValue() {
+    return action_;
+  }
+  /**
+   * <pre>
+   * What is running here while upkeeping or reindexing: action is the
+   * checkout action asked for by hand (CheckoutActionRequest), UNSPECIFIED
+   * for a sweep's own upkeep or reindex; action_started is when the
+   * upkeep, reindex or action started (unset when none runs).
+   * </pre>
+   *
+   * <code>.ghhud.v1.CheckoutActionKind action = 31 [json_name = "action"];</code>
+   * @return The action.
+   */
+  @java.lang.Override
+  public io.github.jflowers.ghhud.api.v1.CheckoutActionKind getAction() {
+    io.github.jflowers.ghhud.api.v1.CheckoutActionKind result = io.github.jflowers.ghhud.api.v1.CheckoutActionKind.forNumber(action_);
+    return result == null ? io.github.jflowers.ghhud.api.v1.CheckoutActionKind.UNRECOGNIZED : result;
+  }
+  /**
+   * <pre>
+   * What is running here while upkeeping or reindexing: action is the
+   * checkout action asked for by hand (CheckoutActionRequest), UNSPECIFIED
+   * for a sweep's own upkeep or reindex; action_started is when the
+   * upkeep, reindex or action started (unset when none runs).
+   * </pre>
+   *
+   * <code>.ghhud.v1.CheckoutActionKind action = 31 [json_name = "action"];</code>
+   * @param value The enum numeric value on the wire for action to set.
+   */
+  private void setActionValue(int value) {
+      action_ = value;
+  }
+  /**
+   * <pre>
+   * What is running here while upkeeping or reindexing: action is the
+   * checkout action asked for by hand (CheckoutActionRequest), UNSPECIFIED
+   * for a sweep's own upkeep or reindex; action_started is when the
+   * upkeep, reindex or action started (unset when none runs).
+   * </pre>
+   *
+   * <code>.ghhud.v1.CheckoutActionKind action = 31 [json_name = "action"];</code>
+   * @param value The action to set.
+   * @throws IllegalArgumentException if UNRECOGNIZED is provided.
+   */
+  private void setAction(io.github.jflowers.ghhud.api.v1.CheckoutActionKind value) {
+    action_ = value.getNumber();
+
+  }
+  /**
+   * <pre>
+   * What is running here while upkeeping or reindexing: action is the
+   * checkout action asked for by hand (CheckoutActionRequest), UNSPECIFIED
+   * for a sweep's own upkeep or reindex; action_started is when the
+   * upkeep, reindex or action started (unset when none runs).
+   * </pre>
+   *
+   * <code>.ghhud.v1.CheckoutActionKind action = 31 [json_name = "action"];</code>
+   */
+  private void clearAction() {
+
+    action_ = 0;
+  }
+
+  public static final int ACTION_STARTED_FIELD_NUMBER = 32;
+  private com.google.protobuf.Timestamp actionStarted_;
+  /**
+   * <code>.google.protobuf.Timestamp action_started = 32 [json_name = "actionStarted"];</code>
+   */
+  @java.lang.Override
+  public boolean hasActionStarted() {
+    return ((bitField0_ & 0x00000010) != 0);
+  }
+  /**
+   * <code>.google.protobuf.Timestamp action_started = 32 [json_name = "actionStarted"];</code>
+   */
+  @java.lang.Override
+  public com.google.protobuf.Timestamp getActionStarted() {
+    return actionStarted_ == null ? com.google.protobuf.Timestamp.getDefaultInstance() : actionStarted_;
+  }
+  /**
+   * <code>.google.protobuf.Timestamp action_started = 32 [json_name = "actionStarted"];</code>
+   */
+  private void setActionStarted(com.google.protobuf.Timestamp value) {
+    java.util.Objects.requireNonNull(value);
+    actionStarted_ = value;
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.google.protobuf.Timestamp action_started = 32 [json_name = "actionStarted"];</code>
+   */
+  @java.lang.SuppressWarnings("ReferenceEquality")
+  private void mergeActionStarted(com.google.protobuf.Timestamp value) {
+    java.util.Objects.requireNonNull(value);
+    if (actionStarted_ != null &&
+        actionStarted_ != com.google.protobuf.Timestamp.getDefaultInstance()) {
+      actionStarted_ =
+        com.google.protobuf.Timestamp.newBuilder(actionStarted_).mergeFrom(value).buildPartial();
+    } else {
+      actionStarted_ = value;
+    }
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.google.protobuf.Timestamp action_started = 32 [json_name = "actionStarted"];</code>
+   */
+  private void clearActionStarted() {
+    actionStarted_ = null;
+    bitField0_ = (bitField0_ & ~0x00000010);
+  }
+
   public static io.github.jflowers.ghhud.api.v1.CheckoutHealth parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -3280,6 +3405,135 @@ public  final class CheckoutHealth extends
       return this;
     }
 
+    /**
+     * <pre>
+     * What is running here while upkeeping or reindexing: action is the
+     * checkout action asked for by hand (CheckoutActionRequest), UNSPECIFIED
+     * for a sweep's own upkeep or reindex; action_started is when the
+     * upkeep, reindex or action started (unset when none runs).
+     * </pre>
+     *
+     * <code>.ghhud.v1.CheckoutActionKind action = 31 [json_name = "action"];</code>
+     * @return The enum numeric value on the wire for action.
+     */
+    @java.lang.Override
+    public int getActionValue() {
+      return instance.getActionValue();
+    }
+    /**
+     * <pre>
+     * What is running here while upkeeping or reindexing: action is the
+     * checkout action asked for by hand (CheckoutActionRequest), UNSPECIFIED
+     * for a sweep's own upkeep or reindex; action_started is when the
+     * upkeep, reindex or action started (unset when none runs).
+     * </pre>
+     *
+     * <code>.ghhud.v1.CheckoutActionKind action = 31 [json_name = "action"];</code>
+     * @param value The action to set.
+     * @throws IllegalArgumentException if UNRECOGNIZED is provided.
+     * @return This builder for chaining.
+     */
+    public Builder setActionValue(int value) {
+      copyOnWrite();
+      instance.setActionValue(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * What is running here while upkeeping or reindexing: action is the
+     * checkout action asked for by hand (CheckoutActionRequest), UNSPECIFIED
+     * for a sweep's own upkeep or reindex; action_started is when the
+     * upkeep, reindex or action started (unset when none runs).
+     * </pre>
+     *
+     * <code>.ghhud.v1.CheckoutActionKind action = 31 [json_name = "action"];</code>
+     * @return The action.
+     */
+    @java.lang.Override
+    public io.github.jflowers.ghhud.api.v1.CheckoutActionKind getAction() {
+      return instance.getAction();
+    }
+    /**
+     * <pre>
+     * What is running here while upkeeping or reindexing: action is the
+     * checkout action asked for by hand (CheckoutActionRequest), UNSPECIFIED
+     * for a sweep's own upkeep or reindex; action_started is when the
+     * upkeep, reindex or action started (unset when none runs).
+     * </pre>
+     *
+     * <code>.ghhud.v1.CheckoutActionKind action = 31 [json_name = "action"];</code>
+     * @param value The enum numeric value on the wire for action to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAction(io.github.jflowers.ghhud.api.v1.CheckoutActionKind value) {
+      copyOnWrite();
+      instance.setAction(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * What is running here while upkeeping or reindexing: action is the
+     * checkout action asked for by hand (CheckoutActionRequest), UNSPECIFIED
+     * for a sweep's own upkeep or reindex; action_started is when the
+     * upkeep, reindex or action started (unset when none runs).
+     * </pre>
+     *
+     * <code>.ghhud.v1.CheckoutActionKind action = 31 [json_name = "action"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearAction() {
+      copyOnWrite();
+      instance.clearAction();
+      return this;
+    }
+
+    /**
+     * <code>.google.protobuf.Timestamp action_started = 32 [json_name = "actionStarted"];</code>
+     */
+    @java.lang.Override
+    public boolean hasActionStarted() {
+      return instance.hasActionStarted();
+    }
+    /**
+     * <code>.google.protobuf.Timestamp action_started = 32 [json_name = "actionStarted"];</code>
+     */
+    @java.lang.Override
+    public com.google.protobuf.Timestamp getActionStarted() {
+      return instance.getActionStarted();
+    }
+    /**
+     * <code>.google.protobuf.Timestamp action_started = 32 [json_name = "actionStarted"];</code>
+     */
+    public Builder setActionStarted(com.google.protobuf.Timestamp value) {
+      copyOnWrite();
+      instance.setActionStarted(value);
+      return this;
+      }
+    /**
+     * <code>.google.protobuf.Timestamp action_started = 32 [json_name = "actionStarted"];</code>
+     */
+    public Builder setActionStarted(
+        com.google.protobuf.Timestamp.Builder builderForValue) {
+      copyOnWrite();
+      instance.setActionStarted(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.google.protobuf.Timestamp action_started = 32 [json_name = "actionStarted"];</code>
+     */
+    public Builder mergeActionStarted(com.google.protobuf.Timestamp value) {
+      copyOnWrite();
+      instance.mergeActionStarted(value);
+      return this;
+    }
+    /**
+     * <code>.google.protobuf.Timestamp action_started = 32 [json_name = "actionStarted"];</code>
+     */
+    public Builder clearActionStarted() {  copyOnWrite();
+      instance.clearActionStarted();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.CheckoutHealth)
   }
   @java.lang.Override
@@ -3327,14 +3581,16 @@ public  final class CheckoutHealth extends
             "indexReasons_",
             "unmanaged_",
             "upkeepOnly_",
+            "action_",
+            "actionStarted_",
           };
           java.lang.String info =
-              "\u0000\u001e\u0000\u0001\u0001\u001e\u001e\u0000\u0003\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u0208\u0007\u0002\b\u0002\t\u021a\n\u0002" +
-              "\u000b\u021a\f\u0002\r\u0208\u000e\u0007\u000f\u0208\u0010\u0208\u0011\u1009\u0000" +
-              "\u0012\u0002\u0013\u0002\u0014\u0002\u0015\u1009\u0001\u0016\u0007\u0017\u1009\u0002" +
-              "\u0018\u0007\u0019\u1009\u0003\u001a\u0208\u001b\u0002\u001c\u021a\u001d\u0007\u001e" +
-              "\u0007";
+              "\u0000 \u0000\u0001\u0001  \u0000\u0003\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
+              "\u0004\u0208\u0005\u0208\u0006\u0208\u0007\u0002\b\u0002\t\u021a\n\u0002\u000b\u021a" +
+              "\f\u0002\r\u0208\u000e\u0007\u000f\u0208\u0010\u0208\u0011\u1009\u0000\u0012\u0002" +
+              "\u0013\u0002\u0014\u0002\u0015\u1009\u0001\u0016\u0007\u0017\u1009\u0002\u0018\u0007" +
+              "\u0019\u1009\u0003\u001a\u0208\u001b\u0002\u001c\u021a\u001d\u0007\u001e\u0007\u001f" +
+              "\f \u1009\u0004";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -61,7 +61,7 @@ func wsCells(h dispatch.CheckoutHealth) (glyph string, color lipgloss.Color, sta
 		}
 		return "●", cTeal, "running " + ref
 	case h.Reindexing, h.Upkeeping:
-		return "●", cTeal, h.Problem()
+		return "●", cTeal, runningText(h, time.Now())
 	case h.NoUpstream:
 		return "◆", cYellow, h.Problem()
 	case h.Problem() == "upkeep only":
@@ -319,14 +319,17 @@ func wsDetail(h dispatch.CheckoutHealth, w int) []string {
 	if h.Learnings > 0 {
 		lines = append(lines, field("learnings", fmt.Sprintf("%d untracked; the next clean run opens the daily chore PR", h.Learnings)))
 	}
-	if h.Reindexing {
-		lines = append(lines, field("dewey", "reindexing the index; no dispatch here until it ends"))
+	if h.Reindexing || h.Upkeeping {
+		lines = append(lines, field("running", runningText(h, time.Now())+"; no dispatch here until it ends"))
+	}
+	if h.Reindexing && h.Action == "" {
+		lines = append(lines, field("dewey", "reindexing the index"))
 	}
 	if r := h.LastReindex; r != nil {
 		lines = append(lines, field("last reindex", reindexLine(*r, time.Now())))
 	}
-	if h.Upkeeping {
-		lines = append(lines, field("upkeep", "fetching and fast-forwarding; no dispatch here until it ends"))
+	if h.Upkeeping && h.Action == "" {
+		lines = append(lines, field("upkeep", "fetching and fast-forwarding"))
 	}
 	if u := h.LastUpkeep; u != nil {
 		lines = append(lines, field("last upkeep", truncatePlain(upkeepLine(*u, time.Now()), w-14)))
@@ -450,4 +453,14 @@ func (m *Model) handleWorkspacesKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+// runningText is the maintenance running in h with how long it has run:
+// "saving work to a draft PR · 2m".
+func runningText(h dispatch.CheckoutHealth, now time.Time) string {
+	s := h.Running()
+	if !h.ActionStarted.IsZero() {
+		s += " · " + model.RelativeTime(h.ActionStarted, now)
+	}
+	return s
 }

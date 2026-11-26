@@ -429,4 +429,40 @@ public interface CheckoutHealthOrBuilder extends
    * @return The upkeepOnly.
    */
   boolean getUpkeepOnly();
+
+  /**
+   * <pre>
+   * What is running here while upkeeping or reindexing: action is the
+   * checkout action asked for by hand (CheckoutActionRequest), UNSPECIFIED
+   * for a sweep's own upkeep or reindex; action_started is when the
+   * upkeep, reindex or action started (unset when none runs).
+   * </pre>
+   *
+   * <code>.ghhud.v1.CheckoutActionKind action = 31 [json_name = "action"];</code>
+   * @return The enum numeric value on the wire for action.
+   */
+  int getActionValue();
+  /**
+   * <pre>
+   * What is running here while upkeeping or reindexing: action is the
+   * checkout action asked for by hand (CheckoutActionRequest), UNSPECIFIED
+   * for a sweep's own upkeep or reindex; action_started is when the
+   * upkeep, reindex or action started (unset when none runs).
+   * </pre>
+   *
+   * <code>.ghhud.v1.CheckoutActionKind action = 31 [json_name = "action"];</code>
+   * @return The action.
+   */
+  io.github.jflowers.ghhud.api.v1.CheckoutActionKind getAction();
+
+  /**
+   * <code>.google.protobuf.Timestamp action_started = 32 [json_name = "actionStarted"];</code>
+   * @return Whether the actionStarted field is set.
+   */
+  boolean hasActionStarted();
+  /**
+   * <code>.google.protobuf.Timestamp action_started = 32 [json_name = "actionStarted"];</code>
+   * @return The actionStarted.
+   */
+  com.google.protobuf.Timestamp getActionStarted();
 }

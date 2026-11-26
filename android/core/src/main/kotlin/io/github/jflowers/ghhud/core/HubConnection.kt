@@ -16,6 +16,8 @@ import io.github.jflowers.ghhud.api.v1.SubscribeResponse
 import io.github.jflowers.ghhud.api.v1.DispatchResponse
 import io.github.jflowers.ghhud.api.v1.DeweyReindexResponse
 import io.github.jflowers.ghhud.api.v1.deweyReindexRequest
+import io.github.jflowers.ghhud.api.v1.CheckoutActionKind
+import io.github.jflowers.ghhud.api.v1.checkoutActionRequest
 import io.github.jflowers.ghhud.api.v1.ItemChoicesResponse
 import io.github.jflowers.ghhud.api.v1.MenuChoicesResponse
 import io.github.jflowers.ghhud.api.v1.itemChoicesRequest
@@ -386,6 +388,22 @@ public class HubConnection(
                 headers,
             ),
         ) { it }
+
+    /**
+     * Starts one action on one fleet checkout (machine "" is the hub's);
+     * the answer is what started.
+     */
+    public suspend fun checkoutAction(machine: String, dir: String, action: CheckoutActionKind): Answer<String> =
+        answer(
+            hub.checkoutAction(
+                checkoutActionRequest {
+                    this.machine = machine
+                    this.dir = dir
+                    this.action = action
+                },
+                headers,
+            ),
+        ) { it.started }
 
     /** The end of a live agent's pane: the run's when runId is set, else the session's. */
     public suspend fun readPane(runId: String, sessionId: String, lines: Int = 200): Answer<String> =

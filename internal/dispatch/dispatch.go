@@ -428,7 +428,11 @@ type Dispatcher struct {
 	// (under mu). upkeeps are the last upkeep per checkout, guarded by
 	// baseMu; upkeepsMod is upkeep.json's mtime. upkeepWork tracks sweep
 	// goroutines, so a test can wait for them.
-	upkeeping  map[string]string
+	upkeeping map[string]string
+	// slotWork is what holds each machine's one slot (machine key; under
+	// mu): the checkout, the action asked for by hand ("" for a sweep's
+	// upkeep or reindex) and when it started, for the Workspaces list.
+	slotWork   map[string]heldSlot
 	sweeping   map[string]bool
 	upkeeps    map[string]UpkeepResult
 	upkeepsMod time.Time

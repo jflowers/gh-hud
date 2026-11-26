@@ -259,6 +259,7 @@ func (d *Dispatcher) takeReindexSlot(machine, dir string) error {
 	}
 	d.reindexing[machine] = dir
 	d.claims[dirKey] = busyReindexing
+	d.holdSlotLocked(machine, dir)
 	return nil
 }
 
@@ -266,6 +267,7 @@ func (d *Dispatcher) releaseReindexSlot(machine, dir string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	delete(d.reindexing, machine)
+	delete(d.slotWork, machine)
 	delete(d.claims, "dir|"+machine+"|"+dir)
 }
 

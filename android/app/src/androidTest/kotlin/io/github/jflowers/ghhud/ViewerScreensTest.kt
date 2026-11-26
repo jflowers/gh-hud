@@ -118,6 +118,10 @@ class ViewerScreensTest {
     }
     private val agentAct = object : AgentActions {
         override suspend fun recheck(r: AgentRow): Answer<String> = Answer.Ok("")
+        override suspend fun checkoutAction(
+            h: io.github.jflowers.ghhud.api.v1.CheckoutHealth,
+            kind: io.github.jflowers.ghhud.api.v1.CheckoutActionKind,
+        ): Answer<String> = Answer.Ok("")
     }
 
     private fun agent(id: String) = AgentList.rows(snap, showStale = true, now = now).first { it.id == id }

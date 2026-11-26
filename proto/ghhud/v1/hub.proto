@@ -980,6 +980,12 @@ message CheckoutHealth {
   // run ever starts here. Never ready; its state is "upkeep only" when
   // nothing else stands out.
   bool upkeep_only = 30;
+  // What is running here while upkeeping or reindexing: action is the
+  // checkout action asked for by hand (CheckoutActionRequest), UNSPECIFIED
+  // for a sweep's own upkeep or reindex; action_started is when the
+  // upkeep, reindex or action started (unset when none runs).
+  CheckoutActionKind action = 31;
+  google.protobuf.Timestamp action_started = 32;
 }
 
 // UpkeepResult is the last upkeep of an idle fleet checkout: fetched,

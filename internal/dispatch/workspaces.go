@@ -63,6 +63,12 @@ type CheckoutHealth struct {
 	// takes no dispatch. LastUpkeep is its last upkeep (nil: none yet).
 	Upkeeping  bool
 	LastUpkeep *UpkeepResult
+	// Action is the checkout action asked for by hand that is running
+	// here (checkout_actions.go; "" for a sweep's upkeep or reindex, or
+	// none); ActionStarted is when the upkeep, reindex or action started
+	// (zero when neither runs).
+	Action        CheckoutAction
+	ActionStarted time.Time
 	// Unmanaged: the row isn't a checkout but a worker's ghws root (Dir),
 	// carrying its last removal of what isn't the fleet's
 	// (upkeep_unmanaged.go) as LastUpkeep.
@@ -101,6 +107,22 @@ func (h CheckoutHealth) Problem() string {
 		return problemUpkeepOnly
 	}
 	return ""
+}
+
+// Running is the maintenance running in the checkout, in a few words
+// ("saving the work to a draft PR", "upkeep"), "" when none: the action
+// asked for by hand, else the sweep's own upkeep or reindex.
+func (h CheckoutHealth) Running() string {
+	if !h.Reindexing && !h.Upkeeping {
+		return ""
+	}
+	if s := h.Action.Doing(); s != "" {
+		return s
+	}
+	if h.Reindexing {
+		return busyReindexing
+	}
+	return busyUpkeep
 }
 
 // Ready reports whether the next dispatch for the repo could run here.
@@ -152,6 +174,7 @@ func (d *Dispatcher) Workspaces(ctx context.Context) []CheckoutHealth {
 
 	reindexing, reindexes := d.reindexingDirs(), d.lastReindexes()
 	upkeeping, upkeeps := d.upkeepingDirs(), d.lastUpkeeps()
+	held := d.heldSlots()
 	var out []CheckoutHealth
 	for _, rows := range results {
 		for _, h := range rows {
@@ -169,6 +192,9 @@ func (d *Dispatcher) Workspaces(ctx context.Context) []CheckoutHealth {
 			}
 			if u, ok := upkeeps[deweyBaseKey(h.Machine, h.Dir)]; ok {
 				h.LastUpkeep = &u
+			}
+			if w, ok := held[h.Machine]; ok && (h.Reindexing || h.Upkeeping) && samePath(w.Dir, h.Dir) {
+				h.Action, h.ActionStarted = w.Action, w.Started
 			}
 			out = append(out, h)
 		}
