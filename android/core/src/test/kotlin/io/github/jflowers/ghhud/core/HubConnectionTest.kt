@@ -99,6 +99,21 @@ class HubConnectionTest {
     }
 
     @Test
+    fun subscriptionHasNoDeadline() = runBlocking {
+        // connect-kotlin's default gave every call 10s, the subscription too:
+        // the hub dropped it every 10s ("10s timeout elapsed").
+        server.enqueue(stream(reviews("a"), hold = true))
+        val hub = connect()
+        withTimeout(10_000) { hub.state.first { it.status == HubStatus.Connected } }
+        assertNull(server.takeRequest().headers["Connect-Timeout-Ms"])
+
+        server.enqueue(MockResponse.Builder().setHeader("Content-Type", "application/proto").build())
+        assertNull(hub.approve(Approval.Proposal("p1")))
+        assertEquals("30000", server.takeRequest().headers["Connect-Timeout-Ms"])
+        hub.stop()
+    }
+
+    @Test
     fun reconnectsWhenTheHubGoesAway() = runBlocking {
         server.enqueue(stream(reviews("a")))
         server.enqueue(stream(reviews("a", "b", "c"), hold = true))
