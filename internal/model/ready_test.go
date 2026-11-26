@@ -128,7 +128,7 @@ func TestMarkReady(t *testing.T) {
 		{Kind: KindPR, Cats: CatMy | CatRQ, CI: CIFail, WaitingOn: "them"},                                           // neither
 		{Kind: KindIssue, Cats: CatISS, WaitingOn: "them"},                                                           // not a PR
 	}
-	markReady(items, "me", 48*time.Hour, bots)
+	markReady(items, "me", 48*time.Hour, bots, func(string) bool { return true })
 	if items[0].Cats&CatReady == 0 {
 		t.Errorf("my ready PR should get CatReady, got %s", items[0].Cats)
 	}
@@ -308,8 +308,23 @@ func TestDependabotSettled(t *testing.T) {
 		}
 	}
 	items := []Item{dep}
-	markReady(items, "me", time.Hour, NewBotFilter(nil))
+	markReady(items, "me", time.Hour, NewBotFilter(nil), func(string) bool { return true })
 	if items[0].Cats&CatRQ != 0 {
 		t.Error("a settled Dependabot PR should leave review-requested")
+	}
+}
+
+func TestMarkReadyQueueScope(t *testing.T) {
+	bots := NewBotFilter(nil)
+	pr := func(repo string) Item {
+		return Item{Kind: KindPR, Repo: repo, Author: "other", CI: CIOK, Merge: " ", WaitingOn: "them", UpdatedAt: time.Now()}
+	}
+	items := []Item{pr("fullsend-ai/fullsend"), pr("fullsend-ai/rfe-creator")}
+	markReady(items, "me", 48*time.Hour, bots, func(repo string) bool { return repo == "fullsend-ai/fullsend" })
+	if items[0].Cats&CatQueue == 0 {
+		t.Errorf("in-scope PR should be queued, got %s", items[0].Cats)
+	}
+	if items[1].Cats&CatQueue != 0 {
+		t.Errorf("PR outside [dispatch.review]'s scope must not be queued, got %s", items[1].Cats)
 	}
 }

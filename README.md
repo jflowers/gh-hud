@@ -62,7 +62,9 @@ described under [Agent dispatch](#agent-dispatch) and
   where the author acted last, plus your own and Dependabot's
   `unbound-force` PRs until `uf-divisor` has reviewed the head commit
   (requires `orgs`; the sweep is disabled without them). A Dependabot PR is
-  never a chore, whatever its title. With
+  never a chore, whatever its title. Only repos `[dispatch.review]`'s
+  `orgs` and `repos` cover enter the Queue (every repo in `orgs` when it
+  sets neither), so it holds what review auto-dispatch would take. With
   `[dispatch.review] auto = true` these drain automatically as agent slots
   free up (see [Configuring dispatch](#configuring-dispatch)).
 
