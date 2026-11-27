@@ -14,6 +14,7 @@ import (
 	"github.com/jflowers/gh-hud/internal/dispatch"
 	"github.com/jflowers/gh-hud/internal/hub"
 	"github.com/jflowers/gh-hud/internal/model"
+	"github.com/jflowers/gh-hud/internal/toolkit"
 )
 
 // Server serves a hub.Backend as the HubService.
@@ -41,7 +42,7 @@ func toConnect(err error) error {
 		return nil
 	}
 	switch {
-	case errors.Is(err, hub.ErrNoDispatch), errors.Is(err, hub.ErrNoFleet), errors.Is(err, hub.ErrNoToolkit):
+	case errors.Is(err, hub.ErrNoDispatch), errors.Is(err, hub.ErrNoFleet), errors.Is(err, hub.ErrNoToolkit), errors.Is(err, toolkit.ErrCantFix):
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, model.ErrBadRef):
 		return connect.NewError(connect.CodeInvalidArgument, err)
@@ -330,8 +331,14 @@ func (s *Server) ToolkitControl(ctx context.Context, req *connect.Request[pb.Too
 		action = hub.ToolkitDismiss
 	case pb.ToolkitAction_TOOLKIT_ACTION_CHECK:
 		action = hub.ToolkitCheck
+	case pb.ToolkitAction_TOOLKIT_ACTION_DRIFT:
+		action = hub.ToolkitDrift
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("unknown toolkit action"))
 	}
 	return reply(&pb.ToolkitControlResponse{}, s.b.ToolkitControl(ctx, action, req.Msg.GetId()))
+}
+
+func (s *Server) ToolkitFixDrift(ctx context.Context, req *connect.Request[pb.ToolkitFixDriftRequest]) (*connect.Response[pb.ToolkitFixDriftResponse], error) {
+	return reply(&pb.ToolkitFixDriftResponse{}, s.b.ToolkitFixDrift(ctx, req.Msg.GetTarget()))
 }

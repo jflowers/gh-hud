@@ -260,3 +260,7 @@ func (f *Fake) ToolkitRollout(_ context.Context, tool, version string) (string, 
 func (f *Fake) ToolkitControl(_ context.Context, action hub.ToolkitAction, id string) error {
 	return f.call("ToolkitControl %s %s", action, id)
 }
+
+func (f *Fake) ToolkitFixDrift(_ context.Context, target string) error {
+	return f.call("ToolkitFixDrift %s", target)
+}

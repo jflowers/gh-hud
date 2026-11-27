@@ -165,6 +165,20 @@ object Views {
             out["$p.repos"] = t.repos
             out["$p.error"] = t.error
         }
+        if (s.hasToolkit()) {
+            out["toolkit.driftState"] = ToolkitList.driftState(s)
+        }
+        ToolkitList.drift(s).forEachIndexed { i, d ->
+            val p = "toolkit.drift[$i]"
+            out[p] = d.target
+            out["$p.state"] = d.state
+            out["$p.tone"] = tone(d.tone)
+            out["$p.note"] = d.note
+            out["$p.files"] = d.files
+            out["$p.stale"] = d.stale
+            out["$p.fix"] = d.fix
+            out["$p.fixable"] = d.fixable
+        }
         ToolkitList.rollouts(s).forEachIndexed { i, r ->
             val p = "toolkit.rollouts[$i]"
             out[p] = r.id

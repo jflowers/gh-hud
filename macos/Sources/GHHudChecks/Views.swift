@@ -171,6 +171,20 @@ enum Views {
             out["\(p).repos"] = t.repos
             out["\(p).error"] = t.error
         }
+        if s.hasToolkit {
+            out["toolkit.driftState"] = ToolkitList.driftState(s)
+        }
+        for (i, d) in ToolkitList.drift(s).enumerated() {
+            let p = "toolkit.drift[\(i)]"
+            out[p] = d.target
+            out["\(p).state"] = d.state
+            out["\(p).tone"] = tone(d.tone)
+            out["\(p).note"] = d.note
+            out["\(p).files"] = d.files
+            out["\(p).stale"] = d.stale
+            out["\(p).fix"] = d.fix?.absoluteString
+            out["\(p).fixable"] = d.fixable
+        }
         for (i, r) in ToolkitList.rollouts(s).enumerated() {
             let p = "toolkit.rollouts[\(i)]"
             out[p] = r.id

@@ -90,6 +90,8 @@ type Toolkit interface {
 	Retry(id string) error
 	Dismiss(id string) error
 	Check()
+	CheckDrift()
+	FixDrift(target string) error
 }
 
 // Releases is the part of *releases.Watcher the hub drives.
@@ -107,6 +109,7 @@ const (
 	ToolkitRetry   ToolkitAction = "retry"
 	ToolkitDismiss ToolkitAction = "dismiss"
 	ToolkitCheck   ToolkitAction = "check"
+	ToolkitDrift   ToolkitAction = "drift" // check scaffold drift now
 )
 
 // Backend is what a client needs from the hub. *Hub implements it
@@ -202,6 +205,9 @@ type Backend interface {
 	// returns its ID; ToolkitControl acts on one by ID.
 	ToolkitRollout(ctx context.Context, tool, version string) (string, error)
 	ToolkitControl(ctx context.Context, action ToolkitAction, id string) error
+	// ToolkitFixDrift opens the scaffold PR that brings a drifted target
+	// back to the pins (issue #77).
+	ToolkitFixDrift(ctx context.Context, target string) error
 }
 
 // Options configures a Hub.

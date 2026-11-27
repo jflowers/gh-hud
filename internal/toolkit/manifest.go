@@ -23,11 +23,16 @@ import (
 // its init command; a tool without them (an opencode plugin) only rolls
 // out through its pin.
 type Tool struct {
-	Name      string   `toml:"name"`       // short name used on the command line ("uf")
-	Release   string   `toml:"release"`    // GitHub repo that publishes releases ("unbound-force/unbound-force")
-	Mise      string   `toml:"mise"`       // mise tool key ("go:github.com/unbound-force/unbound-force/cmd/unbound-force")
-	Bin       string   `toml:"bin"`        // executable name inside the mise install
-	Init      []string `toml:"init"`       // arguments for the init run (default ["init"])
+	Name    string   `toml:"name"`    // short name used on the command line ("uf")
+	Release string   `toml:"release"` // GitHub repo that publishes releases ("unbound-force/unbound-force")
+	Mise    string   `toml:"mise"`    // mise tool key ("go:github.com/unbound-force/unbound-force/cmd/unbound-force")
+	Bin     string   `toml:"bin"`     // executable name inside the mise install
+	Init    []string `toml:"init"`    // arguments for the init run (default ["init"])
+	// Force is what the init takes, after its other arguments, to
+	// overwrite the user-owned files it otherwise skips (["--force"]).
+	// Only the drift check uses it: it says which of those files differ
+	// from the release. Without it, the check doesn't look at them.
+	Force     []string `toml:"force"`
 	TagPrefix *string  `toml:"tag_prefix"` // release tag prefix (default "v")
 	// Npm names the npm package whose "latest" version is the newest
 	// release, for tools that publish there rather than as GitHub

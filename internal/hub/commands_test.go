@@ -461,6 +461,11 @@ func (f *fakeToolkit) Cancel(id string) error  { f.ops = append(f.ops, "cancel "
 func (f *fakeToolkit) Retry(id string) error   { f.ops = append(f.ops, "retry "+id); return nil }
 func (f *fakeToolkit) Dismiss(id string) error { f.ops = append(f.ops, "dismiss "+id); return nil }
 func (f *fakeToolkit) Check()                  { f.ops = append(f.ops, "check") }
+func (f *fakeToolkit) CheckDrift()             { f.ops = append(f.ops, "drift") }
+func (f *fakeToolkit) FixDrift(target string) error {
+	f.ops = append(f.ops, "fix "+target)
+	return nil
+}
 
 func TestToolkitCommands(t *testing.T) {
 	ctx := context.Background()
@@ -483,15 +488,21 @@ func TestToolkitCommands(t *testing.T) {
 	if id, err := h.ToolkitRollout(ctx, "uf", "0.22.0"); err != nil || id != "uf@0.22.0" {
 		t.Errorf("rollout %q %v", id, err)
 	}
-	for _, a := range []ToolkitAction{ToolkitCancel, ToolkitRetry, ToolkitDismiss, ToolkitCheck} {
+	for _, a := range []ToolkitAction{ToolkitCancel, ToolkitRetry, ToolkitDismiss, ToolkitCheck, ToolkitDrift} {
 		if err := h.ToolkitControl(ctx, a, "uf@0.22.0"); err != nil {
 			t.Error(err)
 		}
 	}
+	if err := h.ToolkitFixDrift(ctx, "acme/app"); err != nil {
+		t.Error(err)
+	}
+	if err := off.ToolkitFixDrift(ctx, "acme/app"); !errors.Is(err, ErrNoToolkit) {
+		t.Errorf("fix without a toolkit: %v", err)
+	}
 	if err := h.ToolkitControl(ctx, "bogus", ""); err == nil {
 		t.Error("bogus action accepted")
 	}
-	want := []string{"start uf 0.22.0", "cancel uf@0.22.0", "retry uf@0.22.0", "dismiss uf@0.22.0", "check"}
+	want := []string{"start uf 0.22.0", "cancel uf@0.22.0", "retry uf@0.22.0", "dismiss uf@0.22.0", "check", "drift", "fix acme/app"}
 	if !slices.Equal(tk.ops, want) {
 		t.Errorf("ops %v", tk.ops)
 	}

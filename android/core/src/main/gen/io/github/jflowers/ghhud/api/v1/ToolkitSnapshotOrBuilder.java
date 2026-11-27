@@ -86,4 +86,70 @@ public interface ToolkitSnapshotOrBuilder extends
    */
   com.google.protobuf.ByteString
       getErrorBytes();
+
+  /**
+   * <pre>
+   * drift is each target's scaffold against the pins (issue #77), from
+   * the pass at drift_at; drift_error is why the latest pass couldn't run.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+   */
+  java.util.List<io.github.jflowers.ghhud.api.v1.ToolkitDrift> 
+      getDriftList();
+  /**
+   * <pre>
+   * drift is each target's scaffold against the pins (issue #77), from
+   * the pass at drift_at; drift_error is why the latest pass couldn't run.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+   */
+  io.github.jflowers.ghhud.api.v1.ToolkitDrift getDrift(int index);
+  /**
+   * <pre>
+   * drift is each target's scaffold against the pins (issue #77), from
+   * the pass at drift_at; drift_error is why the latest pass couldn't run.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+   */
+  int getDriftCount();
+
+  /**
+   * <pre>
+   * unset until the first pass
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp drift_at = 7 [json_name = "driftAt"];</code>
+   * @return Whether the driftAt field is set.
+   */
+  boolean hasDriftAt();
+  /**
+   * <pre>
+   * unset until the first pass
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp drift_at = 7 [json_name = "driftAt"];</code>
+   * @return The driftAt.
+   */
+  com.google.protobuf.Timestamp getDriftAt();
+
+  /**
+   * <code>bool drift_checking = 8 [json_name = "driftChecking"];</code>
+   * @return The driftChecking.
+   */
+  boolean getDriftChecking();
+
+  /**
+   * <code>string drift_error = 9 [json_name = "driftError"];</code>
+   * @return The driftError.
+   */
+  java.lang.String getDriftError();
+  /**
+   * <code>string drift_error = 9 [json_name = "driftError"];</code>
+   * @return The bytes for driftError.
+   */
+  com.google.protobuf.ByteString
+      getDriftErrorBytes();
 }

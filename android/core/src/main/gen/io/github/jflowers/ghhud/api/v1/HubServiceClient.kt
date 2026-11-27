@@ -487,4 +487,23 @@ public class HubServiceClient(
     ),
   )
 
+
+  /**
+   *  ToolkitFixDrift opens the scaffold PR (or overlay commit) that brings
+   *  a drifted target (ToolkitSnapshot.drift) back to the fleet's pins
+   *  (issue #77). It returns once the fix starts; the drift row shows how
+   *  it went. FAILED_PRECONDITION when the target has nothing to fix or a
+   *  fix is open; the agent token can't call it.
+   */
+  override suspend fun toolkitFixDrift(request: ToolkitFixDriftRequest, headers: Headers): ResponseMessage<ToolkitFixDriftResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "ghhud.v1.HubService/ToolkitFixDrift",
+      io.github.jflowers.ghhud.api.v1.ToolkitFixDriftRequest::class,
+      io.github.jflowers.ghhud.api.v1.ToolkitFixDriftResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
 }

@@ -43,6 +43,9 @@ final class DashboardState: ObservableObject {
     @Published var releaseBusy = false
     @Published var releaseError: String?
     @Published var confirmRollOut: ToolRow?
+    @Published var driftSelection: DriftRow.ID?
+    /// The drifted repo waiting for you to confirm its fix.
+    @Published var confirmFix: DriftRow?
     @Published var fleetSelection: FleetRow.ID?
     /// The Dewey reindex pass waiting for you to confirm it.
     @Published var confirmDewey: DeweyFleet.Ask?

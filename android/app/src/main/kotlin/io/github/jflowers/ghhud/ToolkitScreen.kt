@@ -51,6 +51,7 @@ import io.github.jflowers.ghhud.core.RolloutRow
 import io.github.jflowers.ghhud.core.TargetRow
 import io.github.jflowers.ghhud.core.ToolRow
 import io.github.jflowers.ghhud.core.ToolkitCommands
+import io.github.jflowers.ghhud.core.DriftRow
 import io.github.jflowers.ghhud.core.ToolkitList
 import io.github.jflowers.ghhud.core.Tone
 import kotlinx.coroutines.launch
@@ -58,6 +59,10 @@ import kotlinx.coroutines.launch
 /** What the Toolkit screen can ask the hub for. Each answer is what to say. */
 interface ToolkitActions {
     suspend fun checkTools(): Answer<String>
+
+    suspend fun checkDrift(): Answer<String>
+
+    suspend fun fixDrift(target: String): Answer<String>
 
     suspend fun rollOut(tool: String, version: String): Answer<String>
 
@@ -80,12 +85,16 @@ fun ToolkitScreen(ui: Ui, act: ToolkitActions, say: Say, refresh: () -> Unit, op
     val off = ToolkitCommands.off(ui.hub)
     val tools = remember(s) { ToolkitList.tools(s) }
     val rollouts = remember(s) { ToolkitList.rollouts(s) }
+    val drift = remember(s) { ToolkitList.drift(s) }
+    val driftState = remember(s) { ToolkitList.driftState(s) }
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     // The rollout shown open: the one asked for, else the newest.
     var opened by rememberSaveable(open) { mutableStateOf(open ?: rollouts.firstOrNull()?.id) }
     var release by rememberSaveable { mutableStateOf<String?>(null) } // a tool
     var confirm by remember { mutableStateOf<ToolRow?>(null) }
+    var fixing by remember { mutableStateOf<DriftRow?>(null) }
+    var driftOpen by rememberSaveable { mutableStateOf<String?>(null) }
     fun run(f: suspend () -> Answer<String>) {
         busy = true
         scope.launch {
@@ -107,6 +116,11 @@ fun ToolkitScreen(ui: Ui, act: ToolkitActions, say: Say, refresh: () -> Unit, op
                         enabled = off == null && !busy && !s.toolkit.checking,
                         modifier = Modifier.testTag("check-tools"),
                     ) { Text("Check now") }
+                    TextButton(
+                        onClick = { run { act.checkDrift() } },
+                        enabled = off == null && !busy && !s.toolkit.driftChecking,
+                        modifier = Modifier.testTag("check-drift"),
+                    ) { Text("Drift") }
                 },
             )
         },
@@ -130,6 +144,33 @@ fun ToolkitScreen(ui: Ui, act: ToolkitActions, say: Say, refresh: () -> Unit, op
                         }
                     })
                     HorizontalDivider()
+                }
+                if (drift.isNotEmpty() || driftState.isNotEmpty()) {
+                    item {
+                        Text(
+                            "Scaffold drift",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp),
+                        )
+                        Text(
+                            driftState,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (s.toolkit.driftError.isEmpty()) Tone.MUTED.color() else Tone.BAD.color(),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp).testTag("drift-state"),
+                        )
+                    }
+                    items(drift, key = { "drift:" + it.target }) { d ->
+                        DriftLine(
+                            d,
+                            expanded = driftOpen == d.target,
+                            enabled = off == null && !busy,
+                            onTap = { driftOpen = if (driftOpen == d.target) null else d.target },
+                            onFix = { fixing = d },
+                            onOpen = act::open,
+                        )
+                        HorizontalDivider()
+                    }
                 }
                 item {
                     Text(
@@ -171,6 +212,20 @@ fun ToolkitScreen(ui: Ui, act: ToolkitActions, say: Say, refresh: () -> Unit, op
             },
             onOpen = act::open,
             onDismiss = { release = null },
+        )
+    }
+    fixing?.let { d ->
+        AlertDialog(
+            onDismissRequest = { fixing = null },
+            title = { Text("Fix ${d.target}?") },
+            text = { Text("Re-scaffolds ${d.target} at the fleet's pins and opens a PR with what changes: ${d.files.size} file(s).") },
+            confirmButton = {
+                TextButton(onClick = {
+                    fixing = null
+                    run { act.fixDrift(d.target) }
+                }, modifier = Modifier.testTag("fix-confirm")) { Text("Open scaffold PR") }
+            },
+            dismissButton = { TextButton(onClick = { fixing = null }) { Text("Cancel") } },
         )
     }
     confirm?.let { t ->
@@ -218,6 +273,55 @@ private fun ToolLine(t: ToolRow, onTap: () -> Unit) {
             ).joinToString(" · ")
             if (facts.isNotEmpty()) Text(facts, style = MaterialTheme.typography.bodySmall, color = Tone.MUTED.color())
             if (t.error.isNotEmpty()) Text(t.error, style = MaterialTheme.typography.bodySmall, color = Tone.BAD.color())
+        }
+    }
+}
+
+/** A repo's scaffold against the pins; open, its files and Fix. */
+@Composable
+private fun DriftLine(
+    d: DriftRow,
+    expanded: Boolean,
+    enabled: Boolean,
+    onTap: () -> Unit,
+    onFix: () -> Unit,
+    onOpen: (String) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().clickable(onClick = onTap).padding(horizontal = 16.dp, vertical = 10.dp).testTag("drift:" + d.target),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Text("●", color = d.tone.color(), modifier = Modifier.width(20.dp))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(d.target, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f),
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(d.state, color = d.tone.color(), modifier = Modifier.testTag("drift-state:" + d.target))
+                }
+                if (d.note.isNotEmpty()) {
+                    Text(d.note, style = MaterialTheme.typography.bodySmall,
+                        color = if (d.tone == Tone.BAD) Tone.BAD.color() else Tone.MUTED.color(),
+                        maxLines = if (expanded) 6 else 2, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+        if (!expanded) return@Column
+        for (f in d.files) {
+            Text(f, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace,
+                modifier = Modifier.padding(start = 52.dp, end = 16.dp))
+        }
+        for (f in d.stale) {
+            Text("$f (the init skips it)", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace,
+                color = Tone.MUTED.color(), modifier = Modifier.padding(start = 52.dp, end = 16.dp))
+        }
+        Row(Modifier.padding(start = 52.dp, end = 16.dp, top = 4.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            d.fix?.let { pr ->
+                OutlinedButton(onClick = { onOpen(pr) }, modifier = Modifier.testTag("drift-pr:" + d.target)) { Text("Fix PR") }
+            }
+            if (d.fixable) {
+                OutlinedButton(onClick = onFix, enabled = enabled, modifier = Modifier.testTag("fix:" + d.target)) { Text("Fix") }
+            }
         }
     }
 }

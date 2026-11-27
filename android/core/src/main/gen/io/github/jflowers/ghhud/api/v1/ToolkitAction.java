@@ -47,6 +47,14 @@ public enum ToolkitAction
    * <code>TOOLKIT_ACTION_CHECK = 4;</code>
    */
   TOOLKIT_ACTION_CHECK(4),
+  /**
+   * <pre>
+   * check scaffold drift now
+   * </pre>
+   *
+   * <code>TOOLKIT_ACTION_DRIFT = 5;</code>
+   */
+  TOOLKIT_ACTION_DRIFT(5),
   UNRECOGNIZED(-1),
   ;
 
@@ -86,6 +94,14 @@ public enum ToolkitAction
    * <code>TOOLKIT_ACTION_CHECK = 4;</code>
    */
   public static final int TOOLKIT_ACTION_CHECK_VALUE = 4;
+  /**
+   * <pre>
+   * check scaffold drift now
+   * </pre>
+   *
+   * <code>TOOLKIT_ACTION_DRIFT = 5;</code>
+   */
+  public static final int TOOLKIT_ACTION_DRIFT_VALUE = 5;
 
 
   @java.lang.Override
@@ -113,6 +129,7 @@ public enum ToolkitAction
       case 2: return TOOLKIT_ACTION_RETRY;
       case 3: return TOOLKIT_ACTION_DISMISS;
       case 4: return TOOLKIT_ACTION_CHECK;
+      case 5: return TOOLKIT_ACTION_DRIFT;
       default: return null;
     }
   }

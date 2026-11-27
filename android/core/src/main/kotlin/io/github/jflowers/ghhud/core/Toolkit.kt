@@ -2,6 +2,7 @@ package io.github.jflowers.ghhud.core
 
 import io.github.jflowers.ghhud.api.v1.Snapshot
 import io.github.jflowers.ghhud.api.v1.ToolkitAction
+import io.github.jflowers.ghhud.api.v1.ToolkitDrift
 import io.github.jflowers.ghhud.api.v1.ToolkitRolloutState
 import io.github.jflowers.ghhud.api.v1.ToolkitTarget
 import io.github.jflowers.ghhud.api.v1.ToolkitTool
@@ -162,7 +163,77 @@ public data class TargetRow(
     }
 }
 
+/** One repo's scaffold against the fleet's pins (issue #77). */
+public data class DriftRow(
+    val target: String,
+    /**
+     * drifted, behind, skipped files differ, fixing, fix open, or the hub's
+     * status (matches the pin, ahead of the pin, rolling out, failed).
+     */
+    val state: String,
+    val tone: Tone,
+    /** What drifted, why it couldn't be checked, or why the fix failed. */
+    val note: String,
+    /** Tool-owned files a scaffold at the pins changes. */
+    val files: List<String>,
+    /** User-owned files the inits skip that differ from the release. */
+    val stale: List<String>,
+    /** The fix's PR. */
+    val fix: String?,
+    /** Fix would open a scaffold PR now. */
+    val fixable: Boolean,
+) {
+    public companion object {
+        public fun of(d: ToolkitDrift): DriftRow {
+            val fix = d.fix.takeIf { it.startsWith("https://") }
+            val state = when {
+                d.fixing -> "fixing"
+                d.fix.isNotEmpty() -> "fix open"
+                d.status == "drifted" && d.filesList.isNotEmpty() -> "drifted"
+                d.status == "drifted" && d.staleList.isNotEmpty() -> "skipped files differ"
+                d.status == "drifted" -> "behind"
+                else -> d.status
+            }
+            val tone = when {
+                d.fixError.isNotEmpty() || d.status == "failed" -> Tone.BAD
+                state == "fixing" || state == "fix open" -> Tone.PENDING
+                state == "drifted" -> Tone.WARN
+                state == "matches the pin" -> Tone.GOOD
+                else -> Tone.MUTED
+            }
+            val note = when {
+                d.fixError.isNotEmpty() -> "fix failed: ${d.fixError}"
+                d.status == "drifted" -> d.summary
+                d.fix.isNotEmpty() && fix == null -> d.fix
+                else -> d.detail
+            }
+            return DriftRow(
+                target = d.target, state = state, tone = tone, note = note,
+                files = d.filesList, stale = d.staleList, fix = fix, fixable = d.fixable,
+            )
+        }
+    }
+}
+
 public object ToolkitList {
+    /** Each repo's scaffold against the pins, from the last drift check. */
+    public fun drift(s: Snapshot): List<DriftRow> = s.toolkit.driftList.map { DriftRow.of(it) }
+
+    /** The drift check in a few words ("" before the first one). */
+    public fun driftState(s: Snapshot): String {
+        val t = s.toolkit
+        if (t.driftError.isNotEmpty()) return "drift check failed: ${t.driftError}"
+        val parts = mutableListOf<String>()
+        if (t.driftChecking) {
+            parts += "checking drift…"
+        } else if (t.hasDriftAt()) {
+            parts += "drift checked ${HubSummary.ago(t.driftAt.instant, s.fetchedAt.instant)}"
+        }
+        val drifted = drift(s).count { it.state == "drifted" }
+        if (drifted > 0) parts += "$drifted drifted"
+        return parts.joinToString(" · ")
+    }
+
     public fun tools(s: Snapshot): List<ToolRow> =
         if (!s.hasToolkit()) emptyList() else s.toolkit.toolsList.map { ToolRow.of(it, s.toolkit.rolloutsList) }
 
@@ -217,6 +288,13 @@ public object ToolkitCommands {
 
     public suspend fun rollOut(hub: HubConnection, tool: String, version: String): Answer<String> =
         said(hub.rollOut(tool, version), "Rolling $tool $version out")
+
+    public suspend fun checkDrift(hub: HubConnection): Answer<String> =
+        said(hub.toolkit(ToolkitAction.TOOLKIT_ACTION_DRIFT), "Checking every repo's scaffold against the pins")
+
+    /** Opens the scaffold PR that brings a drifted repo back to the pins. */
+    public suspend fun fix(hub: HubConnection, target: String): Answer<String> =
+        said(hub.fixDrift(target), "Fixing $target: a scaffold PR at the pins")
 
     /** Declines a waiting release: it isn't proposed again. */
     public suspend fun decline(hub: HubConnection, id: String): Answer<String> =

@@ -292,6 +292,21 @@
         ]
       }
     ],
-    "checkedAt": "2026-11-15T10:00:00Z"
+    "checkedAt": "2026-11-15T10:00:00Z",
+    "driftAt": "2026-11-15T09:00:00Z",
+    "drift": [
+      {"target": "acme/app", "status": "drifted", "behind": ["uf 0.20.0 < 0.21.0"],
+       "files": [".opencode/commands/uf.finale.md", ".uf/schemas/spec.json"], "added": "12", "deleted": "3", "held": true,
+       "stale": [".uf/config.yaml"], "checked": "2026-11-15T09:00:00Z", "fixable": true,
+       "summary": "missed a rollout: uf 0.20.0 < 0.21.0; 2 tool-owned file(s) differ (+12 −3), agent commands or definitions among them; 1 user-owned file(s) the init skips differ from the release"},
+      {"target": "acme/lib", "status": "matches the pin", "checked": "2026-11-15T09:00:00Z", "summary": "matches the pin"},
+      {"target": "acme/web", "status": "drifted", "files": [".gaze/ci.yaml"], "added": "1", "deleted": "1",
+       "checked": "2026-11-15T09:00:00Z", "fix": "https://github.com/acme/web/pull/41", "summary": "1 tool-owned file(s) differ (+1 −1)"},
+      {"target": "acme/app (overlay)", "status": "ahead of the pin", "checked": "2026-11-15T09:00:00Z",
+       "detail": "scaffolded from newer releases than the pins: uf at 0.22.0, pin 0.21.0",
+       "summary": "scaffolded from newer releases than the pins: uf at 0.22.0, pin 0.21.0"},
+      {"target": "acme/api", "status": "drifted", "files": [".uf/x.json"], "added": "1", "checked": "2026-11-15T09:00:00Z",
+       "fixError": "refused: deletes 900 lines and adds 2", "summary": "1 tool-owned file(s) differ (+1 −0)", "fixable": true}
+    ]
   }
 }

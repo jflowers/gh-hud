@@ -34,6 +34,8 @@ var agentDenied = map[string]bool{
 	// It moves a checkout's work to a PR or reindexes it: an agent has no
 	// business with another checkout.
 	ghhudv1connect.HubServiceCheckoutActionProcedure: true,
+	// It opens a scaffold PR on your approval of what drifted.
+	ghhudv1connect.HubServiceToolkitFixDriftProcedure: true,
 }
 
 func TestEveryProcedureIsDecidedForTheAgent(t *testing.T) {

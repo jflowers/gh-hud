@@ -233,8 +233,10 @@ func TestHelpers(t *testing.T) {
 type fakeRunner struct {
 	t       *testing.T
 	answers map[string]string // "dir-less command line prefix" → stdout
-	fails   map[string]bool
-	calls   []call
+	// seq answers a prefix with each string in turn before answers does.
+	seq   map[string][]string
+	fails map[string]bool
+	calls []call
 }
 
 type call struct {
@@ -256,6 +258,12 @@ func (f *fakeRunner) Run(_ context.Context, dir, name string, args ...string) (s
 		}
 		if err := os.WriteFile(filepath.Join(wt, ".git"), []byte("gitdir: x"), 0o644); err != nil {
 			f.t.Fatal(err)
+		}
+	}
+	for p, outs := range f.seq {
+		if strings.HasPrefix(line, p) && len(outs) > 0 {
+			f.seq[p] = outs[1:]
+			return outs[0], nil
 		}
 	}
 	best := ""

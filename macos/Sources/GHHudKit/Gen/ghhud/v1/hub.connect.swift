@@ -159,6 +159,14 @@ public protocol Ghhud_V1_HubServiceClientInterface: Sendable {
 
     @available(iOS 13, *)
     func `toolkitControl`(request: Ghhud_V1_ToolkitControlRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_ToolkitControlResponse>
+
+    /// ToolkitFixDrift opens the scaffold PR (or overlay commit) that brings
+    /// a drifted target (ToolkitSnapshot.drift) back to the fleet's pins
+    /// (issue #77). It returns once the fix starts; the drift row shows how
+    /// it went. FAILED_PRECONDITION when the target has nothing to fix or a
+    /// fix is open; the agent token can't call it.
+    @available(iOS 13, *)
+    func `toolkitFixDrift`(request: Ghhud_V1_ToolkitFixDriftRequest, headers: Connect.Headers) async -> ResponseMessage<Ghhud_V1_ToolkitFixDriftResponse>
 }
 
 /// Concrete implementation of `Ghhud_V1_HubServiceClientInterface`.
@@ -329,6 +337,11 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
         return await self.client.unary(path: "/ghhud.v1.HubService/ToolkitControl", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
+    @available(iOS 13, *)
+    public func `toolkitFixDrift`(request: Ghhud_V1_ToolkitFixDriftRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<Ghhud_V1_ToolkitFixDriftResponse> {
+        return await self.client.unary(path: "/ghhud.v1.HubService/ToolkitFixDrift", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
     public enum Metadata {
         public enum Methods {
             public static let getSnapshot = Connect.MethodSpec(name: "GetSnapshot", service: "ghhud.v1.HubService", type: .unary)
@@ -363,6 +376,7 @@ public final class Ghhud_V1_HubServiceClient: Ghhud_V1_HubServiceClientInterface
             public static let checkoutAction = Connect.MethodSpec(name: "CheckoutAction", service: "ghhud.v1.HubService", type: .unary)
             public static let toolkitRollout = Connect.MethodSpec(name: "ToolkitRollout", service: "ghhud.v1.HubService", type: .unary)
             public static let toolkitControl = Connect.MethodSpec(name: "ToolkitControl", service: "ghhud.v1.HubService", type: .unary)
+            public static let toolkitFixDrift = Connect.MethodSpec(name: "ToolkitFixDrift", service: "ghhud.v1.HubService", type: .unary)
         }
     }
 }

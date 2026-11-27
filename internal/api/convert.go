@@ -877,9 +877,19 @@ func passFromPB(p *pb.DeweyPass) fleet.DeweyPass {
 
 func toolkitToPB(t toolkit.Snapshot) *pb.ToolkitSnapshot {
 	return &pb.ToolkitSnapshot{
-		CheckedAt: ts(t.CheckedAt),
-		Checking:  t.Checking,
-		Error:     t.Err,
+		CheckedAt:     ts(t.CheckedAt),
+		Checking:      t.Checking,
+		Error:         t.Err,
+		DriftAt:       ts(t.DriftAt),
+		DriftChecking: t.DriftChecking,
+		DriftError:    t.DriftErr,
+		Drift: mapSlice(t.Drift, func(d toolkit.Drift) *pb.ToolkitDrift {
+			return &pb.ToolkitDrift{
+				Target: d.Target, Status: string(d.Status), Detail: d.Detail, Behind: d.Behind, Files: d.Files,
+				Added: int64(d.Added), Deleted: int64(d.Deleted), Held: d.Held, Stale: d.Stale, Checked: ts(d.Checked),
+				Fix: d.Fix, FixError: d.FixErr, Fixing: d.Fixing, Summary: d.Summary(), Fixable: d.Fixable(),
+			}
+		}),
 		Tools: mapSlice(t.Tools, func(x toolkit.ToolStatus) *pb.ToolkitTool {
 			return &pb.ToolkitTool{
 				Name: x.Name, Release: x.Release, Pin: x.Pin, Applied: x.Applied, Latest: x.Latest,
@@ -908,9 +918,20 @@ func toolkitToPB(t toolkit.Snapshot) *pb.ToolkitSnapshot {
 
 func toolkitFromPB(p *pb.ToolkitSnapshot) toolkit.Snapshot {
 	return toolkit.Snapshot{
-		CheckedAt: fromTS(p.GetCheckedAt()),
-		Checking:  p.GetChecking(),
-		Err:       p.GetError(),
+		CheckedAt:     fromTS(p.GetCheckedAt()),
+		Checking:      p.GetChecking(),
+		Err:           p.GetError(),
+		DriftAt:       fromTS(p.GetDriftAt()),
+		DriftChecking: p.GetDriftChecking(),
+		DriftErr:      p.GetDriftError(),
+		Drift: mapSlice(p.GetDrift(), func(d *pb.ToolkitDrift) toolkit.Drift {
+			return toolkit.Drift{
+				Target: d.GetTarget(), Status: toolkit.DriftStatus(d.GetStatus()), Detail: d.GetDetail(),
+				Behind: strs(d.GetBehind()), Files: strs(d.GetFiles()), Added: int(d.GetAdded()), Deleted: int(d.GetDeleted()),
+				Held: d.GetHeld(), Stale: strs(d.GetStale()), Checked: fromTS(d.GetChecked()),
+				Fix: d.GetFix(), FixErr: d.GetFixError(), Fixing: d.GetFixing(),
+			}
+		}),
 		Tools: mapSlice(p.GetTools(), func(x *pb.ToolkitTool) toolkit.ToolStatus {
 			return toolkit.ToolStatus{
 				Name: x.GetName(), Release: x.GetRelease(), Pin: x.GetPin(), Applied: x.GetApplied(),

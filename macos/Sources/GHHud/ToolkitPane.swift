@@ -3,8 +3,9 @@ import GHHudKit
 import SwiftUI
 
 // The Toolkit pane: the TUI's T view. The tools the fleet pins above (◆
-// when a release waits for your go-ahead), the rollouts below, and the
-// selected rollout's repos beside them.
+// when a release waits for your go-ahead), each repo's scaffold against
+// the pins under them, the rollouts below, and the selected rollout's
+// repos beside them.
 
 struct ToolkitPane: View {
     let conn: HubConnection
@@ -14,6 +15,7 @@ struct ToolkitPane: View {
         let tools = ToolkitList.tools(conn.snapshot)
         let rollouts = ToolkitList.rollouts(conn.snapshot)
         let picked = rollouts.first { $0.id == ui.rolloutSelection } ?? rollouts.first
+        let drift = ToolkitList.drift(conn.snapshot)
         VStack(alignment: .leading, spacing: 0) {
             header
                 .padding(14)
@@ -50,6 +52,10 @@ struct ToolkitPane: View {
                 }
             }
             .frame(height: CGFloat(34 + 24 * max(tools.count, 1)))
+            if !drift.isEmpty || !ToolkitList.driftState(conn.snapshot).isEmpty {
+                Divider()
+                driftTable(drift)
+            }
             Divider()
             HSplitView {
                 Table(rollouts, selection: $ui.rolloutSelection) {
@@ -88,6 +94,61 @@ struct ToolkitPane: View {
         } message: { t in
             Text("Opens the dotfiles PR that pins \(t.name) at \(t.latest) (the fleet is on \(t.pin)), then re-scaffolds its repos, one PR each.")
         }
+        .confirmationDialog(ui.confirmFix.map { "Fix \($0.target)?" } ?? "",
+                            isPresented: Binding(get: { ui.confirmFix != nil }, set: { if !$0 { ui.confirmFix = nil } }),
+                            presenting: ui.confirmFix) { d in
+            Button("Open Scaffold PR") { ToolkitTools.fix(conn: conn, ui: ui, d) }
+        } message: { d in
+            Text("Re-scaffolds \(d.target) at the fleet's pins and opens a PR with what changes: \(d.files.count) file(s).")
+        }
+    }
+
+    @ViewBuilder
+    private func driftTable(_ rows: [DriftRow]) -> some View {
+        HStack(spacing: 8) {
+            Text("Scaffold drift").font(.headline)
+            Text(ToolkitList.driftState(conn.snapshot))
+                .foregroundStyle(conn.snapshot.toolkit.driftError.isEmpty ? Color.secondary : .red)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
+        Table(rows, selection: $ui.driftSelection) {
+            TableColumn("") { d in StatusGlyph(tone: d.tone, active: true) }
+                .width(12)
+            TableColumn("Repo") { d in Text(d.target) }
+                .width(min: 100, ideal: 200, max: 280)
+            TableColumn("State") { d in Text(d.state).foregroundStyle(d.tone.color) }
+                .width(min: 60, ideal: 110, max: 160)
+            TableColumn("") { d in
+                if let url = d.fix {
+                    Link(url.lastPathComponent.isEmpty ? "PR" : "PR #\(url.lastPathComponent)", destination: url)
+                } else {
+                    Text(d.note).foregroundStyle(.secondary).lineLimit(1)
+                        .help(([d.note] + d.files + d.stale.map { "\($0) (the init skips it)" }).joined(separator: "\n"))
+                }
+            }
+        }
+        .contextMenu(forSelectionType: DriftRow.ID.self) { ids in
+            if let d = rows.first(where: { ids.contains($0.id) }) {
+                if d.fixable { Button("Fix…") { ui.confirmFix = d } }
+                if let url = d.fix { Button("Open Fix PR") { NSWorkspace.shared.open(url) } }
+                if !d.files.isEmpty || !d.stale.isEmpty {
+                    Button("Copy Files") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString((d.files + d.stale).joined(separator: "\n"), forType: .string)
+                    }
+                }
+            }
+        } primaryAction: { ids in
+            if let d = rows.first(where: { ids.contains($0.id) }) {
+                if let url = d.fix { NSWorkspace.shared.open(url) } else if d.fixable { ui.confirmFix = d }
+            }
+        }
+        .overlay {
+            if rows.isEmpty { Text("Not checked yet").foregroundStyle(.secondary) }
+        }
+        .frame(height: CGFloat(34 + 24 * min(max(rows.count, 1), 8)))
     }
 
     @ViewBuilder
@@ -266,6 +327,13 @@ struct ToolkitTools: ToolbarContent {
             .help("Check the tools' releases and versions now")
             .disabled(off || conn.snapshot.toolkit.checking)
             Button {
+                Self.checkDrift(conn: conn, ui: ui)
+            } label: {
+                Label("Check Drift", systemImage: "doc.badge.gearshape")
+            }
+            .help("Dry-run every repo's scaffold at the pins now")
+            .disabled(off || conn.snapshot.toolkit.driftChecking)
+            Button {
                 if let tool { ui.confirmRollOut = tool }
             } label: {
                 Label("Roll Out", systemImage: "shippingbox.and.arrow.backward")
@@ -304,6 +372,28 @@ struct ToolkitTools: ToolbarContent {
                 ui.say("Toolkit: \(why)", bad: true)
             } else {
                 ui.say("Checking the tools' releases")
+            }
+        }
+    }
+
+    @MainActor
+    static func checkDrift(conn: HubConnection, ui: DashboardState) {
+        Task {
+            if let why = await conn.toolkit(.drift) {
+                ui.say("Toolkit: \(why)", bad: true)
+            } else {
+                ui.say("Checking every repo's scaffold against the pins")
+            }
+        }
+    }
+
+    @MainActor
+    static func fix(conn: HubConnection, ui: DashboardState, _ d: DriftRow) {
+        Task {
+            if let why = await conn.fixDrift(target: d.target) {
+                ui.say("Toolkit: \(why)", bad: true)
+            } else {
+                ui.say("Fixing \(d.target): a scaffold PR at the pins")
             }
         }
     }

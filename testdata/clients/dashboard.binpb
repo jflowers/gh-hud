@@ -116,7 +116,7 @@ Done piece:done)
 acme/api#96:waiting@r(shown only once the stale plan is reread¢
 acme/docs#5Reading*reading¢+
 acme/docs#6Broken*error2no such issue¢
-acme/docs#7Fresh*planned²Ñ
+acme/docs#7Fresh*planned²€
 O
 ufacme/uf0.21.0"0.21.0*0.22.00:
 acme/app0.21.0:
@@ -137,4 +137,10 @@ gaze@2.4.0gaze2.4.0"2.3.0*track2éå×:˜÷å×B,https://github.com/jflowe
 acme/librefused%would downgrade: gaze 2.5.0 â†’ 2.4.0Zrefusedj8fleet â€¦ Â· repos 1/3 landed, 1 open, 1 held, 1 refusedr
 aq@0.4.2aq0.4.2"0.4.1*pin2ğûå×:œşå×B,https://github.com/jflowers/dotfiles/pull/31JOPENjpin PR open‰
 dewey@3.6.0dewey3.6.0"3.5.0*	cancelled2Æà×:˜Ôà×Z.
-acme/appfaileddewey init: exit 1Zfailedjrepos 0/1 landed, 1 failed …æ×
+acme/appfaileddewey init: exit 1Zfailedjrepos 0/1 landed, 1 failed …æ×2¶
+acme/appdrifted"uf 0.20.0 < 0.21.0*.opencode/commands/uf.finale.md*.uf/schemas/spec.json08@J.uf/config.yamlRéå×r³missed a rollout: uf 0.20.0 < 0.21.0; 2 tool-owned file(s) differ (+12 âˆ’3), agent commands or definitions among them; 1 user-owned file(s) the init skips differ from the releasex24
+acme/libmatches the pinRéå×rmatches the pin2z
+acme/webdrifted*.gaze/ci.yaml08Réå×Z#https://github.com/acme/web/pull/41r%1 tool-owned file(s) differ (+1 âˆ’1)2¾
+acme/app (overlay)ahead of the pinFscaffolded from newer releases than the pins: uf at 0.22.0, pin 0.21.0Réå×rFscaffolded from newer releases than the pins: uf at 0.22.0, pin 0.21.02y
+acme/apidrifted*
+.uf/x.json0Réå×b%refused: deletes 900 lines and adds 2r%1 tool-owned file(s) differ (+1 âˆ’0)x:éå×
