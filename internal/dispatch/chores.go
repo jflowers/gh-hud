@@ -9,6 +9,10 @@ package dispatch
 // learning: no agent reads markdown that agents wrote. The approval names
 // the head commit checked, so a later push needs a new one.
 //
+// Toolkit rollouts' scaffold PRs get the same treatment, in any repo
+// [auto_merge] covers, once every changed file is under .opencode/ and
+// the scaffolder didn't hold it.
+//
 // Dependabot PRs (issue #19) are armed by ship's deps-automerge workflow,
 // never by gh-hud (automerge.go); armed ones in the bot org get a bot
 // review through the Queue. Pushing to Dependabot's branch
@@ -31,7 +35,13 @@ import (
 const (
 	learningsBranchPrefix = "chore/dewey-learnings-"
 	learningsReviewBody   = "Dewey learnings only: approved by gh-hud without an agent review (gh-hud#18)."
-	dependabotRebase      = "@dependabot rebase"
+	// toolkitBranchPrefix and toolkitTitlePrefix match what the toolkit
+	// scaffolder names its PRs (toolkit.Branch, toolkit.Title).
+	toolkitBranchPrefix = "chore/toolkit-"
+	toolkitTitlePrefix  = "chore(toolkit): re-scaffold with "
+	toolkitDir          = ".opencode/"
+	toolkitReviewBody   = "Toolkit rollout: every changed file is tool `init` output under `" + toolkitDir + "`, approved by gh-hud without an agent review."
+	dependabotRebase    = "@dependabot rebase"
 
 	prFilesQuery = `
 query($id: ID!) {
@@ -44,16 +54,47 @@ query($id: ID!) {
 }`
 )
 
-// errNotLearnings marks a learnings branch whose PR changes something
-// other than learnings, or moved since it was read: it's left to a person.
-var errNotLearnings = errors.New("changes files outside " + learningsDir)
+// choreKind is a kind of chore PR gh-hud opens itself and the bot approves
+// with no agent, once every changed file is under dir.
+type choreKind struct {
+	name         string // in notices: "approved learnings unbound-force/gaze#358"
+	branchPrefix string
+	titlePrefix  string // "" for any title
+	dir          string
+	body         string // the review's body
+	// botOrgOnly limits it to model.BotOrg; otherwise it covers the repos
+	// [auto_merge] covers, since nothing else would merge it.
+	botOrgOnly bool
+}
 
-// learningsApprovalDue reports whether the bot should approve a PR as a
-// learnings PR: mine, on a learnings branch, in model.BotOrg, not held,
-// gated, drafted or conflicted, and its head not yet reviewed by the bot.
-func learningsApprovalDue(it model.Item, holdLabel, humanGate string) bool {
-	if it.Kind != model.KindPR || !mine(it) || !it.InBotOrg() || it.Draft ||
-		!strings.HasPrefix(it.HeadBranch, learningsBranchPrefix) ||
+var (
+	// Learnings PRs (issue #18).
+	learningsChore = choreKind{name: "learnings", branchPrefix: learningsBranchPrefix,
+		dir: learningsDir, body: learningsReviewBody, botOrgOnly: true}
+	// Toolkit rollouts' scaffold PRs: each tool's init output at a released
+	// version. The scaffolder holds one that changes agent commands or
+	// definitions (the hold label), so a person looks first; taking the
+	// label off is that look. ship's pr-scope.yml skips their CI's heavy
+	// jobs on the same rule.
+	toolkitChore = choreKind{name: "toolkit", branchPrefix: toolkitBranchPrefix,
+		titlePrefix: toolkitTitlePrefix, dir: toolkitDir, body: toolkitReviewBody}
+
+	choreKinds = []choreKind{learningsChore, toolkitChore}
+)
+
+// errOutsideChore marks a chore branch whose PR changes something outside
+// its kind's directory, or moved since it was read: it's left to a person.
+var errOutsideChore = errors.New("changes files outside")
+
+// choreApprovalDue reports whether the bot should approve a PR as a chore
+// of kind k: mine, on k's branch (and title), in model.BotOrg when k needs
+// it, not held, gated, drafted or conflicted, and its head not yet
+// reviewed by the bot.
+func choreApprovalDue(k choreKind, it model.Item, holdLabel, humanGate string) bool {
+	if it.Kind != model.KindPR || !mine(it) || it.Draft ||
+		(k.botOrgOnly && !it.InBotOrg()) ||
+		!strings.HasPrefix(it.HeadBranch, k.branchPrefix) || len(it.HeadBranch) == len(k.branchPrefix) ||
+		(k.titlePrefix != "" && !strings.HasPrefix(it.Title, k.titlePrefix)) ||
 		!it.BotReviewDue || it.HeadOID == "" || it.NodeID == "" || it.Merge == "⚠️" {
 		return false
 	}
@@ -63,20 +104,31 @@ func learningsApprovalDue(it model.Item, holdLabel, humanGate string) bool {
 	})
 }
 
-// onlyLearnings reports whether every changed file is a learning added or
-// changed in place. A rename could carry a file in from elsewhere, and the
-// list must be complete.
+// choreKindOf is the kind whose branch the PR is on.
+func choreKindOf(it model.Item) (choreKind, bool) {
+	for _, k := range choreKinds {
+		if strings.HasPrefix(it.HeadBranch, k.branchPrefix) {
+			return k, true
+		}
+	}
+	return choreKind{}, false
+}
+
+// prFile is one changed file as GraphQL lists it.
 type prFile struct {
 	Path       string `json:"path"`
 	ChangeType string `json:"changeType"`
 }
 
-func onlyLearnings(files []prFile, total int) bool {
+// onlyUnder reports whether every changed file is under dir, added,
+// changed or deleted in place. A rename could carry a file in from
+// elsewhere, and the list must be complete.
+func onlyUnder(dir string, files []prFile, total int) bool {
 	if total == 0 || total != len(files) {
 		return false
 	}
 	for _, f := range files {
-		if !strings.HasPrefix(f.Path, learningsDir) || strings.Contains(f.Path, "..") ||
+		if !strings.HasPrefix(f.Path, dir) || len(f.Path) == len(dir) || strings.Contains(f.Path, "..") ||
 			strings.EqualFold(f.ChangeType, "RENAMED") || strings.EqualFold(f.ChangeType, "COPIED") {
 			return false
 		}
@@ -84,11 +136,11 @@ func onlyLearnings(files []prFile, total int) bool {
 	return true
 }
 
-// approveLearningsGH checks the PR's files at the head it was seen at and
+// approveChoreGH checks the PR's files at the head it was seen at and
 // approves that commit as the bot. The files are read as me; only the
 // review runs as the bot, through the same agent-env token as a review
 // pane, so the token value never passes through gh-hud.
-func approveLearningsGH(ctx context.Context, it model.Item) error {
+func approveChoreGH(ctx context.Context, k choreKind, it model.Item) error {
 	var res struct {
 		Node struct {
 			HeadRefOid string `json:"headRefOid"`
@@ -104,12 +156,12 @@ func approveLearningsGH(ctx context.Context, it model.Item) error {
 	if res.Node.HeadRefOid != it.HeadOID {
 		return fmt.Errorf("head moved to %.7s", res.Node.HeadRefOid)
 	}
-	if !onlyLearnings(res.Node.Files.Nodes, res.Node.Files.TotalCount) {
-		return errNotLearnings
+	if !onlyUnder(k.dir, res.Node.Files.Nodes, res.Node.Files.TotalCount) {
+		return fmt.Errorf("%w %s", errOutsideChore, k.dir)
 	}
 	cmd := botCommandContext(ctx, "gh", []string{
 		"api", "-X", "POST", fmt.Sprintf("repos/%s/pulls/%d/reviews", it.Repo, it.Num),
-		"-f", "event=APPROVE", "-f", "commit_id=" + it.HeadOID, "-f", "body=" + learningsReviewBody,
+		"-f", "event=APPROVE", "-f", "commit_id=" + it.HeadOID, "-f", "body=" + k.body,
 	})
 	if out, err := cmd.CombinedOutput(); err != nil {
 		if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() == 78 {
@@ -120,12 +172,14 @@ func approveLearningsGH(ctx context.Context, it model.Item) error {
 	return nil
 }
 
-// approveLearnings approves the learnings PRs that are due, each head once.
-func (d *Dispatcher) approveLearnings(ctx context.Context, items []model.Item) []string {
+// approveChores approves the chore PRs that are due, each head once.
+func (d *Dispatcher) approveChores(ctx context.Context, items []model.Item) []string {
 	cfg := d.o()
 	var msgs []string
 	for _, it := range items {
-		if !learningsApprovalDue(it, cfg.AutoMerge.HoldLabel, cfg.HumanGate) {
+		k, ok := choreKindOf(it)
+		if !ok || !choreApprovalDue(k, it, cfg.AutoMerge.HoldLabel, cfg.HumanGate) ||
+			(!k.botOrgOnly && !cfg.AutoMerge.Covers(it.Repo)) {
 			continue
 		}
 		ref := it.Ref()
@@ -142,11 +196,11 @@ func (d *Dispatcher) approveLearnings(ctx context.Context, items []model.Item) [
 		if tried {
 			continue
 		}
-		if err := d.approve(ctx, it); err != nil {
-			msgs = append(msgs, fmt.Sprintf("learnings %s not approved: %v", ref, err))
+		if err := d.approve(ctx, k, it); err != nil {
+			msgs = append(msgs, fmt.Sprintf("%s %s not approved: %v", k.name, ref, err))
 			continue
 		}
-		msgs = append(msgs, fmt.Sprintf("approved learnings %s as %s", ref, botLogin))
+		msgs = append(msgs, fmt.Sprintf("approved %s %s as %s", k.name, ref, botLogin))
 	}
 	sort.Strings(msgs)
 	return msgs

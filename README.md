@@ -700,8 +700,10 @@ feedback run is still pushing (see [Coordination](#coordination)).
 Chore PRs skip the Queue, so
 they only get a review if you start one with `a`; on a branch that requires
 an approval, they won't auto-merge without one. Two kinds are handled for
-you, in `unbound-force` only: gh-hud's own learnings PRs get a `uf-divisor`
-approval with no agent (see [Auto-merge](#auto-merge)), and Dependabot's PRs
+you: gh-hud's own learnings PRs (in `unbound-force`) and toolkit scaffold
+PRs (in any repo `[auto_merge]` covers) get a `uf-divisor` approval with no
+agent (see [Auto-merge](#auto-merge)), and Dependabot's PRs (in
+`unbound-force`)
 aren't chores, so they reach the Queue and get a bot review like yours. No task auto-dispatches on a
 chore PR, so a chore with failing CI or a conflict also waits for you. With `[dispatch.review] auto =
 true` they drain like any other Queue row.
@@ -1836,6 +1838,17 @@ push gets a new one. A held, human-gated, drafted or conflicted learnings PR
 isn't approved, and a PR on that branch that changes anything else is left
 to you, reported once. The token comes from `agent-env`, as for a bot review.
 
+**Toolkit PRs** (the [toolkit rollout's](#toolkit-rollouts) `chore/toolkit-…`
+scaffold PRs, titled `chore(toolkit): re-scaffold with …`) get the same
+treatment in every repo `[auto_merge]` covers, not only `unbound-force`,
+once every changed file is under `.opencode/`. `uf-divisor` needs write
+access to the repo for its approval to count. The scaffolder labels one
+that changes agent commands or definitions with the hold label, so it
+waits for you; taking the label off is your look, and gh-hud approves it
+at the next refresh. ship's `pr-scope.yml` skips the heavy CI jobs on the
+same rule (and for learnings), so a repo whose CI calls it, with one
+always-run job as its required check, lands a rollout in about a minute.
+
 **Dependabot PRs** get a real `uf-divisor` review through the Queue, then
 auto-merge like yours, for every bump size. They stay out of the merge
 train, since a push to Dependabot's branch stops Dependabot managing it:
@@ -1965,8 +1978,10 @@ For each target, it:
    pushes to `origin` (your fork), and opens one PR on the repo for all
    the tools. When the change touches agent commands or definitions
    (`hold_paths`), the PR gets the `hold` label (created if missing), so
-   auto-merge waits for your look. Otherwise the usual pipeline takes it:
-   bot review, auto-merge and the `ci` task.
+   auto-merge waits for your look. Otherwise gh-hud approves it as
+   `uf-divisor` with no agent when every file is under `.opencode/` (see
+   [Auto-merge](#auto-merge)), and auto-merge and the `ci` task take it
+   from there.
 4. An **overlay** target (a private uf stealth mirror, such as fullsend-ai's)
    gets the commit pushed straight to its default branch, or to the chore
    branch when held, for you to merge. When that remote is on GitHub, a

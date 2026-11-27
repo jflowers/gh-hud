@@ -2,6 +2,7 @@ package dispatch
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -37,13 +38,13 @@ func TestLearningsApprovalDue(t *testing.T) {
 	for _, tc := range cases {
 		it := learningsPR()
 		tc.change(&it)
-		if got := learningsApprovalDue(it, "hold", "human-gate"); got != tc.want {
+		if got := choreApprovalDue(learningsChore, it, "hold", "human-gate"); got != tc.want {
 			t.Errorf("%s: got %v want %v", tc.name, got, tc.want)
 		}
 	}
 }
 
-func TestOnlyLearnings(t *testing.T) {
+func TestOnlyUnder(t *testing.T) {
 	l := func(p string) prFile { return prFile{Path: p, ChangeType: "ADDED"} }
 	cases := []struct {
 		name  string
@@ -58,9 +59,10 @@ func TestOnlyLearnings(t *testing.T) {
 		{"knowledge", []prFile{l(".uf/dewey/knowledge/a.md")}, 1, false},
 		{"escape", []prFile{l(".uf/dewey/learnings/../../../x.sh")}, 1, false},
 		{"rename in", []prFile{{Path: ".uf/dewey/learnings/a.md", ChangeType: "RENAMED"}}, 1, false},
+		{"directory itself", []prFile{l(".uf/dewey/learnings/")}, 1, false},
 	}
 	for _, tc := range cases {
-		if got := onlyLearnings(tc.files, tc.total); got != tc.want {
+		if got := onlyUnder(learningsDir, tc.files, tc.total); got != tc.want {
 			t.Errorf("%s: got %v want %v", tc.name, got, tc.want)
 		}
 	}
@@ -72,7 +74,7 @@ func TestApproveLearningsOncePerHead(t *testing.T) {
 	d.graphql = func(context.Context, string, map[string]any) error { return nil }
 	var approved []string
 	var failWith error
-	d.approve = func(_ context.Context, it model.Item) error {
+	d.approve = func(_ context.Context, _ choreKind, it model.Item) error {
 		approved = append(approved, it.Ref()+"@"+it.HeadOID)
 		return failWith
 	}
@@ -90,7 +92,7 @@ func TestApproveLearningsOncePerHead(t *testing.T) {
 	}
 	// A new push needs a new approval; a refusal is reported once.
 	it.HeadOID = "fed"
-	failWith = errNotLearnings
+	failWith = fmt.Errorf("%w %s", errOutsideChore, learningsDir)
 	got = d.AutoMerge(ctx, []model.Item{it})
 	if len(approved) != 2 || !containsMsg(got, "not approved: changes files outside") {
 		t.Fatalf("approved = %v, msgs = %v", approved, got)
@@ -104,6 +106,83 @@ func TestApproveLearningsOncePerHead(t *testing.T) {
 	d.AutoMerge(ctx, []model.Item{other})
 	if len(approved) != 2 {
 		t.Fatalf("approved a non-learnings PR: %v", approved)
+	}
+}
+
+func toolkitPR() model.Item {
+	return model.Item{
+		Kind: model.KindPR, Cats: model.CatMy, Repo: "zero-dot-force/reading-stone", Num: 50,
+		Title: "chore(toolkit): re-scaffold with uf 0.23.0", NodeID: "PR_T",
+		HeadOID: "abc", HeadBranch: "chore/toolkit-uf-0.23.0", Merge: " ",
+		BotReviewDue: true, AutoMergeOn: true,
+	}
+}
+
+func TestToolkitApprovalDue(t *testing.T) {
+	cases := []struct {
+		name   string
+		change func(*model.Item)
+		want   bool
+	}{
+		{"due, outside the bot org", func(*model.Item) {}, true},
+		{"due, in the bot org", func(i *model.Item) { i.Repo = "unbound-force/gaze" }, true},
+		{"bot reviewed head", func(i *model.Item) { i.BotReviewDue = false }, false},
+		{"not mine", func(i *model.Item) { i.Cats = model.CatQueue }, false},
+		{"other branch", func(i *model.Item) { i.HeadBranch = "chore/dewey-learnings-x-20261116" }, false},
+		{"bare branch prefix", func(i *model.Item) { i.HeadBranch = "chore/toolkit-" }, false},
+		{"other title", func(i *model.Item) { i.Title = "chore: sneak in a change" }, false},
+		{"draft", func(i *model.Item) { i.Draft = true }, false},
+		{"conflict", func(i *model.Item) { i.Merge = "⚠️" }, false},
+		{"held by the scaffolder", func(i *model.Item) { i.Labels = []string{"hold"} }, false},
+		{"human gate", func(i *model.Item) { i.Labels = []string{"human-gate"} }, false},
+		{"no head", func(i *model.Item) { i.HeadOID = "" }, false},
+	}
+	for _, tc := range cases {
+		it := toolkitPR()
+		tc.change(&it)
+		if got := choreApprovalDue(toolkitChore, it, "hold", "human-gate"); got != tc.want {
+			t.Errorf("%s: got %v want %v", tc.name, got, tc.want)
+		}
+	}
+	if k, ok := choreKindOf(toolkitPR()); !ok || k.name != "toolkit" {
+		t.Errorf("choreKindOf(toolkit PR) = %v, %v", k.name, ok)
+	}
+	if k, ok := choreKindOf(learningsPR()); !ok || k.name != "learnings" {
+		t.Errorf("choreKindOf(learnings PR) = %v, %v", k.name, ok)
+	}
+	if !onlyUnder(toolkitDir, []prFile{{Path: ".opencode/commands/uf.review-pr.md", ChangeType: "MODIFIED"},
+		{Path: ".opencode/lib/old.ts", ChangeType: "DELETED"}}, 2) {
+		t.Error("onlyUnder(.opencode/): a scaffold's files refused")
+	}
+	if onlyUnder(toolkitDir, []prFile{{Path: ".opencode/a.md", ChangeType: "ADDED"}, {Path: "go.mod", ChangeType: "MODIFIED"}}, 2) {
+		t.Error("onlyUnder(.opencode/): a code file accepted")
+	}
+}
+
+// Toolkit PRs are approved only in repos [auto_merge] covers, since
+// nothing else would merge them.
+func TestApproveToolkitCoveredRepos(t *testing.T) {
+	d := newTestDispatcher(t, "refuse")
+	cfg := testMergeConfig
+	cfg.Repos = []string{"zero-dot-force/reading-stone"}
+	d.opts.AutoMerge = cfg
+	d.graphql = func(context.Context, string, map[string]any) error { return nil }
+	var approved []string
+	d.approve = func(_ context.Context, k choreKind, it model.Item) error {
+		approved = append(approved, k.name+" "+it.Ref())
+		return nil
+	}
+	ctx := context.Background()
+	got := d.AutoMerge(ctx, []model.Item{toolkitPR()})
+	if len(approved) != 1 || approved[0] != "toolkit zero-dot-force/reading-stone#50" ||
+		!containsMsg(got, "approved toolkit zero-dot-force/reading-stone#50") {
+		t.Fatalf("approved = %v, msgs = %v", approved, got)
+	}
+	uncovered := toolkitPR()
+	uncovered.Repo = "zero-dot-force/snake-eyes"
+	d.AutoMerge(ctx, []model.Item{uncovered})
+	if len(approved) != 1 {
+		t.Fatalf("approved in a repo auto-merge doesn't cover: %v", approved)
 	}
 }
 
