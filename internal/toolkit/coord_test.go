@@ -10,6 +10,7 @@ import (
 )
 
 const coordManifest = `
+hold_paths = [".opencode/commands/", ".opencode/agents/"]
 [[tool]]
 name = "uf"
 release = "unbound-force/unbound-force"

@@ -4,14 +4,15 @@ package dispatch
 //
 // Learnings PRs (issue #18): gh-hud opens them itself (learnings.go), and
 // as chores they never reach the Queue, so on a branch that requires an
-// approval they waited forever with auto-merge on. In model.BotOrg the bot
-// account approves one directly once every changed file is a Dewey
+// approval they waited forever with auto-merge on. The bot account
+// approves one directly once every changed file is a Dewey
 // learning: no agent reads markdown that agents wrote. The approval names
 // the head commit checked, so a later push needs a new one.
 //
-// Toolkit rollouts' scaffold PRs get the same treatment, in any repo
-// [auto_merge] covers, once every changed file is under .opencode/ and
-// the scaffolder didn't hold it.
+// Toolkit rollouts' scaffold PRs get the same treatment once every
+// changed file is under .opencode/. Both kinds are approved in any repo
+// [auto_merge] covers, and merged by gh-hud itself in its chore_repos,
+// which have no branch rules (and no bot access) to approve against.
 //
 // Dependabot PRs (issue #19) are armed by ship's deps-automerge workflow,
 // never by gh-hud (automerge.go); armed ones in the bot org get a bot
@@ -62,20 +63,15 @@ type choreKind struct {
 	titlePrefix  string // "" for any title
 	dir          string
 	body         string // the review's body
-	// botOrgOnly limits it to model.BotOrg; otherwise it covers the repos
-	// [auto_merge] covers, since nothing else would merge it.
-	botOrgOnly bool
 }
 
 var (
 	// Learnings PRs (issue #18).
 	learningsChore = choreKind{name: "learnings", branchPrefix: learningsBranchPrefix,
-		dir: learningsDir, body: learningsReviewBody, botOrgOnly: true}
+		dir: learningsDir, body: learningsReviewBody}
 	// Toolkit rollouts' scaffold PRs: each tool's init output at a released
-	// version. The scaffolder holds one that changes agent commands or
-	// definitions (the hold label), so a person looks first; taking the
-	// label off is that look. ship's pr-scope.yml skips their CI's heavy
-	// jobs on the same rule.
+	// version. ship's pr-scope.yml skips their CI's heavy jobs on the same
+	// rule.
 	toolkitChore = choreKind{name: "toolkit", branchPrefix: toolkitBranchPrefix,
 		titlePrefix: toolkitTitlePrefix, dir: toolkitDir, body: toolkitReviewBody}
 
@@ -87,12 +83,10 @@ var (
 var errOutsideChore = errors.New("changes files outside")
 
 // choreApprovalDue reports whether the bot should approve a PR as a chore
-// of kind k: mine, on k's branch (and title), in model.BotOrg when k needs
-// it, not held, gated, drafted or conflicted, and its head not yet
-// reviewed by the bot.
+// of kind k: mine, on k's branch (and title), not held, gated, drafted or
+// conflicted, and its head not yet reviewed by the bot.
 func choreApprovalDue(k choreKind, it model.Item, holdLabel, humanGate string) bool {
 	if it.Kind != model.KindPR || !mine(it) || it.Draft ||
-		(k.botOrgOnly && !it.InBotOrg()) ||
 		!strings.HasPrefix(it.HeadBranch, k.branchPrefix) || len(it.HeadBranch) == len(k.branchPrefix) ||
 		(k.titlePrefix != "" && !strings.HasPrefix(it.Title, k.titlePrefix)) ||
 		!it.BotReviewDue || it.HeadOID == "" || it.NodeID == "" || it.Merge == "⚠️" {
@@ -136,11 +130,9 @@ func onlyUnder(dir string, files []prFile, total int) bool {
 	return true
 }
 
-// approveChoreGH checks the PR's files at the head it was seen at and
-// approves that commit as the bot. The files are read as me; only the
-// review runs as the bot, through the same agent-env token as a review
-// pane, so the token value never passes through gh-hud.
-func approveChoreGH(ctx context.Context, k choreKind, it model.Item) error {
+// choreFilesGH checks the PR's files at the head it was seen at: every
+// one under k's directory. The files are read as me.
+func choreFilesGH(ctx context.Context, k choreKind, it model.Item) error {
 	var res struct {
 		Node struct {
 			HeadRefOid string `json:"headRefOid"`
@@ -159,6 +151,13 @@ func approveChoreGH(ctx context.Context, k choreKind, it model.Item) error {
 	if !onlyUnder(k.dir, res.Node.Files.Nodes, res.Node.Files.TotalCount) {
 		return fmt.Errorf("%w %s", errOutsideChore, k.dir)
 	}
+	return nil
+}
+
+// approveChoreGH approves the PR's head commit as the bot, through the
+// same agent-env token as a review pane, so the token value never passes
+// through gh-hud.
+func approveChoreGH(ctx context.Context, k choreKind, it model.Item) error {
 	cmd := botCommandContext(ctx, "gh", []string{
 		"api", "-X", "POST", fmt.Sprintf("repos/%s/pulls/%d/reviews", it.Repo, it.Num),
 		"-f", "event=APPROVE", "-f", "commit_id=" + it.HeadOID, "-f", "body=" + k.body,
@@ -172,14 +171,22 @@ func approveChoreGH(ctx context.Context, k choreKind, it model.Item) error {
 	return nil
 }
 
-// approveChores approves the chore PRs that are due, each head once.
+// approveChores lands the chore PRs that are due, each head once. In a
+// repo [auto_merge] covers, the bot approves it and auto-merge takes it
+// from there. In one of chore_repos (no branch rules to wait on, such as
+// a private repo on GitHub Free), gh-hud merges it itself once its checks
+// haven't failed and aren't running.
 func (d *Dispatcher) approveChores(ctx context.Context, items []model.Item) []string {
 	cfg := d.o()
 	var msgs []string
 	for _, it := range items {
 		k, ok := choreKindOf(it)
-		if !ok || !choreApprovalDue(k, it, cfg.AutoMerge.HoldLabel, cfg.HumanGate) ||
-			(!k.botOrgOnly && !cfg.AutoMerge.Covers(it.Repo)) {
+		if !ok || !choreApprovalDue(k, it, cfg.AutoMerge.HoldLabel, cfg.HumanGate) {
+			continue
+		}
+		direct := cfg.AutoMerge.ChoreRepo(it.Repo)
+		if !direct && !cfg.AutoMerge.Covers(it.Repo) ||
+			direct && it.CI != model.CIOK && it.CI != model.CINone {
 			continue
 		}
 		ref := it.Ref()
@@ -194,6 +201,18 @@ func (d *Dispatcher) approveChores(ctx context.Context, items []model.Item) []st
 		}
 		d.mu.Unlock()
 		if tried {
+			continue
+		}
+		if err := d.choreFiles(ctx, k, it); err != nil {
+			msgs = append(msgs, fmt.Sprintf("%s %s not landed: %v", k.name, ref, err))
+			continue
+		}
+		if direct {
+			if err := d.applyMerge(ctx, mergeNow, it, cfg.AutoMerge); err != nil {
+				msgs = append(msgs, fmt.Sprintf("%s %s not merged: %v", k.name, ref, err))
+				continue
+			}
+			msgs = append(msgs, fmt.Sprintf("merged %s %s", k.name, ref))
 			continue
 		}
 		if err := d.approve(ctx, k, it); err != nil {

@@ -27,7 +27,6 @@ func TestLearningsApprovalDue(t *testing.T) {
 		{"due", func(*model.Item) {}, true},
 		{"bot reviewed head", func(i *model.Item) { i.BotReviewDue = false }, false},
 		{"not mine", func(i *model.Item) { i.Cats = model.CatQueue }, false},
-		{"other org", func(i *model.Item) { i.Repo = "fullsend-ai/fullsend" }, false},
 		{"other branch", func(i *model.Item) { i.HeadBranch = "chore/toolkit-uf-1.2.3" }, false},
 		{"draft", func(i *model.Item) { i.Draft = true }, false},
 		{"conflict", func(i *model.Item) { i.Merge = "⚠️" }, false},
@@ -70,13 +69,16 @@ func TestOnlyUnder(t *testing.T) {
 
 func TestApproveLearningsOncePerHead(t *testing.T) {
 	d := newTestDispatcher(t, "refuse")
-	d.opts.AutoMerge = testMergeConfig
+	cfg := testMergeConfig
+	cfg.Repos = []string{"unbound-force/gaze"}
+	d.opts.AutoMerge = cfg
 	d.graphql = func(context.Context, string, map[string]any) error { return nil }
 	var approved []string
 	var failWith error
+	d.choreFiles = func(context.Context, choreKind, model.Item) error { return failWith }
 	d.approve = func(_ context.Context, _ choreKind, it model.Item) error {
 		approved = append(approved, it.Ref()+"@"+it.HeadOID)
-		return failWith
+		return nil
 	}
 	ctx := context.Background()
 	it := learningsPR()
@@ -94,7 +96,7 @@ func TestApproveLearningsOncePerHead(t *testing.T) {
 	it.HeadOID = "fed"
 	failWith = fmt.Errorf("%w %s", errOutsideChore, learningsDir)
 	got = d.AutoMerge(ctx, []model.Item{it})
-	if len(approved) != 2 || !containsMsg(got, "not approved: changes files outside") {
+	if len(approved) != 1 || !containsMsg(got, "not landed: changes files outside") {
 		t.Fatalf("approved = %v, msgs = %v", approved, got)
 	}
 	if got = d.AutoMerge(ctx, []model.Item{it}); containsMsg(got, "learnings") {
@@ -104,8 +106,15 @@ func TestApproveLearningsOncePerHead(t *testing.T) {
 	other := learningsPR()
 	other.Num, other.HeadBranch = 359, "feat/x"
 	d.AutoMerge(ctx, []model.Item{other})
-	if len(approved) != 2 {
+	if len(approved) != 1 {
 		t.Fatalf("approved a non-learnings PR: %v", approved)
+	}
+	// A repo auto-merge doesn't cover: nothing would merge it.
+	uncovered := learningsPR()
+	uncovered.Repo = "fullsend-ai/fullsend"
+	d.AutoMerge(ctx, []model.Item{uncovered})
+	if len(approved) != 1 {
+		t.Fatalf("approved in an uncovered repo: %v", approved)
 	}
 }
 
@@ -168,6 +177,7 @@ func TestApproveToolkitCoveredRepos(t *testing.T) {
 	d.opts.AutoMerge = cfg
 	d.graphql = func(context.Context, string, map[string]any) error { return nil }
 	var approved []string
+	d.choreFiles = func(context.Context, choreKind, model.Item) error { return nil }
 	d.approve = func(_ context.Context, k choreKind, it model.Item) error {
 		approved = append(approved, k.name+" "+it.Ref())
 		return nil
@@ -183,6 +193,47 @@ func TestApproveToolkitCoveredRepos(t *testing.T) {
 	d.AutoMerge(ctx, []model.Item{uncovered})
 	if len(approved) != 1 {
 		t.Fatalf("approved in a repo auto-merge doesn't cover: %v", approved)
+	}
+}
+
+// In chore_repos (no branch rules) gh-hud merges chore PRs itself, by
+// the configured method, with no bot approval, once checks aren't
+// running or failed.
+func TestChoreReposMergeDirectly(t *testing.T) {
+	d := newTestDispatcher(t, "refuse")
+	cfg := testMergeConfig
+	cfg.Method = "rebase"
+	cfg.ChoreRepos = []string{"jflowers/fullsend-ai-uf-agents"}
+	d.opts.AutoMerge = cfg
+	var merged []string
+	d.graphql = func(_ context.Context, q string, vars map[string]any) error {
+		if q == mergeNowMutation {
+			merged = append(merged, fmt.Sprintf("%v %v %v", vars["id"], vars["method"], vars["head"]))
+		}
+		return nil
+	}
+	d.choreFiles = func(context.Context, choreKind, model.Item) error { return nil }
+	d.approve = func(context.Context, choreKind, model.Item) error {
+		t.Fatal("approved in a chore repo")
+		return nil
+	}
+	ctx := context.Background()
+	it := learningsPR()
+	it.Repo, it.CI = "jflowers/fullsend-ai-uf-agents", model.CIPending
+	d.AutoMerge(ctx, []model.Item{it})
+	if len(merged) != 0 {
+		t.Fatalf("merged with checks running: %v", merged)
+	}
+	it.CI = model.CINone
+	got := d.AutoMerge(ctx, []model.Item{it})
+	if len(merged) != 1 || merged[0] != "PR_L REBASE def" || !containsMsg(got, "merged learnings jflowers/fullsend-ai-uf-agents#358") {
+		t.Fatalf("merged = %v, msgs = %v", merged, got)
+	}
+	tk := toolkitPR()
+	tk.Repo, tk.CI = "jflowers/fullsend-ai-uf-agents", model.CIOK
+	d.AutoMerge(ctx, []model.Item{tk})
+	if len(merged) != 2 {
+		t.Fatalf("toolkit PR not merged: %v", merged)
 	}
 }
 

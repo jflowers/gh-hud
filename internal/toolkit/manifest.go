@@ -115,20 +115,14 @@ func (t Target) Label() string {
 type Manifest struct {
 	// HoldPaths are path prefixes whose change needs a person's look: the
 	// PR gets HoldLabel (gh-hud's auto-merge leaves it alone), and an
-	// overlay commit goes to a branch instead of the default branch.
+	// overlay commit goes to a branch instead of the default branch. None
+	// by default: a rollout lands by itself.
 	HoldPaths []string `toml:"hold_paths"`
 	HoldLabel string   `toml:"hold_label"`
 	// MiseConfig holds the fleet pins that versions default to.
 	MiseConfig string   `toml:"mise_config"`
 	Tools      []Tool   `toml:"tool"`
 	Targets    []Target `toml:"target"`
-}
-
-// DefaultHoldPaths are agent commands and definitions: a change there
-// alters what agents do, so it waits for a look.
-var DefaultHoldPaths = []string{
-	".opencode/command/", ".opencode/commands/",
-	".opencode/agent/", ".opencode/agents/",
 }
 
 // DefaultPath is ~/.config/gh-hud/toolkit.toml.
@@ -158,9 +152,6 @@ func Parse(data []byte) (*Manifest, error) {
 	}
 	if un := md.Undecoded(); len(un) > 0 {
 		return nil, fmt.Errorf("unknown key %q", un[0].String())
-	}
-	if m.HoldPaths == nil {
-		m.HoldPaths = DefaultHoldPaths
 	}
 	if m.HoldLabel == "" {
 		m.HoldLabel = "hold"

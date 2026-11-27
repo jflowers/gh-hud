@@ -700,9 +700,8 @@ feedback run is still pushing (see [Coordination](#coordination)).
 Chore PRs skip the Queue, so
 they only get a review if you start one with `a`; on a branch that requires
 an approval, they won't auto-merge without one. Two kinds are handled for
-you: gh-hud's own learnings PRs (in `unbound-force`) and toolkit scaffold
-PRs (in any repo `[auto_merge]` covers) get a `uf-divisor` approval with no
-agent (see [Auto-merge](#auto-merge)), and Dependabot's PRs (in
+you: gh-hud's own learnings and toolkit scaffold PRs, in any repo
+`[auto_merge]` covers, get a `uf-divisor` approval with no agent (see [Auto-merge](#auto-merge)), and Dependabot's PRs (in
 `unbound-force`)
 aren't chores, so they reach the Queue and get a bot review like yours. No task auto-dispatches on a
 chore PR, so a chore with failing CI or a conflict also waits for you. With `[dispatch.review] auto =
@@ -1830,22 +1829,32 @@ has nothing to wait for. gh-hud also doesn't use `gh pr merge --auto`, which
 merges on the spot when nothing is pending.
 
 **Learnings PRs** (gh-hud's own `chore/dewey-learnings-…` branches) are
-chores, so no agent reviews them and nothing would approve them. In
-`unbound-force`, gh-hud approves one as `uf-divisor` itself, with no agent,
+chores, so no agent reviews them and nothing would approve them. In any
+repo `[auto_merge]` covers, gh-hud approves one as `uf-divisor` itself, with no agent,
 once every changed file is under `.uf/dewey/learnings/` (added or modified,
 not renamed in). The approval names the head commit it checked, so a new
 push gets a new one. A held, human-gated, drafted or conflicted learnings PR
 isn't approved, and a PR on that branch that changes anything else is left
 to you, reported once. The token comes from `agent-env`, as for a bot review.
 
+**Repos with no branch rules.** A private repo on GitHub Free (such as a uf
+stealth overlay) can't require an approval or a check, so auto-merge would
+have nothing to wait for and the bot may have no access. List it in
+`chore_repos` and gh-hud merges its learnings and toolkit PRs there itself,
+by `method`, after the same file check and once its checks (if any)
+passed, without an approval:
+
+```toml
+[auto_merge]
+chore_repos = ["jflowers/fullsend-ai-uf-agents", "jflowers/fullsend-ai-uf-fullsend"]
+```
+
 **Toolkit PRs** (the [toolkit rollout's](#toolkit-rollouts) `chore/toolkit-…`
 scaffold PRs, titled `chore(toolkit): re-scaffold with …`) get the same
-treatment in every repo `[auto_merge]` covers, not only `unbound-force`,
-once every changed file is under `.opencode/`. `uf-divisor` needs write
-access to the repo for its approval to count. The scaffolder labels one
-that changes agent commands or definitions with the hold label, so it
-waits for you; taking the label off is your look, and gh-hud approves it
-at the next refresh. ship's `pr-scope.yml` skips the heavy CI jobs on the
+treatment once every changed file is under `.opencode/`. `uf-divisor` needs write
+access to the repo for its approval to count. A PR the scaffolder held
+(`hold_paths`, none by default) waits for you; taking the label off is
+your look, and gh-hud approves it at the next refresh. ship's `pr-scope.yml` skips the heavy CI jobs on the
 same rule (and for learnings), so a repo whose CI calls it, with one
 always-run job as its required check, lands a rollout in about a minute.
 
@@ -1976,16 +1985,16 @@ For each target, it:
    `~/.config/mise/config.toml`.
 3. If anything changed, it commits on `chore/toolkit-<tool>-<version>…`,
    pushes to `origin` (your fork), and opens one PR on the repo for all
-   the tools. When the change touches agent commands or definitions
-   (`hold_paths`), the PR gets the `hold` label (created if missing), so
-   auto-merge waits for your look. Otherwise gh-hud approves it as
-   `uf-divisor` with no agent when every file is under `.opencode/` (see
-   [Auto-merge](#auto-merge)), and auto-merge and the `ci` task take it
-   from there.
+   the tools. gh-hud approves it as `uf-divisor` with no agent when every
+   file is under `.opencode/` (see [Auto-merge](#auto-merge)), and
+   auto-merge and the `ci` task take it from there. Nothing is held by
+   default; list path prefixes in `hold_paths` to have a change there get
+   the `hold` label (created if missing) and wait for your look.
 4. An **overlay** target (a private uf stealth mirror, such as fullsend-ai's)
-   gets the commit pushed straight to its default branch, or to the chore
-   branch when held, for you to merge. When that remote is on GitHub, a
-   held branch also gets a PR (labelled `hold`) to look at and merge.
+   gets the commit pushed straight to its default branch, or, when
+   `hold_paths` holds it, to the chore branch for you to merge. When that
+   remote is on GitHub, a held branch also gets a PR (labelled `hold`) to
+   look at and merge.
 
 It refuses to go backwards. Commits carry `Toolkit-Scaffold: <tool>
 <version>` trailers, and PR titles name the versions. A version older than
@@ -2003,7 +2012,7 @@ refused.
 The manifest is `~/.config/gh-hud/toolkit.toml`:
 
 ```toml
-hold_paths = [".opencode/command/", ".opencode/commands/", ".opencode/agent/", ".opencode/agents/"] # the default
+hold_paths = []                                        # the default: hold nothing; e.g. [".opencode/agents/"]
 hold_label = "hold"                                    # the default
 
 [[tool]]                       # runs in this order
