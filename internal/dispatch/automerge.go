@@ -103,7 +103,7 @@ func (d *Dispatcher) AutoMerge(ctx context.Context, items []model.Item) []string
 		return runs
 	}
 	msgs := sup
-	msgs = append(msgs, d.approveLearnings(ctx, items)...)
+	msgs = append(msgs, d.approveChores(ctx, items)...)
 	for _, it := range items {
 		action := autoMergeAction(it, cfg)
 		ref := it.Ref()

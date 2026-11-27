@@ -328,9 +328,9 @@ type Dispatcher struct {
 
 	// graphql runs auto-merge's mutations (a hook for tests).
 	graphql func(ctx context.Context, query string, vars map[string]any) error
-	// approve checks a learnings PR and approves it as the bot (a hook for
-	// tests).
-	approve func(ctx context.Context, it model.Item) error
+	// approve checks a chore PR (learnings, toolkit) and approves it as
+	// the bot (a hook for tests).
+	approve func(ctx context.Context, k choreKind, it model.Item) error
 	// rerun re-runs the cancelled workflow runs on a repo's commit and
 	// returns how many (a hook for tests).
 	rerun func(ctx context.Context, repo, sha string) (int, error)
@@ -554,7 +554,7 @@ func New(opts Options) (*Dispatcher, error) {
 		graphql: func(ctx context.Context, query string, vars map[string]any) error {
 			return gh.New().Graphql(ctx, query, vars, nil)
 		},
-		approve:    approveLearningsGH,
+		approve:    approveChoreGH,
 		rerun:      rerunCancelledGH,
 		mergeTried: map[string]string{},
 	}
