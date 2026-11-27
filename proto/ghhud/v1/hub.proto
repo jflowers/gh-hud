@@ -117,6 +117,12 @@ service HubService {
   // is off.
   rpc ToolkitRollout(ToolkitRolloutRequest) returns (ToolkitRolloutResponse);
   rpc ToolkitControl(ToolkitControlRequest) returns (ToolkitControlResponse);
+  // ToolkitFixDrift opens the scaffold PR (or overlay commit) that brings
+  // a drifted target (ToolkitSnapshot.drift) back to the fleet's pins
+  // (issue #77). It returns once the fix starts; the drift row shows how
+  // it went. FAILED_PRECONDITION when the target has nothing to fix or a
+  // fix is open; the agent token can't call it.
+  rpc ToolkitFixDrift(ToolkitFixDriftRequest) returns (ToolkitFixDriftResponse);
 }
 
 message GetSnapshotRequest {}
@@ -474,9 +480,16 @@ enum ToolkitAction {
   TOOLKIT_ACTION_RETRY = 2; // resume a failed or cancelled rollout
   TOOLKIT_ACTION_DISMISS = 3; // forget a finished rollout
   TOOLKIT_ACTION_CHECK = 4; // check releases and versions now
+  TOOLKIT_ACTION_DRIFT = 5; // check scaffold drift now
 }
 
 message ToolkitControlResponse {}
+
+message ToolkitFixDriftRequest {
+  string target = 1; // ToolkitDrift.target
+}
+
+message ToolkitFixDriftResponse {}
 
 // Snapshot is the hub's state at one moment.
 message Snapshot {
@@ -1109,6 +1122,32 @@ message ToolkitSnapshot {
   google.protobuf.Timestamp checked_at = 3;
   bool checking = 4;
   string error = 5; // the manifest or the dotfiles couldn't be read
+  // drift is each target's scaffold against the pins (issue #77), from
+  // the pass at drift_at; drift_error is why the latest pass couldn't run.
+  repeated ToolkitDrift drift = 6;
+  google.protobuf.Timestamp drift_at = 7; // unset until the first pass
+  bool drift_checking = 8;
+  string drift_error = 9;
+}
+
+// ToolkitDrift is one target's scaffold measured against the pins: a dry
+// run of its inits at the pinned versions.
+message ToolkitDrift {
+  string target = 1;
+  string status = 2; // matches the pin, drifted, ahead of the pin, rolling out, failed
+  string detail = 3;
+  repeated string behind = 4; // tools last scaffolded below the pin ("uf 0.21.0 < 0.22.0")
+  repeated string files = 5; // tool-owned files a scaffold at the pins changes
+  int64 added = 6;
+  int64 deleted = 7;
+  bool held = 8; // agent commands or definitions among files
+  repeated string stale = 9; // user-owned files the inits skip that differ from the release
+  google.protobuf.Timestamp checked = 10;
+  string fix = 11; // the fix's PR (or pushed branch)
+  string fix_error = 12;
+  bool fixing = 13;
+  string summary = 14; // what drifted, on one line
+  bool fixable = 15; // ToolkitFixDrift would act
 }
 
 message ToolkitTool {

@@ -39,6 +39,8 @@ class ToolkitScreenTest {
 
     private val act = object : ToolkitActions {
         override suspend fun checkTools(): Answer<String> = did("check")
+        override suspend fun checkDrift(): Answer<String> = did("drift")
+        override suspend fun fixDrift(target: String) = did("fix $target")
         override suspend fun rollOut(tool: String, version: String) = did("rollout $tool $version")
         override suspend fun decline(id: String) = did("decline $id")
         override suspend fun toolkit(action: ToolkitAction, r: RolloutRow) = did("${action.name} ${r.id}")
@@ -113,6 +115,25 @@ class ToolkitScreenTest {
         compose.onNodeWithTag("check-tools").performClick()
         compose.waitUntil(5_000) { asked.size == 3 }
         assertEquals("check", asked.last())
+    }
+
+    /** A drifted repo opens to its files; Fix asks first, then opens the scaffold PR. */
+    @Test
+    fun aDriftedRepoIsFixed() {
+        show()
+        compose.onNodeWithTag("toolkit").performScrollToNode(hasTestTag("drift:acme/app"))
+        compose.onNodeWithTag("drift-state", useUnmergedTree = true).assertTextEquals("drift checked 3h ago · 2 drifted")
+        compose.onNodeWithTag("drift-state:acme/app", useUnmergedTree = true).assertTextEquals("drifted")
+        compose.onNodeWithTag("drift:acme/app").performClick()
+        compose.onNodeWithTag("toolkit").performScrollToNode(hasTestTag("fix:acme/app"))
+        compose.onNodeWithTag("fix:acme/app").performClick()
+        compose.onNodeWithText("Fix acme/app?").assertIsDisplayed()
+        compose.onNodeWithTag("fix-confirm").performClick()
+        compose.waitUntil(5_000) { asked.isNotEmpty() }
+        assertEquals(listOf("fix acme/app"), asked)
+        compose.onNodeWithTag("check-drift").performClick()
+        compose.waitUntil(5_000) { asked.size == 2 }
+        assertEquals("drift", asked.last())
     }
 
     /** A rollout's repo with no PR, in the inbox, opens the Tools screen on its rollout. */

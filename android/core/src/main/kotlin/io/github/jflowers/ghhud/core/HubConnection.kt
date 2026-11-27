@@ -48,6 +48,7 @@ import io.github.jflowers.ghhud.api.v1.subscribeRequest
 import io.github.jflowers.ghhud.api.v1.RefreshTarget
 import io.github.jflowers.ghhud.api.v1.ToolkitAction
 import io.github.jflowers.ghhud.api.v1.toolkitControlRequest
+import io.github.jflowers.ghhud.api.v1.toolkitFixDriftRequest
 import io.github.jflowers.ghhud.api.v1.toolkitRolloutRequest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -296,6 +297,10 @@ public class HubConnection(
                 headers,
             ),
         ) { }
+
+    /** Opens the scaffold PR that brings a drifted repo back to the pins. */
+    public suspend fun fixDrift(target: String): Answer<Unit> =
+        answer(hub.toolkitFixDrift(toolkitFixDriftRequest { this.target = target }, headers)) { }
 
     /** Where an agent task could start on an item now, or why none can. */
     public suspend fun menuChoices(url: String): Answer<MenuChoicesResponse> =

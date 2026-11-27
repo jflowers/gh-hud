@@ -194,6 +194,12 @@ type Snapshot struct {
 	CheckedAt time.Time
 	Checking  bool
 	Err       string // the manifest or the dotfiles couldn't be read
+	// Drift is each target's scaffold against the pins (issue #77), as of
+	// DriftAt; DriftChecking while a pass runs.
+	Drift         []Drift
+	DriftAt       time.Time
+	DriftChecking bool
+	DriftErr      string // why the last pass couldn't run (Drift is the one before)
 }
 
 // CoordOptions configure a Coordinator.
@@ -210,6 +216,9 @@ type CoordOptions struct {
 	Now          func() time.Time
 	Every        time.Duration // rollout steps (1m)
 	StatusEvery  time.Duration // releases and versions (30m)
+	// DriftEvery is how often the scaffold drift check runs (24h); a
+	// negative value turns it off.
+	DriftEvery time.Duration
 }
 
 // Coordinator runs rollouts and keeps tool status.
@@ -220,9 +229,15 @@ type Coordinator struct {
 	rollouts []Rollout
 	declined []string // proposals you dismissed (IDs), not proposed again
 	status   Snapshot // Tools, CheckedAt, Checking, Err
+	// drift and driftAt are the last drift pass, kept in toolkit.json;
+	// driftChecking while one runs.
+	drift         []Drift
+	driftAt       time.Time
+	driftChecking bool
+	driftErr      string
 
-	wake, check chan struct{}
-	stepMu      sync.Mutex // one advance pass at a time
+	wake, check, driftCh chan struct{}
+	stepMu               sync.Mutex // one advance pass at a time
 }
 
 // errLater is a step that couldn't look this time and tries again.
@@ -242,13 +257,16 @@ func NewCoordinator(o CoordOptions) (*Coordinator, error) {
 	if o.StatusEvery <= 0 {
 		o.StatusEvery = 30 * time.Minute
 	}
+	if o.DriftEvery == 0 {
+		o.DriftEvery = 24 * time.Hour
+	}
 	if o.Branch == "" {
 		o.Branch = "main"
 	}
 	if o.Run == nil {
 		o.Run = ExecRunner{}
 	}
-	c := &Coordinator{opts: o, wake: make(chan struct{}, 1), check: make(chan struct{}, 1)}
+	c := &Coordinator{opts: o, wake: make(chan struct{}, 1), check: make(chan struct{}, 1), driftCh: make(chan struct{}, 1)}
 	data, err := os.ReadFile(c.statePath())
 	switch {
 	case errors.Is(err, os.ErrNotExist):
@@ -260,6 +278,7 @@ func NewCoordinator(o CoordOptions) (*Coordinator, error) {
 			return nil, fmt.Errorf("%s: %w", c.statePath(), err)
 		}
 		c.rollouts, c.declined = st.Rollouts, st.Declined
+		c.drift, c.driftAt = st.Drift, st.DriftAt
 	}
 	return c, nil
 }
@@ -271,6 +290,8 @@ func (c *Coordinator) workDir() string   { return filepath.Join(c.opts.StateDir,
 type coordState struct {
 	Rollouts []Rollout `json:"rollouts"`
 	Declined []string  `json:"declined,omitempty"`
+	Drift    []Drift   `json:"drift,omitempty"`
+	DriftAt  time.Time `json:"drift_at,omitzero"`
 }
 
 // maxDeclined bounds the declined list; the oldest go first.
@@ -278,7 +299,7 @@ const maxDeclined = 100
 
 // save writes the rollouts; the caller holds mu.
 func (c *Coordinator) save() {
-	data, err := json.MarshalIndent(coordState{c.rollouts, c.declined}, "", "  ")
+	data, err := json.MarshalIndent(coordState{c.rollouts, c.declined, c.drift, c.driftAt}, "", "  ")
 	if err != nil {
 		return
 	}
@@ -294,6 +315,12 @@ func (c *Coordinator) Snapshot() Snapshot {
 	defer c.mu.Unlock()
 	s := c.status
 	s.Tools = slices.Clone(s.Tools)
+	s.Drift = make([]Drift, len(c.drift))
+	for i, d := range c.drift {
+		d.Behind, d.Files, d.Stale = slices.Clone(d.Behind), slices.Clone(d.Files), slices.Clone(d.Stale)
+		s.Drift[i] = d
+	}
+	s.DriftAt, s.DriftChecking, s.DriftErr = c.driftAt, c.driftChecking, c.driftErr
 	s.Rollouts = make([]Rollout, len(c.rollouts))
 	for i, r := range c.rollouts {
 		r.Targets = slices.Clone(r.Targets)
@@ -455,6 +482,7 @@ func (c *Coordinator) notify(title, body string) {
 // Run steps rollouts and checks status until ctx ends.
 func (c *Coordinator) Run(ctx context.Context) {
 	_ = os.MkdirAll(c.workDir(), 0o700)
+	go c.driftLoop(ctx)
 	go func() {
 		c.checkStatus(ctx)
 		t := time.NewTicker(c.opts.StatusEvery)

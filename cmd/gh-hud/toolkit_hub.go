@@ -1,7 +1,7 @@
 package main
 
-// gh-hud toolkit status|rollout|cancel|retry|dismiss|check: drive the hub's
-// rollout coordinator (issue #75).
+// gh-hud toolkit status|rollout|cancel|retry|dismiss|check|drift|fix: drive
+// the hub's rollout coordinator (issues #75, #77).
 
 import (
 	"context"
@@ -54,6 +54,22 @@ func runToolkitHub(args []string, stdout, stderr io.Writer) int {
 		}
 		fmt.Fprintln(stdout, "checking; see gh-hud toolkit status in a minute")
 		return 0
+	case "drift":
+		if err := c.ToolkitControl(ctx, hub.ToolkitDrift, ""); err != nil {
+			return fail(err)
+		}
+		fmt.Fprintln(stdout, "checking every repo's scaffold against the pins; see gh-hud toolkit status in a few minutes")
+		return 0
+	case "fix":
+		if len(rest) != 1 {
+			fmt.Fprintln(stderr, "gh-hud toolkit fix: want one repo (as gh-hud toolkit status lists it under DRIFT)")
+			return 2
+		}
+		if err := c.ToolkitFixDrift(ctx, rest[0]); err != nil {
+			return fail(err)
+		}
+		fmt.Fprintf(stdout, "fixing %s: a scaffold PR at the pins; see gh-hud toolkit status\n", rest[0])
+		return 0
 	case "rollout", "approve":
 		if len(rest) != 1 {
 			fmt.Fprintf(stderr, "gh-hud toolkit %s: want one tool[@version]\n", cmd)
@@ -104,6 +120,7 @@ func printToolkit(s toolkit.Snapshot, w io.Writer) {
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", t.Name, orDash(t.Pin), orDash(t.Applied), latest, repoSummary(t))
 	}
 	_ = tw.Flush()
+	printDrift(s, w)
 	if len(s.Rollouts) == 0 {
 		return
 	}
@@ -129,6 +146,44 @@ func printToolkit(s toolkit.Snapshot, w io.Writer) {
 				state += " (" + why + ")"
 			}
 			fmt.Fprintf(w, "  %s  %s  %s\n", t.Target, state, where)
+		}
+	}
+}
+
+// printDrift prints each target's scaffold against the pins.
+func printDrift(s toolkit.Snapshot, w io.Writer) {
+	if len(s.Drift) == 0 && s.DriftErr == "" && !s.DriftChecking {
+		return
+	}
+	when := "not yet"
+	if !s.DriftAt.IsZero() {
+		when = s.DriftAt.Local().Format("Jan 2 15:04")
+	}
+	if s.DriftChecking {
+		when += " (checking now)"
+	}
+	fmt.Fprintf(w, "\nDRIFT (checked %s)\n", when)
+	if s.DriftErr != "" {
+		fmt.Fprintln(w, "  the last check failed:", s.DriftErr)
+	}
+	for _, d := range s.Drift {
+		line := fmt.Sprintf("  %s  %s", d.Target, d.Status)
+		if d.Status != toolkit.DriftNone {
+			line += "  " + d.Summary()
+		}
+		switch {
+		case d.Fixing:
+			line += "  (fixing)"
+		case d.Fix != "":
+			line += "  fix: " + d.Fix
+		case d.FixErr != "":
+			line += "  fix failed: " + d.FixErr
+		case d.Fixable():
+			line += "  (gh-hud toolkit fix " + d.Target + ")"
+		}
+		fmt.Fprintln(w, line)
+		for _, f := range d.Stale {
+			fmt.Fprintln(w, "    skipped by the init, differs from the release:", f)
 		}
 	}
 }

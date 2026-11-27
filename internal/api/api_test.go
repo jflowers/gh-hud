@@ -149,9 +149,10 @@ func TestCommandsOverSocket(t *testing.T) {
 	if id, err := c.ToolkitRollout(ctx, "uf", "0.22.0"); err != nil || id != "uf@0.22.0" {
 		t.Errorf("ToolkitRollout = %q, %v", id, err)
 	}
-	for _, a := range []hub.ToolkitAction{hub.ToolkitCancel, hub.ToolkitRetry, hub.ToolkitDismiss, hub.ToolkitCheck} {
+	for _, a := range []hub.ToolkitAction{hub.ToolkitCancel, hub.ToolkitRetry, hub.ToolkitDismiss, hub.ToolkitCheck, hub.ToolkitDrift} {
 		must(c.ToolkitControl(ctx, a, "uf@0.22.0"))
 	}
+	must(c.ToolkitFixDrift(ctx, "acme/app"))
 
 	want := []string{
 		"Refresh", "RefreshAgents", "RefreshWorkspaces",
@@ -161,7 +162,8 @@ func TestCommandsOverSocket(t *testing.T) {
 		"FleetPause true", "FleetPause false", "FleetApplyNow", "FleetSkipWait", "FleetRetry",
 		"DeweyReindex", "DeweyReindex lap1", "DeweyReindex -force lap1", "DeweyReindexCancel lap1",
 		"ToolkitRollout uf 0.22.0", "ToolkitControl cancel uf@0.22.0", "ToolkitControl retry uf@0.22.0",
-		"ToolkitControl dismiss uf@0.22.0", "ToolkitControl check uf@0.22.0",
+		"ToolkitControl dismiss uf@0.22.0", "ToolkitControl check uf@0.22.0", "ToolkitControl drift uf@0.22.0",
+		"ToolkitFixDrift acme/app",
 	}
 	if !slices.Equal(fake.Calls, want) {
 		t.Errorf("calls =\n%q\nwant\n%q", fake.Calls, want)

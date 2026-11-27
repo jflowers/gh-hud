@@ -57,6 +57,8 @@ object NoopActions : AppActions {
     override fun follow(t: WatchTarget) = kotlinx.coroutines.flow.emptyFlow<PaneRead>()
     override suspend fun transcript(runId: String): Answer<TranscriptResponse> = Answer.No("none")
     override suspend fun checkTools(): Answer<String> = Answer.Ok("")
+    override suspend fun checkDrift(): Answer<String> = Answer.Ok("")
+    override suspend fun fixDrift(target: String): Answer<String> = Answer.Ok("")
     override suspend fun rollOut(tool: String, version: String): Answer<String> = Answer.Ok("")
     override suspend fun decline(id: String): Answer<String> = Answer.Ok("")
     override suspend fun toolkit(action: ToolkitAction, r: RolloutRow): Answer<String> = Answer.Ok("")

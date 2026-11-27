@@ -518,6 +518,16 @@ func (h *Hub) DeweyReindexCancel(_ context.Context, machine string) ([]string, e
 	return got, err
 }
 
+// ToolkitFixDrift starts the fix for a drifted target.
+func (h *Hub) ToolkitFixDrift(_ context.Context, target string) error {
+	if h.opts.Toolkit == nil {
+		return ErrNoToolkit
+	}
+	err := h.opts.Toolkit.FixDrift(target)
+	h.publish()
+	return err
+}
+
 // errNotOwner refuses what only the gh-hud that owns dispatch does.
 var errNotOwner = errors.New("this gh-hud doesn't own dispatch: ask the hub that does")
 
@@ -550,6 +560,8 @@ func (h *Hub) ToolkitControl(_ context.Context, action ToolkitAction, id string)
 		err = t.Dismiss(id)
 	case ToolkitCheck:
 		t.Check()
+	case ToolkitDrift:
+		t.CheckDrift()
 	default:
 		err = fmt.Errorf("unknown toolkit action %q", action)
 	}

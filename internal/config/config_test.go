@@ -684,3 +684,16 @@ func TestTaskConfigCovers(t *testing.T) {
 		t.Error("Covers must not depend on auto")
 	}
 }
+
+func TestToolkitDriftInterval(t *testing.T) {
+	for in, want := range map[string]time.Duration{"": 0, "off": -1, "12h": 12 * time.Hour} {
+		if got, err := (ToolkitConfig{DriftEvery: in}).DriftInterval(); err != nil || got != want {
+			t.Errorf("%q: %v, %v", in, got, err)
+		}
+	}
+	for _, bad := range []string{"daily", "5m"} {
+		if _, err := (ToolkitConfig{DriftEvery: bad}).DriftInterval(); err == nil {
+			t.Errorf("%q read", bad)
+		}
+	}
+}

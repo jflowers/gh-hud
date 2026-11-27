@@ -193,40 +193,23 @@ func (s *Scaffolder) Scaffold(ctx context.Context, t Target, runs []Run, o Optio
 		return fail(StatusRefused, "would downgrade: %s", strings.Join(down, ", "))
 	}
 
-	wt := filepath.Join(s.WorkDir, safeRef.ReplaceAllString(t.Label(), "_"))
-	_, _ = g("worktree", "remove", "--force", wt)
-	if err := os.RemoveAll(wt); err != nil {
-		return fail(StatusFailed, "%v", err)
-	}
-	_, _ = g("worktree", "prune")
-	if _, err := g("worktree", "add", "-q", "--detach", wt, base+"/"+def); err != nil {
+	wt, removeWT, err := s.scratch(ctx, src, base+"/"+def, t.Label())
+	if err != nil {
 		return fail(StatusFailed, "%v", err)
 	}
 	branch := Branch(runs)
 	madeBranch := false
 	defer func() {
-		_, _ = g("worktree", "remove", "--force", wt)
+		removeWT()
 		if madeBranch {
 			_, _ = g("branch", "-q", "-D", branch)
 		}
 	}()
-	if fi, err := os.Stat(filepath.Join(wt, ".git")); err != nil || fi.IsDir() {
-		// A worktree's .git is a file. Anything else isn't ours to write in.
-		return fail(StatusFailed, "scratch worktree %s didn't appear", wt)
-	}
 	w := func(args ...string) (string, error) { return s.Run.Run(ctx, wt, "git", args...) }
 
-	var ran []string
-	for _, r := range runs {
-		args := append(slices.Clone(r.Tool.Init), t.Args[r.Tool.Name]...)
-		for i := range args {
-			args[i] = strings.ReplaceAll(args[i], "{version}", r.Tool.Tag(r.Version))
-		}
-		s.logf("  %s: %s %s", res.Target, r.Tool.Bin, strings.Join(args, " "))
-		if _, err := s.Run.Run(ctx, wt, r.Path, args...); err != nil {
-			return fail(StatusFailed, "%s %s: %v", r.Tool.Name, r.Version, err)
-		}
-		ran = append(ran, strings.TrimSpace(r.Tool.Bin+" "+strings.Join(args, " ")))
+	ran, err := s.runInits(ctx, wt, t, runs, false)
+	if err != nil {
+		return fail(StatusFailed, "%v", err)
 	}
 
 	if _, err := w("add", "-A"); err != nil {

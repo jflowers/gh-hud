@@ -271,6 +271,185 @@ public object ToolkitSnapshotKt {
     public fun clearError() {
       _builder.clearError()
     }
+
+    /**
+     * An uninstantiable, behaviorless type to represent the field in
+     * generics.
+     */
+    @kotlin.OptIn(com.google.protobuf.kotlin.OnlyForUseByGeneratedProtoCode::class)
+    public class DriftProxy private constructor() : com.google.protobuf.kotlin.DslProxy()
+    /**
+     * ```
+     * drift is each target's scaffold against the pins (issue #77), from
+     * the pass at drift_at; drift_error is why the latest pass couldn't run.
+     * ```
+     *
+     * `repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];`
+     */
+     public val drift: com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ToolkitDrift, DriftProxy>
+      @kotlin.jvm.JvmSynthetic
+  get() = com.google.protobuf.kotlin.DslList(
+        _builder.driftList
+      )
+    /**
+     * ```
+     * drift is each target's scaffold against the pins (issue #77), from
+     * the pass at drift_at; drift_error is why the latest pass couldn't run.
+     * ```
+     *
+     * `repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];`
+     * @param value The drift to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addDrift")
+    public fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ToolkitDrift, DriftProxy>.add(value: io.github.jflowers.ghhud.api.v1.ToolkitDrift) {
+      _builder.addDrift(value)
+    }
+    /**
+     * ```
+     * drift is each target's scaffold against the pins (issue #77), from
+     * the pass at drift_at; drift_error is why the latest pass couldn't run.
+     * ```
+     *
+     * `repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];`
+     * @param value The drift to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignDrift")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ToolkitDrift, DriftProxy>.plusAssign(value: io.github.jflowers.ghhud.api.v1.ToolkitDrift) {
+      add(value)
+    }
+    /**
+     * ```
+     * drift is each target's scaffold against the pins (issue #77), from
+     * the pass at drift_at; drift_error is why the latest pass couldn't run.
+     * ```
+     *
+     * `repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];`
+     * @param values The drift to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("addAllDrift")
+    public fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ToolkitDrift, DriftProxy>.addAll(values: kotlin.collections.Iterable<io.github.jflowers.ghhud.api.v1.ToolkitDrift>) {
+      _builder.addAllDrift(values)
+    }
+    /**
+     * ```
+     * drift is each target's scaffold against the pins (issue #77), from
+     * the pass at drift_at; drift_error is why the latest pass couldn't run.
+     * ```
+     *
+     * `repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];`
+     * @param values The drift to add.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("plusAssignAllDrift")
+    @Suppress("NOTHING_TO_INLINE")
+    public inline operator fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ToolkitDrift, DriftProxy>.plusAssign(values: kotlin.collections.Iterable<io.github.jflowers.ghhud.api.v1.ToolkitDrift>) {
+      addAll(values)
+    }
+    /**
+     * ```
+     * drift is each target's scaffold against the pins (issue #77), from
+     * the pass at drift_at; drift_error is why the latest pass couldn't run.
+     * ```
+     *
+     * `repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];`
+     * @param index The index to set the value at.
+     * @param value The drift to set.
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("setDrift")
+    public operator fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ToolkitDrift, DriftProxy>.set(index: kotlin.Int, value: io.github.jflowers.ghhud.api.v1.ToolkitDrift) {
+      _builder.setDrift(index, value)
+    }
+    /**
+     * ```
+     * drift is each target's scaffold against the pins (issue #77), from
+     * the pass at drift_at; drift_error is why the latest pass couldn't run.
+     * ```
+     *
+     * `repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];`
+     */
+    @kotlin.jvm.JvmSynthetic
+@kotlin.jvm.JvmName("clearDrift")
+    public fun com.google.protobuf.kotlin.DslList<io.github.jflowers.ghhud.api.v1.ToolkitDrift, DriftProxy>.clear() {
+      _builder.clearDrift()
+    }
+
+    /**
+     * ```
+     * unset until the first pass
+     * ```
+     *
+     * `.google.protobuf.Timestamp drift_at = 7 [json_name = "driftAt"];`
+     */
+    public var driftAt: com.google.protobuf.Timestamp
+      @kotlin.jvm.JvmName("getDriftAt")
+        get() = _builder.driftAt
+      @kotlin.jvm.JvmName("setDriftAt")
+        set(value) {
+        _builder.driftAt = value
+      }
+    /**
+     * ```
+     * unset until the first pass
+     * ```
+     *
+     * `.google.protobuf.Timestamp drift_at = 7 [json_name = "driftAt"];`
+     */
+    public fun clearDriftAt() {
+      _builder.clearDriftAt()
+    }
+    /**
+     * ```
+     * unset until the first pass
+     * ```
+     *
+     * `.google.protobuf.Timestamp drift_at = 7 [json_name = "driftAt"];`
+     * @return Whether the driftAt field is set.
+     */
+    public fun hasDriftAt(): kotlin.Boolean {
+      return _builder.hasDriftAt()
+    }
+
+    public val ToolkitSnapshotKt.Dsl.driftAtOrNull: com.google.protobuf.Timestamp?
+      get() = _builder.driftAtOrNull
+
+    /**
+     * `bool drift_checking = 8 [json_name = "driftChecking"];`
+     */
+    public var driftChecking: kotlin.Boolean
+      @kotlin.jvm.JvmName("getDriftChecking")
+        get() = _builder.driftChecking
+      @kotlin.jvm.JvmName("setDriftChecking")
+        set(value) {
+        _builder.driftChecking = value
+      }
+    /**
+     * `bool drift_checking = 8 [json_name = "driftChecking"];`
+     */
+    public fun clearDriftChecking() {
+      _builder.clearDriftChecking()
+    }
+
+    /**
+     * `string drift_error = 9 [json_name = "driftError"];`
+     */
+    public var driftError: kotlin.String
+      @kotlin.jvm.JvmName("getDriftError")
+        get() = _builder.driftError
+      @kotlin.jvm.JvmName("setDriftError")
+        set(value) {
+        _builder.driftError = value
+      }
+    /**
+     * `string drift_error = 9 [json_name = "driftError"];`
+     */
+    public fun clearDriftError() {
+      _builder.clearDriftError()
+    }
   }
 }
 public inline fun io.github.jflowers.ghhud.api.v1.ToolkitSnapshot.copy(block: `io.github.jflowers.ghhud.api.v1`.ToolkitSnapshotKt.Dsl.() -> kotlin.Unit): io.github.jflowers.ghhud.api.v1.ToolkitSnapshot =
@@ -278,4 +457,7 @@ public inline fun io.github.jflowers.ghhud.api.v1.ToolkitSnapshot.copy(block: `i
 
 public val io.github.jflowers.ghhud.api.v1.ToolkitSnapshotOrBuilder.checkedAtOrNull: com.google.protobuf.Timestamp?
   get() = if (hasCheckedAt()) getCheckedAt() else null
+
+public val io.github.jflowers.ghhud.api.v1.ToolkitSnapshotOrBuilder.driftAtOrNull: com.google.protobuf.Timestamp?
+  get() = if (hasDriftAt()) getDriftAt() else null
 

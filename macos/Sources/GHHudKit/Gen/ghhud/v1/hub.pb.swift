@@ -205,6 +205,9 @@ public nonisolated enum Ghhud_V1_ToolkitAction: SwiftProtobuf.Enum, Swift.CaseIt
 
   /// check releases and versions now
   case check // = 4
+
+  /// check scaffold drift now
+  case drift // = 5
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -218,6 +221,7 @@ public nonisolated enum Ghhud_V1_ToolkitAction: SwiftProtobuf.Enum, Swift.CaseIt
     case 2: self = .retry
     case 3: self = .dismiss
     case 4: self = .check
+    case 5: self = .drift
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -229,6 +233,7 @@ public nonisolated enum Ghhud_V1_ToolkitAction: SwiftProtobuf.Enum, Swift.CaseIt
     case .retry: return 2
     case .dismiss: return 3
     case .check: return 4
+    case .drift: return 5
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -240,6 +245,7 @@ public nonisolated enum Ghhud_V1_ToolkitAction: SwiftProtobuf.Enum, Swift.CaseIt
     .retry,
     .dismiss,
     .check,
+    .drift,
   ]
 
 }
@@ -1477,6 +1483,29 @@ public nonisolated struct Ghhud_V1_ToolkitControlRequest: Sendable {
 }
 
 public nonisolated struct Ghhud_V1_ToolkitControlResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Ghhud_V1_ToolkitFixDriftRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// ToolkitDrift.target
+  public var target: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Ghhud_V1_ToolkitFixDriftResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -3675,11 +3704,89 @@ public nonisolated struct Ghhud_V1_ToolkitSnapshot: Sendable {
   /// the manifest or the dotfiles couldn't be read
   public var error: String = String()
 
+  /// drift is each target's scaffold against the pins (issue #77), from
+  /// the pass at drift_at; drift_error is why the latest pass couldn't run.
+  public var drift: [Ghhud_V1_ToolkitDrift] = []
+
+  /// unset until the first pass
+  public var driftAt: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_driftAt ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_driftAt = newValue}
+  }
+  /// Returns true if `driftAt` has been explicitly set.
+  public var hasDriftAt: Bool {self._driftAt != nil}
+  /// Clears the value of `driftAt`. Subsequent reads from it will return its default value.
+  public mutating func clearDriftAt() {self._driftAt = nil}
+
+  public var driftChecking: Bool = false
+
+  public var driftError: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _checkedAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+  fileprivate var _driftAt: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
+}
+
+/// ToolkitDrift is one target's scaffold measured against the pins: a dry
+/// run of its inits at the pinned versions.
+public nonisolated struct Ghhud_V1_ToolkitDrift: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var target: String = String()
+
+  /// matches the pin, drifted, ahead of the pin, rolling out, failed
+  public var status: String = String()
+
+  public var detail: String = String()
+
+  /// tools last scaffolded below the pin ("uf 0.21.0 < 0.22.0")
+  public var behind: [String] = []
+
+  /// tool-owned files a scaffold at the pins changes
+  public var files: [String] = []
+
+  public var added: Int64 = 0
+
+  public var deleted: Int64 = 0
+
+  /// agent commands or definitions among files
+  public var held: Bool = false
+
+  /// user-owned files the inits skip that differ from the release
+  public var stale: [String] = []
+
+  public var checked: SwiftProtobuf.Google_Protobuf_Timestamp {
+    get {_checked ?? SwiftProtobuf.Google_Protobuf_Timestamp()}
+    set {_checked = newValue}
+  }
+  /// Returns true if `checked` has been explicitly set.
+  public var hasChecked: Bool {self._checked != nil}
+  /// Clears the value of `checked`. Subsequent reads from it will return its default value.
+  public mutating func clearChecked() {self._checked = nil}
+
+  /// the fix's PR (or pushed branch)
+  public var fix: String = String()
+
+  public var fixError: String = String()
+
+  public var fixing: Bool = false
+
+  /// what drifted, on one line
+  public var summary: String = String()
+
+  /// ToolkitFixDrift would act
+  public var fixable: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _checked: SwiftProtobuf.Google_Protobuf_Timestamp? = nil
 }
 
 public nonisolated struct Ghhud_V1_ToolkitTool: Sendable {
@@ -4032,7 +4139,7 @@ nonisolated extension Ghhud_V1_CheckoutActionKind: SwiftProtobuf._ProtoNameProvi
 }
 
 nonisolated extension Ghhud_V1_ToolkitAction: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0TOOLKIT_ACTION_UNSPECIFIED\0\u{1}TOOLKIT_ACTION_CANCEL\0\u{1}TOOLKIT_ACTION_RETRY\0\u{1}TOOLKIT_ACTION_DISMISS\0\u{1}TOOLKIT_ACTION_CHECK\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0TOOLKIT_ACTION_UNSPECIFIED\0\u{1}TOOLKIT_ACTION_CANCEL\0\u{1}TOOLKIT_ACTION_RETRY\0\u{1}TOOLKIT_ACTION_DISMISS\0\u{1}TOOLKIT_ACTION_CHECK\0\u{1}TOOLKIT_ACTION_DRIFT\0")
 }
 
 nonisolated extension Ghhud_V1_ItemKind: SwiftProtobuf._ProtoNameProviding {
@@ -6242,6 +6349,55 @@ nonisolated extension Ghhud_V1_ToolkitControlResponse: SwiftProtobuf.Message, Sw
   }
 
   public static func ==(lhs: Ghhud_V1_ToolkitControlResponse, rhs: Ghhud_V1_ToolkitControlResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_ToolkitFixDriftRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ToolkitFixDriftRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}target\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.target) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.target.isEmpty {
+      try visitor.visitSingularStringField(value: self.target, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_ToolkitFixDriftRequest, rhs: Ghhud_V1_ToolkitFixDriftRequest) -> Bool {
+    if lhs.target != rhs.target {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_ToolkitFixDriftResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ToolkitFixDriftResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_ToolkitFixDriftResponse, rhs: Ghhud_V1_ToolkitFixDriftResponse) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -9586,7 +9742,7 @@ nonisolated extension Ghhud_V1_Alert: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 nonisolated extension Ghhud_V1_ToolkitSnapshot: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ToolkitSnapshot"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}tools\0\u{1}rollouts\0\u{3}checked_at\0\u{1}checking\0\u{1}error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}tools\0\u{1}rollouts\0\u{3}checked_at\0\u{1}checking\0\u{1}error\0\u{1}drift\0\u{3}drift_at\0\u{3}drift_checking\0\u{3}drift_error\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -9599,6 +9755,10 @@ nonisolated extension Ghhud_V1_ToolkitSnapshot: SwiftProtobuf.Message, SwiftProt
       case 3: try { try decoder.decodeSingularMessageField(value: &self._checkedAt) }()
       case 4: try { try decoder.decodeSingularBoolField(value: &self.checking) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.error) }()
+      case 6: try { try decoder.decodeRepeatedMessageField(value: &self.drift) }()
+      case 7: try { try decoder.decodeSingularMessageField(value: &self._driftAt) }()
+      case 8: try { try decoder.decodeSingularBoolField(value: &self.driftChecking) }()
+      case 9: try { try decoder.decodeSingularStringField(value: &self.driftError) }()
       default: break
       }
     }
@@ -9624,6 +9784,18 @@ nonisolated extension Ghhud_V1_ToolkitSnapshot: SwiftProtobuf.Message, SwiftProt
     if !self.error.isEmpty {
       try visitor.visitSingularStringField(value: self.error, fieldNumber: 5)
     }
+    if !self.drift.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.drift, fieldNumber: 6)
+    }
+    try { if let v = self._driftAt {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
+    } }()
+    if self.driftChecking != false {
+      try visitor.visitSingularBoolField(value: self.driftChecking, fieldNumber: 8)
+    }
+    if !self.driftError.isEmpty {
+      try visitor.visitSingularStringField(value: self.driftError, fieldNumber: 9)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -9633,6 +9805,114 @@ nonisolated extension Ghhud_V1_ToolkitSnapshot: SwiftProtobuf.Message, SwiftProt
     if lhs._checkedAt != rhs._checkedAt {return false}
     if lhs.checking != rhs.checking {return false}
     if lhs.error != rhs.error {return false}
+    if lhs.drift != rhs.drift {return false}
+    if lhs._driftAt != rhs._driftAt {return false}
+    if lhs.driftChecking != rhs.driftChecking {return false}
+    if lhs.driftError != rhs.driftError {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ghhud_V1_ToolkitDrift: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".ToolkitDrift"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}target\0\u{1}status\0\u{1}detail\0\u{1}behind\0\u{1}files\0\u{1}added\0\u{1}deleted\0\u{1}held\0\u{1}stale\0\u{1}checked\0\u{1}fix\0\u{3}fix_error\0\u{1}fixing\0\u{1}summary\0\u{1}fixable\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.target) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.status) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.detail) }()
+      case 4: try { try decoder.decodeRepeatedStringField(value: &self.behind) }()
+      case 5: try { try decoder.decodeRepeatedStringField(value: &self.files) }()
+      case 6: try { try decoder.decodeSingularInt64Field(value: &self.added) }()
+      case 7: try { try decoder.decodeSingularInt64Field(value: &self.deleted) }()
+      case 8: try { try decoder.decodeSingularBoolField(value: &self.held) }()
+      case 9: try { try decoder.decodeRepeatedStringField(value: &self.stale) }()
+      case 10: try { try decoder.decodeSingularMessageField(value: &self._checked) }()
+      case 11: try { try decoder.decodeSingularStringField(value: &self.fix) }()
+      case 12: try { try decoder.decodeSingularStringField(value: &self.fixError) }()
+      case 13: try { try decoder.decodeSingularBoolField(value: &self.fixing) }()
+      case 14: try { try decoder.decodeSingularStringField(value: &self.summary) }()
+      case 15: try { try decoder.decodeSingularBoolField(value: &self.fixable) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.target.isEmpty {
+      try visitor.visitSingularStringField(value: self.target, fieldNumber: 1)
+    }
+    if !self.status.isEmpty {
+      try visitor.visitSingularStringField(value: self.status, fieldNumber: 2)
+    }
+    if !self.detail.isEmpty {
+      try visitor.visitSingularStringField(value: self.detail, fieldNumber: 3)
+    }
+    if !self.behind.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.behind, fieldNumber: 4)
+    }
+    if !self.files.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.files, fieldNumber: 5)
+    }
+    if self.added != 0 {
+      try visitor.visitSingularInt64Field(value: self.added, fieldNumber: 6)
+    }
+    if self.deleted != 0 {
+      try visitor.visitSingularInt64Field(value: self.deleted, fieldNumber: 7)
+    }
+    if self.held != false {
+      try visitor.visitSingularBoolField(value: self.held, fieldNumber: 8)
+    }
+    if !self.stale.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.stale, fieldNumber: 9)
+    }
+    try { if let v = self._checked {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+    } }()
+    if !self.fix.isEmpty {
+      try visitor.visitSingularStringField(value: self.fix, fieldNumber: 11)
+    }
+    if !self.fixError.isEmpty {
+      try visitor.visitSingularStringField(value: self.fixError, fieldNumber: 12)
+    }
+    if self.fixing != false {
+      try visitor.visitSingularBoolField(value: self.fixing, fieldNumber: 13)
+    }
+    if !self.summary.isEmpty {
+      try visitor.visitSingularStringField(value: self.summary, fieldNumber: 14)
+    }
+    if self.fixable != false {
+      try visitor.visitSingularBoolField(value: self.fixable, fieldNumber: 15)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ghhud_V1_ToolkitDrift, rhs: Ghhud_V1_ToolkitDrift) -> Bool {
+    if lhs.target != rhs.target {return false}
+    if lhs.status != rhs.status {return false}
+    if lhs.detail != rhs.detail {return false}
+    if lhs.behind != rhs.behind {return false}
+    if lhs.files != rhs.files {return false}
+    if lhs.added != rhs.added {return false}
+    if lhs.deleted != rhs.deleted {return false}
+    if lhs.held != rhs.held {return false}
+    if lhs.stale != rhs.stale {return false}
+    if lhs._checked != rhs._checked {return false}
+    if lhs.fix != rhs.fix {return false}
+    if lhs.fixError != rhs.fixError {return false}
+    if lhs.fixing != rhs.fixing {return false}
+    if lhs.summary != rhs.summary {return false}
+    if lhs.fixable != rhs.fixable {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

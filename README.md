@@ -2021,6 +2021,7 @@ release = "unbound-force/unbound-force"                # release links, and its 
 mise = "go:github.com/unbound-force/unbound-force/cmd/unbound-force"
 bin = "unbound-force"
 init = ["init"]                                        # the default
+force = ["--force"]                                    # what makes init overwrite user-owned files (drift only)
 
 [[target]]
 repo = "unbound-force/dewey"
@@ -2113,7 +2114,35 @@ gh-hud toolkit rollout uf          # the latest release; or uf@0.22.0
 gh-hud toolkit approve|decline uf@0.22.0   # a proposed release
 gh-hud toolkit cancel|retry|dismiss uf@0.22.0
 gh-hud toolkit check
+gh-hud toolkit drift               # dry-run every repo's scaffold at the pins now
+gh-hud toolkit fix unbound-force/dewey   # open the scaffold PR that brings it back
 ```
+
+### Scaffold drift
+
+Once a day the hub dry-runs every target's inits at the fleet's pins, in a
+scratch worktree, and keeps what it finds (issue #77; it survives restarts
+in `toolkit.json`). A repo **drifted** when that scaffold would change
+tool-owned files: a hand edit to a file a tool owns, or a rollout the repo
+missed ("missed a rollout: uf 0.21.0 < 0.22.0", read from its
+`Toolkit-Scaffold` trailers and scaffold PRs). A repo scaffolded from a
+newer release than the pin is **ahead of the pin**, not drift, and a repo
+whose tool is rolling out waits for the next check: its scaffold PR is the
+fix.
+
+An init skips the user-owned files that already exist, so those never get
+a release's changes. For a tool whose manifest entry sets `force`, the
+check runs its init again with it and lists the user-owned files that
+differ from the release, apart from the drift: they're yours to merge by
+hand, and a fix leaves them alone.
+
+Nothing is written outside the scratch worktree until you ask: `f` (twice)
+on a drifted repo in the toolkit view, **Fix…** in the Mac's Tools pane,
+**Fix** on the phone, or `gh-hud toolkit fix <repo>`. That runs `gh-hud
+toolkit scaffold` for that repo at the pins: a PR (held when agent commands
+or definitions change), or an overlay commit, as a rollout would. The agent
+token can't. `X` (**Check Drift**, **Drift** on the phone) checks now, and a
+repo that newly drifts notifies.
 
 The toolkit runs when `~/.config/gh-hud/toolkit.toml` exists at hub start:
 
@@ -2122,6 +2151,7 @@ The toolkit runs when `~/.config/gh-hud/toolkit.toml` exists at hub start:
 enabled = true                              # unset: on when the manifest exists
 manifest = "~/.config/gh-hud/toolkit.toml"  # the default
 dotfiles = "~/.local/share/chezmoi"         # the default: a clone of [fleet]'s repo
+drift_every = "24h"                         # the default; "off" stops the drift check
 ```
 
 ## Config

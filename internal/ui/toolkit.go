@@ -1,7 +1,8 @@
 package ui
 
 // The toolkit view (T, issue #75): the tools the fleet pins, their latest
-// releases, and rollouts on their way out.
+// releases, rollouts on their way out, and each repo's scaffold against
+// the pins (issue #77).
 
 import (
 	"fmt"
@@ -18,9 +19,19 @@ import (
 // rolloutConfirmWindow is how long a first u waits for the second.
 const rolloutConfirmWindow = 5 * time.Second
 
-// toolkitRows is the number of selectable rows: tools, then rollouts.
+// toolkitRows is the number of selectable rows: tools, rollouts, then
+// drift.
 func (m *Model) toolkitRows() int {
-	return len(m.toolkitSnap.Tools) + len(m.toolkitSnap.Rollouts)
+	return len(m.toolkitSnap.Tools) + len(m.toolkitSnap.Rollouts) + len(m.toolkitSnap.Drift)
+}
+
+// selectedDrift is the selected drift row, if one is selected.
+func (m *Model) selectedDrift() (toolkit.Drift, bool) {
+	i := m.toolkitSel - len(m.toolkitSnap.Tools) - len(m.toolkitSnap.Rollouts)
+	if i >= 0 && i < len(m.toolkitSnap.Drift) {
+		return m.toolkitSnap.Drift[i], true
+	}
+	return toolkit.Drift{}, false
 }
 
 // selectedTool is the selected tool, if a tool row is selected.
@@ -61,7 +72,7 @@ func (m *Model) handleToolkitKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.sync()
 	}
 	key := msg.String()
-	if key != "u" && key != "a" {
+	if key != "u" && key != "a" && key != "f" {
 		m.rolloutArmed = ""
 	}
 	switch key {
@@ -75,6 +86,25 @@ func (m *Model) handleToolkitKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.toolkitSel = clampSel(m.toolkitSel-1, m.toolkitRows())
 	case "x":
 		do(m.backend.ToolkitControl(ctx(), hub.ToolkitCheck, ""), "checking releases and versions…")
+	case "X":
+		do(m.backend.ToolkitControl(ctx(), hub.ToolkitDrift, ""), "checking every repo's scaffold against the pins…")
+	case "f":
+		d, ok := m.selectedDrift()
+		armed := "fix " + d.Target
+		switch {
+		case !ok:
+			m.rolloutArmed = ""
+			m.flash("select a drifted repo to fix")
+		case !d.Fixable():
+			m.rolloutArmed = ""
+			m.flash(d.Target + ": nothing to fix (" + driftState(d) + ")")
+		case m.rolloutArmed == armed && time.Since(m.rolloutAt) < rolloutConfirmWindow:
+			m.rolloutArmed = ""
+			do(m.backend.ToolkitFixDrift(ctx(), d.Target), "fixing "+d.Target+": a scaffold PR at the pins")
+		default:
+			m.rolloutArmed, m.rolloutAt = armed, time.Now()
+			m.flash("press f again to open a scaffold PR that brings " + d.Target + " back to the pins")
+		}
 	case "u":
 		t, ok := m.selectedTool()
 		switch {
@@ -120,6 +150,12 @@ func (m *Model) handleToolkitKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			map[string]string{"c": "cancelled ", "R": "retrying ", "d": "dismissed "}[key]
 		do(m.backend.ToolkitControl(ctx(), action, r.ID), done+r.ID)
 	case "o":
+		if d, ok := m.selectedDrift(); ok {
+			if strings.HasPrefix(d.Fix, "https://") {
+				m.openLink(d.Fix)
+			}
+			break
+		}
 		r, ok := m.selectedRollout()
 		if !ok {
 			if t, ok := m.selectedTool(); ok && t.Release != "" {
@@ -265,11 +301,13 @@ func (m *Model) toolkitView() string {
 		}
 	}
 
+	lines = append(lines, m.driftLines()...)
+
 	lines = append(lines, "")
 	if m.statusMsg != "" && time.Since(m.statusAt) < 4*time.Second {
 		lines = append(lines, comment.Render(" "+m.statusMsg))
 	}
-	lines = append(lines, comment.Render("↑↓ select · u roll out latest (twice) · a approve ◆ (twice) · c cancel · R retry · d dismiss · o open · x check · T/esc close"))
+	lines = append(lines, comment.Render("↑↓ select · u roll out latest (twice) · a approve ◆ (twice) · c cancel · R retry · d dismiss · o open · x check · X drift · f fix (twice) · T/esc close"))
 
 	box := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
@@ -277,6 +315,96 @@ func (m *Model) toolkitView() string {
 		Padding(1, 3).
 		Render(strings.Join(lines, "\n"))
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
+}
+
+// maxDriftFiles is how many of a drifted repo's files the view lists.
+const maxDriftFiles = 8
+
+// driftLines are the drift section: one row per target, and the selected
+// one's files.
+func (m *Model) driftLines() []string {
+	snap := m.toolkitSnap
+	if len(snap.Drift) == 0 && snap.DriftErr == "" && !snap.DriftChecking {
+		return nil
+	}
+	comment := lipgloss.NewStyle().Foreground(cComment)
+	dim := lipgloss.NewStyle().Foreground(cDim)
+	fg := lipgloss.NewStyle().Foreground(cFg)
+	bad := lipgloss.NewStyle().Foreground(cRed)
+	when := "not checked yet"
+	if !snap.DriftAt.IsZero() {
+		when = "checked " + snap.DriftAt.Local().Format("Jan 2 15:04")
+	}
+	if snap.DriftChecking {
+		when += ", checking…"
+	}
+	lines := []string{"", dim.Render("  scaffold drift ") + comment.Render(when)}
+	if snap.DriftErr != "" {
+		lines = append(lines, bad.Render("  ⚠ the last check failed: "+truncatePlain(snap.DriftErr, 70)))
+	}
+	base := len(snap.Tools) + len(snap.Rollouts)
+	for i, d := range snap.Drift {
+		cur := "  "
+		if base+i == m.toolkitSel {
+			cur = "› "
+		}
+		g, c := driftGlyph(d)
+		lines = append(lines, fg.Render(cur)+lipgloss.NewStyle().Foreground(c).Render(g)+" "+
+			fg.Render(padPlain(d.Target, 30, false))+" "+comment.Render(truncatePlain(driftState(d), 70)))
+		if base+i != m.toolkitSel {
+			continue
+		}
+		if d.Status != toolkit.DriftNone && d.Status != toolkit.DriftFound {
+			lines = append(lines, "      "+comment.Render(truncatePlain(d.Detail, 90)))
+		}
+		for j, f := range d.Files {
+			if j == maxDriftFiles {
+				lines = append(lines, dim.Render(fmt.Sprintf("      … and %d more", len(d.Files)-j)))
+				break
+			}
+			lines = append(lines, "      "+fg.Render(truncatePlain(f, 80)))
+		}
+		for j, f := range d.Stale {
+			if j == maxDriftFiles {
+				lines = append(lines, dim.Render(fmt.Sprintf("      … and %d more the init skips", len(d.Stale)-j)))
+				break
+			}
+			lines = append(lines, "      "+comment.Render(truncatePlain(f, 70)+" (the init skips it)"))
+		}
+		if d.FixErr != "" {
+			lines = append(lines, "      "+bad.Render("fix failed: "+truncatePlain(d.FixErr, 80)))
+		}
+	}
+	return lines
+}
+
+// driftState is a drift row's state in a few words.
+func driftState(d toolkit.Drift) string {
+	switch {
+	case d.Fixing:
+		return "fixing…"
+	case d.Fix != "":
+		return "fix: " + d.Fix
+	case d.Status == toolkit.DriftFound:
+		return d.Summary()
+	}
+	return string(d.Status)
+}
+
+func driftGlyph(d toolkit.Drift) (string, lipgloss.Color) {
+	switch {
+	case d.Fixing || d.Fix != "":
+		return "●", cTeal
+	case d.Status == toolkit.DriftNone:
+		return "✓", cGreen
+	case d.Status == toolkit.DriftFailed || d.FixErr != "":
+		return "✗", cRed
+	case d.Drifted():
+		return "≠", cYellow
+	case d.Status == toolkit.DriftFound:
+		return "~", cComment // only user-owned files, or a missed rollout with nothing to change
+	}
+	return "·", cDim
 }
 
 // toolRepos summarizes a tool's targets by scaffolded version.

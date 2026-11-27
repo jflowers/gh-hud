@@ -97,6 +97,10 @@ class MainActivity : ComponentActivity() {
 
         override suspend fun checkTools() = ToolkitCommands.check(model.connection)
 
+        override suspend fun checkDrift() = ToolkitCommands.checkDrift(model.connection)
+
+        override suspend fun fixDrift(target: String) = ToolkitCommands.fix(model.connection, target)
+
         override suspend fun rollOut(tool: String, version: String) = ToolkitCommands.rollOut(model.connection, tool, version)
 
         override suspend fun decline(id: String) = ToolkitCommands.decline(model.connection, id)

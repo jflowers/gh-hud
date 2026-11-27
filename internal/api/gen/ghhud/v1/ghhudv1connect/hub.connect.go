@@ -117,6 +117,9 @@ const (
 	// HubServiceToolkitControlProcedure is the fully-qualified name of the HubService's ToolkitControl
 	// RPC.
 	HubServiceToolkitControlProcedure = "/ghhud.v1.HubService/ToolkitControl"
+	// HubServiceToolkitFixDriftProcedure is the fully-qualified name of the HubService's
+	// ToolkitFixDrift RPC.
+	HubServiceToolkitFixDriftProcedure = "/ghhud.v1.HubService/ToolkitFixDrift"
 )
 
 // HubServiceClient is a client for the ghhud.v1.HubService service.
@@ -206,6 +209,12 @@ type HubServiceClient interface {
 	// is off.
 	ToolkitRollout(context.Context, *connect.Request[v1.ToolkitRolloutRequest]) (*connect.Response[v1.ToolkitRolloutResponse], error)
 	ToolkitControl(context.Context, *connect.Request[v1.ToolkitControlRequest]) (*connect.Response[v1.ToolkitControlResponse], error)
+	// ToolkitFixDrift opens the scaffold PR (or overlay commit) that brings
+	// a drifted target (ToolkitSnapshot.drift) back to the fleet's pins
+	// (issue #77). It returns once the fix starts; the drift row shows how
+	// it went. FAILED_PRECONDITION when the target has nothing to fix or a
+	// fix is open; the agent token can't call it.
+	ToolkitFixDrift(context.Context, *connect.Request[v1.ToolkitFixDriftRequest]) (*connect.Response[v1.ToolkitFixDriftResponse], error)
 }
 
 // NewHubServiceClient constructs a client for the ghhud.v1.HubService service. By default, it uses
@@ -411,6 +420,12 @@ func NewHubServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(hubServiceMethods.ByName("ToolkitControl")),
 			connect.WithClientOptions(opts...),
 		),
+		toolkitFixDrift: connect.NewClient[v1.ToolkitFixDriftRequest, v1.ToolkitFixDriftResponse](
+			httpClient,
+			baseURL+HubServiceToolkitFixDriftProcedure,
+			connect.WithSchema(hubServiceMethods.ByName("ToolkitFixDrift")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -448,6 +463,7 @@ type hubServiceClient struct {
 	checkoutAction  *connect.Client[v1.CheckoutActionRequest, v1.CheckoutActionResponse]
 	toolkitRollout  *connect.Client[v1.ToolkitRolloutRequest, v1.ToolkitRolloutResponse]
 	toolkitControl  *connect.Client[v1.ToolkitControlRequest, v1.ToolkitControlResponse]
+	toolkitFixDrift *connect.Client[v1.ToolkitFixDriftRequest, v1.ToolkitFixDriftResponse]
 }
 
 // GetSnapshot calls ghhud.v1.HubService.GetSnapshot.
@@ -610,6 +626,11 @@ func (c *hubServiceClient) ToolkitControl(ctx context.Context, req *connect.Requ
 	return c.toolkitControl.CallUnary(ctx, req)
 }
 
+// ToolkitFixDrift calls ghhud.v1.HubService.ToolkitFixDrift.
+func (c *hubServiceClient) ToolkitFixDrift(ctx context.Context, req *connect.Request[v1.ToolkitFixDriftRequest]) (*connect.Response[v1.ToolkitFixDriftResponse], error) {
+	return c.toolkitFixDrift.CallUnary(ctx, req)
+}
+
 // HubServiceHandler is an implementation of the ghhud.v1.HubService service.
 type HubServiceHandler interface {
 	// GetSnapshot returns the hub's current state.
@@ -697,6 +718,12 @@ type HubServiceHandler interface {
 	// is off.
 	ToolkitRollout(context.Context, *connect.Request[v1.ToolkitRolloutRequest]) (*connect.Response[v1.ToolkitRolloutResponse], error)
 	ToolkitControl(context.Context, *connect.Request[v1.ToolkitControlRequest]) (*connect.Response[v1.ToolkitControlResponse], error)
+	// ToolkitFixDrift opens the scaffold PR (or overlay commit) that brings
+	// a drifted target (ToolkitSnapshot.drift) back to the fleet's pins
+	// (issue #77). It returns once the fix starts; the drift row shows how
+	// it went. FAILED_PRECONDITION when the target has nothing to fix or a
+	// fix is open; the agent token can't call it.
+	ToolkitFixDrift(context.Context, *connect.Request[v1.ToolkitFixDriftRequest]) (*connect.Response[v1.ToolkitFixDriftResponse], error)
 }
 
 // NewHubServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -898,6 +925,12 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(hubServiceMethods.ByName("ToolkitControl")),
 		connect.WithHandlerOptions(opts...),
 	)
+	hubServiceToolkitFixDriftHandler := connect.NewUnaryHandler(
+		HubServiceToolkitFixDriftProcedure,
+		svc.ToolkitFixDrift,
+		connect.WithSchema(hubServiceMethods.ByName("ToolkitFixDrift")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/ghhud.v1.HubService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case HubServiceGetSnapshotProcedure:
@@ -964,6 +997,8 @@ func NewHubServiceHandler(svc HubServiceHandler, opts ...connect.HandlerOption) 
 			hubServiceToolkitRolloutHandler.ServeHTTP(w, r)
 		case HubServiceToolkitControlProcedure:
 			hubServiceToolkitControlHandler.ServeHTTP(w, r)
+		case HubServiceToolkitFixDriftProcedure:
+			hubServiceToolkitFixDriftHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1099,4 +1134,8 @@ func (UnimplementedHubServiceHandler) ToolkitRollout(context.Context, *connect.R
 
 func (UnimplementedHubServiceHandler) ToolkitControl(context.Context, *connect.Request[v1.ToolkitControlRequest]) (*connect.Response[v1.ToolkitControlResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.ToolkitControl is not implemented"))
+}
+
+func (UnimplementedHubServiceHandler) ToolkitFixDrift(context.Context, *connect.Request[v1.ToolkitFixDriftRequest]) (*connect.Response[v1.ToolkitFixDriftResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ghhud.v1.HubService.ToolkitFixDrift is not implemented"))
 }

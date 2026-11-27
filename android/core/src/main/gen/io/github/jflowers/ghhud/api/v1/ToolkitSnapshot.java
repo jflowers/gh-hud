@@ -22,6 +22,8 @@ public  final class ToolkitSnapshot extends
     tools_ = emptyProtobufList();
     rollouts_ = emptyProtobufList();
     error_ = "";
+    drift_ = emptyProtobufList();
+    driftError_ = "";
   }
   private int bitField0_;
   public static final int TOOLS_FIELD_NUMBER = 1;
@@ -393,6 +395,295 @@ public  final class ToolkitSnapshot extends
       com.google.protobuf.ByteString value) {
     checkByteStringIsUtf8(value);
     error_ = value.toStringUtf8();
+
+  }
+
+  public static final int DRIFT_FIELD_NUMBER = 6;
+  private com.google.protobuf.Internal.ProtobufList<io.github.jflowers.ghhud.api.v1.ToolkitDrift> drift_;
+  /**
+   * <pre>
+   * drift is each target's scaffold against the pins (issue #77), from
+   * the pass at drift_at; drift_error is why the latest pass couldn't run.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.jflowers.ghhud.api.v1.ToolkitDrift> getDriftList() {
+    return drift_;
+  }
+  /**
+   * <pre>
+   * drift is each target's scaffold against the pins (issue #77), from
+   * the pass at drift_at; drift_error is why the latest pass couldn't run.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+   */
+  public java.util.List<? extends io.github.jflowers.ghhud.api.v1.ToolkitDriftOrBuilder> 
+      getDriftOrBuilderList() {
+    return drift_;
+  }
+  /**
+   * <pre>
+   * drift is each target's scaffold against the pins (issue #77), from
+   * the pass at drift_at; drift_error is why the latest pass couldn't run.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+   */
+  @java.lang.Override
+  public int getDriftCount() {
+    return drift_.size();
+  }
+  /**
+   * <pre>
+   * drift is each target's scaffold against the pins (issue #77), from
+   * the pass at drift_at; drift_error is why the latest pass couldn't run.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+   */
+  @java.lang.Override
+  public io.github.jflowers.ghhud.api.v1.ToolkitDrift getDrift(int index) {
+    return drift_.get(index);
+  }
+  /**
+   * <pre>
+   * drift is each target's scaffold against the pins (issue #77), from
+   * the pass at drift_at; drift_error is why the latest pass couldn't run.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+   */
+  public io.github.jflowers.ghhud.api.v1.ToolkitDriftOrBuilder getDriftOrBuilder(
+      int index) {
+    return drift_.get(index);
+  }
+  private void ensureDriftIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.jflowers.ghhud.api.v1.ToolkitDrift> tmp = drift_;
+    if (!tmp.isModifiable()) {
+      drift_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <pre>
+   * drift is each target's scaffold against the pins (issue #77), from
+   * the pass at drift_at; drift_error is why the latest pass couldn't run.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+   */
+  private void setDrift(
+      int index, io.github.jflowers.ghhud.api.v1.ToolkitDrift value) {
+    java.util.Objects.requireNonNull(value);
+    ensureDriftIsMutable();
+    drift_.set(index, value);
+  }
+  /**
+   * <pre>
+   * drift is each target's scaffold against the pins (issue #77), from
+   * the pass at drift_at; drift_error is why the latest pass couldn't run.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+   */
+  private void addDrift(io.github.jflowers.ghhud.api.v1.ToolkitDrift value) {
+    java.util.Objects.requireNonNull(value);
+    ensureDriftIsMutable();
+    drift_.add(value);
+  }
+  /**
+   * <pre>
+   * drift is each target's scaffold against the pins (issue #77), from
+   * the pass at drift_at; drift_error is why the latest pass couldn't run.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+   */
+  private void addDrift(
+      int index, io.github.jflowers.ghhud.api.v1.ToolkitDrift value) {
+    java.util.Objects.requireNonNull(value);
+    ensureDriftIsMutable();
+    drift_.add(index, value);
+  }
+  /**
+   * <pre>
+   * drift is each target's scaffold against the pins (issue #77), from
+   * the pass at drift_at; drift_error is why the latest pass couldn't run.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+   */
+  private void addAllDrift(
+      java.lang.Iterable<? extends io.github.jflowers.ghhud.api.v1.ToolkitDrift> values) {
+    ensureDriftIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, drift_);
+  }
+  /**
+   * <pre>
+   * drift is each target's scaffold against the pins (issue #77), from
+   * the pass at drift_at; drift_error is why the latest pass couldn't run.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+   */
+  private void clearDrift() {
+    drift_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * drift is each target's scaffold against the pins (issue #77), from
+   * the pass at drift_at; drift_error is why the latest pass couldn't run.
+   * </pre>
+   *
+   * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+   */
+  private void removeDrift(int index) {
+    ensureDriftIsMutable();
+    drift_.remove(index);
+  }
+
+  public static final int DRIFT_AT_FIELD_NUMBER = 7;
+  private com.google.protobuf.Timestamp driftAt_;
+  /**
+   * <pre>
+   * unset until the first pass
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp drift_at = 7 [json_name = "driftAt"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDriftAt() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <pre>
+   * unset until the first pass
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp drift_at = 7 [json_name = "driftAt"];</code>
+   */
+  @java.lang.Override
+  public com.google.protobuf.Timestamp getDriftAt() {
+    return driftAt_ == null ? com.google.protobuf.Timestamp.getDefaultInstance() : driftAt_;
+  }
+  /**
+   * <pre>
+   * unset until the first pass
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp drift_at = 7 [json_name = "driftAt"];</code>
+   */
+  private void setDriftAt(com.google.protobuf.Timestamp value) {
+    java.util.Objects.requireNonNull(value);
+    driftAt_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <pre>
+   * unset until the first pass
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp drift_at = 7 [json_name = "driftAt"];</code>
+   */
+  @java.lang.SuppressWarnings("ReferenceEquality")
+  private void mergeDriftAt(com.google.protobuf.Timestamp value) {
+    java.util.Objects.requireNonNull(value);
+    if (driftAt_ != null &&
+        driftAt_ != com.google.protobuf.Timestamp.getDefaultInstance()) {
+      driftAt_ =
+        com.google.protobuf.Timestamp.newBuilder(driftAt_).mergeFrom(value).buildPartial();
+    } else {
+      driftAt_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <pre>
+   * unset until the first pass
+   * </pre>
+   *
+   * <code>.google.protobuf.Timestamp drift_at = 7 [json_name = "driftAt"];</code>
+   */
+  private void clearDriftAt() {
+    driftAt_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
+  public static final int DRIFT_CHECKING_FIELD_NUMBER = 8;
+  private boolean driftChecking_;
+  /**
+   * <code>bool drift_checking = 8 [json_name = "driftChecking"];</code>
+   * @return The driftChecking.
+   */
+  @java.lang.Override
+  public boolean getDriftChecking() {
+    return driftChecking_;
+  }
+  /**
+   * <code>bool drift_checking = 8 [json_name = "driftChecking"];</code>
+   * @param value The driftChecking to set.
+   */
+  private void setDriftChecking(boolean value) {
+    
+    driftChecking_ = value;
+  }
+  /**
+   * <code>bool drift_checking = 8 [json_name = "driftChecking"];</code>
+   */
+  private void clearDriftChecking() {
+
+    driftChecking_ = false;
+  }
+
+  public static final int DRIFT_ERROR_FIELD_NUMBER = 9;
+  private java.lang.String driftError_;
+  /**
+   * <code>string drift_error = 9 [json_name = "driftError"];</code>
+   * @return The driftError.
+   */
+  @java.lang.Override
+  public java.lang.String getDriftError() {
+    return driftError_;
+  }
+  /**
+   * <code>string drift_error = 9 [json_name = "driftError"];</code>
+   * @return The bytes for driftError.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getDriftErrorBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(driftError_);
+  }
+  /**
+   * <code>string drift_error = 9 [json_name = "driftError"];</code>
+   * @param value The driftError to set.
+   */
+  private void setDriftError(
+      java.lang.String value) {
+    java.util.Objects.requireNonNull(value);
+
+    driftError_ = value;
+  }
+  /**
+   * <code>string drift_error = 9 [json_name = "driftError"];</code>
+   */
+  private void clearDriftError() {
+
+    driftError_ = getDefaultInstance().getDriftError();
+  }
+  /**
+   * <code>string drift_error = 9 [json_name = "driftError"];</code>
+   * @param value The bytes for driftError to set.
+   */
+  private void setDriftErrorBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    driftError_ = value.toStringUtf8();
 
   }
 
@@ -893,6 +1184,316 @@ public  final class ToolkitSnapshot extends
       return this;
     }
 
+    /**
+     * <pre>
+     * drift is each target's scaffold against the pins (issue #77), from
+     * the pass at drift_at; drift_error is why the latest pass couldn't run.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.jflowers.ghhud.api.v1.ToolkitDrift> getDriftList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getDriftList());
+    }
+    /**
+     * <pre>
+     * drift is each target's scaffold against the pins (issue #77), from
+     * the pass at drift_at; drift_error is why the latest pass couldn't run.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+     */
+    @java.lang.Override
+    public int getDriftCount() {
+      return instance.getDriftCount();
+    }/**
+     * <pre>
+     * drift is each target's scaffold against the pins (issue #77), from
+     * the pass at drift_at; drift_error is why the latest pass couldn't run.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+     */
+    @java.lang.Override
+    public io.github.jflowers.ghhud.api.v1.ToolkitDrift getDrift(int index) {
+      return instance.getDrift(index);
+    }
+    /**
+     * <pre>
+     * drift is each target's scaffold against the pins (issue #77), from
+     * the pass at drift_at; drift_error is why the latest pass couldn't run.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+     */
+    public Builder setDrift(
+        int index, io.github.jflowers.ghhud.api.v1.ToolkitDrift value) {
+      copyOnWrite();
+      instance.setDrift(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * drift is each target's scaffold against the pins (issue #77), from
+     * the pass at drift_at; drift_error is why the latest pass couldn't run.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+     */
+    public Builder setDrift(
+        int index, io.github.jflowers.ghhud.api.v1.ToolkitDrift.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDrift(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * drift is each target's scaffold against the pins (issue #77), from
+     * the pass at drift_at; drift_error is why the latest pass couldn't run.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+     */
+    public Builder addDrift(io.github.jflowers.ghhud.api.v1.ToolkitDrift value) {
+      copyOnWrite();
+      instance.addDrift(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * drift is each target's scaffold against the pins (issue #77), from
+     * the pass at drift_at; drift_error is why the latest pass couldn't run.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+     */
+    public Builder addDrift(
+        int index, io.github.jflowers.ghhud.api.v1.ToolkitDrift value) {
+      copyOnWrite();
+      instance.addDrift(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * drift is each target's scaffold against the pins (issue #77), from
+     * the pass at drift_at; drift_error is why the latest pass couldn't run.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+     */
+    public Builder addDrift(
+        io.github.jflowers.ghhud.api.v1.ToolkitDrift.Builder builderForValue) {
+      copyOnWrite();
+      instance.addDrift(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * drift is each target's scaffold against the pins (issue #77), from
+     * the pass at drift_at; drift_error is why the latest pass couldn't run.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+     */
+    public Builder addDrift(
+        int index, io.github.jflowers.ghhud.api.v1.ToolkitDrift.Builder builderForValue) {
+      copyOnWrite();
+      instance.addDrift(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * drift is each target's scaffold against the pins (issue #77), from
+     * the pass at drift_at; drift_error is why the latest pass couldn't run.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+     */
+    public Builder addAllDrift(
+        java.lang.Iterable<? extends io.github.jflowers.ghhud.api.v1.ToolkitDrift> values) {
+      copyOnWrite();
+      instance.addAllDrift(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * drift is each target's scaffold against the pins (issue #77), from
+     * the pass at drift_at; drift_error is why the latest pass couldn't run.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+     */
+    public Builder clearDrift() {
+      copyOnWrite();
+      instance.clearDrift();
+      return this;
+    }
+    /**
+     * <pre>
+     * drift is each target's scaffold against the pins (issue #77), from
+     * the pass at drift_at; drift_error is why the latest pass couldn't run.
+     * </pre>
+     *
+     * <code>repeated .ghhud.v1.ToolkitDrift drift = 6 [json_name = "drift"];</code>
+     */
+    public Builder removeDrift(int index) {
+      copyOnWrite();
+      instance.removeDrift(index);
+      return this;
+    }
+
+    /**
+     * <pre>
+     * unset until the first pass
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp drift_at = 7 [json_name = "driftAt"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDriftAt() {
+      return instance.hasDriftAt();
+    }
+    /**
+     * <pre>
+     * unset until the first pass
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp drift_at = 7 [json_name = "driftAt"];</code>
+     */
+    @java.lang.Override
+    public com.google.protobuf.Timestamp getDriftAt() {
+      return instance.getDriftAt();
+    }
+    /**
+     * <pre>
+     * unset until the first pass
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp drift_at = 7 [json_name = "driftAt"];</code>
+     */
+    public Builder setDriftAt(com.google.protobuf.Timestamp value) {
+      copyOnWrite();
+      instance.setDriftAt(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * unset until the first pass
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp drift_at = 7 [json_name = "driftAt"];</code>
+     */
+    public Builder setDriftAt(
+        com.google.protobuf.Timestamp.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDriftAt(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * unset until the first pass
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp drift_at = 7 [json_name = "driftAt"];</code>
+     */
+    public Builder mergeDriftAt(com.google.protobuf.Timestamp value) {
+      copyOnWrite();
+      instance.mergeDriftAt(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * unset until the first pass
+     * </pre>
+     *
+     * <code>.google.protobuf.Timestamp drift_at = 7 [json_name = "driftAt"];</code>
+     */
+    public Builder clearDriftAt() {  copyOnWrite();
+      instance.clearDriftAt();
+      return this;
+    }
+
+    /**
+     * <code>bool drift_checking = 8 [json_name = "driftChecking"];</code>
+     * @return The driftChecking.
+     */
+    @java.lang.Override
+    public boolean getDriftChecking() {
+      return instance.getDriftChecking();
+    }
+    /**
+     * <code>bool drift_checking = 8 [json_name = "driftChecking"];</code>
+     * @param value The driftChecking to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDriftChecking(boolean value) {
+      copyOnWrite();
+      instance.setDriftChecking(value);
+      return this;
+    }
+    /**
+     * <code>bool drift_checking = 8 [json_name = "driftChecking"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDriftChecking() {
+      copyOnWrite();
+      instance.clearDriftChecking();
+      return this;
+    }
+
+    /**
+     * <code>string drift_error = 9 [json_name = "driftError"];</code>
+     * @return The driftError.
+     */
+    @java.lang.Override
+    public java.lang.String getDriftError() {
+      return instance.getDriftError();
+    }
+    /**
+     * <code>string drift_error = 9 [json_name = "driftError"];</code>
+     * @return The bytes for driftError.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getDriftErrorBytes() {
+      return instance.getDriftErrorBytes();
+    }
+    /**
+     * <code>string drift_error = 9 [json_name = "driftError"];</code>
+     * @param value The driftError to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDriftError(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setDriftError(value);
+      return this;
+    }
+    /**
+     * <code>string drift_error = 9 [json_name = "driftError"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDriftError() {
+      copyOnWrite();
+      instance.clearDriftError();
+      return this;
+    }
+    /**
+     * <code>string drift_error = 9 [json_name = "driftError"];</code>
+     * @param value The bytes for driftError to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDriftErrorBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDriftErrorBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:ghhud.v1.ToolkitSnapshot)
   }
   @java.lang.Override
@@ -917,10 +1518,15 @@ public  final class ToolkitSnapshot extends
             "checkedAt_",
             "checking_",
             "error_",
+            "drift_",
+            io.github.jflowers.ghhud.api.v1.ToolkitDrift.class,
+            "driftAt_",
+            "driftChecking_",
+            "driftError_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0001\u0001\u0005\u0005\u0000\u0002\u0000\u0001\u001b\u0002\u001b" +
-              "\u0003\u1009\u0000\u0004\u0007\u0005\u0208";
+              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0003\u0000\u0001\u001b\u0002\u001b\u0003\u1009" +
+              "\u0000\u0004\u0007\u0005\u0208\u0006\u001b\u0007\u1009\u0001\b\u0007\t\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

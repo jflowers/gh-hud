@@ -509,11 +509,22 @@ func (c *Client) ToolkitControl(ctx context.Context, action hub.ToolkitAction, i
 		a = pb.ToolkitAction_TOOLKIT_ACTION_DISMISS
 	case hub.ToolkitCheck:
 		a = pb.ToolkitAction_TOOLKIT_ACTION_CHECK
+	case hub.ToolkitDrift:
+		a = pb.ToolkitAction_TOOLKIT_ACTION_DRIFT
 	default:
 		return fmt.Errorf("unknown toolkit action %q", action)
 	}
 	ctx, cancel := withDeadline(ctx, callTimeout)
 	defer cancel()
 	_, err := c.rpc.ToolkitControl(ctx, connect.NewRequest(&pb.ToolkitControlRequest{Action: a, Id: id}))
+	return fromConnect(err)
+}
+
+// ToolkitFixDrift opens the scaffold PR that brings a drifted target back
+// to the pins.
+func (c *Client) ToolkitFixDrift(ctx context.Context, target string) error {
+	ctx, cancel := withDeadline(ctx, callTimeout)
+	defer cancel()
+	_, err := c.rpc.ToolkitFixDrift(ctx, connect.NewRequest(&pb.ToolkitFixDriftRequest{Target: target}))
 	return fromConnect(err)
 }

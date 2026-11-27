@@ -27,6 +27,8 @@ const toolkitUsage = `usage: gh-hud toolkit list [flags]
        gh-hud toolkit approve|decline <tool@version>   answer a proposed release
        gh-hud toolkit cancel|retry|dismiss <tool@version>
        gh-hud toolkit check                   look for releases and versions now
+       gh-hud toolkit drift                   check every repo's scaffold against the pins now
+       gh-hud toolkit fix <repo>              open the scaffold PR that brings a drifted repo back
 
 scaffold runs each tool's init at an exact version (default: the fleet's mise
 pin) in a scratch worktree of every target repo at its default branch, then
@@ -44,7 +46,7 @@ func (r *repoFlags) String() string     { return strings.Join(*r, ",") }
 func (r *repoFlags) Set(v string) error { *r = append(*r, v); return nil }
 
 func runToolkit(args []string, stdout, stderr io.Writer) int {
-	if len(args) > 0 && slices.Contains([]string{"status", "rollout", "approve", "decline", "cancel", "retry", "dismiss", "check"}, args[0]) {
+	if len(args) > 0 && slices.Contains([]string{"status", "rollout", "approve", "decline", "cancel", "retry", "dismiss", "check", "drift", "fix"}, args[0]) {
 		return runToolkitHub(args, stdout, stderr)
 	}
 	if len(args) == 0 || (args[0] != "list" && args[0] != "scaffold") {
@@ -223,7 +225,12 @@ func buildToolkit(cfg *config.Config, stateDir string) *toolkit.Coordinator {
 	if root == "" {
 		root = ghws.DefaultRoot()
 	}
+	driftEvery, err := tc.DriftInterval()
+	if err != nil {
+		log.Printf("toolkit: %v; checking drift daily", err)
+	}
 	c, err := toolkit.NewCoordinator(toolkit.CoordOptions{
+		DriftEvery:   driftEvery,
 		ManifestPath: manifest,
 		StateDir:     stateDir,
 		Dotfiles:     dotfiles,

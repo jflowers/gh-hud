@@ -518,6 +518,25 @@ type ToolkitConfig struct {
 	// Dotfiles is a clone of [fleet]'s repo to cut pin branches from
 	// (default: the chezmoi source, ~/.local/share/chezmoi).
 	Dotfiles string `toml:"dotfiles"`
+	// DriftEvery is how often every repo's scaffold is dry-run against the
+	// pins (issue #77): a duration ("24h", the default), or "off".
+	DriftEvery string `toml:"drift_every"`
+}
+
+// DriftInterval is DriftEvery as the coordinator takes it: 0 for the
+// default, negative for off, an error for anything else it can't read.
+func (t ToolkitConfig) DriftInterval() (time.Duration, error) {
+	switch t.DriftEvery {
+	case "":
+		return 0, nil
+	case "off":
+		return -1, nil
+	}
+	d, err := time.ParseDuration(t.DriftEvery)
+	if err != nil || d < time.Hour {
+		return 0, fmt.Errorf("[toolkit] drift_every %q: want a duration of at least 1h, like \"24h\", or \"off\"", t.DriftEvery)
+	}
+	return d, nil
 }
 
 // ReleasesConfig turns on the Releases view: the hub reads ship's

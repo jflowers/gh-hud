@@ -317,6 +317,15 @@ public final class HubConnection {
         return Self.why(await client.toolkitControl(request: req, headers: hub.authHeaders))
     }
 
+    /// Opens the scaffold PR that brings a drifted repo back to the pins.
+    /// Returns why it failed, if it did.
+    public func fixDrift(target: String) async -> String? {
+        guard let hub, let client = commands else { return "not connected" }
+        var req = Ghhud_V1_ToolkitFixDriftRequest()
+        req.target = target
+        return Self.why(await client.toolkitFixDrift(request: req, headers: hub.authHeaders))
+    }
+
     /// Opens a terminal attached to an agent session's pane.
     public func watch(sessionID: String) async -> String? {
         if isRemote { return Self.remoteTerminalWhy }

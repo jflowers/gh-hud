@@ -155,3 +155,39 @@ func TestToolkitProposal(t *testing.T) {
 		t.Errorf("status %q", m.statusMsg)
 	}
 }
+
+// Drift rows follow the rollouts; the selected one lists its files, and
+// f (twice) asks the hub to fix it.
+func TestToolkitDrift(t *testing.T) {
+	fake := &hubtest.Fake{}
+	snap := toolkitTestSnapshot()
+	snap.Drift = []toolkit.Drift{
+		{Target: "a/b", Status: toolkit.DriftNone},
+		{Target: "a/c", Status: toolkit.DriftFound, Files: []string{".opencode/commands/uf.finale.md"}, Added: 3, Deleted: 1,
+			Behind: []string{"uf 0.20.0 < 0.21.0"}, Stale: []string{".uf/config.yaml"}},
+	}
+	fake.SetSnap(hub.Snapshot{Seq: 1, Toolkit: &snap})
+	m := New(config.Default(), fake)
+	m.width, m.height = 140, 50
+	pressKey(t, m, "T")
+	m.toolkitSel = 4 // a/c's drift
+	out := m.toolkitView()
+	for _, want := range []string{"scaffold drift", "matches the pin", "missed a rollout: uf 0.20.0 < 0.21.0",
+		".opencode/commands/uf.finale.md", ".uf/config.yaml (the init skips it)", "X drift"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("drift view missing %q", want)
+		}
+	}
+	pressKey(t, m, "f") // arms
+	if len(fake.Calls) != 0 {
+		t.Fatalf("the first f called %v", fake.Calls)
+	}
+	pressKey(t, m, "f")
+	pressKey(t, m, "k") // a/b: matches
+	pressKey(t, m, "f")
+	pressKey(t, m, "f")
+	pressKey(t, m, "X")
+	if want := []string{"ToolkitFixDrift a/c", "ToolkitControl drift"}; !slices.Equal(fake.Calls, want) {
+		t.Errorf("calls %q, want %q", fake.Calls, want)
+	}
+}

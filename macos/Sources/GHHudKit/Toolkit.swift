@@ -136,7 +136,80 @@ public struct TargetRow: Identifiable, Equatable, Sendable {
     }
 }
 
+/// One repo's scaffold against the fleet's pins (issue #77).
+public struct DriftRow: Identifiable, Equatable, Sendable {
+    public var id: String { target }
+    public let target: String
+    /// drifted, behind, skipped files differ, fixing, fix open, or the
+    /// hub's status (matches the pin, ahead of the pin, rolling out,
+    /// failed).
+    public let state: String
+    public let tone: Tone
+    /// What drifted, why it couldn't be checked, or why the fix failed.
+    public let note: String
+    /// Tool-owned files a scaffold at the pins changes.
+    public let files: [String]
+    /// User-owned files the inits skip that differ from the release.
+    public let stale: [String]
+    /// The fix's PR.
+    public let fix: URL?
+    /// Fix would open a scaffold PR now.
+    public let fixable: Bool
+
+    public init(_ d: Ghhud_V1_ToolkitDrift) {
+        target = d.target
+        files = d.files
+        stale = d.stale
+        fixable = d.fixable
+        fix = d.fix.hasPrefix("https://") ? URL(string: d.fix) : nil
+        switch true {
+        case d.fixing: state = "fixing"
+        case !d.fix.isEmpty: state = "fix open"
+        case d.status == "drifted" && !d.files.isEmpty: state = "drifted"
+        case d.status == "drifted" && !d.stale.isEmpty: state = "skipped files differ"
+        case d.status == "drifted": state = "behind"
+        default: state = d.status
+        }
+        switch true {
+        case !d.fixError.isEmpty, d.status == "failed": tone = .bad
+        case state == "fixing", state == "fix open": tone = .pending
+        case state == "drifted": tone = .warn
+        case state == "matches the pin": tone = .good
+        default: tone = .muted
+        }
+        if !d.fixError.isEmpty {
+            note = "fix failed: \(d.fixError)"
+        } else if d.status == "drifted" {
+            note = d.summary
+        } else if !d.fix.isEmpty && fix == nil {
+            note = d.fix
+        } else {
+            note = d.detail
+        }
+    }
+}
+
 public enum ToolkitList {
+    /// Each repo's scaffold against the pins, from the last drift check.
+    public static func drift(_ s: Ghhud_V1_Snapshot) -> [DriftRow] {
+        s.toolkit.drift.map(DriftRow.init)
+    }
+
+    /// The drift check in a few words ("" before the first one).
+    public static func driftState(_ s: Ghhud_V1_Snapshot) -> String {
+        let t = s.toolkit
+        if !t.driftError.isEmpty { return "drift check failed: \(t.driftError)" }
+        var parts: [String] = []
+        if t.driftChecking {
+            parts.append("checking drift…")
+        } else if t.hasDriftAt {
+            parts.append("drift checked \(HubSummary.ago(t.driftAt.date, now: s.fetchedAt.date))")
+        }
+        let drifted = drift(s).filter { $0.state == "drifted" }.count
+        if drifted > 0 { parts.append("\(drifted) drifted") }
+        return parts.joined(separator: " · ")
+    }
+
     public static func tools(_ s: Ghhud_V1_Snapshot) -> [ToolRow] {
         guard s.hasToolkit else { return [] }
         return s.toolkit.tools.map { ToolRow($0, rollouts: s.toolkit.rollouts) }
