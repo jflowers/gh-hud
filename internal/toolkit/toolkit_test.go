@@ -11,6 +11,7 @@ import (
 )
 
 const testManifest = `
+hold_paths = [".opencode/commands/", ".opencode/agents/"]
 [[tool]]
 name = "uf"
 release = "unbound-force/unbound-force"
@@ -45,8 +46,8 @@ func mustParse(t *testing.T, s string) *Manifest {
 
 func TestParseDefaults(t *testing.T) {
 	m := mustParse(t, testManifest)
-	if m.HoldLabel != "hold" || !slices.Equal(m.HoldPaths, DefaultHoldPaths) {
-		t.Errorf("hold defaults: %q %v", m.HoldLabel, m.HoldPaths)
+	if bare := mustParse(t, strings.Replace(testManifest, "hold_paths =", "# hold_paths =", 1)); bare.HoldLabel != "hold" || len(bare.HoldPaths) != 0 {
+		t.Errorf("hold defaults: %q %v", bare.HoldLabel, bare.HoldPaths)
 	}
 	uf, _ := m.Tool("uf")
 	if !slices.Equal(uf.Init, []string{"init"}) || uf.Tag("0.22.0") != "v0.22.0" {
@@ -224,7 +225,8 @@ func TestHelpers(t *testing.T) {
 	if len(files) != 2 || a != 3 || d != 1 {
 		t.Errorf("numstat %v %d %d", files, a, d)
 	}
-	if !held(files, DefaultHoldPaths) || held([]string{".uf/schemas/a.json"}, DefaultHoldPaths) {
+	agents := []string{".opencode/commands/", ".opencode/agents/"}
+	if !held(files, agents) || held([]string{".uf/schemas/a.json"}, agents) || held(files, nil) {
 		t.Error("held")
 	}
 }

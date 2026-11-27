@@ -606,7 +606,7 @@ func prBody(runs []Run, ran []string, res Result, holdLabel string) string {
 	if res.Held {
 		fmt.Fprintf(&b, "**Held for a look** (`%s`): this changes agent commands or definitions. Remove the label to let it auto-merge.\n\n", holdLabel)
 	} else {
-		b.WriteString("No agent commands or definitions change, so this auto-merges once it's approved and green.\n\n")
+		b.WriteString("gh-hud approves this without an agent review, and it auto-merges once it's green.\n\n")
 	}
 	for _, r := range runs {
 		fmt.Fprintf(&b, "%s: %s %s\n", trailerKey, r.Tool.Name, r.Version)

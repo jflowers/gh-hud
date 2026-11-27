@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -309,6 +310,16 @@ type AutoMergeConfig struct {
 	// UpdateMethod is how the merge train brings the next PR up to date in
 	// a repo that requires it: merge (default) or rebase.
 	UpdateMethod string `toml:"update_method"`
+	// ChoreRepos are repos with no branch rules (a private repo on GitHub
+	// Free has none), where gh-hud merges its own learnings and toolkit
+	// PRs itself, by Method, once their files check out. Elsewhere the
+	// bot approves them and auto-merge waits on the branch rules.
+	ChoreRepos []string `toml:"chore_repos"`
+}
+
+// ChoreRepo reports whether gh-hud merges its chore PRs in repo itself.
+func (c AutoMergeConfig) ChoreRepo(repo string) bool {
+	return c.Enabled && slices.ContainsFunc(c.ChoreRepos, func(r string) bool { return strings.EqualFold(r, repo) })
 }
 
 // Covers reports whether auto-merge applies to repo ("owner/name").
