@@ -45,6 +45,27 @@ func orgQualifier(orgs []string) string {
 	return b.String()
 }
 
+// choreRepoQualifier renders "repo:X " qualifiers for [auto_merge]
+// chore_repos outside orgs (GitHub search ORs them), so their PRs reach
+// the dashboard and auto-merge can land them. Empty when there are none,
+// or when my-prs already covers everything (no orgs, or my_prs_everywhere).
+func choreRepoQualifier(cfg *config.Config) string {
+	if len(cfg.Orgs) == 0 || cfg.MyPRsEverywhere {
+		return ""
+	}
+	var b strings.Builder
+	for _, r := range cfg.AutoMerge.ChoreRepos {
+		owner, _, ok := strings.Cut(r, "/")
+		if !ok || slices.ContainsFunc(cfg.Orgs, func(o string) bool { return strings.EqualFold(o, owner) }) {
+			continue
+		}
+		b.WriteString("repo:")
+		b.WriteString(r)
+		b.WriteString(" ")
+	}
+	return b.String()
+}
+
 func addReason(it *Item, reasons ...string) {
 	for _, r := range reasons {
 		dup := false
@@ -176,6 +197,11 @@ func FetchAll(ctx context.Context, c *gh.Client, cfg *config.Config) *FetchResul
 	prSection("my-prs", orgs+"author:@me", CatMy, MyPRsCap)
 	if cfg.MyPRsEverywhere && len(cfg.Orgs) > 0 { // with no orgs, my-prs already is everywhere
 		prSection("my-prs-everywhere", "author:@me", CatMy, MyPRsCap)
+	}
+	// chore_repos outside orgs (private uf overlays): gh-hud merges its own
+	// learnings and toolkit PRs there, so it must see them.
+	if q := choreRepoQualifier(cfg); q != "" {
+		prSection("my-prs-chore-repos", q+"author:@me", CatMy, MyPRsCap)
 	}
 	// Review-queue sweep: recently updated PRs by others in my orgs —
 	// candidates for agent review. Requires orgs; without them the sweep
