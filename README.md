@@ -1842,7 +1842,8 @@ stealth overlay) can't require an approval or a check, so auto-merge would
 have nothing to wait for and the bot may have no access. List it in
 `chore_repos` and gh-hud merges its learnings and toolkit PRs there itself,
 by `method`, after the same file check and once its checks (if any)
-passed, without an approval:
+passed, without an approval. Your PRs in these repos are fetched even when
+they're outside `orgs`, so gh-hud sees them:
 
 ```toml
 [auto_merge]
